@@ -1,6 +1,7 @@
 package org.jetlinks.core.device;
 
 
+import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.metadata.DeviceMetadata;
 
 /**
@@ -10,6 +11,11 @@ import org.jetlinks.core.metadata.DeviceMetadata;
  * @since 1.0.0
  */
 public interface DeviceOperation extends Configurable {
+
+    /**
+     * @return 设备ID
+     */
+    String getDeviceId();
 
     /**
      * @return 当前设备连接所在服务器ID，如果设备未上线{@link DeviceState#online}，则返回{@link null}
@@ -33,19 +39,9 @@ public interface DeviceOperation extends Configurable {
     byte getState();
 
     /**
-     * 执行ping,设备保活
-     */
-    void ping();
-
-    /**
      * 检查设备的真实状态
      */
     void checkState();
-
-    /**
-     * @return 最后一次ping的时间
-     */
-    long getLastPingTime();
 
     /**
      * @return 上线时间
@@ -91,7 +87,12 @@ public interface DeviceOperation extends Configurable {
     DeviceMetadata getMetadata();
 
     /**
-     * @return 消息操作
+     * @return 获取此设备使用的协议支持
+     */
+    ProtocolSupport getProtocol();
+
+    /**
+     * @return 消息发送器, 用于发送消息给设备
      */
     DeviceMessageSender messageSender();
 
