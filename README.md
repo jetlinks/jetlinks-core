@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/jetlinks/jetlinks-core/branch/master/graph/badge.svg)](https://codecov.io/gh/jetlinks/jetlinks-core)
 
 
-# 设备定义
+# 设备定义(metadata)
 
 设备主要由3部分组成：
 1. 属性，对设备的描述，如： 型号，当前电量。
@@ -16,7 +16,23 @@
 ## 数据类型
 
 
-## 设备注册中心
+# 设备注册中心(registry)
+负责管理设备到基础信息,配置,状态以及集群下到消息收发.
 
+```java
+   DeviceRegistry registry  = ....;
 
-## 设备操作接口
+   //发送调用设备功能消息到设备并等待返回
+   DeviceSysInfo output= registry.getDevice(deviceId)
+          .messageSender()
+          .invokeFunction("getSysInfo")
+          .send()
+          .toCompletableFuture()
+          .get(10, TimeUnit.SECONDS) //最大等待10秒
+          .getOutput(DeviceSysInfo.class);
+  
+```
+
+# 多协议支持(protocol)
+平台支持多消息协议支持,使用不同消息协议(ALink,MIot....)的设备只需要做最小改动(修改服务器地址和证书)即可接入.
+对平台其他服务无侵入.
