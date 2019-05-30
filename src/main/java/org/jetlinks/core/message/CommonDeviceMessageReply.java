@@ -53,7 +53,7 @@ public class CommonDeviceMessageReply implements DeviceMessageReply {
         success = jsonObject.getBoolean("success");
         timestamp = jsonObject.getLong("timestamp");
         messageId = jsonObject.getString("messageId");
-        deviceId = jsonObject.getString("clientId");
+        deviceId = jsonObject.getString("deviceId");
         code = jsonObject.getString("code");
         message = jsonObject.getString("message");
     }

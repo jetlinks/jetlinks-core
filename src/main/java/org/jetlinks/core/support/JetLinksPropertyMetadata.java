@@ -102,6 +102,15 @@ public class JetLinksPropertyMetadata implements PropertyMetadata {
         this.id = json.getString("id");
         this.name = json.getString("name");
         this.description = json.getString("description");
-        this.dataType=null;
+        this.dataType = null;
+    }
+
+    @Override
+    public String toString() {
+        //  /* 测试 */ int name,
+        return String.join("", new String[]{
+                " /* ", getName(), " */ ", getValueType().getId(), " ", getId()
+        });
+
     }
 }

@@ -20,4 +20,8 @@ public class FunctionParameter implements Serializable {
 
     private Object value;
 
+    @Override
+    public String toString() {
+        return  name+"("+value+")";
+    }
 }

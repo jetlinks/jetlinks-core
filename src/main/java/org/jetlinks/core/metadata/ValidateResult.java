@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.function.Consumer;
+
 
 /**
  * @author bsetfeng
@@ -17,8 +19,6 @@ import lombok.NoArgsConstructor;
 public class ValidateResult {
 
     private boolean success;
-    //说明
-    private String  description;
 
     private Object value;
 
@@ -30,6 +30,7 @@ public class ValidateResult {
         result.setValue(value);
         return result;
     }
+
     public static ValidateResult success() {
         ValidateResult result = new ValidateResult();
         result.setSuccess(true);
@@ -39,7 +40,13 @@ public class ValidateResult {
     public static ValidateResult fail(String message) {
         ValidateResult result = new ValidateResult();
         result.setSuccess(false);
-        result.setDescription(message);
+        result.setErrorMsg(message);
         return result;
+    }
+
+    public void ifFail(Consumer<ValidateResult> resultConsumer) {
+        if (!success) {
+            resultConsumer.accept(this);
+        }
     }
 }

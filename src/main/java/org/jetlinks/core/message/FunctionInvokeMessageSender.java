@@ -1,11 +1,18 @@
 package org.jetlinks.core.message;
 
+import org.jetlinks.core.message.exception.FunctionUndefinedException;
+import org.jetlinks.core.message.exception.IllegalParameterException;
+import org.jetlinks.core.message.exception.ParameterUndefinedException;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.function.FunctionParameter;
+import org.jetlinks.core.metadata.PropertyMetadata;
+import org.jetlinks.core.metadata.ValidateResult;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 /**
  * 调用设备功能的消息发送器
@@ -62,8 +69,33 @@ public interface FunctionInvokeMessageSender {
      * 设置调用此功能为异步执行, 当消息发送到设备后,立即返回{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING},而不等待设备返回结果.
      *
      * @return this
+     * @see org.jetlinks.core.message.function.FunctionInvokeMessage#setAsync(Boolean)
      */
     FunctionInvokeMessageSender async();
+
+    /**
+     * 执行参数校验
+     *
+     * @param resultConsumer 校验结果回调
+     * @return this
+     * @see PropertyMetadata#getValueType()
+     * @see org.jetlinks.core.metadata.DataType#validate(Object)
+     * @see IllegalArgumentException
+     */
+    FunctionInvokeMessageSender validate(BiConsumer<FunctionParameter, ValidateResult> resultConsumer)
+            throws FunctionUndefinedException, ParameterUndefinedException, IllegalParameterException;
+
+    /**
+     * @return this
+     * @see this#validate(BiConsumer)
+     * @see IllegalArgumentException
+     */
+    default FunctionInvokeMessageSender validate() throws IllegalParameterException {
+        validate((functionParameter, validateResult) -> validateResult.ifFail(r -> {
+            throw new IllegalParameterException(functionParameter.getName(), validateResult.getErrorMsg());
+        }));
+        return this;
+    }
 
     /**
      * 执行发送
@@ -72,8 +104,8 @@ public interface FunctionInvokeMessageSender {
      * @see org.jetlinks.core.device.DeviceMessageSender#send(RepayableDeviceMessage)
      * @see CompletionStage
      * @see CompletionStage#toCompletableFuture()
+     * @see java.util.concurrent.CompletableFuture#get(long, TimeUnit)
      */
     CompletionStage<FunctionInvokeMessageReply> send();
-
 
 }

@@ -7,10 +7,7 @@ import org.jetlinks.core.metadata.FunctionMetadata;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.metadata.PropertyMetadata;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -85,6 +82,19 @@ public class JetLinksDeviceFunctionMetadata implements FunctionMetadata {
                     .orElse(null);
         }
         return output;
+    }
+
+    @Override
+    public String toString() {
+        // /*获取系统信息*/ getSysInfo(Type name,)
+
+        return String.join("", new String[]{
+                "/* ", getName(), " */",
+                getId(),
+                "(",
+                String.join(",", getInputs().stream().map(PropertyMetadata::toString).toArray(String[]::new))
+                , ")"
+        });
     }
 
     @Override

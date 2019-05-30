@@ -25,7 +25,7 @@ public class BooleanType implements DataType, Jsonable {
 
     protected Boolean convertValue(Object value) {
 
-        String stringVal = String.valueOf(value);
+        String stringVal = String.valueOf(value).trim();
         if (stringVal.equals(trueValue) || stringVal.equals(trueText)) {
             return true;
         }
@@ -43,7 +43,7 @@ public class BooleanType implements DataType, Jsonable {
         Boolean trueOrFalse = convertValue(value);
 
         return trueOrFalse == null
-                ? ValidateResult.fail("不支持的类型:" + value)
+                ? ValidateResult.fail("不支持的值:" + value)
                 : ValidateResult.success();
     }
 

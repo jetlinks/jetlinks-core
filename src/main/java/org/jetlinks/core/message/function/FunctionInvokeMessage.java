@@ -31,8 +31,8 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
 
     @Override
     public void fromJson(JSONObject jsonObject) {
+        super.fromJson(jsonObject);
         this.functionId = jsonObject.getString("functionId");
-        // this.input = jsonObject.getString("input");
     }
 
     @Override

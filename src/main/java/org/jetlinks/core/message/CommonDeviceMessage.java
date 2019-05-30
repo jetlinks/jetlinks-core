@@ -2,8 +2,8 @@ package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import lombok.*;
-import org.jetlinks.core.enums.ErrorCode;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * @author zhouhao
@@ -22,16 +22,6 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     private long timestamp = System.currentTimeMillis();
 
-    public void error(ErrorCode errorCode) {
-        code = errorCode.name();
-        timestamp = System.currentTimeMillis();
-    }
-
-    public void from(DeviceMessage message) {
-        this.messageId = message.getMessageId();
-        this.deviceId = message.getDeviceId();
-    }
-
     @Override
     public JSONObject toJson() {
         return (JSONObject) JSON.toJSON(this);
@@ -39,7 +29,7 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     @Override
     public void fromJson(JSONObject jsonObject) {
-        this.deviceId = jsonObject.getString("clientId");
+        this.deviceId = jsonObject.getString("deviceId");
         this.messageId = jsonObject.getString("messageId");
         this.code = jsonObject.getString("code");
     }
