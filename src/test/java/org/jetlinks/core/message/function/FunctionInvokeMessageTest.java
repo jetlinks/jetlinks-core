@@ -8,6 +8,8 @@ public class FunctionInvokeMessageTest {
 
     @Test
     public void test() {
+
+
         FunctionInvokeMessage message = new FunctionInvokeMessage();
 
         Assert.assertNotNull(message.getInputs());

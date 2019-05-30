@@ -1,5 +1,6 @@
 package org.jetlinks.core.message;
 
+import io.vavr.control.Try;
 import org.jetlinks.core.message.exception.FunctionUndefinedException;
 import org.jetlinks.core.message.exception.IllegalParameterException;
 import org.jetlinks.core.message.exception.ParameterUndefinedException;
@@ -107,5 +108,43 @@ public interface FunctionInvokeMessageSender {
      * @see java.util.concurrent.CompletableFuture#get(long, TimeUnit)
      */
     CompletionStage<FunctionInvokeMessageReply> send();
+
+    /**
+     * 发送消息并返回{@link Try},可进行函数式操作.
+     *
+     * <pre>
+     *     sender.invokeFunction("test")
+     *            .trySend(10,TimeUnit.SECONDS)
+     *            .recoverWith(TimeoutException.class,r->failureTry(ErrorCode.TIME_OUT))
+     *            .get();
+     * </pre>
+     *
+     * @param timeout  超时时间
+     * @param timeUnit 超时时间单位
+     * @return Try
+     */
+    default Try<FunctionInvokeMessageReply> trySend(long timeout, TimeUnit timeUnit) {
+        return Try.of(() -> send().toCompletableFuture().get(timeout, timeUnit));
+    }
+
+    /**
+     * 验证请求是否合法并发送消息并返回{@link Try},可进行函数式操作.
+     *
+     * <pre>
+     *   FunctionInvokeMessageReply reply =  sender.invokeFunction("test")
+     *            .tryValidateAndSend(10,TimeUnit.SECONDS)
+     *            .recoverWith(TimeoutException.class,err->failureTry(ErrorCode.TIME_OUT))
+     *            .recoverWith(IllegalParameterException,err->failureTry("PARAMETER_ERROR",err.getMessage()))
+     *            .get();
+     * </pre>
+     *
+     * @param timeout  超时时间
+     * @param timeUnit 超时时间单位
+     * @return Try
+     */
+    default Try<FunctionInvokeMessageReply> tryValidateAndSend(long timeout, TimeUnit timeUnit) {
+        return Try.of(() -> validate().send().toCompletableFuture().get(timeout, timeUnit));
+    }
+
 
 }

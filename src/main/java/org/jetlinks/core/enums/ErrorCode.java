@@ -16,7 +16,11 @@ public enum ErrorCode {
     NO_REPLY("设备未回复"),
     TIME_OUT("超时"),
     SYSTEM_ERROR("系统错误"),
-    UNSUPPORTED_MESSAGE("不支持的消息")
+    UNSUPPORTED_MESSAGE("不支持的消息"),
+    PARAMETER_ERROR("参数错误"),
+    PARAMETER_UNDEFINED("参数未定义"),
+    FUNCTION_UNDEFINED("功能未定义"),
+    PROPERTY_UNDEFINED("属性未定义")
     ;
 
     private String text;

@@ -26,11 +26,12 @@
    DeviceSysInfo output= registry.getDevice(deviceId)
           .messageSender()
           .invokeFunction("getSysInfo")
-          .send()
-          .toCompletableFuture()
-          .get(10, TimeUnit.SECONDS) //最大等待10秒
-          .getOutput(DeviceSysInfo.class);
-  
+          .tryValidateAndSend(10,TimeUnit.SECONDS)//最大等待10秒
+          //超时异常处理
+          .recoverWith(TimeoutException.class, err -> FunctionInvokeMessageReply.failureTry(ErrorCode.TIME_OUT))
+          .map(this::convertSysInfo)
+          .get(); 
+          
 ```
 
 # 多协议支持(protocol)
