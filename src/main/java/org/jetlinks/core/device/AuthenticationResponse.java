@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.util.function.Consumer;
+
 /**
  * @author zhouhao
  * @since 1.0.0
@@ -17,6 +19,20 @@ public class AuthenticationResponse {
     private int code;
 
     private String message;
+
+    public AuthenticationResponse whenSuccess(Consumer<AuthenticationResponse> onSuccess){
+        if(success){
+            onSuccess.accept(this);
+        }
+        return this;
+    }
+
+    public AuthenticationResponse whenError(Consumer<AuthenticationResponse> onError){
+        if(!success){
+            onError.accept(this);
+        }
+        return this;
+    }
 
     public static AuthenticationResponse success() {
         AuthenticationResponse response = new AuthenticationResponse();

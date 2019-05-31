@@ -66,4 +66,19 @@ public interface DeviceMessageHandler {
      * @see org.jetlinks.core.message.function.FunctionInvokeMessageReply
      */
     CompletionStage<Boolean> reply(DeviceMessageReply message);
+
+    /**
+     * 设置消息未异步
+     *
+     * @param messageId 消息ID
+     */
+    void markMessageAsync(String messageId);
+
+    /**
+     * 判断消息是否未异步消息
+     *
+     * @param messageId 消息ID
+     * @return 是否未异步消息
+     */
+    boolean messageIsAsync(String messageId);
 }

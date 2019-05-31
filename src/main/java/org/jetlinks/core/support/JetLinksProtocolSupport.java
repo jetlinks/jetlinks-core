@@ -11,6 +11,8 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 
 import javax.annotation.Nonnull;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -54,8 +56,9 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
 
     @Override
     @Nonnull
-    public AuthenticationResponse authenticate(@Nonnull AuthenticationRequest request,
-                                               @Nonnull DeviceOperation deviceOperation) {
+    public CompletionStage<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
+                                                                @Nonnull DeviceOperation deviceOperation) {
+
         if (request instanceof MqttAuthenticationRequest) {
             MqttAuthenticationRequest mqtt = ((MqttAuthenticationRequest) request);
             // secureId|timestamp
@@ -69,7 +72,7 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
                 long time = Long.parseLong(arr[1]);
                 //和设备时间差大于5分钟则认为无效
                 if (System.currentTimeMillis() - time > TimeUnit.MINUTES.toMillis(5)) {
-                    return AuthenticationResponse.error(401, "设备时间不同步");
+                    return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "设备时间不同步"));
                 }
 
                 String secureId = deviceOperation.get("secureId").asString().orElse(null);
@@ -77,15 +80,15 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
                 //签名
                 String digest = DigestUtils.md5Hex(username + "|" + secureKey);
                 if (requestSecureId.equals(secureId) && digest.equals(password)) {
-                    return AuthenticationResponse.success();
+                    return CompletableFuture.completedFuture(AuthenticationResponse.success());
                 } else {
-                    return AuthenticationResponse.error(401, "密码错误");
+                    return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "密码错误"));
                 }
             } catch (Exception e) {
                 log.warn("用户认证失败", e);
-                return AuthenticationResponse.error(401, "用户名格式错误");
+                return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "用户名格式错误"));
             }
         }
-        return AuthenticationResponse.error(400, "不支持的授权类型:" + request);
+        return CompletableFuture.completedFuture(AuthenticationResponse.error(400, "不支持的授权类型:" + request));
     }
 }

@@ -4,6 +4,9 @@ package org.jetlinks.core.device;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.metadata.DeviceMetadata;
 
+import java.util.concurrent.CompletionStage;
+import java.util.function.Consumer;
+
 /**
  * 设备操作接口
  *
@@ -35,11 +38,14 @@ public interface DeviceOperation extends Configurable {
 
     /**
      * @return 获取当前状态
+     * @see DeviceState
      */
     byte getState();
 
     /**
      * 检查设备的真实状态
+     *
+     * @see org.jetlinks.core.device.registry.DeviceMessageHandler#handleDeviceCheck(String, Consumer)
      */
     void checkState();
 
@@ -70,6 +76,8 @@ public interface DeviceOperation extends Configurable {
 
     /**
      * 设置设备离线
+     *
+     * @see DeviceState#offline
      */
     void offline();
 
@@ -78,8 +86,9 @@ public interface DeviceOperation extends Configurable {
      *
      * @param request 授权请求
      * @return 授权结果
+     * @see MqttAuthenticationRequest
      */
-    AuthenticationResponse authenticate(AuthenticationRequest request);
+    CompletionStage<AuthenticationResponse> authenticate(AuthenticationRequest request);
 
     /**
      * @return 获取设备的元数据

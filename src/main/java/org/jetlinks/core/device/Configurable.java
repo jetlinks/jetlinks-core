@@ -16,7 +16,6 @@ public interface Configurable {
 
     void putAll(Map<String, Object> conf);
 
-
     void remove(String key);
 
 }
