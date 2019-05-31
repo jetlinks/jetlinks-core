@@ -75,6 +75,14 @@ public interface FunctionInvokeMessageSender {
     FunctionInvokeMessageSender async();
 
     /**
+     * 设置调用此功能为同步返回, 当消息发送到设备后,将等待执行结果.
+     *
+     * @return this
+     * @see org.jetlinks.core.message.function.FunctionInvokeMessage#setAsync(Boolean)
+     */
+    FunctionInvokeMessageSender sync();
+
+    /**
      * 执行参数校验
      *
      * @param resultConsumer 校验结果回调
