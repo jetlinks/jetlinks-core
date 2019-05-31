@@ -14,7 +14,7 @@ import org.jetlinks.core.device.DeviceProductOperation;
 public interface DeviceRegistry {
 
     /**
-     * 获取设备操作接口
+     * 获取设备操作接口,请勿缓存返回值,注册中心已经实现本地缓存.
      *
      * @param deviceId 设备ID
      * @return 设备操作接口
@@ -22,7 +22,7 @@ public interface DeviceRegistry {
     DeviceOperation getDevice(String deviceId);
 
     /**
-     * 获取设备产品操作
+     * 获取设备产品操作,请勿缓存返回值,注册中心已经实现本地缓存.
      *
      * @param productId 产品ID
      * @return 设备操作接口
@@ -30,10 +30,11 @@ public interface DeviceRegistry {
     DeviceProductOperation getProduct(String productId);
 
     /**
-     * 注册设备,并返回设备操作接口
+     * 注册设备,并返回设备操作接口,请勿缓存返回值,注册中心已经实现本地缓存.
      *
      * @param deviceInfo 设备基础信息
      * @return 设备操作接口
+     * @see this#getDevice(String)
      */
     DeviceOperation registry(DeviceInfo deviceInfo);
 
