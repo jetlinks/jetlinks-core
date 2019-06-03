@@ -4,8 +4,11 @@ import io.vavr.control.Try;
 import org.jetlinks.core.message.property.WritePropertyMessageReply;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 /**
  * 修改设备属性消息发送器
@@ -36,6 +39,27 @@ public interface WritePropertyMessageSender {
     }
 
     /**
+     * 尝试重新获取返回值
+     *
+     * @return 获取结果
+     * @see org.jetlinks.core.device.DeviceMessageSender#retrieveReply(String, Supplier)
+     * @see org.jetlinks.core.enums.ErrorCode#NO_REPLY
+     */
+    CompletionStage<WritePropertyMessageReply> retrieveReply();
+
+    /**
+     * 请看{@link this#retrieveReply()} 和 {@link Try}
+     *
+     * @param timeout  超时时间
+     * @param timeUnit 超时时间单位
+     * @return Try
+     * @see this#retrieveReply()
+     */
+    default Try<WritePropertyMessageReply> tryRetrieveReply(long timeout, TimeUnit timeUnit) {
+        return Try.of(() -> this.retrieveReply().toCompletableFuture().get(timeout, timeUnit));
+    }
+
+    /**
      * 执行发送
      *
      * @return 异步完成阶段
@@ -61,7 +85,16 @@ public interface WritePropertyMessageSender {
      * @return Try
      */
     default Try<WritePropertyMessageReply> trySend(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> send().toCompletableFuture().get(timeout, timeUnit));
+        return Try.of(() -> {
+            CompletableFuture<WritePropertyMessageReply> stage = send().toCompletableFuture();
+            try {
+                return stage.get(timeout, timeUnit);
+            } catch (TimeoutException e) {
+                //超时后取消执行任务
+                stage.cancel(true);
+                throw e;
+            }
+        });
     }
 
 }

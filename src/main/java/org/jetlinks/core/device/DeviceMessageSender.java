@@ -18,14 +18,13 @@ public interface DeviceMessageSender {
      * 尝试获取设备已经回复,但是未及时获取对设备返回对消息. 如果设备未回复或者回复的消息已经超时
      * 将会得到结果: {"success":false,"code":"NO_REPLY"}
      *
-     * @param deviceId 设备ID
      * @param messageId 消息ID
      * @param replyNewInstance 回复对象提供者
      * @param <R> 回复类型
      * @return 异步获取结果
      * @see org.jetlinks.core.enums.ErrorCode#NO_REPLY
      */
-    <R extends DeviceMessageReply> CompletionStage<R> retrieveReply(String deviceId, String messageId, Supplier<R> replyNewInstance);
+    <R extends DeviceMessageReply> CompletionStage<R> retrieveReply(String messageId, Supplier<R> replyNewInstance);
 
     /**
      * 发送一个支持回复的消息.

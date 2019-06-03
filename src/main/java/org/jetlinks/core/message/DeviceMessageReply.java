@@ -14,7 +14,9 @@ public interface DeviceMessageReply extends DeviceMessage {
 
     String getMessage();
 
-    void error(ErrorCode errorCode);
+    DeviceMessageReply error(ErrorCode errorCode);
 
-    void from(DeviceMessage message);
+    DeviceMessageReply from(DeviceMessage message);
+
+    DeviceMessageReply messageId(String messageId);
 }

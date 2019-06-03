@@ -30,17 +30,19 @@ public class CommonDeviceMessageReply implements DeviceMessageReply {
     private long timestamp;
 
     @Override
-    public void error(ErrorCode errorCode) {
+    public DeviceMessageReply error(ErrorCode errorCode) {
         success = false;
         code = errorCode.name();
         message = errorCode.getText();
         timestamp = System.currentTimeMillis();
+        return this;
     }
 
     @Override
-    public void from(DeviceMessage message) {
+    public DeviceMessageReply from(DeviceMessage message) {
         this.messageId = message.getMessageId();
         this.deviceId = message.getDeviceId();
+        return this;
     }
 
     @Override
@@ -56,6 +58,12 @@ public class CommonDeviceMessageReply implements DeviceMessageReply {
         deviceId = jsonObject.getString("deviceId");
         code = jsonObject.getString("code");
         message = jsonObject.getString("message");
+    }
+
+    @Override
+    public DeviceMessageReply messageId(String messageId) {
+        this.messageId=messageId;
+        return this;
     }
 
     @Override

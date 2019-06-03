@@ -22,6 +22,8 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply {
     public static FunctionInvokeMessageReply failure(ErrorCode errorCode) {
         FunctionInvokeMessageReply reply = new FunctionInvokeMessageReply();
         reply.error(errorCode);
+        reply.setTimestamp(System.currentTimeMillis());
+
         return reply;
     }
 
@@ -39,7 +41,13 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply {
         reply.setCode(code);
         reply.setSuccess(false);
         reply.setMessage(message);
+        reply.setTimestamp(System.currentTimeMillis());
 
         return reply;
+    }
+
+    public FunctionInvokeMessageReply messageId(String messageId){
+        this.setMessageId(messageId);
+        return this;
     }
 }

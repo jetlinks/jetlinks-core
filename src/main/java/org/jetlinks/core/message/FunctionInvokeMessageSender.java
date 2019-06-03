@@ -11,9 +11,12 @@ import org.jetlinks.core.metadata.ValidateResult;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 /**
  * 调用设备功能的消息发送器
@@ -72,7 +75,19 @@ public interface FunctionInvokeMessageSender {
      * @return this
      * @see org.jetlinks.core.message.function.FunctionInvokeMessage#setAsync(Boolean)
      */
-    FunctionInvokeMessageSender async();
+    default FunctionInvokeMessageSender async() {
+        return this.async(true);
+    }
+
+    /**
+     * 设置是否异步
+     *
+     * @param async 是否异步
+     * @return this
+     * @see this#sync()
+     * @see this#async(Boolean)
+     */
+    FunctionInvokeMessageSender async(Boolean async);
 
     /**
      * 设置调用此功能为同步返回, 当消息发送到设备后,将等待执行结果.
@@ -80,7 +95,9 @@ public interface FunctionInvokeMessageSender {
      * @return this
      * @see org.jetlinks.core.message.function.FunctionInvokeMessage#setAsync(Boolean)
      */
-    FunctionInvokeMessageSender sync();
+    default FunctionInvokeMessageSender sync() {
+        return this.async(false);
+    }
 
     /**
      * 执行参数校验
@@ -118,6 +135,27 @@ public interface FunctionInvokeMessageSender {
     CompletionStage<FunctionInvokeMessageReply> send();
 
     /**
+     * 尝试重新获取返回值
+     *
+     * @return 获取结果
+     * @see org.jetlinks.core.device.DeviceMessageSender#retrieveReply(String, Supplier)
+     * @see org.jetlinks.core.enums.ErrorCode#NO_REPLY
+     */
+    CompletionStage<FunctionInvokeMessageReply> retrieveReply();
+
+    /**
+     * 请看{@link this#retrieveReply()} 和 {@link Try}
+     *
+     * @param timeout  超时时间
+     * @param timeUnit 超时时间单位
+     * @return Try
+     * @see this#retrieveReply()
+     */
+    default Try<FunctionInvokeMessageReply> tryRetrieveReply(long timeout, TimeUnit timeUnit) {
+        return Try.of(() -> this.retrieveReply().toCompletableFuture().get(timeout, timeUnit));
+    }
+
+    /**
      * 发送消息并返回{@link Try},可进行函数式操作.
      *
      * <pre>
@@ -132,7 +170,16 @@ public interface FunctionInvokeMessageSender {
      * @return Try
      */
     default Try<FunctionInvokeMessageReply> trySend(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> send().toCompletableFuture().get(timeout, timeUnit));
+        return Try.of(() -> {
+            CompletableFuture<FunctionInvokeMessageReply> stage = send().toCompletableFuture();
+            try {
+                return stage.get(timeout, timeUnit);
+            } catch (TimeoutException e) {
+                //超时后取消执行任务,无法重新get.
+                stage.cancel(true);
+                throw e;
+            }
+        });
     }
 
     /**
@@ -151,7 +198,16 @@ public interface FunctionInvokeMessageSender {
      * @return Try
      */
     default Try<FunctionInvokeMessageReply> tryValidateAndSend(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> validate().send().toCompletableFuture().get(timeout, timeUnit));
+        return Try.of(() -> {
+            CompletableFuture<FunctionInvokeMessageReply> stage = validate().send().toCompletableFuture();
+            try {
+                return stage.get(timeout, timeUnit);
+            } catch (TimeoutException e) {
+                //超时后取消执行任务,无法重新get.
+                stage.cancel(true);
+                throw e;
+            }
+        });
     }
 
 
