@@ -1,5 +1,6 @@
 package org.jetlinks.core.message.function;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
@@ -21,4 +22,11 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
         return new FunctionInvokeMessageReply();
     }
 
+    @Override
+    public void fromJson(JSONObject jsonObject) {
+        super.fromJson(jsonObject);
+        this.functionId=jsonObject.getString("functionId");
+        this.output=jsonObject.get("output");
+
+    }
 }

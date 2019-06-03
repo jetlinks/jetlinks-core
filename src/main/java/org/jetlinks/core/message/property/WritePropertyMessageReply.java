@@ -1,5 +1,6 @@
 package org.jetlinks.core.message.property;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
@@ -18,5 +19,11 @@ public class WritePropertyMessageReply extends CommonDeviceMessageReply<WritePro
 
     public static WritePropertyMessageReply create() {
         return new WritePropertyMessageReply();
+    }
+
+    @Override
+    public void fromJson(JSONObject jsonObject) {
+        super.fromJson(jsonObject);
+        this.values=jsonObject.getJSONObject("values");
     }
 }
