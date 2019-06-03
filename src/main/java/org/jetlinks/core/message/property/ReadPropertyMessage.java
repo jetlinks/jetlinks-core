@@ -24,6 +24,7 @@ public class ReadPropertyMessage extends CommonDeviceMessage implements Repayabl
 
     @Override
     public ReadPropertyMessageReply newReply() {
-        return new ReadPropertyMessageReply();
+        return new ReadPropertyMessageReply()
+                .from(this);
     }
 }

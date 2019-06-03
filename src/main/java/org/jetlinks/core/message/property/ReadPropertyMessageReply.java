@@ -17,13 +17,25 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
 
     private Map<String, Object> properties;
 
-    public static ReadPropertyMessageReply create(){
-        return new ReadPropertyMessageReply();
+    public static ReadPropertyMessageReply create() {
+        ReadPropertyMessageReply reply = new ReadPropertyMessageReply();
+
+        reply.setTimestamp(System.currentTimeMillis());
+
+        return reply;
+    }
+
+    public ReadPropertyMessageReply success(Map<String, Object> properties) {
+
+        this.properties = properties;
+        super.setSuccess(true);
+        return this;
+
     }
 
     @Override
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
-        this.properties=jsonObject.getJSONObject("properties");
+        this.properties = jsonObject.getJSONObject("properties");
     }
 }

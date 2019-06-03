@@ -18,7 +18,11 @@ public class WritePropertyMessageReply extends CommonDeviceMessageReply<WritePro
     private Map<String, Object> values;
 
     public static WritePropertyMessageReply create() {
-        return new WritePropertyMessageReply();
+        WritePropertyMessageReply reply = new WritePropertyMessageReply();
+
+        reply.setTimestamp(System.currentTimeMillis());
+
+        return reply;
     }
 
     @Override

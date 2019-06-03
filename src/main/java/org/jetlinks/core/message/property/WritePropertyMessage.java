@@ -24,6 +24,6 @@ public class WritePropertyMessage extends CommonDeviceMessage implements Repayab
 
     @Override
     public WritePropertyMessageReply newReply() {
-        return new WritePropertyMessageReply();
+        return new WritePropertyMessageReply().from(this);
     }
 }

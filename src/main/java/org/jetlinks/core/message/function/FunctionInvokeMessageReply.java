@@ -19,14 +19,22 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
     private Object output;
 
     public static FunctionInvokeMessageReply create() {
-        return new FunctionInvokeMessageReply();
+        FunctionInvokeMessageReply reply = new FunctionInvokeMessageReply();
+        reply.setTimestamp(System.currentTimeMillis());
+        return reply;
+    }
+
+    public FunctionInvokeMessageReply success(Object output) {
+        this.setSuccess(true);
+        this.setOutput(output);
+        return this;
     }
 
     @Override
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
-        this.functionId=jsonObject.getString("functionId");
-        this.output=jsonObject.get("output");
+        this.functionId = jsonObject.getString("functionId");
+        this.output = jsonObject.get("output");
 
     }
 }
