@@ -62,7 +62,7 @@ public interface FunctionInvokeMessageSender {
     /**
      * 指定messageId,如果不指定,将使用uuid生成一个.
      * <p>
-     * ⚠️ messageId 应该全局唯一,且不能消息16位
+     * ⚠️ messageId 应该全局唯一,且不能小于16位
      *
      * @param messageId messageId
      * @return this
