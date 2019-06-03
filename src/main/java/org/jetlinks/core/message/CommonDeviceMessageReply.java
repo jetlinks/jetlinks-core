@@ -14,7 +14,8 @@ import org.jetlinks.core.enums.ErrorCode;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class CommonDeviceMessageReply implements DeviceMessageReply {
+@SuppressWarnings("all")
+public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> implements DeviceMessageReply {
     private static final long serialVersionUID = -6849794470754667710L;
 
     private boolean success;
@@ -29,20 +30,38 @@ public class CommonDeviceMessageReply implements DeviceMessageReply {
 
     private long timestamp;
 
+    public ME code(String code) {
+        this.code = code;
+
+        return (ME) this;
+    }
+
+    public ME message(String message) {
+        this.message = message;
+
+        return (ME) this;
+    }
+
     @Override
-    public DeviceMessageReply error(ErrorCode errorCode) {
+    public ME error(ErrorCode errorCode) {
         success = false;
         code = errorCode.name();
         message = errorCode.getText();
         timestamp = System.currentTimeMillis();
-        return this;
+        return (ME) this;
     }
 
     @Override
-    public DeviceMessageReply from(DeviceMessage message) {
+    public ME from(DeviceMessage message) {
         this.messageId = message.getMessageId();
         this.deviceId = message.getDeviceId();
-        return this;
+        return (ME) this;
+    }
+
+    @Override
+    public ME messageId(String messageId) {
+        this.messageId = messageId;
+        return (ME) this;
     }
 
     @Override
@@ -58,12 +77,6 @@ public class CommonDeviceMessageReply implements DeviceMessageReply {
         deviceId = jsonObject.getString("deviceId");
         code = jsonObject.getString("code");
         message = jsonObject.getString("message");
-    }
-
-    @Override
-    public DeviceMessageReply messageId(String messageId) {
-        this.messageId=messageId;
-        return this;
     }
 
     @Override

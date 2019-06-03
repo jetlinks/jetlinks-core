@@ -1,9 +1,7 @@
 package org.jetlinks.core.message.property;
 
-import io.vavr.control.Try;
 import lombok.Getter;
 import lombok.Setter;
-import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
 
 import java.util.Map;
@@ -14,31 +12,12 @@ import java.util.Map;
  */
 @Getter
 @Setter
-public class ReadPropertyMessageReply extends CommonDeviceMessageReply {
+public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPropertyMessageReply> {
 
     private Map<String, Object> properties;
 
-    public static ReadPropertyMessageReply failure(ErrorCode errorCode) {
-        ReadPropertyMessageReply reply = new ReadPropertyMessageReply();
-        reply.error(errorCode);
-        return reply;
+    public static ReadPropertyMessageReply create(){
+        return new ReadPropertyMessageReply();
     }
 
-    public static Try<ReadPropertyMessageReply> failureTry(ErrorCode errorCode) {
-        return Try.success(failure(errorCode));
-    }
-
-    public static Try<ReadPropertyMessageReply> failureTry(String code, String message) {
-        return Try.success(failure(code, message));
-    }
-
-    public static ReadPropertyMessageReply failure(String code, String message) {
-
-        ReadPropertyMessageReply reply = new ReadPropertyMessageReply();
-        reply.setCode(code);
-        reply.setSuccess(false);
-        reply.setMessage(message);
-
-        return reply;
-    }
 }

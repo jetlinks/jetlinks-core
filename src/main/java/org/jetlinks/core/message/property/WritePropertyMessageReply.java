@@ -12,7 +12,11 @@ import java.util.Map;
  */
 @Getter
 @Setter
-public class WritePropertyMessageReply extends CommonDeviceMessageReply {
+public class WritePropertyMessageReply extends CommonDeviceMessageReply<WritePropertyMessageReply> {
 
     private Map<String, Object> values;
+
+    public static WritePropertyMessageReply create() {
+        return new WritePropertyMessageReply();
+    }
 }
