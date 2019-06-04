@@ -2,6 +2,8 @@ package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
 
+import java.util.Map;
+
 /**
  * @author zhouhao
  * @since 1.0.0
@@ -26,6 +28,16 @@ public class EmptyDeviceMessage implements DeviceMessage {
     @Override
     public long getTimestamp() {
         return 0;
+    }
+
+    @Override
+    public Map<String, Object> getHeaders() {
+        return null;
+    }
+
+    @Override
+    public DeviceMessage addHeader(String header, Object value) {
+       throw new UnsupportedOperationException();
     }
 
     @Override

@@ -5,6 +5,9 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * @author zhouhao
  * @since 1.0.0
@@ -20,6 +23,17 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     private String deviceId;
 
+    private Map<String, Object> headers;
+
+    @Override
+    public DeviceMessage addHeader(String header, Object value) {
+        if (headers == null) {
+            this.headers = new LinkedHashMap<>();
+        }
+        this.headers.put(header, value);
+        return this;
+    }
+
     private long timestamp = System.currentTimeMillis();
 
     @Override
@@ -32,6 +46,7 @@ public class CommonDeviceMessage implements DeviceMessage {
         this.deviceId = jsonObject.getString("deviceId");
         this.messageId = jsonObject.getString("messageId");
         this.code = jsonObject.getString("code");
+        this.headers = jsonObject.getJSONObject("headers");
     }
 
     @Override

@@ -12,7 +12,10 @@ public class FunctionInvokeMessageTest {
 
         FunctionInvokeMessage message = new FunctionInvokeMessage();
 
+        message.addHeader("test","test");
+
         Assert.assertNotNull(message.getInputs());
+        Assert.assertTrue(message.getHeader("test").isPresent());
 
         message.addInput("test",1);
 

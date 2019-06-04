@@ -30,6 +30,12 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
     }
 
     @Override
+    public FunctionInvokeMessage addHeader(String header, Object value) {
+        super.addHeader(header, value);
+        return this;
+    }
+
+    @Override
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
         this.functionId = jsonObject.getString("functionId");

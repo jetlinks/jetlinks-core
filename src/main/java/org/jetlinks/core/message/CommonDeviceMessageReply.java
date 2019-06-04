@@ -5,6 +5,9 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.*;
 import org.jetlinks.core.enums.ErrorCode;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * @author zhouhao
  * @since 1.0.0
@@ -29,6 +32,17 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     private String deviceId;
 
     private long timestamp;
+
+    private Map<String, Object> headers;
+
+    @Override
+    public ME addHeader(String header, Object value) {
+        if (headers == null) {
+            this.headers = new LinkedHashMap<>();
+        }
+        this.headers.put(header, value);
+        return (ME) this;
+    }
 
     public ME code(String code) {
         this.code = code;
@@ -77,6 +91,7 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         deviceId = jsonObject.getString("deviceId");
         code = jsonObject.getString("code");
         message = jsonObject.getString("message");
+        headers = jsonObject.getJSONObject("headers");
     }
 
     @Override

@@ -10,9 +10,11 @@ import org.jetlinks.core.message.CommonDeviceMessageReply;
  */
 @Getter
 @Setter
-public class EventMessage extends CommonDeviceMessageReply {
+public class EventMessage extends CommonDeviceMessageReply<EventMessage> {
 
     private String event;
 
     private Object data;
+
+
 }
