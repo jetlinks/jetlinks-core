@@ -4,6 +4,7 @@ import io.vavr.control.Try;
 import org.jetlinks.core.message.exception.FunctionUndefinedException;
 import org.jetlinks.core.message.exception.IllegalParameterException;
 import org.jetlinks.core.message.exception.ParameterUndefinedException;
+import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.function.FunctionParameter;
 import org.jetlinks.core.metadata.PropertyMetadata;
@@ -11,11 +12,13 @@ import org.jetlinks.core.metadata.ValidateResult;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -28,6 +31,14 @@ import java.util.function.Supplier;
  * @since 1.0.0
  */
 public interface FunctionInvokeMessageSender {
+
+    /**
+     * 自定义消息
+     *
+     * @param messageConsumer consumer
+     * @return this
+     */
+    FunctionInvokeMessageSender custom(Consumer<FunctionInvokeMessage> messageConsumer);
 
     /**
      * 添加功能参数
@@ -62,7 +73,7 @@ public interface FunctionInvokeMessageSender {
     /**
      * 指定messageId,如果不指定,将使用uuid生成一个.
      * <p>
-     * ⚠️ messageId 应该全局唯一,且不能小于16位
+     * ⚠️ messageId 应该全局唯一
      *
      * @param messageId messageId
      * @return this
@@ -97,6 +108,30 @@ public interface FunctionInvokeMessageSender {
      */
     default FunctionInvokeMessageSender sync() {
         return this.async(false);
+    }
+
+    /**
+     * 添加header到message中
+     *
+     * @param header header
+     * @param value  值
+     * @return this
+     * @see DeviceMessage#addHeader(String, Object)
+     */
+    FunctionInvokeMessageSender header(String header, Object value);
+
+    /**
+     * 添加多个header到message中
+     *
+     * @param headers 多个headers
+     * @return this
+     * @see this#header(String, Object)
+     * @see DeviceMessage#addHeader(String, Object)
+     */
+    default FunctionInvokeMessageSender headers(Map<String, Object> headers) {
+        Objects.requireNonNull(headers)
+                .forEach(this::header);
+        return this;
     }
 
     /**

@@ -1,9 +1,9 @@
 package org.jetlinks.core.message.codec;
 
 import org.jetlinks.core.message.DeviceMessage;
-import org.jetlinks.core.message.interceptor.DecodeDeviceMessageInterceptor;
-import org.jetlinks.core.message.interceptor.DeviceMessageInterceptor;
-import org.jetlinks.core.message.interceptor.EncodeDeviceMessageInterceptor;
+import org.jetlinks.core.message.interceptor.DecodeDeviceMessageCodecInterceptor;
+import org.jetlinks.core.message.interceptor.DeviceMessageCodecInterceptor;
+import org.jetlinks.core.message.interceptor.EncodeDeviceMessageCodecInterceptor;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,32 +20,32 @@ public class DefaultDeviceMessageCodec implements DeviceMessageCodec {
 
     private Map<Transport, TransportDeviceMessageCodec> messageCodec = new HashMap<>();
 
-    private List<DecodeDeviceMessageInterceptor> decodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
+    private List<DecodeDeviceMessageCodecInterceptor> decodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
 
-    private List<EncodeDeviceMessageInterceptor> encodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
+    private List<EncodeDeviceMessageCodecInterceptor> encodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
 
 
     public void register(TransportDeviceMessageCodec codec) {
         messageCodec.put(codec.getSupportTransport(), codec);
     }
 
-    public void register(DeviceMessageInterceptor interceptor) {
-        if (interceptor instanceof DecodeDeviceMessageInterceptor) {
-            decodeDeviceMessageInterceptors.add(((DecodeDeviceMessageInterceptor) interceptor));
+    public void register(DeviceMessageCodecInterceptor interceptor) {
+        if (interceptor instanceof DecodeDeviceMessageCodecInterceptor) {
+            decodeDeviceMessageInterceptors.add(((DecodeDeviceMessageCodecInterceptor) interceptor));
         }
-        if (interceptor instanceof EncodeDeviceMessageInterceptor) {
-            encodeDeviceMessageInterceptors.add(((EncodeDeviceMessageInterceptor) interceptor));
+        if (interceptor instanceof EncodeDeviceMessageCodecInterceptor) {
+            encodeDeviceMessageInterceptors.add(((EncodeDeviceMessageCodecInterceptor) interceptor));
         }
     }
 
     @Override
     public EncodedMessage encode(Transport transport, MessageEncodeContext context) {
-        for (EncodeDeviceMessageInterceptor interceptor : encodeDeviceMessageInterceptors) {
+        for (EncodeDeviceMessageCodecInterceptor interceptor : encodeDeviceMessageInterceptors) {
             interceptor.preEncode(context);
         }
         EncodedMessage message = Objects.requireNonNull(messageCodec.get(transport), "unsupported transport:" + transport).encode(context);
 
-        for (EncodeDeviceMessageInterceptor interceptor : encodeDeviceMessageInterceptors) {
+        for (EncodeDeviceMessageCodecInterceptor interceptor : encodeDeviceMessageInterceptors) {
             message = interceptor.postEncode(context, message);
         }
         return message;
@@ -53,12 +53,12 @@ public class DefaultDeviceMessageCodec implements DeviceMessageCodec {
 
     @Override
     public DeviceMessage decode(Transport transport, MessageDecodeContext context) {
-        for (DecodeDeviceMessageInterceptor interceptor : decodeDeviceMessageInterceptors) {
+        for (DecodeDeviceMessageCodecInterceptor interceptor : decodeDeviceMessageInterceptors) {
             interceptor.preDecode(context);
         }
         DeviceMessage message = Objects.requireNonNull(messageCodec.get(transport), "unsupported transport:" + transport).decode(context);
 
-        for (DecodeDeviceMessageInterceptor interceptor : decodeDeviceMessageInterceptors) {
+        for (DecodeDeviceMessageCodecInterceptor interceptor : decodeDeviceMessageInterceptors) {
             message = interceptor.postDecode(context, message);
         }
         return message;
