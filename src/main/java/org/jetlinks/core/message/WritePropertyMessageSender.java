@@ -1,13 +1,16 @@
 package org.jetlinks.core.message;
 
 import io.vavr.control.Try;
+import org.jetlinks.core.message.property.WritePropertyMessage;
 import org.jetlinks.core.message.property.WritePropertyMessageReply;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -26,6 +29,39 @@ public interface WritePropertyMessageSender {
      * @return this
      */
     WritePropertyMessageSender write(String property, Object value);
+
+    /**
+     * 自定义消息
+     *
+     * @param messageConsumer consumer
+     * @return this
+     */
+    WritePropertyMessageSender custom(Consumer<WritePropertyMessage> messageConsumer);
+
+
+    /**
+     * 添加header到message中
+     *
+     * @param header header
+     * @param value  值
+     * @return this
+     * @see DeviceMessage#addHeader(String, Object)
+     */
+    WritePropertyMessageSender header(String header, Object value);
+
+    /**
+     * 添加多个header到message中
+     *
+     * @param headers 多个headers
+     * @return this
+     * @see this#header(String, Object)
+     * @see DeviceMessage#addHeader(String, Object)
+     */
+    default WritePropertyMessageSender headers(Map<String, Object> headers) {
+        Objects.requireNonNull(headers)
+                .forEach(this::header);
+        return this;
+    }
 
     /**
      * 将整个map设置为要修改的属性

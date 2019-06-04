@@ -1,14 +1,18 @@
 package org.jetlinks.core.message;
 
 import io.vavr.control.Try;
+import org.jetlinks.core.message.property.ReadPropertyMessage;
 import org.jetlinks.core.message.property.ReadPropertyMessageReply;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -20,6 +24,14 @@ import java.util.function.Supplier;
  * @since 1.0.0
  */
 public interface ReadPropertyMessageSender {
+
+    /**
+     * 自定义消息
+     *
+     * @param messageConsumer consumer
+     * @return this
+     */
+    ReadPropertyMessageSender custom(Consumer<ReadPropertyMessage> messageConsumer);
 
     /**
      * 设置要读取的属性列表
@@ -71,6 +83,30 @@ public interface ReadPropertyMessageSender {
      * @see org.jetlinks.core.enums.ErrorCode#NO_REPLY
      */
     CompletionStage<ReadPropertyMessageReply> retrieveReply();
+
+    /**
+     * 添加header到message中
+     *
+     * @param header header
+     * @param value  值
+     * @return this
+     * @see DeviceMessage#addHeader(String, Object)
+     */
+    ReadPropertyMessageSender header(String header, Object value);
+
+    /**
+     * 添加多个header到message中
+     *
+     * @param headers 多个headers
+     * @return this
+     * @see this#header(String, Object)
+     * @see DeviceMessage#addHeader(String, Object)
+     */
+    default ReadPropertyMessageSender headers(Map<String, Object> headers) {
+        Objects.requireNonNull(headers)
+                .forEach(this::header);
+        return this;
+    }
 
     /**
      * 请看{@link this#retrieveReply()} 和 {@link Try}
