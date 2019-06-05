@@ -1,5 +1,7 @@
 package org.jetlinks.core.support;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.jetlinks.core.ProtocolSupport;
@@ -13,6 +15,7 @@ import org.jetlinks.core.metadata.DeviceMetadataCodec;
 import javax.annotation.Nonnull;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -25,6 +28,11 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
     private DeviceMessageCodec deviceMessageCodec = new JetLinksDeviceMessageCodec();
 
     private DeviceMetadataCodec metadataCodec = new JetLinksDeviceMetadataCodec();
+
+    @Getter
+    @Setter
+    private Executor executor = Runnable::run;
+    ;
 
     @Override
     @Nonnull
@@ -74,16 +82,18 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
                 if (System.currentTimeMillis() - time > TimeUnit.MINUTES.toMillis(5)) {
                     return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "设备时间不同步"));
                 }
+                return CompletableFuture.supplyAsync(() -> {
+                    String secureId = deviceOperation.get("secureId").asString().orElse(null);
+                    String secureKey = deviceOperation.get("secureKey").asString().orElse(null);
+                    //签名
+                    String digest = DigestUtils.md5Hex(username + "|" + secureKey);
+                    if (requestSecureId.equals(secureId) && digest.equals(password)) {
+                        return AuthenticationResponse.success();
+                    } else {
+                        return AuthenticationResponse.error(401, "密码错误");
+                    }
+                }, executor);
 
-                String secureId = deviceOperation.get("secureId").asString().orElse(null);
-                String secureKey = deviceOperation.get("secureKey").asString().orElse(null);
-                //签名
-                String digest = DigestUtils.md5Hex(username + "|" + secureKey);
-                if (requestSecureId.equals(secureId) && digest.equals(password)) {
-                    return CompletableFuture.completedFuture(AuthenticationResponse.success());
-                } else {
-                    return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "密码错误"));
-                }
             } catch (Exception e) {
                 log.warn("用户认证失败", e);
                 return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "用户名格式错误"));
