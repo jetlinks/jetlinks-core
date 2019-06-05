@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
+import org.jetlinks.core.message.Headers;
 
 
 /**
@@ -17,6 +18,11 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
     private String functionId;
 
     private Object output;
+
+    public FunctionInvokeMessageReply(){
+        //默认支持异步
+        Headers.asyncSupport.setter().accept(this);
+    }
 
     public static FunctionInvokeMessageReply create() {
         FunctionInvokeMessageReply reply = new FunctionInvokeMessageReply();

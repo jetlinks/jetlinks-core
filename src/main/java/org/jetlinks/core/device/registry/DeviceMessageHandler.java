@@ -72,13 +72,18 @@ public interface DeviceMessageHandler {
      *
      * @param messageId 消息ID
      */
-    void markMessageAsync(String messageId);
+    CompletionStage<Void> markMessageAsync(String messageId);
 
     /**
      * 判断消息是否未异步消息
      *
      * @param messageId 消息ID
+     * @param reset 判断后是否重置
      * @return 是否未异步消息
      */
-    boolean messageIsAsync(String messageId);
+    CompletionStage<Boolean> messageIsAsync(String messageId, boolean reset);
+
+    default CompletionStage<Boolean> messageIsAsync(String messageId) {
+        return messageIsAsync(messageId, false);
+    }
 }

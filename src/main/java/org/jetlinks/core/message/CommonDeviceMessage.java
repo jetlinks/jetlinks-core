@@ -34,6 +34,14 @@ public class CommonDeviceMessage implements DeviceMessage {
         return this;
     }
 
+    @Override
+    public DeviceMessage removeHeader(String header) {
+        if(this.headers!=null){
+            this.headers.remove(header);
+        }
+        return this;
+    }
+
     private long timestamp = System.currentTimeMillis();
 
     @Override

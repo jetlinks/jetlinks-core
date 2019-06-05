@@ -84,7 +84,7 @@ public interface FunctionInvokeMessageSender {
      * 设置调用此功能为异步执行, 当消息发送到设备后,立即返回{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING},而不等待设备返回结果.
      *
      * @return this
-     * @see org.jetlinks.core.message.function.FunctionInvokeMessage#setAsync(Boolean)
+     * @see Headers#async
      */
     default FunctionInvokeMessageSender async() {
         return this.async(true);
@@ -95,20 +95,10 @@ public interface FunctionInvokeMessageSender {
      *
      * @param async 是否异步
      * @return this
-     * @see this#sync()
      * @see this#async(Boolean)
+     *  @see Headers#async
      */
     FunctionInvokeMessageSender async(Boolean async);
-
-    /**
-     * 设置调用此功能为同步返回, 当消息发送到设备后,将等待执行结果.
-     *
-     * @return this
-     * @see org.jetlinks.core.message.function.FunctionInvokeMessage#setAsync(Boolean)
-     */
-    default FunctionInvokeMessageSender sync() {
-        return this.async(false);
-    }
 
     /**
      * 添加header到message中
@@ -117,6 +107,7 @@ public interface FunctionInvokeMessageSender {
      * @param value  值
      * @return this
      * @see DeviceMessage#addHeader(String, Object)
+     * @see Headers
      */
     FunctionInvokeMessageSender header(String header, Object value);
 
@@ -127,6 +118,7 @@ public interface FunctionInvokeMessageSender {
      * @return this
      * @see this#header(String, Object)
      * @see DeviceMessage#addHeader(String, Object)
+     * @see Headers
      */
     default FunctionInvokeMessageSender headers(Map<String, Object> headers) {
         Objects.requireNonNull(headers)

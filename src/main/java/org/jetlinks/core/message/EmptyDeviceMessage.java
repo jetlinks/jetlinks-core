@@ -41,6 +41,11 @@ public class EmptyDeviceMessage implements DeviceMessage {
     }
 
     @Override
+    public DeviceMessage removeHeader(String header) {
+        return this;
+    }
+
+    @Override
     public JSONObject toJson() {
         return new JSONObject();
     }

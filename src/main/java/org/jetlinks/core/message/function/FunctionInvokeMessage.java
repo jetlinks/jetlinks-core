@@ -20,7 +20,9 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
 
     private String functionId;
 
-    private Boolean async;
+    public FunctionInvokeMessage() {
+
+    }
 
     private List<FunctionParameter> inputs = new ArrayList<>();
 
@@ -32,6 +34,12 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
     @Override
     public FunctionInvokeMessage addHeader(String header, Object value) {
         super.addHeader(header, value);
+        return this;
+    }
+
+    @Override
+    public FunctionInvokeMessage removeHeader(String header) {
+        super.removeHeader(header);
         return this;
     }
 

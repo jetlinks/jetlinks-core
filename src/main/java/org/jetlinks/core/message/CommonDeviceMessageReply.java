@@ -44,6 +44,14 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         return (ME) this;
     }
 
+    @Override
+    public ME removeHeader(String header) {
+        if (headers != null) {
+            this.headers.remove(header);
+        }
+        return (ME) this;
+    }
+
     public ME code(String code) {
         this.code = code;
 
@@ -52,6 +60,12 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
 
     public ME message(String message) {
         this.message = message;
+
+        return (ME) this;
+    }
+
+    public ME deviceId(String deviceId) {
+        this.deviceId = deviceId;
 
         return (ME) this;
     }
