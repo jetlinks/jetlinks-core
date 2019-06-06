@@ -13,10 +13,7 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * @author zhouhao
@@ -31,8 +28,7 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
 
     @Getter
     @Setter
-    private Executor executor = Runnable::run;
-    ;
+    private Executor executor = ForkJoinPool.commonPool();
 
     @Override
     @Nonnull
