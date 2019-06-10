@@ -11,8 +11,15 @@ public interface MqttMessage extends EncodedMessage {
     @Nonnull
     String getTopic();
 
-    default int getQosLevel(){
+    default int getQosLevel() {
         return 0;
     }
 
+    default boolean isDup() {
+        return false;
+    }
+
+    default boolean isRetain() {
+        return false;
+    }
 }
