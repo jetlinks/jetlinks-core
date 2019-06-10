@@ -72,10 +72,13 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
             String requestSecureId;
             try {
                 String[] arr = username.split("[|]");
+                if (arr.length <= 1) {
+                    return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "用户名格式错误"));
+                }
                 requestSecureId = arr[0];
                 long time = Long.parseLong(arr[1]);
                 //和设备时间差大于5分钟则认为无效
-                if (System.currentTimeMillis() - time > TimeUnit.MINUTES.toMillis(5)) {
+                if (Math.abs(System.currentTimeMillis() - time) > TimeUnit.MINUTES.toMillis(5)) {
                     return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "设备时间不同步"));
                 }
                 return CompletableFuture.supplyAsync(() -> {
@@ -86,12 +89,11 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
                     if (requestSecureId.equals(secureId) && digest.equals(password)) {
                         return AuthenticationResponse.success();
                     } else {
-                        return AuthenticationResponse.error(401, "密码错误");
+                        return AuthenticationResponse.error(401, "密钥错误");
                     }
                 }, executor);
 
-            } catch (Exception e) {
-                log.warn("用户认证失败", e);
+            } catch (NumberFormatException e) {
                 return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "用户名格式错误"));
             }
         }
