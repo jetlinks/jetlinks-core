@@ -13,7 +13,9 @@ public interface Configurable {
 
     ValueWrapper get(String key);
 
-    CompletionStage<Map<String,Object>> getAsync(String... key);
+    CompletionStage<Map<String, Object>> getAllAsync(String... key);
+
+    Map<String, Object> getAll(String... key);
 
     void put(String key, Object value);
 

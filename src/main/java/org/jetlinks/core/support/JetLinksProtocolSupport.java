@@ -13,6 +13,7 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 
 import javax.annotation.Nonnull;
+import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -82,8 +83,10 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
                     return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "设备时间不同步"));
                 }
                 return CompletableFuture.supplyAsync(() -> {
-                    String secureId = deviceOperation.get("secureId").asString().orElse(null);
-                    String secureKey = deviceOperation.get("secureKey").asString().orElse(null);
+                    Map<String, Object> conf = deviceOperation.getAll("secureId", "secureKey");
+
+                    String secureId = (String) conf.get("secureId");
+                    String secureKey = (String) conf.get("secureKey");
                     //签名
                     String digest = DigestUtils.md5Hex(username + "|" + secureKey);
                     if (requestSecureId.equals(secureId) && digest.equals(password)) {
