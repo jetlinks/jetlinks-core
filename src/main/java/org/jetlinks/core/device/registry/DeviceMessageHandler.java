@@ -40,7 +40,8 @@ public interface DeviceMessageHandler {
      * 1. 设备d1在服务server-1建立了连接,设备d1状态为{@link DeviceState#online}<br>
      * 2. 服务server-1由于服务器宕机,进程异常关闭,此时设备d1其实已经断开连接,但是设备d1状态未能正确修改为{@link DeviceState#offline}<br>
      * 3. 服务server-1完成重启,此时,设备d1的状态为{@link DeviceState#online},实际上设备d1并没有连接到此服务器<br>
-     * 4. 此时在调用{@link DeviceOperation#checkState()}时,会触发此监听执行状态检查,如果设备
+     * 4. 此时在调用{@link DeviceOperation#checkState()}时,会触发此监听执行状态检查,
+     * 如果设备未连接到此服务器,应该将状态修改为{@link DeviceState#offline}
      *
      * @param serverId 服务ID, 整个集群中应该唯一,与{@link DeviceOperation#getServerId()}对应
      * @param deviceId 要检查的设备ID消费者

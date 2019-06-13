@@ -43,6 +43,7 @@ public interface DeviceMessageSender {
      * @see org.jetlinks.core.message.function.FunctionInvokeMessageReply
      * @see org.jetlinks.core.enums.ErrorCode#CLIENT_OFFLINE
      * @see org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING
+     * @see org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor
      */
     <R extends DeviceMessageReply> CompletionStage<R> send(RepayableDeviceMessage<R> message);
 

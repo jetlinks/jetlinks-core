@@ -7,6 +7,7 @@ import org.jetlinks.core.message.DeviceMessage;
  *
  * @author zhouhao
  * @since 1.0.0
+ * @see org.jetlinks.core.message.interceptor.DeviceMessageCodecInterceptor
  */
 public interface DeviceMessageCodec {
     /**
@@ -16,6 +17,7 @@ public interface DeviceMessageCodec {
      * @param context 消息上下文
      * @return 编码结果
      * @see MqttMessage
+     * @see org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor
      */
     EncodedMessage encode(Transport transport, MessageEncodeContext context);
 
@@ -27,6 +29,7 @@ public interface DeviceMessageCodec {
      * @return 解码结果
      * @see org.jetlinks.core.message.DeviceMessageReply
      * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
+     * @see org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor
      */
     DeviceMessage decode(Transport transport, MessageDecodeContext context);
 }
