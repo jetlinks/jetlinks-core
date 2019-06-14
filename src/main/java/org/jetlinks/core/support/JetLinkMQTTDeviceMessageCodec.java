@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.Unpooled;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.codec.*;
 import org.jetlinks.core.message.event.ChildDeviceOfflineMessage;
@@ -17,12 +18,15 @@ import org.jetlinks.core.message.codec.TransportDeviceMessageCodec;
 import org.jetlinks.core.message.property.WritePropertyMessage;
 import org.jetlinks.core.message.property.WritePropertyMessageReply;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * 基于jet links 的消息编解码器
  *
  * @author zhouhao
  * @since 1.0.0
  */
+@Slf4j
 public class JetLinkMQTTDeviceMessageCodec implements TransportDeviceMessageCodec {
     @Override
     public Transport getSupportTransport() {
@@ -31,7 +35,7 @@ public class JetLinkMQTTDeviceMessageCodec implements TransportDeviceMessageCode
 
     @AllArgsConstructor
     private class EncodeResult {
-        private String     topic;
+        private String topic;
         private JSONObject data;
     }
 
@@ -40,7 +44,7 @@ public class JetLinkMQTTDeviceMessageCodec implements TransportDeviceMessageCode
             this.topic = topic;
         }
 
-        private String                   topic;
+        private String topic;
         private CommonDeviceMessageReply message;
     }
 
@@ -128,7 +132,14 @@ public class JetLinkMQTTDeviceMessageCodec implements TransportDeviceMessageCode
     public DeviceMessage decode(MessageDecodeContext context) {
         MqttMessage message = (MqttMessage) context.getMessage();
         String topic = message.getTopic();
-        CommonDeviceMessageReply reply = decode(topic, JSON.parseObject(message.getByteBuf().array(), JSONObject.class)).message;
+        String jsonData = message.getByteBuf().toString(StandardCharsets.UTF_8);
+
+        JSONObject object = JSON.parseObject(jsonData, JSONObject.class);
+        if (object == null) {
+            log.warn("无法解析设备[{}]消息:{}", message.getDeviceId(), jsonData);
+            return EmptyDeviceMessage.INSTANCE;
+        }
+        CommonDeviceMessageReply reply = decode(topic, object).message;
         if (reply.getDeviceId() == null || reply.getDeviceId().isEmpty()) {
             reply.setDeviceId(message.getDeviceId());
         }
