@@ -1,6 +1,7 @@
 package org.jetlinks.core.device;
 
 
+import org.jetlinks.core.Configurable;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.metadata.DeviceMetadata;
 

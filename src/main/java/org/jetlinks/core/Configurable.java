@@ -1,4 +1,4 @@
-package org.jetlinks.core.device;
+package org.jetlinks.core;
 
 import org.jetlinks.core.metadata.ValueWrapper;
 
