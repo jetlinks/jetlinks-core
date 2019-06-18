@@ -3,7 +3,6 @@ package org.jetlinks.core;
 import org.jetlinks.core.metadata.ValueWrapper;
 
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 
 /**
  * @author zhouhao
@@ -12,8 +11,6 @@ import java.util.concurrent.CompletionStage;
 public interface Configurable {
 
     ValueWrapper get(String key);
-
-    CompletionStage<Map<String, Object>> getAllAsync(String... key);
 
     Map<String, Object> getAll(String... key);
 
