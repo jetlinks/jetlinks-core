@@ -30,7 +30,7 @@ public interface DeviceMessageSender {
      * 发送一个支持回复的消息.
      * <p>
      * ⚠️: 请勿自己实现消息对象,而应该使用框架定义的3种消息.
-     * ⚠️: 如果是异步消息,将直接返回<code>{"success":false,"code":"REQUEST_HANDLING"}</code>
+     * ⚠️: 如果是异步消息,将直接返回<code>{"success":true,"code":"REQUEST_HANDLING"}</code>
      *
      * @param message 具体的消息对象
      * @param <R>     返回类型
