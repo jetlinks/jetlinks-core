@@ -30,8 +30,13 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
         return reply;
     }
 
-    public FunctionInvokeMessageReply success(Object output) {
+    public FunctionInvokeMessageReply success() {
         this.setSuccess(true);
+
+        return this;
+    }
+
+    public FunctionInvokeMessageReply output(Object output){
         this.setOutput(output);
         return this;
     }

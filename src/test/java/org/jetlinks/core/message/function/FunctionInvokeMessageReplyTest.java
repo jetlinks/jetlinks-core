@@ -23,7 +23,7 @@ public class FunctionInvokeMessageReplyTest {
         Assert.assertEquals(reply.getMessage(), ErrorCode.TIME_OUT.getText());
         Assert.assertEquals(reply.getMessageId(), "test");
 
-        reply.success(1);
+        reply.success().output(1);
 
         Assert.assertTrue(reply.isSuccess());
         Assert.assertEquals(reply.getOutput(),1);

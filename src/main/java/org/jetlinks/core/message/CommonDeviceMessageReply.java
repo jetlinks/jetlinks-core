@@ -70,6 +70,15 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         return (ME) this;
     }
 
+    public ME error(Throwable e) {
+        success = false;
+        error(ErrorCode.SYSTEM_ERROR);
+        addHeader("errorType", e.getClass().getName());
+        addHeader("errorMessage", e.getMessage());
+
+        return ((ME) this);
+    }
+
     @Override
     public ME error(ErrorCode errorCode) {
         success = false;
