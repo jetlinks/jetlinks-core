@@ -28,7 +28,10 @@ public class DefaultValueWrapper implements ValueWrapper {
 
     @Override
     public Optional<Integer> asInteger() {
-        return value().map(Integer.class::cast);
+        return value()
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .map(Number::intValue);
     }
 
     @Override
