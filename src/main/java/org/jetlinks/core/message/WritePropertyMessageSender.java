@@ -38,6 +38,9 @@ public interface WritePropertyMessageSender {
      */
     WritePropertyMessageSender custom(Consumer<WritePropertyMessage> messageConsumer);
 
+    default WritePropertyMessageSender timeout(int timeoutSeconds) {
+        return custom(message -> message.addHeader("timeout", timeoutSeconds));
+    }
 
     /**
      * 添加header到message中

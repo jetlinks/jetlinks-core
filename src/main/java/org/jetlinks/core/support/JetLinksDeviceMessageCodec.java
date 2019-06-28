@@ -8,6 +8,6 @@ import org.jetlinks.core.message.codec.DefaultDeviceMessageCodec;
  */
 public class JetLinksDeviceMessageCodec extends DefaultDeviceMessageCodec {
     public JetLinksDeviceMessageCodec() {
-        register(new JetLinkMQTTDeviceMessageCodec());
+        register(new JetLinksMQTTDeviceMessageCodec());
     }
 }

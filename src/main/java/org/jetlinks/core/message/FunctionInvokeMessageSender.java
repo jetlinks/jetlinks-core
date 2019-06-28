@@ -80,6 +80,10 @@ public interface FunctionInvokeMessageSender {
      */
     FunctionInvokeMessageSender messageId(String messageId);
 
+    default FunctionInvokeMessageSender timeout(int timeoutSeconds) {
+        return custom(message -> message.addHeader("timeout", timeoutSeconds));
+    }
+
     /**
      * 设置调用此功能为异步执行, 当消息发送到设备后,立即返回{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING},而不等待设备返回结果.
      *

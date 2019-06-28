@@ -108,6 +108,10 @@ public interface ReadPropertyMessageSender {
         return this;
     }
 
+    default ReadPropertyMessageSender timeout(int timeoutSeconds) {
+        return custom(message -> message.addHeader("timeout", timeoutSeconds));
+    }
+
     /**
      * 请看{@link this#retrieveReply()} 和 {@link Try}
      *

@@ -27,7 +27,7 @@ import java.nio.charset.StandardCharsets;
  * @since 1.0.0
  */
 @Slf4j
-public class JetLinkMQTTDeviceMessageCodec implements TransportDeviceMessageCodec {
+public class JetLinksMQTTDeviceMessageCodec implements TransportDeviceMessageCodec {
     @Override
     public Transport getSupportTransport() {
         return Transport.MQTT;

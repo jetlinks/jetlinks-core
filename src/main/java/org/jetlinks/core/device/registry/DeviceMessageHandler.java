@@ -8,6 +8,7 @@ import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.RepayableDeviceMessage;
 
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -68,6 +69,10 @@ public interface DeviceMessageHandler {
      */
     CompletionStage<Boolean> reply(DeviceMessageReply message);
 
+    CompletionStage<Object> handleReply(String messageId, long timeout, TimeUnit timeUnit);
+
+    CompletionStage<Long> send(String deviceId,DeviceMessage message);
+
     /**
      * 设置消息未异步
      *
@@ -79,7 +84,7 @@ public interface DeviceMessageHandler {
      * 判断消息是否未异步消息
      *
      * @param messageId 消息ID
-     * @param reset 判断后是否重置
+     * @param reset     判断后是否重置
      * @return 是否未异步消息
      */
     CompletionStage<Boolean> messageIsAsync(String messageId, boolean reset);
