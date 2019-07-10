@@ -13,7 +13,6 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 
 import javax.annotation.Nonnull;
-import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -82,19 +81,21 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
                 if (Math.abs(System.currentTimeMillis() - time) > TimeUnit.MINUTES.toMillis(5)) {
                     return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "设备时间不同步"));
                 }
-                return CompletableFuture.supplyAsync(() -> {
-                    Map<String, Object> conf = deviceOperation.getAll("secureId", "secureKey");
-
-                    String secureId = (String) conf.get("secureId");
-                    String secureKey = (String) conf.get("secureKey");
-                    //签名
-                    String digest = DigestUtils.md5Hex(username + "|" + secureKey);
-                    if (requestSecureId.equals(secureId) && digest.equals(password)) {
-                        return AuthenticationResponse.success();
-                    } else {
-                        return AuthenticationResponse.error(401, "密钥错误");
-                    }
-                }, executor);
+                return deviceOperation.getAllAsync("secureId", "secureKey")
+                        .thenApply(conf -> {
+                            String secureId = (String) conf.get("secureId");
+                            String secureKey = (String) conf.get("secureKey");
+                            //签名
+                            String digest = DigestUtils.md5Hex(username + "|" + secureKey);
+                            if (requestSecureId.equals(secureId) && digest.equals(password)) {
+                                return AuthenticationResponse.success();
+                            } else {
+                                return AuthenticationResponse.error(401, "密钥错误");
+                            }
+                        });
+//                return CompletableFuture.supplyAsync(() -> {
+//
+//                }, executor);
 
             } catch (NumberFormatException e) {
                 return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "用户名格式错误"));

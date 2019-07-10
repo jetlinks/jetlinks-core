@@ -3,6 +3,7 @@ package org.jetlinks.core;
 import org.jetlinks.core.metadata.ValueWrapper;
 
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 
 /**
  * 可配置接口
@@ -29,6 +30,14 @@ public interface Configurable {
      * @return 所有配置结果集合
      */
     Map<String, Object> getAll(String... key);
+
+    /**
+     * 异步获取全部配置
+     *
+     * @param key 配置key
+     * @return value
+     */
+    CompletionStage<Map<String, Object>> getAllAsync(String... key);
 
     /**
      * 设置一个配置,配置最好以基本数据类型或者json为主
