@@ -1,17 +1,17 @@
 package org.jetlinks.core.support.types;
 
 import com.alibaba.fastjson.JSONObject;
-import org.jetlinks.core.metadata.unit.MeasurementUnit;
+import org.jetlinks.core.metadata.unit.UnifyUnit;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.metadata.unit.StandardUnit;
 import org.jetlinks.core.metadata.unit.StandardValueUnit;
 
-public class JetlinksStandardValueUnit extends StandardValueUnit implements Jsonable {
+public class JetLinksStandardValueUnit extends StandardValueUnit implements Jsonable {
 
-    public JetlinksStandardValueUnit() {
+    public JetLinksStandardValueUnit() {
     }
 
-    public JetlinksStandardValueUnit(StandardUnit unit) {
+    public JetLinksStandardValueUnit(StandardUnit unit) {
         super(unit);
     }
 
@@ -31,27 +31,27 @@ public class JetlinksStandardValueUnit extends StandardValueUnit implements Json
     public void fromJson(JSONObject json) {
         String type = json.getString("id");
 
-        setStandardUnit(MeasurementUnit.valueOf(type));
+        setStandardUnit(UnifyUnit.valueOf(type));
 
     }
 
-    public static JetlinksStandardValueUnit of(StandardUnit conf) {
-        JetlinksStandardValueUnit unit = new JetlinksStandardValueUnit();
+    public static JetLinksStandardValueUnit of(StandardUnit conf) {
+        JetLinksStandardValueUnit unit = new JetLinksStandardValueUnit();
         unit.setStandardUnit(conf);
         return unit;
     }
 
-    public static JetlinksStandardValueUnit of(Object conf) {
+    public static JetLinksStandardValueUnit of(Object conf) {
         if (conf == null) {
             return null;
         }
         if (conf instanceof StandardUnit) {
             return of(((StandardUnit) conf));
         } else if (conf instanceof String) {
-            MeasurementUnit unit = MeasurementUnit.valueOf(String.valueOf(conf));
-            return new JetlinksStandardValueUnit(unit);
+            UnifyUnit unit = UnifyUnit.valueOf(String.valueOf(conf));
+            return new JetLinksStandardValueUnit(unit);
         } else if (conf instanceof JSONObject) {
-            JetlinksStandardValueUnit unit = new JetlinksStandardValueUnit();
+            JetLinksStandardValueUnit unit = new JetLinksStandardValueUnit();
             unit.fromJson(((JSONObject) conf));
             return unit;
         }

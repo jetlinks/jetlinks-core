@@ -3,21 +3,23 @@ package org.jetlinks.core.support.types;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
-import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.metadata.ValidateResult;
+import org.jetlinks.core.metadata.types.IntType;
+
+import java.util.Optional;
 
 import static java.util.Optional.ofNullable;
 
 @Getter
 @Setter
-public class IntType implements DataType, Jsonable {
+public class DefaultIntType implements org.jetlinks.core.metadata.types.IntType, Jsonable {
 
-    private Integer max;
+    private Long max;
 
-    private Integer min;
+    private Long min;
 
-    private JetlinksStandardValueUnit unit;
+    private JetLinksStandardValueUnit unit;
 
     @Override
     public ValidateResult validate(Object value) {
@@ -66,17 +68,29 @@ public class IntType implements DataType, Jsonable {
 
     @Override
     public void fromJson(JSONObject json) {
-        ofNullable(json.getInteger("max"))
+        ofNullable(json.getLong("max"))
                 .ifPresent(this::setMax);
-        ofNullable(json.getInteger("min"))
+        ofNullable(json.getLong("min"))
                 .ifPresent(this::setMin);
         ofNullable(json.get("unit"))
-                .map(JetlinksStandardValueUnit::of)
+                .map(JetLinksStandardValueUnit::of)
                 .ifPresent(this::setUnit);
     }
 
     @Override
+    public void copyFrom(IntType intType) {
+        Optional.ofNullable(intType.getMax())
+                .map(Number::longValue)
+                .ifPresent(this::setMax);
+        Optional.ofNullable(intType.getMin())
+                .map(Number::longValue)
+                .ifPresent(this::setMin);
+        unit = JetLinksStandardValueUnit.of(intType.getUnit());
+
+    }
+
+    @Override
     public String toString() {
-        return  toJson().toJSONString();
+        return toJson().toJSONString();
     }
 }

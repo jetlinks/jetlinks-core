@@ -1,14 +1,24 @@
 package org.jetlinks.core.metadata;
 
+import java.util.Map;
+import java.util.Optional;
+
 /**
  * @author zhouhao
  * @since 1.0.0
  */
-public interface Metadata{
+public interface Metadata {
 
-     String getId();
+    String getId();
 
-     String getName();
+    String getName();
 
-     String getDescription();
+    String getDescription();
+
+    Map<String, Object> getExpands();
+
+    default Optional<Object> getExpand(String name) {
+        return Optional.ofNullable(getExpands())
+                .map(map -> map.get(name));
+    }
 }

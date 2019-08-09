@@ -3,17 +3,17 @@ package org.jetlinks.core.support.types;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
-import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.Jsonable;
-import org.jetlinks.core.metadata.unit.ValueUnit;
 import org.jetlinks.core.metadata.ValidateResult;
+import org.jetlinks.core.metadata.types.BooleanType;
+import org.jetlinks.core.metadata.unit.ValueUnit;
 
 import static java.util.Optional.ofNullable;
 
 
 @Getter
 @Setter
-public class BooleanType implements DataType, Jsonable {
+public class DefaultBooleanType implements org.jetlinks.core.metadata.types.BooleanType, Jsonable {
 
     private String trueText = "是";
 
@@ -75,9 +75,17 @@ public class BooleanType implements DataType, Jsonable {
 
             @Override
             public String getDescription() {
-                return BooleanType.this.getDescription();
+                return DefaultBooleanType.this.getDescription();
             }
         };
+    }
+
+    @Override
+    public void copyFrom(BooleanType booleanType) {
+        setFalseText(booleanType.getFalseText());
+        setFalseValue(booleanType.getFalseValue());
+        setTrueText(booleanType.getTrueText());
+        setTrueValue(booleanType.getTrueValue());
     }
 
     @Override
@@ -98,10 +106,10 @@ public class BooleanType implements DataType, Jsonable {
     @Override
     public JSONObject toJson() {
         JSONObject json = new JSONObject();
-        json.put("trueText",trueText);
-        json.put("falseText",falseText);
-        json.put("trueValue",trueValue);
-        json.put("falseValue",falseValue);
+        json.put("trueText", trueText);
+        json.put("falseText", falseText);
+        json.put("trueValue", trueValue);
+        json.put("falseValue", falseValue);
         return json;
     }
 

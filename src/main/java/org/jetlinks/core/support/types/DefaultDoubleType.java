@@ -3,7 +3,6 @@ package org.jetlinks.core.support.types;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
-import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.metadata.ValidateResult;
 
@@ -15,7 +14,7 @@ import static java.util.Optional.ofNullable;
 @Getter
 @Setter
 //@SuppressWarnings("all")
-public class DoubleType implements DataType, Jsonable {
+public class DefaultDoubleType implements org.jetlinks.core.metadata.types.DoubleType, Jsonable {
 
     private Double max;
 
@@ -24,7 +23,7 @@ public class DoubleType implements DataType, Jsonable {
     //精度
     private Integer scale;
 
-    private JetlinksStandardValueUnit unit;
+    private JetLinksStandardValueUnit unit;
 
     @Override
     public ValidateResult validate(Object value) {
@@ -96,7 +95,7 @@ public class DoubleType implements DataType, Jsonable {
         ofNullable(jsonObject.getInteger("scale"))
                 .ifPresent(this::setScale);
         ofNullable(jsonObject.get("unit"))
-                .map(JetlinksStandardValueUnit::of)
+                .map(JetLinksStandardValueUnit::of)
                 .ifPresent(this::setUnit);
     }
 

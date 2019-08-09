@@ -40,6 +40,10 @@ public class JetLinksDeviceFunctionMetadata implements FunctionMetadata {
     @Setter
     private boolean async;
 
+    @Getter
+    @Setter
+    private Map<String, Object> expands;
+
     public JetLinksDeviceFunctionMetadata(JSONObject jsonObject) {
         fromJson(jsonObject);
     }
@@ -99,27 +103,29 @@ public class JetLinksDeviceFunctionMetadata implements FunctionMetadata {
 
     @Override
     public JSONObject toJson() {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("id", id);
-        jsonObject.put("name", name);
-        jsonObject.put("description", description);
-        jsonObject.put("async", async);
-        jsonObject.put("inputs", getInputs().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        JSONObject json = new JSONObject();
+        json.put("id", id);
+        json.put("name", name);
+        json.put("description", description);
+        json.put("async", async);
+        json.put("inputs", getInputs().stream().map(Jsonable::toJson).collect(Collectors.toList()));
         Optional.ofNullable(getOutput())
                 .map(Jsonable::toJson)
-                .ifPresent(output -> jsonObject.put("output", output));
+                .ifPresent(output -> json.put("output", output));
+        json.put("expands", expands);
 
-        return jsonObject;
+        return json;
     }
 
     @Override
-    public void fromJson(JSONObject jsonObject) {
-        this.jsonObject = jsonObject;
+    public void fromJson(JSONObject json) {
+        this.jsonObject = json;
         this.inputs = null;
         this.output = null;
-        this.id = jsonObject.getString("id");
-        this.name = jsonObject.getString("name");
-        this.description = jsonObject.getString("description");
-        this.async = jsonObject.getBooleanValue("async");
+        this.id = json.getString("id");
+        this.name = json.getString("name");
+        this.description = json.getString("description");
+        this.async = json.getBooleanValue("async");
+        this.expands=json.getJSONObject("expands");
     }
 }

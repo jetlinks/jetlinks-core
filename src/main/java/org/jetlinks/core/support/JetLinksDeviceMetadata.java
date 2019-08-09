@@ -5,10 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.metadata.*;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +33,11 @@ public class JetLinksDeviceMetadata implements DeviceMetadata {
     @Getter
     @Setter
     private String description;
+
+    @Getter
+    @Setter
+    private Map<String, Object> expands;
+
 
     public JetLinksDeviceMetadata(JSONObject jsonObject) {
         this.jsonObject = jsonObject;
@@ -128,14 +130,15 @@ public class JetLinksDeviceMetadata implements DeviceMetadata {
 
     @Override
     public JSONObject toJson() {
-        JSONObject jsonObject=new JSONObject();
-        jsonObject.put("id", id);
-        jsonObject.put("name", name);
-        jsonObject.put("description", description);
-        jsonObject.put("properties",getProperties().stream().map(Jsonable::toJson).collect(Collectors.toList()));
-        jsonObject.put("functions",getFunctions().stream().map(Jsonable::toJson).collect(Collectors.toList()));
-        jsonObject.put("events",getEvents().stream().map(Jsonable::toJson).collect(Collectors.toList()));
-        return jsonObject;
+        JSONObject json=new JSONObject();
+        json.put("id", id);
+        json.put("name", name);
+        json.put("description", description);
+        json.put("properties",getProperties().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        json.put("functions",getFunctions().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        json.put("events",getEvents().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        json.put("expands", expands);
+        return json;
     }
 
     @Override
@@ -147,6 +150,7 @@ public class JetLinksDeviceMetadata implements DeviceMetadata {
         this.id = json.getString("id");
         this.name = json.getString("name");
         this.description = json.getString("description");
+        this.expands=json.getJSONObject("expands");
 
     }
 }

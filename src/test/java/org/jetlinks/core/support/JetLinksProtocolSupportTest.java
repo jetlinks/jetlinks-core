@@ -1,6 +1,6 @@
 package org.jetlinks.core.support;
 
-import org.jetlinks.core.support.types.StringType;
+import org.jetlinks.core.support.types.DefaultStringType;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import org.jetlinks.core.metadata.PropertyMetadata;
@@ -41,7 +41,7 @@ public class JetLinksProtocolSupportTest {
         Assert.assertNotNull(metadata.getFunctions());
         Assert.assertNotNull(metadata.getProperties());
         Assert.assertNotNull(metadata.getProperty("name").orElse(null));
-        Assert.assertTrue(metadata.getProperty("name").map(PropertyMetadata::getValueType).orElse(null) instanceof StringType);
+        Assert.assertTrue(metadata.getProperty("name").map(PropertyMetadata::getValueType).orElse(null) instanceof DefaultStringType);
     }
 
     @Test
@@ -127,7 +127,7 @@ public class JetLinksProtocolSupportTest {
                 .map(FunctionMetadata::getInputs)
                 .flatMap(input -> input.stream().findFirst())
                 .map(PropertyMetadata::getValueType)
-                .orElse(null) instanceof StringType);
+                .orElse(null) instanceof DefaultStringType);
         String json = protocolSupport.getMetadataCodec().encode(metadata);
         System.out.println(json);
     }

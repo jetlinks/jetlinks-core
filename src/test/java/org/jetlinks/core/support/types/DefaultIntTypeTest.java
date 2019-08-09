@@ -1,25 +1,25 @@
 package org.jetlinks.core.support.types;
 
-import org.jetlinks.core.metadata.unit.MeasurementUnit;
+import org.jetlinks.core.metadata.unit.UnifyUnit;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class IntTypeTest {
+public class DefaultIntTypeTest {
 
     @Test
     public void test(){
-        IntType type=new IntType();
+        DefaultIntType type=new DefaultIntType();
 
         type.setMax(100);
         type.setMin(0);
-        type.setUnit(JetlinksStandardValueUnit.of(MeasurementUnit.meter));
+        type.setUnit(JetLinksStandardValueUnit.of(UnifyUnit.meter));
 
         Assert.assertTrue(type.validate(20).isSuccess());
         Assert.assertFalse(type.validate(101).isSuccess());
         Assert.assertFalse(type.validate(-1).isSuccess());
 
 
-        IntType type2=new IntType();
+        DefaultIntType type2=new DefaultIntType();
         type2.fromJson(type.toJson());
         System.out.println(type2);
 

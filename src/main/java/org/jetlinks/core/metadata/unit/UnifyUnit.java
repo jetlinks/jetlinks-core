@@ -7,15 +7,21 @@ import java.util.function.Function;
 
 
 /**
- * 计量单位
+ * 统一单位
  *
  * @author zhouhao
  * @since 1.0.0
  */
 @Getter
 @AllArgsConstructor
-public enum MeasurementUnit implements StandardUnit {
+public enum UnifyUnit implements StandardUnit {
 
+    //常用单位
+    percent("百分比","%","common","百分比(%)"),
+    count("次","count","common","次"),
+    turnPerSeconds("转每分钟","turn/m","common","转每分钟"),
+
+    //计量单位
     //=====https://baike.baidu.com/item/%E4%B8%AD%E5%9B%BD%E6%B3%95%E5%AE%9A%E8%AE%A1%E9%87%8F%E5%8D%95%E4%BD%8D/662681#1_1=======
     //==================长度(length)单位===================
     nanometer("纳米", "nm", "length", "长度单位:纳米(nm)"),
@@ -94,6 +100,8 @@ public enum MeasurementUnit implements StandardUnit {
     //==================频率(frequency)单位===================
 
     hertz("赫兹", "Hz", "frequency", "频率单位:赫兹(Hz)"),
+    megahertz("兆赫兹", "MHz", "frequency", "频率单位:兆赫兹(MHz)"),
+    ghertz("G赫兹", "GHz", "frequency", "频率单位:G赫兹(GHz)"),
 
     //==================速度(speed)单位===================
 
@@ -104,7 +112,7 @@ public enum MeasurementUnit implements StandardUnit {
 
     private final String name;
 
-    private final String enName;
+    private final String symbol;
 
     private final String type;
 
@@ -117,7 +125,7 @@ public enum MeasurementUnit implements StandardUnit {
 
     @Override
     public String format(Object value) {
-        return String.format("%s%s", value, getEnName());
+        return String.format("%s%s", value, getSymbol());
     }
 
     static Function<Object, String> template(String strTemplate) {

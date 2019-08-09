@@ -7,10 +7,7 @@ import org.jetlinks.core.metadata.EventMetadata;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.metadata.PropertyMetadata;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +33,10 @@ public class JetLinksEventMetadata implements EventMetadata {
     @Getter
     @Setter
     private String description;
+
+    @Getter
+    @Setter
+    private Map<String, Object> expands;
 
 
     public JetLinksEventMetadata(JSONObject jsonObject) {
@@ -74,7 +75,7 @@ public class JetLinksEventMetadata implements EventMetadata {
         jsonObject.put("name", name);
         jsonObject.put("description", description);
         jsonObject.put("parameters", getParameters().stream().map(Jsonable::toJson).collect(Collectors.toList()));
-
+        jsonObject.put("expands",expands);
         return jsonObject;
     }
 
@@ -85,5 +86,7 @@ public class JetLinksEventMetadata implements EventMetadata {
         this.id = json.getString("id");
         this.name = json.getString("name");
         this.description = json.getString("description");
+        this.expands=json.getJSONObject("expands");
+
     }
 }

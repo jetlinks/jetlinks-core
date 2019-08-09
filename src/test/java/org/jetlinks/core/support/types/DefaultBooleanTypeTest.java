@@ -4,12 +4,12 @@ import com.alibaba.fastjson.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class BooleanTypeTest {
+public class DefaultBooleanTypeTest {
 
     @Test
     public void test() {
 
-        BooleanType type = new BooleanType();
+        DefaultBooleanType type = new DefaultBooleanType();
         System.out.println(type);
         Assert.assertTrue(type.validate(true).isSuccess());
         Assert.assertTrue(type.validate(false).isSuccess());
@@ -38,7 +38,7 @@ public class BooleanTypeTest {
         Assert.assertEquals(type.getUnit().format(0), "关闭");
 
         JSONObject jsonObject= type.toJson();
-        BooleanType type2=new BooleanType();
+        DefaultBooleanType type2=new DefaultBooleanType();
         type2.fromJson(jsonObject);
 
         Assert.assertEquals(type.getTrueText(),type2.getTrueText());

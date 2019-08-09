@@ -9,6 +9,7 @@ import org.jetlinks.core.metadata.ValidateResult;
  * @since 1.0.0
  */
 public class UnknownType implements DataType {
+
     @Override
     public ValidateResult validate(Object value) {
         return ValidateResult.success();
@@ -33,5 +34,6 @@ public class UnknownType implements DataType {
     public String getDescription() {
         return "未知类型";
     }
+
 
 }

@@ -5,7 +5,7 @@ import java.io.Serializable;
 /**
  * 标准单位
  *
- * @see MeasurementUnit
+ * @see UnifyUnit
  * @since 1.0.0
  */
 public interface StandardUnit extends Serializable {

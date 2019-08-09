@@ -1,19 +1,19 @@
 package org.jetlinks.core.support.types;
 
-import org.jetlinks.core.metadata.unit.MeasurementUnit;
+import org.jetlinks.core.metadata.unit.UnifyUnit;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class DoubleTypeTest {
+public class DefaultDoubleTypeTest {
 
     @Test
     public void test() {
-        DoubleType type = new DoubleType();
+        DefaultDoubleType type = new DefaultDoubleType();
 
         type.setMax(100D);
         type.setMin(0D);
         type.setScale(2);
-        type.setUnit(JetlinksStandardValueUnit.of(MeasurementUnit.meter));
+        type.setUnit(JetLinksStandardValueUnit.of(UnifyUnit.meter));
 
         Assert.assertTrue(type.validate(99.99991).isSuccess());
 
@@ -25,7 +25,7 @@ public class DoubleTypeTest {
         Assert.assertEquals(type.format(100), "100.00m");
 
 
-        DoubleType type2 = new DoubleType();
+        DefaultDoubleType type2 = new DefaultDoubleType();
         type2.fromJson(type.toJson());
         System.out.println(type2);
         Assert.assertEquals(type2.getMax(),type.getMax());

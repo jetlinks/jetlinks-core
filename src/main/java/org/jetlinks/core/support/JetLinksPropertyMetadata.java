@@ -8,6 +8,7 @@ import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.metadata.PropertyMetadata;
 
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -32,6 +33,10 @@ public class JetLinksPropertyMetadata implements PropertyMetadata {
     @Setter
     private String description;
 
+    @Getter
+    @Setter
+    private Map<String,Object> expands;
+
     public JetLinksPropertyMetadata(JSONObject json) {
         fromJson(json);
     }
@@ -40,6 +45,8 @@ public class JetLinksPropertyMetadata implements PropertyMetadata {
         this.id = another.getId();
         this.name = another.getName();
         this.description = another.getDescription();
+        // TODO: 2019-08-09 转换类型
+
         this.dataType = another.getValueType();
     }
 
@@ -51,16 +58,16 @@ public class JetLinksPropertyMetadata implements PropertyMetadata {
         DataType dataType;
         switch (dataTypeJson.getString("type")) {
             case "int":
-                dataType = new IntType();
+                dataType = new DefaultIntType();
                 break;
             case "string":
-                dataType = new StringType();
+                dataType = new DefaultStringType();
                 break;
             case "boolean":
-                dataType = new BooleanType();
+                dataType = new DefaultBooleanType();
                 break;
             case "double":
-                dataType = new DoubleType();
+                dataType = new DefaultDoubleType();
                 break;
             default:
                 dataType = new UnknownType();
@@ -103,6 +110,8 @@ public class JetLinksPropertyMetadata implements PropertyMetadata {
         this.name = json.getString("name");
         this.description = json.getString("description");
         this.dataType = null;
+        this.expands = json.getJSONObject("expands");
+
     }
 
     @Override

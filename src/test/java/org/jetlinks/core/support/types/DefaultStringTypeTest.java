@@ -1,22 +1,22 @@
 package org.jetlinks.core.support.types;
 
-import org.jetlinks.core.metadata.unit.MeasurementUnit;
+import org.jetlinks.core.metadata.unit.UnifyUnit;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class StringTypeTest {
+public class DefaultStringTypeTest {
 
     @Test
     public void test(){
-        StringType type=new StringType();
+        DefaultStringType type=new DefaultStringType();
 
-        type.setUnit(JetlinksStandardValueUnit.of(MeasurementUnit.meter));
+        type.setUnit(JetLinksStandardValueUnit.of(UnifyUnit.meter));
 
         Assert.assertTrue(type.validate("123").isSuccess());
         Assert.assertFalse(type.validate(null).isSuccess());
 
 
-        StringType type2=new StringType();
+        DefaultStringType type2=new DefaultStringType();
         type2.fromJson(type.toJson());
 
 
