@@ -16,10 +16,10 @@ import java.util.List;
 @Setter
 public class ReadPropertyMessage extends CommonDeviceMessage implements RepayableDeviceMessage<ReadPropertyMessageReply> {
 
-    private List<String> propertyIds = new ArrayList<>();
+    private List<String> properties = new ArrayList<>();
 
     public void addProperties(List<String> properties) {
-        this.propertyIds.addAll(properties);
+        this.properties.addAll(properties);
     }
 
     @Override

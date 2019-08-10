@@ -15,7 +15,7 @@ import java.util.Map;
 @Setter
 public class WritePropertyMessageReply extends CommonDeviceMessageReply<WritePropertyMessageReply> {
 
-    private Map<String, Object> values;
+    private Map<String, Object> properties;
 
     public static WritePropertyMessageReply create() {
         WritePropertyMessageReply reply = new WritePropertyMessageReply();
@@ -28,6 +28,6 @@ public class WritePropertyMessageReply extends CommonDeviceMessageReply<WritePro
     @Override
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
-        this.values=jsonObject.getJSONObject("values");
+        this.properties = jsonObject.getJSONObject("properties");
     }
 }

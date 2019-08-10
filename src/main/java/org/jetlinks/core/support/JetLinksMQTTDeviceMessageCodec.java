@@ -53,7 +53,7 @@ public class JetLinksMQTTDeviceMessageCodec implements TransportDeviceMessageCod
             String topic = "/read-property";
             JSONObject mqttData = new JSONObject();
             mqttData.put("messageId", message.getMessageId());
-            mqttData.put("properties", ((ReadPropertyMessage) message).getPropertyIds());
+            mqttData.put("properties", ((ReadPropertyMessage) message).getProperties());
             return new EncodeResult(topic, mqttData);
         } else if (message instanceof WritePropertyMessage) {
             String topic = "/write-property";
