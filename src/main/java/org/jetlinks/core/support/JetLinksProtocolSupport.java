@@ -1,7 +1,5 @@
 package org.jetlinks.core.support;
 
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.jetlinks.core.ProtocolSupport;
@@ -13,7 +11,9 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author zhouhao
@@ -25,10 +25,6 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
     private DeviceMessageCodec deviceMessageCodec = new JetLinksDeviceMessageCodec();
 
     private DeviceMetadataCodec metadataCodec = new JetLinksDeviceMetadataCodec();
-
-    @Getter
-    @Setter
-    private Executor executor = ForkJoinPool.commonPool();
 
     @Override
     @Nonnull
@@ -93,10 +89,6 @@ public class JetLinksProtocolSupport implements ProtocolSupport {
                                 return AuthenticationResponse.error(401, "密钥错误");
                             }
                         });
-//                return CompletableFuture.supplyAsync(() -> {
-//
-//                }, executor);
-
             } catch (NumberFormatException e) {
                 return CompletableFuture.completedFuture(AuthenticationResponse.error(401, "用户名格式错误"));
             }
