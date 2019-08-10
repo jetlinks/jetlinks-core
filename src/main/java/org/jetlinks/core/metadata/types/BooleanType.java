@@ -1,31 +1,75 @@
 package org.jetlinks.core.metadata.types;
 
-import org.jetlinks.core.metadata.Copyable;
+import lombok.Getter;
+import lombok.Setter;
 import org.jetlinks.core.metadata.DataType;
+import org.jetlinks.core.metadata.Formattable;
+import org.jetlinks.core.metadata.ValidateResult;
 
-public interface BooleanType extends Copyable<BooleanType>, DataType {
+@Getter
+@Setter
+public class BooleanType implements DataType, Formattable {
+    public static final String ID = "boolean";
+
+    private String trueText = "是";
+
+    private String falseText = "否";
+
+    private String trueValue = "true";
+
+    private String falseValue = "false";
 
     @Override
-    default String getId() {
-        return "boolean";
+    public String getId() {
+        return ID;
     }
 
     @Override
-    default String getName() {
-        return "布尔";
+    public String getName() {
+        return "布尔值";
     }
 
     @Override
-    default String getDescription() {
+    public String getDescription() {
         return "布尔类型";
     }
 
-    String getTrueText();
+    private Boolean convertValue(Object value) {
 
-    String getFalseText();
+        String stringVal = String.valueOf(value).trim();
+        if (stringVal.equals(trueValue) || stringVal.equals(trueText)) {
+            return true;
+        }
 
-    String getTrueValue();
+        if (stringVal.equals(falseValue) || stringVal.equals(falseText)) {
+            return false;
+        }
 
-    String getFalseValue();
+        return null;
+    }
+
+    @Override
+    public ValidateResult validate(Object value) {
+
+        Boolean trueOrFalse = convertValue(value);
+
+        return trueOrFalse == null
+                ? ValidateResult.fail("不支持的值:" + value)
+                : ValidateResult.success();
+    }
+
+    @Override
+    public String format(Object value) {
+        Boolean trueOrFalse = convertValue(value);
+
+        if (Boolean.TRUE.equals(trueOrFalse)) {
+            return trueText;
+        }
+        if (Boolean.FALSE.equals(trueOrFalse)) {
+            return falseText;
+        }
+        return "未知:" + value;
+    }
+
 
 }

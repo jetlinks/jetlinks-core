@@ -3,13 +3,17 @@ package org.jetlinks.core.support;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
-import org.jetlinks.core.support.types.*;
 import org.jetlinks.core.metadata.DataType;
+import org.jetlinks.core.metadata.DataTypeCodec;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.metadata.PropertyMetadata;
+import org.jetlinks.core.metadata.types.DataTypes;
+import org.jetlinks.core.metadata.types.UnknownType;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 /**
  * @author zhouhao
@@ -35,7 +39,7 @@ public class JetLinksPropertyMetadata implements PropertyMetadata {
 
     @Getter
     @Setter
-    private Map<String,Object> expands;
+    private Map<String, Object> expands;
 
     public JetLinksPropertyMetadata(JSONObject json) {
         fromJson(json);
@@ -45,9 +49,12 @@ public class JetLinksPropertyMetadata implements PropertyMetadata {
         this.id = another.getId();
         this.name = another.getName();
         this.description = another.getDescription();
-        // TODO: 2019-08-09 转换类型
-
         this.dataType = another.getValueType();
+    }
+
+    protected Optional<DataTypeCodec<DataType>> getDataTypeCodec(DataType dataType) {
+
+        return JetLinksDataTypeCodecs.getCodec(dataType.getId());
     }
 
     protected DataType parseDataType() {
@@ -55,27 +62,14 @@ public class JetLinksPropertyMetadata implements PropertyMetadata {
         if (dataTypeJson == null) {
             throw new IllegalArgumentException("属性" + getId() + "类型不能为空");
         }
-        DataType dataType;
-        switch (dataTypeJson.getString("type")) {
-            case "int":
-                dataType = new DefaultIntType();
-                break;
-            case "string":
-                dataType = new DefaultStringType();
-                break;
-            case "boolean":
-                dataType = new DefaultBooleanType();
-                break;
-            case "double":
-                dataType = new DefaultDoubleType();
-                break;
-            default:
-                dataType = new UnknownType();
-                break;
-        }
-        if (dataType instanceof Jsonable) {
-            ((Jsonable) dataType).fromJson(dataTypeJson);
-        }
+        DataType dataType = Optional.ofNullable(dataTypeJson.getString("type"))
+                .map(DataTypes::lookup)
+                .map(Supplier::get)
+                .orElseGet(UnknownType::new);
+
+        getDataTypeCodec(dataType)
+                .ifPresent(codec -> codec.decode(dataType, dataTypeJson));
+
         return dataType;
     }
 

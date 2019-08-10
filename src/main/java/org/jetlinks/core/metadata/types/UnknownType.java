@@ -1,7 +1,6 @@
-package org.jetlinks.core.support.types;
+package org.jetlinks.core.metadata.types;
 
 import org.jetlinks.core.metadata.DataType;
-import org.jetlinks.core.metadata.unit.ValueUnit;
 import org.jetlinks.core.metadata.ValidateResult;
 
 /**
@@ -13,11 +12,6 @@ public class UnknownType implements DataType {
     @Override
     public ValidateResult validate(Object value) {
         return ValidateResult.success();
-    }
-
-    @Override
-    public ValueUnit getUnit() {
-        return null;
     }
 
     @Override
@@ -35,5 +29,8 @@ public class UnknownType implements DataType {
         return "未知类型";
     }
 
-
+    @Override
+    public String format(Object value) {
+        return String.valueOf(value);
+    }
 }

@@ -14,6 +14,8 @@ public interface StandardUnit extends Serializable {
 
     String getType();
 
+    String getSymbol();
+
     String getName();
 
     String getDescription();

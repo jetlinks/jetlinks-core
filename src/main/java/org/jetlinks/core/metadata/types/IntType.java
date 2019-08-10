@@ -1,20 +1,21 @@
 package org.jetlinks.core.metadata.types;
 
-import org.jetlinks.core.metadata.Copyable;
+public class IntType extends NumberType {
+    public static final String ID = "int";
 
-public interface IntType extends NumberType, Copyable<IntType> {
     @Override
-    default String getId() {
-        return "int";
+    public String getId() {
+        return ID;
     }
 
     @Override
-    default String getName() {
+    public String getName() {
         return "整型";
     }
 
     @Override
-    default String getDescription() {
+    public String getDescription() {
         return "32位整型数字";
     }
+
 }

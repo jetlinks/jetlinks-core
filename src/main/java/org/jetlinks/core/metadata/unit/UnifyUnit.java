@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 
 /**
@@ -17,9 +18,9 @@ import java.util.function.Function;
 public enum UnifyUnit implements StandardUnit {
 
     //常用单位
-    percent("百分比","%","common","百分比(%)"),
-    count("次","count","common","次"),
-    turnPerSeconds("转每分钟","turn/m","common","转每分钟"),
+    percent("百分比", "%", "common", "百分比(%)"),
+    count("次", "count", "common", "次"),
+    turnPerSeconds("转每分钟", "turn/m", "common", "转每分钟"),
 
     //计量单位
     //=====https://baike.baidu.com/item/%E4%B8%AD%E5%9B%BD%E6%B3%95%E5%AE%9A%E8%AE%A1%E9%87%8F%E5%8D%95%E4%BD%8D/662681#1_1=======
@@ -130,5 +131,12 @@ public enum UnifyUnit implements StandardUnit {
 
     static Function<Object, String> template(String strTemplate) {
         return o -> String.format(strTemplate, o);
+    }
+
+    public static UnifyUnit of(String value) {
+        return Stream.of(UnifyUnit.values())
+                .filter(unifyUnit -> unifyUnit.getId().equals(value) || unifyUnit.getSymbol().equals(value))
+                .findFirst()
+                .orElse(null);
     }
 }

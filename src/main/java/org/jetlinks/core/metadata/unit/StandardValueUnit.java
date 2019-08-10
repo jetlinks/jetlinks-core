@@ -14,6 +14,11 @@ public class StandardValueUnit implements ValueUnit {
     private StandardUnit standardUnit;
 
     @Override
+    public String getSymbol() {
+        return standardUnit.getSymbol();
+    }
+
+    @Override
     public String format(Object value) {
         return standardUnit.format(value);
     }
