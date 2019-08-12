@@ -2,16 +2,20 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.UnitSupported;
 import org.jetlinks.core.metadata.ValidateResult;
 import org.jetlinks.core.metadata.unit.ValueUnit;
 
+import java.math.BigDecimal;
+import java.util.Date;
 import java.util.Optional;
+import java.util.function.Function;
 
 @Getter
 @Setter
-public abstract class NumberType implements UnitSupported, DataType {
+public abstract class NumberType<N extends Number> implements UnitSupported, DataType, Converter<N> {
 
     //最大值
     private Number max;
@@ -33,8 +37,10 @@ public abstract class NumberType implements UnitSupported, DataType {
     @Override
     public ValidateResult validate(Object value) {
         try {
-            Number numberValue = convert(value);
-
+            N numberValue = convert(value);
+            if (numberValue == null) {
+                return ValidateResult.fail("数字格式错误:" + value);
+            }
             if (max != null && numberValue.doubleValue() > max.doubleValue()) {
                 return ValidateResult.fail("超过最大值:" + max);
             }
@@ -47,12 +53,26 @@ public abstract class NumberType implements UnitSupported, DataType {
         }
     }
 
-    protected Number convert(Object value) {
+    public N convertNumber(Object value, Function<Number, N> mapper) {
+        return Optional.ofNullable(convertNumber(value))
+                .map(mapper)
+                .orElse(null);
+    }
+
+    public Number convertNumber(Object value) {
         if (value instanceof Number) {
             return ((Number) value);
         }
-        throw new NumberFormatException("数字格式错误:" + value);
+        if (value instanceof String) {
+            return new BigDecimal(((String) value));
+        }
+        if (value instanceof Date) {
+            return ((Date) value).getTime();
+        }
+        return null;
     }
+
+    public abstract N convert(Object value);
 
     public long getMax(long defaultVal) {
         return Optional

@@ -1,6 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
-public class IntType extends NumberType {
+public class IntType extends NumberType<Integer> {
     public static final String ID = "int";
 
     @Override
@@ -18,4 +18,8 @@ public class IntType extends NumberType {
         return "32位整型数字";
     }
 
+    @Override
+    public Integer convert(Object value) {
+        return super.convertNumber(value, Number::intValue);
+    }
 }

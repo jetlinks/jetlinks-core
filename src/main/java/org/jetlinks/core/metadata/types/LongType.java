@@ -1,6 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
-public class LongType extends NumberType {
+public class LongType extends NumberType<Long> {
     public static final String ID = "long";
 
     @Override
@@ -18,4 +18,8 @@ public class LongType extends NumberType {
         return "64位整型数字";
     }
 
+    @Override
+    public Long convert(Object value) {
+        return super.convertNumber(value,Number::longValue);
+    }
 }

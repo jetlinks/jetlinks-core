@@ -10,7 +10,7 @@ import static java.math.BigDecimal.ROUND_HALF_UP;
 @Getter
 @Setter
 @SuppressWarnings("all")
-public class DoubleType extends NumberType {
+public class DoubleType extends NumberType<Double> {
     public static final String ID = "double";
 
     private Integer scale;
@@ -25,6 +25,11 @@ public class DoubleType extends NumberType {
             return super.format(scaled);
         }
         return super.format(value);
+    }
+
+    @Override
+    public Double convert(Object value) {
+        return super.convertNumber(value, Number::doubleValue);
     }
 
     @Override

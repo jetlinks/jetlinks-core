@@ -2,13 +2,14 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.Formattable;
 import org.jetlinks.core.metadata.ValidateResult;
 
 @Getter
 @Setter
-public class BooleanType implements DataType, Formattable {
+public class BooleanType implements DataType, Formattable, Converter<Boolean> {
     public static final String ID = "boolean";
 
     private String trueText = "是";
@@ -34,7 +35,10 @@ public class BooleanType implements DataType, Formattable {
         return "布尔类型";
     }
 
-    private Boolean convertValue(Object value) {
+    public Boolean convert(Object value) {
+        if (value instanceof Boolean) {
+            return ((Boolean) value);
+        }
 
         String stringVal = String.valueOf(value).trim();
         if (stringVal.equals(trueValue) || stringVal.equals(trueText)) {
@@ -51,7 +55,7 @@ public class BooleanType implements DataType, Formattable {
     @Override
     public ValidateResult validate(Object value) {
 
-        Boolean trueOrFalse = convertValue(value);
+        Boolean trueOrFalse = convert(value);
 
         return trueOrFalse == null
                 ? ValidateResult.fail("不支持的值:" + value)
@@ -60,7 +64,7 @@ public class BooleanType implements DataType, Formattable {
 
     @Override
     public String format(Object value) {
-        Boolean trueOrFalse = convertValue(value);
+        Boolean trueOrFalse = convert(value);
 
         if (Boolean.TRUE.equals(trueOrFalse)) {
             return trueText;

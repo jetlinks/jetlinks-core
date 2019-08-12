@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
 
@@ -13,7 +14,7 @@ import java.util.Date;
 
 @Getter
 @Setter
-public class DateTimeType implements DataType {
+public class DateTimeType implements DataType, Converter<Date> {
     public static final String ID = "date";
 
     public static final String TIMESTAMP_FORMAT = "timestamp";
@@ -69,7 +70,7 @@ public class DateTimeType implements DataType {
                 .format(getFormatter());
     }
 
-    protected Date convert(Object value) {
+    public Date convert(Object value) {
 
         if (value instanceof Instant) {
             return Date.from(((Instant) value));

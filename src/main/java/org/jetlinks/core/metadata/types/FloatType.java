@@ -10,7 +10,7 @@ import static java.math.BigDecimal.ROUND_HALF_UP;
 @Getter
 @Setter
 @SuppressWarnings("all")
-public class FloatType extends NumberType {
+public class FloatType extends NumberType<Float> {
     public static final String ID = "float";
 
     private Integer scale;
@@ -25,6 +25,11 @@ public class FloatType extends NumberType {
             return super.format(scaled);
         }
         return super.format(value);
+    }
+
+    @Override
+    public Float convert(Object value) {
+        return super.convertNumber(value,Number::floatValue);
     }
 
     @Override
