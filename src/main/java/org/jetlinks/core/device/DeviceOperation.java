@@ -48,7 +48,7 @@ public interface DeviceOperation extends Configurable {
      *
      * @see org.jetlinks.core.device.registry.DeviceMessageHandler#handleDeviceCheck(String, Consumer)
      */
-    void checkState();
+    CompletionStage<Byte> checkState();
 
     /**
      * @return 上线时间
