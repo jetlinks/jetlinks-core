@@ -74,7 +74,7 @@ public interface DeviceMessageHandler {
     CompletionStage<Long> send(String deviceId,DeviceMessage message);
 
     /**
-     * 设置消息未异步
+     * 设置消息为异步
      *
      * @param messageId 消息ID
      */
