@@ -83,6 +83,13 @@ public interface DeviceOperation extends Configurable {
     void offline();
 
     /**
+     * 断开设备连接
+     *
+     * @return 断开结果
+     */
+    CompletionStage<Boolean> disconnect();
+
+    /**
      * 进行授权
      *
      * @param request 授权请求

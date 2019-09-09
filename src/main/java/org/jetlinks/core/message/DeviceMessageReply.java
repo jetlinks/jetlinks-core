@@ -16,6 +16,16 @@ public interface DeviceMessageReply extends DeviceMessage {
 
     DeviceMessageReply error(ErrorCode errorCode);
 
+    DeviceMessageReply error(Throwable err);
+
+    DeviceMessageReply deviceId(String deviceId);
+
+    DeviceMessageReply success();
+
+    DeviceMessageReply code(String code);
+
+    DeviceMessageReply message(String message);
+
     DeviceMessageReply from(DeviceMessage message);
 
     DeviceMessageReply messageId(String messageId);

@@ -10,4 +10,5 @@ public interface MessageEncodeContext extends MessageCodecContext {
 
     DeviceMessage getMessage();
 
+
 }
