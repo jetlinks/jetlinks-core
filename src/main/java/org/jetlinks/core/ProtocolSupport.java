@@ -6,9 +6,9 @@ import org.jetlinks.core.message.codec.MessageDecodeContext;
 import org.jetlinks.core.message.codec.MessageEncodeContext;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
+import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.CompletionStage;
 
 /**
  * 消息协议支持接口，通过实现此接口来自定义消息协议
@@ -71,7 +71,7 @@ public interface ProtocolSupport {
      * @see MqttAuthenticationRequest
      */
     @Nonnull
-    CompletionStage<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
-                                                         @Nonnull DeviceOperation deviceOperation);
+    Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
+                      @Nonnull DeviceOperation deviceOperation);
 
 }

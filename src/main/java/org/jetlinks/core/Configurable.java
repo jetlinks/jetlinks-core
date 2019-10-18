@@ -1,6 +1,7 @@
 package org.jetlinks.core;
 
 import org.jetlinks.core.metadata.ValueWrapper;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -19,9 +20,8 @@ public interface Configurable {
      * @param key key
      * @return 结果包装器, 不会为null
      * @see ValueWrapper#value()
-     * @see java.util.Optional
      */
-    ValueWrapper get(String key);
+    Mono<ValueWrapper> get(String key);
 
     /**
      * 获取多个配置,如果未指定key,则获取全部配置
@@ -29,7 +29,7 @@ public interface Configurable {
      * @param key key
      * @return 所有配置结果集合
      */
-    Map<String, Object> getAll(String... key);
+    Mono<Map<String, Object>> getAll(String... key);
 
     /**
      * 异步获取全部配置
@@ -37,6 +37,7 @@ public interface Configurable {
      * @param key 配置key
      * @return value
      */
+    @Deprecated
     CompletionStage<Map<String, Object>> getAllAsync(String... key);
 
     /**
@@ -45,21 +46,21 @@ public interface Configurable {
      * @param key   配置key
      * @param value 值 不能为null
      */
-    void put(String key, Object value);
+    Mono<Void> put(String key, Object value);
 
     /**
      * 批量设置配置
      *
      * @param conf 配置内容
      */
-    void putAll(Map<String, Object> conf);
+    Mono<Void> putAll(Map<String, Object> conf);
 
     /**
      * 删除配置
      *
      * @param key key
-     * @return 被删除的值，不存在则返回null
+     * @return 被删除的值，不存在则返回empty
      */
-    Object remove(String key);
+    Mono<Object> remove(String key);
 
 }

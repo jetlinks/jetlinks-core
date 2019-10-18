@@ -1,22 +1,20 @@
 package org.jetlinks.core.message;
 
 import io.vavr.control.Try;
-import org.jetlinks.core.message.exception.FunctionUndefinedException;
 import org.jetlinks.core.message.exception.IllegalParameterException;
-import org.jetlinks.core.message.exception.ParameterUndefinedException;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.function.FunctionParameter;
 import org.jetlinks.core.metadata.PropertyMetadata;
 import org.jetlinks.core.metadata.ValidateResult;
+import reactor.core.publisher.Flux;
+import reactor.util.function.Tuple2;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -102,7 +100,7 @@ public interface FunctionInvokeMessageSender {
      * @param async 是否异步
      * @return this
      * @see this#async(Boolean)
-     *  @see Headers#async
+     * @see Headers#async
      */
     FunctionInvokeMessageSender async(Boolean async);
 
@@ -141,8 +139,7 @@ public interface FunctionInvokeMessageSender {
      * @see org.jetlinks.core.metadata.DataType#validate(Object)
      * @see IllegalArgumentException
      */
-    FunctionInvokeMessageSender validate(BiConsumer<FunctionParameter, ValidateResult> resultConsumer)
-            throws FunctionUndefinedException, ParameterUndefinedException, IllegalParameterException;
+    Flux<Tuple2<FunctionParameter, ValidateResult>> validate(BiConsumer<FunctionParameter, ValidateResult> resultConsumer);
 
     /**
      * @return this
@@ -165,7 +162,7 @@ public interface FunctionInvokeMessageSender {
      * @see CompletionStage#toCompletableFuture()
      * @see java.util.concurrent.CompletableFuture#get(long, TimeUnit)
      */
-    CompletionStage<FunctionInvokeMessageReply> send();
+    Flux<FunctionInvokeMessageReply> send();
 
     /**
      * 尝试重新获取返回值
@@ -188,60 +185,6 @@ public interface FunctionInvokeMessageSender {
         return Try.of(() -> this.retrieveReply().toCompletableFuture().get(timeout, timeUnit));
     }
 
-    /**
-     * 发送消息并返回{@link Try},可进行函数式操作.
-     *
-     * <pre>
-     *     sender.invokeFunction("test")
-     *            .trySend(10,TimeUnit.SECONDS)
-     *            .recoverWith(TimeoutException.class,r->failureTry(ErrorCode.TIME_OUT))
-     *            .get();
-     * </pre>
-     *
-     * @param timeout  超时时间
-     * @param timeUnit 超时时间单位
-     * @return Try
-     */
-    default Try<FunctionInvokeMessageReply> trySend(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> {
-            CompletableFuture<FunctionInvokeMessageReply> stage = send().toCompletableFuture();
-            try {
-                return stage.get(timeout, timeUnit);
-            } catch (TimeoutException e) {
-                //超时后取消执行任务,无法重新get.
-                stage.cancel(true);
-                throw e;
-            }
-        });
-    }
-
-    /**
-     * 验证请求是否合法并发送消息并返回{@link Try},可进行函数式操作.
-     *
-     * <pre>
-     *   FunctionInvokeMessageReply reply =  sender.invokeFunction("test")
-     *            .tryValidateAndSend(10,TimeUnit.SECONDS)
-     *            .recoverWith(TimeoutException.class,err->failureTry(ErrorCode.TIME_OUT))
-     *            .recoverWith(IllegalParameterException,err->failureTry("PARAMETER_ERROR",err.getMessage()))
-     *            .get();
-     * </pre>
-     *
-     * @param timeout  超时时间
-     * @param timeUnit 超时时间单位
-     * @return Try
-     */
-    default Try<FunctionInvokeMessageReply> tryValidateAndSend(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> {
-            CompletableFuture<FunctionInvokeMessageReply> stage = validate().send().toCompletableFuture();
-            try {
-                return stage.get(timeout, timeUnit);
-            } catch (TimeoutException e) {
-                //超时后取消执行任务,无法重新get.
-                stage.cancel(true);
-                throw e;
-            }
-        });
-    }
 
 
 }

@@ -1,6 +1,7 @@
 package org.jetlinks.core.message.codec;
 
 import org.jetlinks.core.message.DeviceMessage;
+import reactor.core.publisher.Mono;
 
 /**
  * 设备消息转换器,用于对不同协议的消息进行转换
@@ -19,7 +20,7 @@ public interface DeviceMessageCodec {
      * @see MqttMessage
      * @see org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor
      */
-    EncodedMessage encode(Transport transport, MessageEncodeContext context);
+    Mono<EncodedMessage> encode(Transport transport, MessageEncodeContext context);
 
     /**
      * 解码，用于将收到设备上传的消息解码为可读的消息
@@ -31,5 +32,5 @@ public interface DeviceMessageCodec {
      * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
      * @see org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor
      */
-    DeviceMessage decode(Transport transport, MessageDecodeContext context);
+    Mono<DeviceMessage> decode(Transport transport, MessageDecodeContext context);
 }

@@ -1,15 +1,12 @@
 package org.jetlinks.core.message;
 
-import io.vavr.control.Try;
 import org.jetlinks.core.message.property.WritePropertyMessage;
 import org.jetlinks.core.message.property.WritePropertyMessageReply;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -84,19 +81,7 @@ public interface WritePropertyMessageSender {
      * @see org.jetlinks.core.device.DeviceMessageSender#retrieveReply(String, Supplier)
      * @see org.jetlinks.core.enums.ErrorCode#NO_REPLY
      */
-    CompletionStage<WritePropertyMessageReply> retrieveReply();
-
-    /**
-     * 请看{@link this#retrieveReply()} 和 {@link Try}
-     *
-     * @param timeout  超时时间
-     * @param timeUnit 超时时间单位
-     * @return Try
-     * @see this#retrieveReply()
-     */
-    default Try<WritePropertyMessageReply> tryRetrieveReply(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> this.retrieveReply().toCompletableFuture().get(timeout, timeUnit));
-    }
+    Mono<WritePropertyMessageReply> retrieveReply();
 
     /**
      * 执行发送
@@ -106,34 +91,7 @@ public interface WritePropertyMessageSender {
      * @see CompletionStage
      * @see CompletionStage#toCompletableFuture()
      */
-    CompletionStage<WritePropertyMessageReply> send();
+    Mono<WritePropertyMessageReply> send();
 
-    /**
-     * 发送消息并返回{@link Try},可进行函数式操作.
-     *
-     * <pre>
-     *     sender.writeProperty()
-     *            .write("ver","1.0")
-     *            .trySend(10,TimeUnit.SECONDS)
-     *            .recoverWith(TimeoutException.class,r->failureTry(ErrorCode.TIME_OUT))
-     *            .get();
-     * </pre>
-     *
-     * @param timeout  超时时间
-     * @param timeUnit 超时时间单位
-     * @return Try
-     */
-    default Try<WritePropertyMessageReply> trySend(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> {
-            CompletableFuture<WritePropertyMessageReply> stage = send().toCompletableFuture();
-            try {
-                return stage.get(timeout, timeUnit);
-            } catch (TimeoutException e) {
-                //超时后取消执行任务
-                stage.cancel(true);
-                throw e;
-            }
-        });
-    }
 
 }

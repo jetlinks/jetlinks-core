@@ -6,8 +6,12 @@ import org.jetlinks.core.device.DeviceState;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.RepayableDeviceMessage;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.concurrent.CompletionStage;
+import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -52,8 +56,10 @@ public interface DeviceMessageHandler {
      */
     void handleDeviceCheck(String serverId, Consumer<String> deviceId);
 
+    Mono<Map<String, Byte>> getDeviceState(String serviceId, Collection<String> deviceIdList);
+
     /**
-     * 回复消息. 当调用了 {@link  DeviceMessageSender#send(RepayableDeviceMessage)}方法后,无论方法时异步还是同步对,都需要对该消息进行回复.
+     * 回复消息. 当调用了 {@link  DeviceMessageSender#send(RepayableDeviceMessage)}方法后,无论方法是异步还是同步对,都需要对该消息进行回复.
      *
      * <ul>
      * <li>回复和请求的{@link DeviceMessageReply#getMessageId()}必须一致</li>
@@ -67,18 +73,18 @@ public interface DeviceMessageHandler {
      * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
      * @see org.jetlinks.core.message.function.FunctionInvokeMessageReply
      */
-    CompletionStage<Boolean> reply(DeviceMessageReply message);
+    Mono<Boolean> reply(DeviceMessageReply message);
 
-    CompletionStage<Object> handleReply(String messageId, long timeout, TimeUnit timeUnit);
+    Flux<Object> handleReply(String messageId, long timeout, TimeUnit timeUnit);
 
-    CompletionStage<Long> send(String deviceId,DeviceMessage message);
+    Mono<Long> send(String serverId, Publisher<DeviceMessage> message);
 
     /**
      * 设置消息为异步
      *
      * @param messageId 消息ID
      */
-    CompletionStage<Void> markMessageAsync(String messageId);
+    Mono<Void> markMessageAsync(String messageId);
 
     /**
      * 判断消息是否未异步消息
@@ -87,9 +93,9 @@ public interface DeviceMessageHandler {
      * @param reset     判断后是否重置
      * @return 是否未异步消息
      */
-    CompletionStage<Boolean> messageIsAsync(String messageId, boolean reset);
+    Mono<Boolean> messageIsAsync(String messageId, boolean reset);
 
-    default CompletionStage<Boolean> messageIsAsync(String messageId) {
+    default Mono<Boolean> messageIsAsync(String messageId) {
         return messageIsAsync(messageId, false);
     }
 }

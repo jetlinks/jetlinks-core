@@ -1,8 +1,8 @@
 package org.jetlinks.core.message;
 
-import io.vavr.control.Try;
 import org.jetlinks.core.message.property.ReadPropertyMessage;
 import org.jetlinks.core.message.property.ReadPropertyMessageReply;
+import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
 import java.util.List;
@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -71,9 +69,8 @@ public interface ReadPropertyMessageSender {
      * @see org.jetlinks.core.device.DeviceMessageSender#send(RepayableDeviceMessage)
      * @see CompletionStage
      * @see CompletionStage#toCompletableFuture()
-     * @see this#trySend(long, TimeUnit)
      */
-    CompletionStage<ReadPropertyMessageReply> send();
+    Mono<ReadPropertyMessageReply> send();
 
     /**
      * 尝试重新获取返回值
@@ -82,7 +79,7 @@ public interface ReadPropertyMessageSender {
      * @see org.jetlinks.core.device.DeviceMessageSender#retrieveReply(String, Supplier)
      * @see org.jetlinks.core.enums.ErrorCode#NO_REPLY
      */
-    CompletionStage<ReadPropertyMessageReply> retrieveReply();
+    Mono<ReadPropertyMessageReply> retrieveReply();
 
     /**
      * 添加header到message中
@@ -110,46 +107,6 @@ public interface ReadPropertyMessageSender {
 
     default ReadPropertyMessageSender timeout(int timeoutSeconds) {
         return custom(message -> message.addHeader("timeout", timeoutSeconds));
-    }
-
-    /**
-     * 请看{@link this#retrieveReply()} 和 {@link Try}
-     *
-     * @param timeout  超时时间
-     * @param timeUnit 超时时间单位
-     * @return Try
-     * @see this#retrieveReply()
-     */
-    default Try<ReadPropertyMessageReply> tryRetrieveReply(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> this.retrieveReply().toCompletableFuture().get(timeout, timeUnit));
-    }
-
-    /**
-     * 发送消息并返回{@link Try},可进行函数式操作.
-     *
-     * <pre>
-     *     sender.readProperty("test")
-     *            .trySend(10,TimeUnit.SECONDS)
-     *            .recoverWith(TimeoutException.class,r->failureTry(ErrorCode.TIME_OUT))
-     *            .get();
-     * </pre>
-     *
-     * @param timeout  超时时间
-     * @param timeUnit 超时时间单位
-     * @return Try
-     * @see this#retrieveReply()
-     */
-    default Try<ReadPropertyMessageReply> trySend(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> {
-            CompletableFuture<ReadPropertyMessageReply> stage = send().toCompletableFuture();
-            try {
-                return stage.get(timeout, timeUnit);
-            } catch (TimeoutException e) {
-                //超时后取消执行任务
-                stage.cancel(true);
-                throw e;
-            }
-        });
     }
 
 }

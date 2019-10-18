@@ -3,6 +3,7 @@ package org.jetlinks.core.message.interceptor;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.codec.MessageDecodeContext;
 import org.jetlinks.core.message.codec.Transport;
+import reactor.core.publisher.Mono;
 
 /**
  * 设备消息解码拦截器
@@ -26,6 +27,6 @@ public interface DeviceMessageDecodeInterceptor extends DeviceMessageCodecInterc
      * @param deviceMessage 解码后的设备消息
      * @return 新的设备消息
      */
-    DeviceMessage postDecode(MessageDecodeContext context, DeviceMessage deviceMessage);
+    Mono<DeviceMessage> postDecode(MessageDecodeContext context, DeviceMessage deviceMessage);
 
 }

@@ -3,6 +3,7 @@ package org.jetlinks.core.message.interceptor;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.MessageEncodeContext;
 import org.jetlinks.core.message.codec.Transport;
+import reactor.core.publisher.Mono;
 
 /**
  * 设备消息解码拦截器,用于在对消息进行编码时进行自定义处理
@@ -27,6 +28,6 @@ public interface DeviceMessageEncodeInterceptor extends DeviceMessageCodecInterc
      * @param message 已编码的消息
      * @return 新的消息
      */
-    EncodedMessage postEncode(MessageEncodeContext context, EncodedMessage message);
+    Mono<EncodedMessage> postEncode(MessageEncodeContext context, EncodedMessage message);
 
 }

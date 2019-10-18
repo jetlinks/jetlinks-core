@@ -4,6 +4,7 @@ package org.jetlinks.core.device.registry;
 import org.jetlinks.core.device.DeviceInfo;
 import org.jetlinks.core.device.DeviceOperation;
 import org.jetlinks.core.device.DeviceProductOperation;
+import reactor.core.publisher.Mono;
 
 /**
  * 设备注册中心
@@ -19,7 +20,7 @@ public interface DeviceRegistry {
      * @param deviceId 设备ID
      * @return 设备操作接口
      */
-    DeviceOperation getDevice(String deviceId);
+    Mono<DeviceOperation> getDevice(String deviceId);
 
     /**
      * 获取设备产品操作,请勿缓存返回值,注册中心已经实现本地缓存.
@@ -27,7 +28,7 @@ public interface DeviceRegistry {
      * @param productId 产品ID
      * @return 设备操作接口
      */
-    DeviceProductOperation getProduct(String productId);
+    Mono<DeviceProductOperation> getProduct(String productId);
 
     /**
      * 注册设备,并返回设备操作接口,请勿缓存返回值,注册中心已经实现本地缓存.
@@ -36,13 +37,13 @@ public interface DeviceRegistry {
      * @return 设备操作接口
      * @see this#getDevice(String)
      */
-    DeviceOperation registry(DeviceInfo deviceInfo);
+    Mono<DeviceOperation> registry(DeviceInfo deviceInfo);
 
     /**
      * 注销设备
      *
      * @param deviceId 设备ID
      */
-    void unRegistry(String deviceId);
+    Mono<Void> unRegistry(String deviceId);
 
 }
