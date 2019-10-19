@@ -2,13 +2,12 @@ package org.jetlinks.core.message;
 
 import org.jetlinks.core.message.property.WritePropertyMessage;
 import org.jetlinks.core.message.property.WritePropertyMessageReply;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /**
  * 修改设备属性消息发送器
@@ -18,36 +17,67 @@ import java.util.function.Supplier;
  */
 public interface WritePropertyMessageSender {
 
-    /**
-     * 设置要修改的属性
-     *
-     * @param property 属性
-     * @param value    值
-     * @return this
-     */
+    WritePropertyMessageSender custom(Consumer<WritePropertyMessage> messageConsumer);
+
+    WritePropertyMessageSender header(String header, Object value);
+
+    WritePropertyMessageSender messageId(String messageId);
+
     WritePropertyMessageSender write(String property, Object value);
 
     /**
-     * 自定义消息
+     * 发送消息
      *
-     * @param messageConsumer consumer
-     * @return this
+     * @return 返回结果
+     * @see org.jetlinks.core.exception.DeviceOperationException
+     * @see org.jetlinks.core.enums.ErrorCode#CLIENT_OFFLINE
      */
-    WritePropertyMessageSender custom(Consumer<WritePropertyMessage> messageConsumer);
+    Flux<WritePropertyMessageReply> send();
 
-    default WritePropertyMessageSender timeout(int timeoutSeconds) {
-        return custom(message -> message.addHeader("timeout", timeoutSeconds));
+    default WritePropertyMessageSender write(Map<String, Object> properties) {
+
+        properties.forEach(this::write);
+
+        return this;
+    }
+
+
+    default WritePropertyMessageSender accept(Consumer<WritePropertyMessageSender> consumer) {
+        consumer.accept(this);
+        return this;
+    }
+
+    default WritePropertyMessageSender timeout(Duration timeout) {
+        return header(Headers.timeout, timeout.toMillis());
     }
 
     /**
-     * 添加header到message中
+     * 设置调用此功能为异步执行, 当消息发送到设备后,立即返回{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING},而不等待设备返回结果.
      *
-     * @param header header
-     * @param value  值
+     * <code>{"success":true,"code":"REQUEST_HANDLING"}</code>
+     *
      * @return this
-     * @see DeviceMessage#addHeader(String, Object)
+     * @see Headers#async
      */
-    WritePropertyMessageSender header(String header, Object value);
+    default WritePropertyMessageSender async() {
+        return this.async(true);
+    }
+
+    /**
+     * 设置是否异步
+     *
+     * @param async 是否异步
+     * @return this
+     * @see this#async(Boolean)
+     * @see Headers#async
+     */
+    default WritePropertyMessageSender async(Boolean async) {
+        return header(Headers.async, async);
+    }
+
+    default <T> WritePropertyMessageSender header(HeaderKey<T> header, T value) {
+        return header(header.getKey(), value);
+    }
 
     /**
      * 添加多个header到message中
@@ -56,42 +86,13 @@ public interface WritePropertyMessageSender {
      * @return this
      * @see this#header(String, Object)
      * @see DeviceMessage#addHeader(String, Object)
+     * @see Headers
      */
     default WritePropertyMessageSender headers(Map<String, Object> headers) {
         Objects.requireNonNull(headers)
                 .forEach(this::header);
         return this;
     }
-
-    /**
-     * 将整个map设置为要修改的属性
-     *
-     * @param properties map属性列表
-     * @return this
-     */
-    default WritePropertyMessageSender write(Map<String, Object> properties) {
-        properties.forEach(this::write);
-        return this;
-    }
-
-    /**
-     * 尝试重新获取返回值
-     *
-     * @return 获取结果
-     * @see org.jetlinks.core.device.DeviceMessageSender#retrieveReply(String, Supplier)
-     * @see org.jetlinks.core.enums.ErrorCode#NO_REPLY
-     */
-    Mono<WritePropertyMessageReply> retrieveReply();
-
-    /**
-     * 执行发送
-     *
-     * @return 异步完成阶段
-     * @see org.jetlinks.core.device.DeviceMessageSender#send(RepayableDeviceMessage)
-     * @see CompletionStage
-     * @see CompletionStage#toCompletableFuture()
-     */
-    Mono<WritePropertyMessageReply> send();
 
 
 }

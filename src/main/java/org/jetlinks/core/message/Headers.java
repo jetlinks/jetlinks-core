@@ -1,52 +1,28 @@
 package org.jetlinks.core.message;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.jetlinks.core.metadata.DefaultValueWrapper;
-import org.jetlinks.core.metadata.NullValueWrapper;
-import org.jetlinks.core.metadata.ValueWrapper;
+import java.util.concurrent.TimeUnit;
 
-import java.util.function.Consumer;
-
-@Getter
-@AllArgsConstructor
-public enum Headers {
-    /**
-     * 强制回复,忽略是否异步消息
-     */
-    forceReply("force-reply", true),
+public interface Headers {
 
     /**
-     * 是否支持异步
-     *
-     * @see org.jetlinks.core.message.function.FunctionInvokeMessageReply
+     * 强制回复消息
      */
-    asyncSupport("async-support", true),
+    HeaderKey<Boolean> forceReply = HeaderKey.of("force-reply", true);
 
-    /**
-     * 是否异步
-     *
-     * @see FunctionInvokeMessageSender#async()
-     */
-    async("async", true);
+    HeaderKey<Boolean> asyncSupport = HeaderKey.of("async-support", false);
 
-    private final String header;
-    private final Object value;
+    HeaderKey<Boolean> async = HeaderKey.of("async", false);
 
-    public ValueWrapper get(DeviceMessage message) {
-        if (message == null) {
-            return NullValueWrapper.instance;
-        }
-        return message.getHeader(getHeader())
-                .<ValueWrapper>map(DefaultValueWrapper::new)
-                .orElse(NullValueWrapper.instance);
-    }
+    HeaderKey<Long> timeout = HeaderKey.of("timeout", TimeUnit.SECONDS.toMillis(10));
 
-    public <T extends DeviceMessage> Consumer<T> setter() {
-        return message -> message.addHeader(header, value);
-    }
+    //******** 分片**********
+    HeaderKey<Boolean> sharding = HeaderKey.of("sharding", false);
 
-    public <T extends DeviceMessage> Consumer<T> clear() {
-        return message -> message.removeHeader(header);
-    }
+    HeaderKey<String> partMessageId = HeaderKey.of("part_msg_id", null);
+
+    HeaderKey<Integer> shardingPart = HeaderKey.of("sharding_parts_of", 0);
+
+    HeaderKey<Integer> shardingPartTotal = HeaderKey.of("sharding_parts_total", 0);
+
+
 }

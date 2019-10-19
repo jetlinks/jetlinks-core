@@ -11,7 +11,9 @@ import reactor.core.publisher.Mono;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface DeviceProductOperation extends Configurable {
+public interface DeviceProductOperator extends Configurable {
+
+    String getId();
 
     /**
      * @return 设备产品型号元数据信息
@@ -23,19 +25,7 @@ public interface DeviceProductOperation extends Configurable {
      *
      * @param metadata 元数据信息
      */
-    Mono<Void> updateMetadata(String metadata);
-
-    /**
-     * @return 设备产品信息
-     */
-    Mono<DeviceProductInfo> getInfo();
-
-    /**
-     * 更新产品信息
-     *
-     * @param info 设备产品信息
-     */
-    Mono<Void> update(DeviceProductInfo info);
+    Mono<Boolean> updateMetadata(String metadata);
 
     /**
      * @return 获取协议支持

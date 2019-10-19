@@ -1,7 +1,9 @@
 package org.jetlinks.core.message.codec;
 
-public interface ToDeviceMessageContext extends MessageEncodeContext{
-    void sendToDevice(EncodedMessage message);
+import reactor.core.publisher.Mono;
 
-    void disconnect();
+public interface ToDeviceMessageContext extends MessageEncodeContext {
+    Mono<Void> sendToDevice(EncodedMessage message);
+
+    Mono<Void> disconnect();
 }

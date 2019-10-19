@@ -1,13 +1,21 @@
 package org.jetlinks.core.message.codec;
 
-/**
- * @author zhouhao
- * @since 1.0.0
- */
-public enum Transport {
-    MQTT,
-    UDP,
-    CoAP,
-    TCP,
-    HTTP
+public interface Transport {
+    String getId();
+
+    default String getName() {
+        return getId();
+    }
+
+    default String getDescription() {
+        return null;
+    }
+
+    default boolean isSame(Transport transport) {
+        return this == transport || this.getId().equals(transport.getId());
+    }
+
+    default boolean isSame(String transportId) {
+        return this.getId().equals(transportId);
+    }
 }

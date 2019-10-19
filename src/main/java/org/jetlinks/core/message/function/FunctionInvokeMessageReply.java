@@ -19,9 +19,9 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
 
     private Object output;
 
-    public FunctionInvokeMessageReply(){
+    public FunctionInvokeMessageReply() {
         //默认支持异步
-        Headers.asyncSupport.setter().accept(this);
+        addHeader(Headers.asyncSupport, true);
     }
 
     public static FunctionInvokeMessageReply create() {
@@ -36,7 +36,7 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
         return this;
     }
 
-    public FunctionInvokeMessageReply output(Object output){
+    public FunctionInvokeMessageReply output(Object output) {
         this.setOutput(output);
         return this;
     }

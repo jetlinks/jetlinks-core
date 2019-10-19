@@ -27,7 +27,11 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
     private List<FunctionParameter> inputs = new ArrayList<>();
 
     public FunctionInvokeMessage addInput(String name, Object value) {
-        inputs.add(new FunctionParameter(name, value));
+        return this.addInput(new FunctionParameter(name, value));
+    }
+
+    public FunctionInvokeMessage addInput(FunctionParameter parameter) {
+        inputs.add(parameter);
         return this;
     }
 

@@ -19,8 +19,6 @@ import javax.annotation.Nonnull;
 public interface ProtocolSupport {
     /**
      * @return 协议ID
-     * @see DeviceInfo#getProtocol()
-     * @see DeviceProductInfo#getProtocol()
      */
     @Nonnull
     String getId();
@@ -72,6 +70,6 @@ public interface ProtocolSupport {
      */
     @Nonnull
     Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
-                      @Nonnull DeviceOperation deviceOperation);
+                      @Nonnull DeviceOperator deviceOperation);
 
 }

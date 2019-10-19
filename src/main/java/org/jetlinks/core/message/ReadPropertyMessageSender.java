@@ -2,16 +2,14 @@ package org.jetlinks.core.message;
 
 import org.jetlinks.core.message.property.ReadPropertyMessage;
 import org.jetlinks.core.message.property.ReadPropertyMessageReply;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /**
  * 读取设备属性消息发送器
@@ -23,73 +21,63 @@ import java.util.function.Supplier;
  */
 public interface ReadPropertyMessageSender {
 
-    /**
-     * 自定义消息
-     *
-     * @param messageConsumer consumer
-     * @return this
-     */
     ReadPropertyMessageSender custom(Consumer<ReadPropertyMessage> messageConsumer);
 
+    ReadPropertyMessageSender header(String header, Object value);
+
+    ReadPropertyMessageSender messageId(String messageId);
+
     /**
-     * 设置要读取的属性列表
+     * 发送消息
      *
-     * @param property 属性列表
-     * @return this
-     * @see this#read(List)
+     * @return 返回结果
+     * @see org.jetlinks.core.exception.DeviceOperationException
+     * @see org.jetlinks.core.enums.ErrorCode#CLIENT_OFFLINE
      */
+    Flux<ReadPropertyMessageReply> send();
+
+    ReadPropertyMessageSender read(Collection<String> property);
+
     default ReadPropertyMessageSender read(String... property) {
         return read(Arrays.asList(property));
     }
 
+    default ReadPropertyMessageSender accept(Consumer<ReadPropertyMessageSender> consumer) {
+        consumer.accept(this);
+        return this;
+    }
+
+    default ReadPropertyMessageSender timeout(Duration timeout) {
+        return header(Headers.timeout, timeout.toMillis());
+    }
+
     /**
-     * 指定messageId,如果不指定,将使用uuid生成一个.
-     * <p>
-     * ⚠️ messageId 应该全局唯一,且不能消息16位
+     * 设置调用此功能为异步执行, 当消息发送到设备后,立即返回{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING},而不等待设备返回结果.
      *
-     * @param messageId messageId
+     * <code>{"success":true,"code":"REQUEST_HANDLING"}</code>
+     *
      * @return this
+     * @see Headers#async
      */
-    ReadPropertyMessageSender messageId(String messageId);
+    default ReadPropertyMessageSender async() {
+        return this.async(true);
+    }
 
     /**
-     * 设置要读取的属性列表
+     * 设置是否异步
      *
-     * @param properties 属性列表
+     * @param async 是否异步
      * @return this
-     * @see this#read(List)
+     * @see this#async(Boolean)
+     * @see Headers#async
      */
-    ReadPropertyMessageSender read(List<String> properties);
+    default ReadPropertyMessageSender async(Boolean async) {
+        return header(Headers.async, async);
+    }
 
-    /**
-     * 执行发送,如果获取结果超时,只有手动调用{@link CompletableFuture#cancel(boolean)}取消获取,
-     * 之后才能通过{@link this#retrieveReply()}重新获取结果.
-     *
-     * @return 异步完成阶段
-     * @see org.jetlinks.core.device.DeviceMessageSender#send(RepayableDeviceMessage)
-     * @see CompletionStage
-     * @see CompletionStage#toCompletableFuture()
-     */
-    Mono<ReadPropertyMessageReply> send();
-
-    /**
-     * 尝试重新获取返回值
-     *
-     * @return 获取结果
-     * @see org.jetlinks.core.device.DeviceMessageSender#retrieveReply(String, Supplier)
-     * @see org.jetlinks.core.enums.ErrorCode#NO_REPLY
-     */
-    Mono<ReadPropertyMessageReply> retrieveReply();
-
-    /**
-     * 添加header到message中
-     *
-     * @param header header
-     * @param value  值
-     * @return this
-     * @see DeviceMessage#addHeader(String, Object)
-     */
-    ReadPropertyMessageSender header(String header, Object value);
+    default <T> ReadPropertyMessageSender header(HeaderKey<T> header, T value) {
+        return header(header.getKey(), value);
+    }
 
     /**
      * 添加多个header到message中
@@ -98,15 +86,12 @@ public interface ReadPropertyMessageSender {
      * @return this
      * @see this#header(String, Object)
      * @see DeviceMessage#addHeader(String, Object)
+     * @see Headers
      */
     default ReadPropertyMessageSender headers(Map<String, Object> headers) {
         Objects.requireNonNull(headers)
                 .forEach(this::header);
         return this;
-    }
-
-    default ReadPropertyMessageSender timeout(int timeoutSeconds) {
-        return custom(message -> message.addHeader("timeout", timeoutSeconds));
     }
 
 }

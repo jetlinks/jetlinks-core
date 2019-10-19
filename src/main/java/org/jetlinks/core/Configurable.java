@@ -1,10 +1,13 @@
 package org.jetlinks.core;
 
-import org.jetlinks.core.metadata.ValueWrapper;
+import org.jetlinks.core.config.ConfigKey;
+import org.jetlinks.core.config.ConfigKeyValue;
 import reactor.core.publisher.Mono;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 /**
  * 可配置接口
@@ -19,26 +22,11 @@ public interface Configurable {
      *
      * @param key key
      * @return 结果包装器, 不会为null
-     * @see ValueWrapper#value()
+     * @see Value#get()
      */
-    Mono<ValueWrapper> get(String key);
+    Mono<Value> getConfig(String key);
 
-    /**
-     * 获取多个配置,如果未指定key,则获取全部配置
-     *
-     * @param key key
-     * @return 所有配置结果集合
-     */
-    Mono<Map<String, Object>> getAll(String... key);
-
-    /**
-     * 异步获取全部配置
-     *
-     * @param key 配置key
-     * @return value
-     */
-    @Deprecated
-    CompletionStage<Map<String, Object>> getAllAsync(String... key);
+    Mono<Values> getConfigs(Collection<String> keys);
 
     /**
      * 设置一个配置,配置最好以基本数据类型或者json为主
@@ -46,14 +34,55 @@ public interface Configurable {
      * @param key   配置key
      * @param value 值 不能为null
      */
-    Mono<Void> put(String key, Object value);
+    Mono<Boolean> setConfig(String key, Object value);
+
+    default Mono<Boolean> setConfig(ConfigKeyValue keyValue) {
+        return setConfig(keyValue.getKey(), keyValue.getValue());
+    }
+
+    default <T> Mono<Boolean> setConfig(ConfigKey<T> key, T value) {
+        return setConfig(key.getKey(), value);
+    }
+
+    default Mono<Boolean> setConfigs(ConfigKeyValue... keyValues) {
+        return setConfigs(Arrays.stream(keyValues)
+                .filter(ConfigKeyValue::isNotNull)
+                .collect(Collectors.toMap(ConfigKeyValue::getKey, ConfigKeyValue::getValue)));
+    }
+
+    default <V> Mono<V> getConfig(ConfigKey<V> key) {
+        return getConfig(key.getKey())
+                .map(value -> value.as(key.getType()));
+    }
+
+    default <V> Mono<Values> getConfigs(ConfigKey<V>... key) {
+        return getConfigs(Arrays.stream(key)
+                .map(ConfigKey::getKey)
+                .collect(Collectors.toSet()));
+    }
+
+    /**
+     * 获取多个配置,如果未指定key,则获取全部配置
+     *
+     * @return 所有配置结果集合
+     */
+    default Mono<Values> getConfigs(String... keys) {
+        return getConfigs(Arrays.asList(keys));
+    }
 
     /**
      * 批量设置配置
      *
      * @param conf 配置内容
      */
-    Mono<Void> putAll(Map<String, Object> conf);
+    Mono<Boolean> setConfigs(Map<String, Object> conf);
+
+    /**
+     * 删除配置
+     *
+     * @param key key
+     */
+    Mono<Boolean> removeConfig(String key);
 
     /**
      * 删除配置
@@ -61,6 +90,11 @@ public interface Configurable {
      * @param key key
      * @return 被删除的值，不存在则返回empty
      */
-    Mono<Object> remove(String key);
+    Mono<Boolean> removeConfigs(Collection<String> key);
+
+    default Mono<Boolean> removeConfigs(ConfigKey... key) {
+        return removeConfigs(Arrays.stream(key).map(ConfigKey::getKey).collect(Collectors.toSet()));
+    }
+
 
 }

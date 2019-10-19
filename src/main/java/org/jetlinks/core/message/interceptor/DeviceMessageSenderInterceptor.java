@@ -1,8 +1,10 @@
 package org.jetlinks.core.message.interceptor;
 
-import org.jetlinks.core.device.DeviceOperation;
+import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.DeviceMessageReply;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.concurrent.CompletionStage;
 
@@ -22,7 +24,7 @@ public interface DeviceMessageSenderInterceptor {
      * @param message 消息对象
      * @return 新的消息
      */
-    DeviceMessage preSend(DeviceOperation device, DeviceMessage message);
+    Mono<DeviceMessage> preSend(DeviceOperator device, DeviceMessage message);
 
     /**
      * 在消息收到回复后触发,并返回新的值.
@@ -33,6 +35,6 @@ public interface DeviceMessageSenderInterceptor {
      * @param <R>     回复的消息类型
      * @return 新的回复结果
      */
-    <R extends DeviceMessageReply> CompletionStage<R> afterReply(DeviceOperation device, DeviceMessage message, R reply);
+    <R extends DeviceMessageReply> Flux<R> afterReply(DeviceOperator device, DeviceMessage message, R reply);
 
 }

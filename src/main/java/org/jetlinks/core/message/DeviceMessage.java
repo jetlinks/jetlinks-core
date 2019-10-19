@@ -34,6 +34,10 @@ public interface DeviceMessage extends Jsonable, Serializable {
      */
     DeviceMessage addHeader(String header, Object value);
 
+    default <T> DeviceMessage addHeader(HeaderKey<T> header, Object value) {
+        return addHeader(header.getKey(), value);
+    }
+
     /**
      * 删除一个header
      *
@@ -42,6 +46,11 @@ public interface DeviceMessage extends Jsonable, Serializable {
      * @see Headers
      */
     DeviceMessage removeHeader(String header);
+
+    default <T> Optional<T> getHeader(HeaderKey<T> key) {
+        return getHeader(key.getKey())
+                .map(v -> (T) v);
+    }
 
     default Optional<Object> getHeader(String header) {
         return Optional.ofNullable(getHeaders())

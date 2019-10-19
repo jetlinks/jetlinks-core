@@ -31,7 +31,7 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
 
     private String deviceId;
 
-    private long timestamp;
+    private long timestamp = System.currentTimeMillis();
 
     private Map<String, Object> headers;
 
@@ -105,6 +105,11 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     public ME messageId(String messageId) {
         this.messageId = messageId;
         return (ME) this;
+    }
+
+    @Override
+    public <T> ME addHeader(HeaderKey<T> header, Object value) {
+        return (ME) DeviceMessageReply.super.addHeader(header, value);
     }
 
     @Override

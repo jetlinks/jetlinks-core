@@ -1,23 +1,16 @@
 package org.jetlinks.core.message;
 
-import io.vavr.control.Try;
-import org.jetlinks.core.message.exception.IllegalParameterException;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.function.FunctionParameter;
-import org.jetlinks.core.metadata.PropertyMetadata;
-import org.jetlinks.core.metadata.ValidateResult;
 import reactor.core.publisher.Flux;
-import reactor.util.function.Tuple2;
+import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /**
  * 调用设备功能的消息发送器
@@ -29,57 +22,58 @@ import java.util.function.Supplier;
  * @since 1.0.0
  */
 public interface FunctionInvokeMessageSender {
-
-    /**
-     * 自定义消息
-     *
-     * @param messageConsumer consumer
-     * @return this
-     */
     FunctionInvokeMessageSender custom(Consumer<FunctionInvokeMessage> messageConsumer);
 
-    /**
-     * 添加功能参数
-     *
-     * @param name  参数名 {@link FunctionParameter#getName()}
-     * @param value 参数值 {@link FunctionParameter#getValue()}
-     * @return this
-     * @see FunctionParameter
-     */
-    FunctionInvokeMessageSender addParameter(String name, Object value);
+    FunctionInvokeMessageSender header(String header, Object value);
 
-    /**
-     * 设置参数列表
-     *
-     * @param parameter 参数列表
-     * @return this
-     * @see FunctionParameter
-     */
+    FunctionInvokeMessageSender addParameter(FunctionParameter parameter);
+
     FunctionInvokeMessageSender setParameter(List<FunctionParameter> parameter);
 
+    FunctionInvokeMessageSender messageId(String messageId);
+
     /**
-     * 将整个map设置到参数列表
+     * 执行参数校验
+     * <pre>
+     *     function("door-open")
+     *     .validate()
+     *     .flatMany(FunctionInvokeMessageSender::send)
+     *     .doOnError(IllegalParameterException.class,err->log.error(err.getMessage(),err))
+     *     ...
+     * </pre>
      *
-     * @param parameter map 参数
-     * @return this
+     * @see Mono#doOnError(Consumer)
+     * @see org.jetlinks.core.message.exception.IllegalParameterException
+     * @see org.jetlinks.core.message.exception.FunctionUndefinedException
+     * @see org.jetlinks.core.message.exception.FunctionIllegalParameterException
      */
+    Mono<FunctionInvokeMessageSender> validate();
+
+    /**
+     * 发送消息
+     *
+     * @return 返回结果
+     * @see org.jetlinks.core.exception.DeviceOperationException
+     * @see org.jetlinks.core.enums.ErrorCode#CLIENT_OFFLINE
+     */
+    Flux<FunctionInvokeMessageReply> send();
+
+    default FunctionInvokeMessageSender accept(Consumer<FunctionInvokeMessageSender> consumer) {
+        consumer.accept(this);
+        return this;
+    }
+
+    default FunctionInvokeMessageSender addParameter(String name, Object value) {
+        return addParameter(new FunctionParameter(name, value));
+    }
+
     default FunctionInvokeMessageSender setParameter(Map<String, Object> parameter) {
         parameter.forEach(this::addParameter);
         return this;
     }
 
-    /**
-     * 指定messageId,如果不指定,将使用uuid生成一个.
-     * <p>
-     * ⚠️ messageId 应该全局唯一
-     *
-     * @param messageId messageId
-     * @return this
-     */
-    FunctionInvokeMessageSender messageId(String messageId);
-
-    default FunctionInvokeMessageSender timeout(int timeoutSeconds) {
-        return custom(message -> message.addHeader("timeout", timeoutSeconds));
+    default FunctionInvokeMessageSender timeout(Duration timeout) {
+        return header(Headers.timeout, timeout.toMillis());
     }
 
     /**
@@ -102,18 +96,13 @@ public interface FunctionInvokeMessageSender {
      * @see this#async(Boolean)
      * @see Headers#async
      */
-    FunctionInvokeMessageSender async(Boolean async);
+    default FunctionInvokeMessageSender async(Boolean async) {
+        return header(Headers.async, async);
+    }
 
-    /**
-     * 添加header到message中
-     *
-     * @param header header
-     * @param value  值
-     * @return this
-     * @see DeviceMessage#addHeader(String, Object)
-     * @see Headers
-     */
-    FunctionInvokeMessageSender header(String header, Object value);
+    default <T> FunctionInvokeMessageSender header(HeaderKey<T> header, T value) {
+        return header(header.getKey(), value);
+    }
 
     /**
      * 添加多个header到message中
@@ -129,62 +118,5 @@ public interface FunctionInvokeMessageSender {
                 .forEach(this::header);
         return this;
     }
-
-    /**
-     * 执行参数校验
-     *
-     * @param resultConsumer 校验结果回调
-     * @return this
-     * @see PropertyMetadata#getValueType()
-     * @see org.jetlinks.core.metadata.DataType#validate(Object)
-     * @see IllegalArgumentException
-     */
-    Flux<Tuple2<FunctionParameter, ValidateResult>> validate(BiConsumer<FunctionParameter, ValidateResult> resultConsumer);
-
-    /**
-     * @return this
-     * @see this#validate(BiConsumer)
-     * @see IllegalArgumentException
-     */
-    default FunctionInvokeMessageSender validate() throws IllegalParameterException {
-        validate((functionParameter, validateResult) -> validateResult.ifFail(r -> {
-            throw new IllegalParameterException(functionParameter.getName(), validateResult.getErrorMsg());
-        }));
-        return this;
-    }
-
-    /**
-     * 执行发送
-     *
-     * @return 异步完成阶段
-     * @see org.jetlinks.core.device.DeviceMessageSender#send(RepayableDeviceMessage)
-     * @see CompletionStage
-     * @see CompletionStage#toCompletableFuture()
-     * @see java.util.concurrent.CompletableFuture#get(long, TimeUnit)
-     */
-    Flux<FunctionInvokeMessageReply> send();
-
-    /**
-     * 尝试重新获取返回值
-     *
-     * @return 获取结果
-     * @see org.jetlinks.core.device.DeviceMessageSender#retrieveReply(String, Supplier)
-     * @see org.jetlinks.core.enums.ErrorCode#NO_REPLY
-     */
-    CompletionStage<FunctionInvokeMessageReply> retrieveReply();
-
-    /**
-     * 请看{@link this#retrieveReply()} 和 {@link Try}
-     *
-     * @param timeout  超时时间
-     * @param timeUnit 超时时间单位
-     * @return Try
-     * @see this#retrieveReply()
-     */
-    default Try<FunctionInvokeMessageReply> tryRetrieveReply(long timeout, TimeUnit timeUnit) {
-        return Try.of(() -> this.retrieveReply().toCompletableFuture().get(timeout, timeUnit));
-    }
-
-
 
 }

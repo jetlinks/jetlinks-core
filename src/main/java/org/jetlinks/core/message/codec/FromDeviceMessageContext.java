@@ -1,13 +1,15 @@
 package org.jetlinks.core.message.codec;
 
 
+import reactor.core.publisher.Mono;
+
 /**
  * @author zhouhao
  * @since 1.0.0
  */
 public interface FromDeviceMessageContext extends MessageDecodeContext {
 
-    void sendToDevice(EncodedMessage message);
+    Mono<Void> sendToDevice(EncodedMessage message);
 
-    void disconnect();
+    Mono<Void> disconnect();
 }

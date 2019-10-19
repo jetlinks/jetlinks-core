@@ -29,4 +29,13 @@ public interface DeviceMessageReply extends DeviceMessage {
     DeviceMessageReply from(DeviceMessage message);
 
     DeviceMessageReply messageId(String messageId);
+
+    @Override
+    DeviceMessageReply addHeader(String header, Object value);
+
+    @Override
+    default <T> DeviceMessageReply addHeader(HeaderKey<T> header, Object value) {
+        addHeader(header.getKey(), value);
+        return this;
+    }
 }

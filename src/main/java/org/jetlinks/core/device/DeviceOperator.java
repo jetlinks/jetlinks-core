@@ -14,7 +14,7 @@ import java.util.function.Consumer;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface DeviceOperation extends Configurable {
+public interface DeviceOperator extends Configurable {
 
     /**
      * @return 设备ID
@@ -24,7 +24,7 @@ public interface DeviceOperation extends Configurable {
     /**
      * @return 当前设备连接所在服务器ID，如果设备未上线{@link DeviceState#online}，则返回{@link null}
      */
-    Mono<String> getServerId();
+    Mono<String> getConnectionServerId();
 
     /**
      * @return 当前设备连接会话ID
@@ -35,7 +35,7 @@ public interface DeviceOperation extends Configurable {
      * @param state 状态
      * @see DeviceState#online
      */
-    Mono<Void> putState(byte state);
+    Mono<Boolean> putState(byte state);
 
     /**
      * @return 获取当前状态
@@ -46,7 +46,7 @@ public interface DeviceOperation extends Configurable {
     /**
      * 检查设备的真实状态
      *
-     * @see org.jetlinks.core.device.registry.DeviceMessageHandler#handleDeviceCheck(String, Consumer)
+     * @see DeviceMessageHandler#handleDeviceCheck(String, Consumer)
      */
     Mono<Byte> checkState();
 
@@ -66,7 +66,7 @@ public interface DeviceOperation extends Configurable {
      * @param serverId  设备所在服务ID
      * @param sessionId 会话ID
      */
-    Mono<Void> online(String serverId, String sessionId);
+    Mono<Boolean> online(String serverId, String sessionId);
 
     /**
      * @return 是否在线
@@ -82,7 +82,7 @@ public interface DeviceOperation extends Configurable {
      *
      * @see DeviceState#offline
      */
-    Mono<Void> offline();
+    Mono<Boolean> offline();
 
     /**
      * 断开设备连接
@@ -116,22 +116,10 @@ public interface DeviceOperation extends Configurable {
     DeviceMessageSender messageSender();
 
     /**
-     * @return 获取设备的基本信息
-     */
-    Mono<DeviceInfo> getDeviceInfo();
-
-    /**
-     * 更新设备基本信息
-     *
-     * @param deviceInfo 设备信息
-     */
-    Mono<Void> update(DeviceInfo deviceInfo);
-
-    /**
      * 更新元数据
      *
      * @param metadata 元数据
      */
-    Mono<Void> updateMetadata(String metadata);
+    Mono<Boolean> updateMetadata(String metadata);
 
 }
