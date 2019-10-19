@@ -32,7 +32,7 @@ public class DefaultDeviceOperatorTest {
     @Test
     public void testMessageSend() {
 
-        deviceMessageHandler.handleMessage("test", deviceMessage -> {
+        deviceMessageHandler.handleDeviceMessage("test", deviceMessage -> {
             deviceMessageHandler
                     .reply(((RepayableDeviceMessage) deviceMessage).newReply().success())
                     .subscribe();
@@ -68,12 +68,12 @@ public class DefaultDeviceOperatorTest {
     @Test
     public void testMessageSendPartingReply() {
 
-        deviceMessageHandler.handleMessage("test", deviceMessage -> Flux.range(0, 5)
+        deviceMessageHandler.handleDeviceMessage("test", deviceMessage -> Flux.range(0, 5)
                 .map(i -> ((RepayableDeviceMessage) deviceMessage).newReply()
                         .messageId(IdUtils.newUUID())
-                        .addHeader(Headers.partMessageId, deviceMessage.getMessageId())
-                        .addHeader(Headers.shardingPartTotal, 5)
-                        .addHeader(Headers.shardingPart, i)
+                        .addHeader(Headers.fragmentBodyMessageId, deviceMessage.getMessageId())
+                        .addHeader(Headers.fragmentNumber, 5)
+                        .addHeader(Headers.fragmentPart, i)
                         .success())
                 .delayElements(Duration.ofMillis(500))
                 .flatMap(deviceMessageHandler::reply)

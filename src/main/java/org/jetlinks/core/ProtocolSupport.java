@@ -69,7 +69,8 @@ public interface ProtocolSupport {
      * @see MqttAuthenticationRequest
      */
     @Nonnull
-    Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
-                      @Nonnull DeviceOperator deviceOperation);
+    Mono<AuthenticationResponse> authenticate(
+            @Nonnull AuthenticationRequest request,
+            @Nonnull DeviceOperator deviceOperation);
 
 }

@@ -26,7 +26,7 @@ public interface DeviceMessageReply extends DeviceMessage {
 
     DeviceMessageReply message(String message);
 
-    DeviceMessageReply from(DeviceMessage message);
+    DeviceMessageReply from(Message message);
 
     DeviceMessageReply messageId(String messageId);
 

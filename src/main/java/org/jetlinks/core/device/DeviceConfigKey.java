@@ -8,10 +8,14 @@ import org.jetlinks.core.config.ConfigKey;
 @Getter
 public enum DeviceConfigKey implements ConfigKey<String> {
     id("ID"),
+
     metadata("元数据"),
+
     productId("产品ID"),
 
     protocol("消息协议"),
+
+    gatewayDeviceId("网关设备ID"),
 
     connectionServerId("当前设备连接的设备ID"),
 

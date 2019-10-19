@@ -1,9 +1,7 @@
 package org.jetlinks.core.device;
 
 import lombok.Setter;
-import org.jetlinks.core.message.DeviceMessage;
-import org.jetlinks.core.message.DeviceMessageReply;
-import org.jetlinks.core.message.Headers;
+import org.jetlinks.core.message.*;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
@@ -22,13 +20,11 @@ import java.util.stream.Collectors;
 
 public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
 
-    private Map<String, Consumer<DeviceMessage>> messageHandlers = new ConcurrentHashMap<>();
+    private Map<String, Consumer<Message>> messageHandlers = new ConcurrentHashMap<>();
 
     private Map<String, EmitterProcessor<DeviceMessageReply>> replyProcessor = new ConcurrentHashMap<>();
 
     private Map<String, AtomicInteger> partCache = new ConcurrentHashMap<>();
-
-    private Map<String, Consumer<String>> deviceCheckHandler = new ConcurrentHashMap<>();
 
     @Setter
     private ReplyFailureHandler handler;
@@ -40,7 +36,7 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
     }
 
     @Override
-    public void handleMessage(String serverId, Consumer<DeviceMessage> deviceMessageConsumer) {
+    public void handleDeviceMessage(String serverId, Consumer<Message> deviceMessageConsumer) {
         messageHandlers.put(serverId, deviceMessageConsumer);
     }
 
@@ -57,7 +53,7 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
 
             String messageId = message.getMessageId();
 
-            String partMsgId = message.getHeader(Headers.partMessageId).orElse(null);
+            String partMsgId = message.getHeader(Headers.fragmentBodyMessageId).orElse(null);
             if (partMsgId != null) {
                 EmitterProcessor<DeviceMessageReply> processor = replyProcessor.getOrDefault(partMsgId, replyProcessor.get(messageId));
 
@@ -68,7 +64,7 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
                     replyProcessor.remove(partMsgId);
                     return Mono.just(false);
                 }
-                int partTotal = message.getHeader(Headers.shardingPartTotal).orElse(1);
+                int partTotal = message.getHeader(Headers.fragmentNumber).orElse(1);
                 AtomicInteger counter = partCache.computeIfAbsent(partMsgId, ignore -> new AtomicInteger(partTotal));
 
                 processor.onNext(message);
@@ -99,7 +95,7 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
     }
 
     @Override
-    public Mono<Integer> send(String serverId, Publisher<? extends DeviceMessage> message) {
+    public Mono<Integer> send(String serverId, Publisher<? extends Message> message) {
 
         return Mono.justOrEmpty(messageHandlers.get(serverId))
                 .flatMap(c -> Flux.from(message)
@@ -107,5 +103,11 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
                         .then(Mono.just(1)))
                 .defaultIfEmpty(0);
 
+    }
+
+    @Override
+    public Mono<Integer> send(Publisher<? extends BroadcastMessage> message) {
+        // TODO: 2019-10-19 发送广播消息
+        return Mono.just(0);
     }
 }

@@ -1,6 +1,6 @@
 package org.jetlinks.core.message.codec;
 
-import org.jetlinks.core.message.DeviceMessage;
+import org.jetlinks.core.message.Message;
 
 /**
  * @author zhouhao
@@ -8,7 +8,7 @@ import org.jetlinks.core.message.DeviceMessage;
  */
 public interface MessageEncodeContext extends MessageCodecContext {
 
-    DeviceMessage getMessage();
+    Message getMessage();
 
 
 }

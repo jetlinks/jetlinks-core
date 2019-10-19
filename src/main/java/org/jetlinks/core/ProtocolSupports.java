@@ -7,5 +7,8 @@ import reactor.core.publisher.Mono;
  * @since 1.0.0
  */
 public interface ProtocolSupports {
+
+    boolean isSupport(String protocol);
+
     Mono<ProtocolSupport> getProtocol(String protocol);
 }

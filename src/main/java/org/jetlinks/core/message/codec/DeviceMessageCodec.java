@@ -1,6 +1,6 @@
 package org.jetlinks.core.message.codec;
 
-import org.jetlinks.core.message.DeviceMessage;
+import org.jetlinks.core.message.Message;
 import reactor.core.publisher.Mono;
 
 /**
@@ -32,5 +32,5 @@ public interface DeviceMessageCodec {
      * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
      * @see org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor
      */
-    Mono<DeviceMessage> decode(Transport transport, MessageDecodeContext context);
+    Mono<? extends Message> decode(Transport transport, MessageDecodeContext context);
 }

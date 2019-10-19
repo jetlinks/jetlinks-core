@@ -95,9 +95,12 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     }
 
     @Override
-    public ME from(DeviceMessage message) {
+    public ME from(Message message) {
         this.messageId = message.getMessageId();
-        this.deviceId = message.getDeviceId();
+        if (message instanceof DeviceMessage) {
+            this.deviceId = ((DeviceMessage) message).getDeviceId();
+        }
+
         return (ME) this;
     }
 

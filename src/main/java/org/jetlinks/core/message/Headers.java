@@ -15,14 +15,13 @@ public interface Headers {
 
     HeaderKey<Long> timeout = HeaderKey.of("timeout", TimeUnit.SECONDS.toMillis(10));
 
-    //******** 分片**********
-    HeaderKey<Boolean> sharding = HeaderKey.of("sharding", false);
-
-    HeaderKey<String> partMessageId = HeaderKey.of("part_msg_id", null);
-
-    HeaderKey<Integer> shardingPart = HeaderKey.of("sharding_parts_of", 0);
-
-    HeaderKey<Integer> shardingPartTotal = HeaderKey.of("sharding_parts_total", 0);
+    //******** 分片 **********
+    //分片消息ID
+    HeaderKey<String> fragmentBodyMessageId = HeaderKey.of("frag_msg_id", null);
+    //当前分片
+    HeaderKey<Integer> fragmentPart = HeaderKey.of("frg_part", 0);
+    //分片数量
+    HeaderKey<Integer> fragmentNumber = HeaderKey.of("frg_num", 0);
 
 
 }

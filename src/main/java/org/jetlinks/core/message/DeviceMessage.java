@@ -10,50 +10,9 @@ import java.util.Optional;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface DeviceMessage extends Jsonable, Serializable {
-
-    String getMessageId();
+public interface DeviceMessage extends Message, Jsonable, Serializable {
 
     String getDeviceId();
 
     long getTimestamp();
-
-    /**
-     * @return headers or null
-     * @see Headers
-     */
-    Map<String, Object> getHeaders();
-
-    /**
-     * 添加一个header
-     *
-     * @param header header
-     * @param value  value
-     * @return this
-     * @see Headers
-     */
-    DeviceMessage addHeader(String header, Object value);
-
-    default <T> DeviceMessage addHeader(HeaderKey<T> header, Object value) {
-        return addHeader(header.getKey(), value);
-    }
-
-    /**
-     * 删除一个header
-     *
-     * @param header header
-     * @return this
-     * @see Headers
-     */
-    DeviceMessage removeHeader(String header);
-
-    default <T> Optional<T> getHeader(HeaderKey<T> key) {
-        return getHeader(key.getKey())
-                .map(v -> (T) v);
-    }
-
-    default Optional<Object> getHeader(String header) {
-        return Optional.ofNullable(getHeaders())
-                .map(headers -> headers.get(header));
-    }
 }

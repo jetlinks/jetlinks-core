@@ -17,7 +17,7 @@ public class StandaloneDeviceMessageHandlerTest {
     @Test
     public void testSimpleSend() {
         StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler(id -> DeviceState.online);
-        handler.handleMessage("test", msg -> {
+        handler.handleDeviceMessage("test", msg -> {
             handler.reply(new FunctionInvokeMessageReply().from(msg).success())
                     .subscribe();
         });
@@ -57,11 +57,11 @@ public class StandaloneDeviceMessageHandlerTest {
     @Test
     public void testParting() {
         StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler(id -> DeviceState.online);
-        handler.handleMessage("test", msg -> {
+        handler.handleDeviceMessage("test", msg -> {
             handler.reply(new FunctionInvokeMessageReply()
                     .from(msg)
-                    .addHeader(Headers.partMessageId, msg.getMessageId())
-                    .addHeader(Headers.shardingPartTotal, 2)
+                    .addHeader(Headers.fragmentBodyMessageId, msg.getMessageId())
+                    .addHeader(Headers.fragmentNumber, 2)
                     .messageId("2")
                     .success())
                     .delayElement(Duration.ofSeconds(1))
@@ -69,8 +69,8 @@ public class StandaloneDeviceMessageHandlerTest {
                             handler.reply(new FunctionInvokeMessageReply()
                                     .from(msg)
                                     .messageId("1")
-                                    .addHeader(Headers.partMessageId, msg.getMessageId())
-                                    .addHeader(Headers.shardingPartTotal, 2)
+                                    .addHeader(Headers.fragmentBodyMessageId, msg.getMessageId())
+                                    .addHeader(Headers.fragmentNumber, 2)
                                     .success()))
                     .subscribe();
         });
