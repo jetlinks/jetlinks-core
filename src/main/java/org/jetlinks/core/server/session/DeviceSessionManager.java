@@ -39,6 +39,8 @@ public interface DeviceSessionManager {
 
     Flux<DeviceSession> onUnRegister();
 
+    Flux<DeviceSession> getAllSession();
+
     /**
      * 指定的协议是否已经超过了最大连接数量
      *
