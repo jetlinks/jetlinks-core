@@ -1,8 +1,7 @@
-package org.jetlinks.core.device.session;
+package org.jetlinks.core.server.session;
 
-import org.jetlinks.core.message.DeviceMessageReply;
-import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.message.codec.Transport;
+import reactor.core.publisher.Flux;
 
 /**
  * 设备会话管理器,用于管理所有设备连接会话
@@ -36,15 +35,9 @@ public interface DeviceSessionManager {
      */
     DeviceSession unregister(String idOrDeviceId);
 
-    /**
-     * 处理设备消息回复,当有设备上报了消息后,将调用此方法处理同步消息回复。
-     *
-     * @param session 设备会话
-     * @param reply   上报的消息
-     * @see Headers#async
-     * @see Headers#asyncSupport
-     */
-    void handleDeviceMessageReply(DeviceSession session, DeviceMessageReply reply);
+    Flux<DeviceSession> onRegister();
+
+    Flux<DeviceSession> onUnRegister();
 
     /**
      * 指定的协议是否已经超过了最大连接数量
@@ -52,7 +45,7 @@ public interface DeviceSessionManager {
      * @param transport 协议
      * @return 是否超过
      */
-    boolean isOutOfMaximumConnectionLimit(Transport transport);
+    boolean isOutOfMaximumSessionLimit(Transport transport);
 
     /**
      * 获取指定协议的最大连接数量
@@ -60,7 +53,7 @@ public interface DeviceSessionManager {
      * @param transport 协议
      * @return 最大连接数量
      */
-    long getMaximumConnection(Transport transport);
+    long getMaximumSession(Transport transport);
 
     /**
      * 获取指定协议的当前连接数量
@@ -68,6 +61,6 @@ public interface DeviceSessionManager {
      * @param transport 协议
      * @return 当前连接数量
      */
-    long getCurrentConnection(Transport transport);
+    long getCurrentSession(Transport transport);
 
 }

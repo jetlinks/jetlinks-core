@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * 设备消息处理器,用于接收并处理来自其他服务发往设备的消息并回复.
@@ -20,9 +21,11 @@ import java.util.function.Consumer;
  */
 public interface DeviceMessageHandler {
 
-    void handleDeviceMessage(String serverId, Consumer<Message> deviceMessageConsumer);
+    Flux<Message> handleDeviceMessage(String serverId);
 
-    Mono<Map<String, Byte>> getDeviceState(String serviceId, Collection<String> deviceIdList);
+    void handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper);
+
+    Flux<DeviceStateInfo> getDeviceState(String serviceId, Publisher<String> deviceIdList);
 
     Mono<Boolean> reply(DeviceMessageReply message);
 

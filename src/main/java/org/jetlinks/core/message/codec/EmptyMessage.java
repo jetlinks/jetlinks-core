@@ -17,7 +17,7 @@ public final class EmptyMessage implements EncodedMessage {
 
     @Nonnull
     @Override
-    public ByteBuf getByteBuf() {
+    public ByteBuf getPayload() {
         throw new UnsupportedOperationException("无法从空消息中获取ByteBuf");
     }
 

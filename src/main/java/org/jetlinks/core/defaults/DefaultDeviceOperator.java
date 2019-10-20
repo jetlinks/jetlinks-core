@@ -14,6 +14,7 @@ import org.jetlinks.core.message.DisconnectDeviceMessage;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.utils.IdUtils;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Collections;
@@ -87,8 +88,9 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<Byte> checkState() {
         return getConnectionServerId()
-                .flatMap(server -> handler.getDeviceState(server, Collections.singletonList(id)))
-                .flatMap(map -> Mono.justOrEmpty(map.get(id)))
+                .flatMapMany(server -> handler.getDeviceState(server, Flux.just(id)))
+                .next()
+                .map(DeviceStateInfo::getState)
                 .defaultIfEmpty(DeviceState.offline)
                 .flatMap(state ->
                         getState()
@@ -121,8 +123,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 DeviceConfigKey.connectionServerId.value(serverId),
                 DeviceConfigKey.sessionId.value(serverId),
                 ConfigKey.of("onlineTime").value(System.currentTimeMillis()),
-                ConfigKey.of("state").value(DeviceState.online)
-        );
+                ConfigKey.of("state").value(DeviceState.online))
+                .doOnError(err -> log.error("online device error", err));
     }
 
     @Override
@@ -131,7 +133,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 .flatMap(nil -> setConfigs(
                         ConfigKey.of("offlineTime").value(System.currentTimeMillis()),
                         ConfigKey.of("state").value(DeviceState.offline)
-                ));
+                )) .doOnError(err -> log.error("offline device error", err));
     }
 
     @Override

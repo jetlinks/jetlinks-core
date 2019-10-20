@@ -1,6 +1,8 @@
 package org.jetlinks.core.message.codec;
 
+import lombok.AllArgsConstructor;
 import org.jetlinks.core.message.DeviceMessage;
+import org.jetlinks.core.message.Message;
 import org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor;
 import org.jetlinks.core.message.interceptor.DeviceMessageCodecInterceptor;
 import org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor;
@@ -17,18 +19,19 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @author zhouhao
  * @since 1.0
  **/
+@AllArgsConstructor
 public class DefaultDeviceMessageCodec implements DeviceMessageCodec {
 
-    private Map<Transport, TransportDeviceMessageCodec> messageCodec = new HashMap<>();
+    private DeviceMessageCodec messageCodec;
+
+    @Override
+    public Transport getSupportTransport() {
+        return messageCodec.getSupportTransport();
+    }
 
     private List<DeviceMessageDecodeInterceptor> decodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
 
     private List<DeviceMessageEncodeInterceptor> encodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
-
-
-    public void register(TransportDeviceMessageCodec codec) {
-        messageCodec.put(codec.getSupportTransport(), codec);
-    }
 
     public void register(DeviceMessageCodecInterceptor interceptor) {
         if (interceptor instanceof DeviceMessageDecodeInterceptor) {
@@ -40,12 +43,12 @@ public class DefaultDeviceMessageCodec implements DeviceMessageCodec {
     }
 
     @Override
-    public Mono<EncodedMessage> encode(Transport transport, MessageEncodeContext context) {
+    public Mono<EncodedMessage> encode(MessageEncodeContext context) {
         return Mono.defer(() -> {
             for (DeviceMessageEncodeInterceptor interceptor : encodeDeviceMessageInterceptors) {
                 interceptor.preEncode(context);
             }
-            Mono<EncodedMessage> message = Objects.requireNonNull(messageCodec.get(transport), "unsupported transport:" + transport).encode(context);
+            Mono<EncodedMessage> message = messageCodec.encode(context);
 
             for (DeviceMessageEncodeInterceptor interceptor : encodeDeviceMessageInterceptors) {
                 message = message.flatMap(msg -> interceptor.postEncode(context, msg));
@@ -57,12 +60,12 @@ public class DefaultDeviceMessageCodec implements DeviceMessageCodec {
     }
 
     @Override
-    public Mono<DeviceMessage> decode(Transport transport, MessageDecodeContext context) {
+    public <T extends Message> Mono<T> decode(MessageDecodeContext context) {
         return Mono.defer(() -> {
             for (DeviceMessageDecodeInterceptor interceptor : decodeDeviceMessageInterceptors) {
                 interceptor.preDecode(context);
             }
-            Mono<DeviceMessage> message = Objects.requireNonNull(messageCodec.get(transport), "unsupported transport:" + transport).decode(context);
+            Mono<T> message = messageCodec.decode(context);
 
             for (DeviceMessageDecodeInterceptor interceptor : decodeDeviceMessageInterceptors) {
                 message = message.flatMap(msg -> interceptor.postDecode(context, msg));

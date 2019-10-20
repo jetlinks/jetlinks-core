@@ -1,26 +1,25 @@
 package org.jetlinks.core.device;
 
 import lombok.Setter;
-import org.jetlinks.core.message.*;
+import org.jetlinks.core.message.BroadcastMessage;
+import org.jetlinks.core.message.DeviceMessageReply;
+import org.jetlinks.core.message.Headers;
+import org.jetlinks.core.message.Message;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
 
-    private Map<String, Consumer<Message>> messageHandlers = new ConcurrentHashMap<>();
+    private EmitterProcessor<Message> messageEmitterProcessor = EmitterProcessor.create();
 
     private Map<String, EmitterProcessor<DeviceMessageReply>> replyProcessor = new ConcurrentHashMap<>();
 
@@ -29,22 +28,23 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
     @Setter
     private ReplyFailureHandler handler;
 
-    private Function<String, Byte> deviceStateGetter;
+    private Map<String, Function<Publisher<String>, Flux<DeviceStateInfo>>> stateHandler = new ConcurrentHashMap<>();
 
-    public StandaloneDeviceMessageHandler(Function<String, Byte> deviceStateGetter) {
-        this.deviceStateGetter = deviceStateGetter;
+
+    @Override
+    public Flux<Message> handleDeviceMessage(String serverId) {
+        return messageEmitterProcessor.map(Function.identity());
     }
 
     @Override
-    public void handleDeviceMessage(String serverId, Consumer<Message> deviceMessageConsumer) {
-        messageHandlers.put(serverId, deviceMessageConsumer);
+    public void handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper) {
+        stateHandler.put(serverId, stateMapper);
     }
 
     @Override
-    public Mono<Map<String, Byte>> getDeviceState(String serviceId, Collection<String> deviceIdList) {
-        return Flux.fromIterable(deviceIdList)
-                .map(id -> Tuples.of(id, deviceStateGetter.apply(id)))
-                .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2));
+    public Flux<DeviceStateInfo> getDeviceState(String serviceId, Publisher<String> deviceIdList) {
+        return Mono.justOrEmpty(stateHandler.get(serviceId))
+                .flatMapMany(fun -> fun.apply(deviceIdList));
     }
 
     @Override
@@ -79,7 +79,6 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
             if (processor != null) {
                 processor.onNext(message);
                 processor.onComplete();
-                messageHandlers.remove(messageId);
             }
             return Mono.just(true);
         });
@@ -96,13 +95,13 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
 
     @Override
     public Mono<Integer> send(String serverId, Publisher<? extends Message> message) {
+        if (messageEmitterProcessor.hasDownstreams()) {
+            return Mono.just(0);
+        }
 
-        return Mono.justOrEmpty(messageHandlers.get(serverId))
-                .flatMap(c -> Flux.from(message)
-                        .doOnNext(c)
-                        .then(Mono.just(1)))
-                .defaultIfEmpty(0);
-
+        return Flux.from(message)
+                .doOnNext(messageEmitterProcessor::onNext)
+                .then(Mono.just(Long.valueOf(messageEmitterProcessor.inners().count()).intValue()));
     }
 
     @Override

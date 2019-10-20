@@ -6,6 +6,7 @@ package org.jetlinks.core.message.codec;
  */
 public enum DefaultTransport implements Transport {
     MQTT,
+    MQTTS,
     UDP,
     CoAP,
     TCP,

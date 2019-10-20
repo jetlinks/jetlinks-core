@@ -8,7 +8,6 @@ import reactor.core.publisher.Mono;
 /**
  * 设备消息解码拦截器,用于在对消息进行编码时进行自定义处理
  *
- * @see org.jetlinks.core.message.codec.DeviceMessageCodec#encode(Transport, MessageEncodeContext)
  * @see MessageEncodeContext
  * @see org.jetlinks.core.message.codec.DefaultDeviceMessageCodec
  */

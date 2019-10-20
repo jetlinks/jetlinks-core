@@ -11,7 +11,7 @@ import javax.annotation.Nonnull;
 public interface EncodedMessage {
 
     @Nonnull
-    ByteBuf getByteBuf();
+    ByteBuf getPayload();
 
     @Nonnull
     String getDeviceId();
@@ -24,7 +24,7 @@ public interface EncodedMessage {
         return new EncodedMessage() {
             @Nonnull
             @Override
-            public ByteBuf getByteBuf() {
+            public ByteBuf getPayload() {
                 return data;
             }
 
@@ -36,33 +36,4 @@ public interface EncodedMessage {
         };
     }
 
-    /**
-     * 构造一个mqtt消息
-     *
-     * @param deviceId 设备ID
-     * @param topic    mqtt topic
-     * @param data     数据内容
-     * @return MqttMessage
-     */
-    static MqttMessage mqtt(@Nonnull String deviceId, @Nonnull String topic, @Nonnull ByteBuf data) {
-        return new MqttMessage() {
-            @Override
-            @Nonnull
-            public String getTopic() {
-                return topic;
-            }
-
-            @Override
-            @Nonnull
-            public String getDeviceId() {
-                return deviceId;
-            }
-
-            @Override
-            @Nonnull
-            public ByteBuf getByteBuf() {
-                return data;
-            }
-        };
-    }
 }

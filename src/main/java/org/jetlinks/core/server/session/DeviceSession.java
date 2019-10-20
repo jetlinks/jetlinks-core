@@ -1,8 +1,9 @@
-package org.jetlinks.core.device.session;
+package org.jetlinks.core.server.session;
 
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
+import reactor.core.publisher.Mono;
 
 /**
  * @author zhouhao
@@ -13,13 +14,13 @@ public interface DeviceSession {
 
     String getDeviceId();
 
-    DeviceOperator getOperation();
+    DeviceOperator getOperator();
 
     long lastPingTime();
 
     long connectTime();
 
-    void send(EncodedMessage encodedMessage);
+    Mono<Boolean> send(EncodedMessage encodedMessage);
 
     Transport getTransport();
 
@@ -28,4 +29,6 @@ public interface DeviceSession {
     void ping();
 
     boolean isAlive();
+
+    void onClose(Runnable call);
 }

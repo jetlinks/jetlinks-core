@@ -16,11 +16,13 @@ public class StandaloneDeviceMessageHandlerTest {
 
     @Test
     public void testSimpleSend() {
-        StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler(id -> DeviceState.online);
-        handler.handleDeviceMessage("test", msg -> {
-            handler.reply(new FunctionInvokeMessageReply().from(msg).success())
-                    .subscribe();
-        });
+        StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler();
+
+        handler.handleDeviceMessage("test")
+                .subscribe(msg -> {
+                    handler.reply(new FunctionInvokeMessageReply().from(msg).success())
+                            .subscribe();
+                });
 
         FunctionInvokeMessage message = new FunctionInvokeMessage();
         message.setFunctionId("test");
@@ -41,7 +43,7 @@ public class StandaloneDeviceMessageHandlerTest {
 
     @Test
     public void testNoHandler() {
-        StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler(id -> DeviceState.online);
+        StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler();
         FunctionInvokeMessage message = new FunctionInvokeMessage();
         message.setFunctionId("test");
         message.setMessageId("test");
@@ -56,24 +58,25 @@ public class StandaloneDeviceMessageHandlerTest {
 
     @Test
     public void testParting() {
-        StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler(id -> DeviceState.online);
-        handler.handleDeviceMessage("test", msg -> {
-            handler.reply(new FunctionInvokeMessageReply()
-                    .from(msg)
-                    .addHeader(Headers.fragmentBodyMessageId, msg.getMessageId())
-                    .addHeader(Headers.fragmentNumber, 2)
-                    .messageId("2")
-                    .success())
-                    .delayElement(Duration.ofSeconds(1))
-                    .flatMap(success ->
-                            handler.reply(new FunctionInvokeMessageReply()
-                                    .from(msg)
-                                    .messageId("1")
-                                    .addHeader(Headers.fragmentBodyMessageId, msg.getMessageId())
-                                    .addHeader(Headers.fragmentNumber, 2)
-                                    .success()))
-                    .subscribe();
-        });
+        StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler();
+        handler.handleDeviceMessage("test")
+                .subscribe(msg -> {
+                    handler.reply(new FunctionInvokeMessageReply()
+                            .from(msg)
+                            .addHeader(Headers.fragmentBodyMessageId, msg.getMessageId())
+                            .addHeader(Headers.fragmentNumber, 2)
+                            .messageId("2")
+                            .success())
+                            .delayElement(Duration.ofSeconds(1))
+                            .flatMap(success ->
+                                    handler.reply(new FunctionInvokeMessageReply()
+                                            .from(msg)
+                                            .messageId("1")
+                                            .addHeader(Headers.fragmentBodyMessageId, msg.getMessageId())
+                                            .addHeader(Headers.fragmentNumber, 2)
+                                            .success()))
+                            .subscribe();
+                });
 
         FunctionInvokeMessage message = new FunctionInvokeMessage();
         message.setFunctionId("test");

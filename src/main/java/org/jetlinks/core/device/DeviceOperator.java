@@ -45,8 +45,6 @@ public interface DeviceOperator extends Configurable {
 
     /**
      * 检查设备的真实状态
-     *
-     * @see DeviceMessageHandler#handleDeviceCheck(String, Consumer)
      */
     Mono<Byte> checkState();
 

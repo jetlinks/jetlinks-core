@@ -8,5 +8,5 @@ import org.jetlinks.core.device.DeviceOperator;
  * @since 1.0.0
  */
 public interface MessageCodecContext {
-    DeviceOperator getDeviceOperation();
+    DeviceOperator getDeviceOperator();
 }

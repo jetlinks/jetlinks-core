@@ -6,9 +6,12 @@ import org.jetlinks.core.message.codec.MessageDecodeContext;
 import org.jetlinks.core.message.codec.MessageEncodeContext;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
+import org.jetlinks.core.server.GatewayServerContextListener;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 
 /**
  * 消息协议支持接口，通过实现此接口来自定义消息协议
@@ -33,6 +36,8 @@ public interface ProtocolSupport {
      */
     String getDescription();
 
+    Flux<Transport> getSupportedTransport();
+
     /**
      * 获取设备消息编码解码器
      * <ul>
@@ -41,11 +46,17 @@ public interface ProtocolSupport {
      * </ul>
      *
      * @return 消息编解码器
-     * @see DeviceMessageCodec#encode(Transport, MessageEncodeContext)
-     * @see DeviceMessageCodec#decode(Transport, MessageDecodeContext)
      */
     @Nonnull
-    DeviceMessageCodec getMessageCodec();
+    Mono<DeviceMessageCodec> getMessageCodec(Transport transport);
+
+    /**
+     * 网关服务上下文监听器
+     *
+     * @param transport
+     * @return
+     */
+    Mono<GatewayServerContextListener<?>> getServerContextHandler(Transport transport);
 
     /**
      * 获取设备元数据编解码器

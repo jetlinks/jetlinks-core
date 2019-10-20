@@ -24,9 +24,9 @@ public class TestDeviceRegistry implements DeviceRegistry {
 
     private DeviceMessageHandler handler;
 
-    public TestDeviceRegistry(ProtocolSupports supports,DeviceMessageHandler handler) {
+    public TestDeviceRegistry(ProtocolSupports supports, DeviceMessageHandler handler) {
         this.supports = supports;
-        this.handler=handler;
+        this.handler = handler;
     }
 
     @Override

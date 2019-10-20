@@ -24,7 +24,7 @@ public class CoAPMessage implements EncodedMessage {
 
     @Nonnull
     @Override
-    public ByteBuf getByteBuf() {
+    public ByteBuf getPayload() {
         throw new UnsupportedOperationException();
     }
 

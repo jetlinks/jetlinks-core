@@ -11,7 +11,6 @@ import org.jetlinks.core.utils.IdUtils;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
@@ -24,19 +23,19 @@ public class DefaultDeviceOperatorTest {
 
     @Before
     public void init() {
-        registry = new TestDeviceRegistry((r) -> Mono.just(new TestProtocolSupport()),
-                deviceMessageHandler = new StandaloneDeviceMessageHandler(device -> DeviceState.offline));
+        registry = new TestDeviceRegistry(new TestProtocolSupport(),
+                deviceMessageHandler = new StandaloneDeviceMessageHandler());
 
     }
 
     @Test
     public void testMessageSend() {
 
-        deviceMessageHandler.handleDeviceMessage("test", deviceMessage -> {
-            deviceMessageHandler
-                    .reply(((RepayableDeviceMessage) deviceMessage).newReply().success())
-                    .subscribe();
-        });
+        deviceMessageHandler.handleDeviceMessage("test")
+                .cast(RepayableDeviceMessage.class)
+                .subscribe(msg -> deviceMessageHandler
+                        .reply(msg.newReply().success())
+                        .subscribe());
 
         registry.registry(DeviceInfo.builder()
                 .id("test")
@@ -53,11 +52,29 @@ public class DefaultDeviceOperatorTest {
     }
 
     @Test
+    public void testCheckHandledState() {
+
+        deviceMessageHandler
+                .handleGetDeviceState("test", idStream -> Flux.from(idStream)
+                        .map(s -> new DeviceStateInfo(s, DeviceState.unknown)));
+
+        registry.registry(DeviceInfo.builder()
+                .id("test")
+                .build())
+                .doOnNext(operator -> operator.online("test", "test").subscribe())
+                .flatMap(DeviceOperator::checkState)
+                .log()
+                .as(StepVerifier::create)
+                .expectNext(DeviceState.unknown)
+                .verifyComplete();
+    }
+
+    @Test
     public void testCheckState() {
         registry.registry(DeviceInfo.builder()
                 .id("test")
                 .build())
-                .doOnNext(operator -> operator.online("test","test").subscribe())
+                .doOnNext(operator -> operator.online("test", "test").subscribe())
                 .flatMap(DeviceOperator::checkState)
                 .log()
                 .as(StepVerifier::create)
@@ -68,16 +85,18 @@ public class DefaultDeviceOperatorTest {
     @Test
     public void testMessageSendPartingReply() {
 
-        deviceMessageHandler.handleDeviceMessage("test", deviceMessage -> Flux.range(0, 5)
-                .map(i -> ((RepayableDeviceMessage) deviceMessage).newReply()
-                        .messageId(IdUtils.newUUID())
-                        .addHeader(Headers.fragmentBodyMessageId, deviceMessage.getMessageId())
-                        .addHeader(Headers.fragmentNumber, 5)
-                        .addHeader(Headers.fragmentPart, i)
-                        .success())
-                .delayElements(Duration.ofMillis(500))
-                .flatMap(deviceMessageHandler::reply)
-                .subscribe());
+        deviceMessageHandler.handleDeviceMessage("test")
+                .cast(RepayableDeviceMessage.class)
+                .subscribe(deviceMessage -> Flux.range(0, 5)
+                        .map(i -> (deviceMessage).newReply()
+                                .messageId(IdUtils.newUUID())
+                                .addHeader(Headers.fragmentBodyMessageId, deviceMessage.getMessageId())
+                                .addHeader(Headers.fragmentNumber, 5)
+                                .addHeader(Headers.fragmentPart, i)
+                                .success())
+                        .delayElements(Duration.ofMillis(500))
+                        .flatMap(deviceMessageHandler::reply)
+                        .subscribe());
 
         registry.registry(DeviceInfo.builder()
                 .id("test")

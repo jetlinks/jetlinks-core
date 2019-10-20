@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jetlinks.core.message.codec.Transport;
 
 /**
  * @author zhouhao
@@ -19,4 +20,6 @@ public class MqttAuthenticationRequest implements AuthenticationRequest {
     private String username;
 
     private String password;
+
+    private Transport transport;
 }
