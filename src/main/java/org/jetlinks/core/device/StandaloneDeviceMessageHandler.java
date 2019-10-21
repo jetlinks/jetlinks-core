@@ -14,7 +14,6 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
@@ -33,7 +32,8 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
 
     @Override
     public Flux<Message> handleDeviceMessage(String serverId) {
-        return messageEmitterProcessor.map(Function.identity());
+        return messageEmitterProcessor
+                .map(Function.identity());
     }
 
     @Override
@@ -95,7 +95,7 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
 
     @Override
     public Mono<Integer> send(String serverId, Publisher<? extends Message> message) {
-        if (messageEmitterProcessor.hasDownstreams()) {
+        if (!messageEmitterProcessor.hasDownstreams()) {
             return Mono.just(0);
         }
 

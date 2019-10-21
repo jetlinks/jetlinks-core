@@ -83,9 +83,11 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                         .subscriberContext(replySink.currentContext())
                                                         .doOnError(replySink::error)
                                                         .flatMap(reply -> interceptor.afterReply(operator, msg, reply))
-                                                        .doOnCancel(() -> {
+                                                        .doFinally((s) -> {
                                                             if (log.isInfoEnabled()) {
-                                                                log.info("cancel receive device[{}] message[{}] reply", operator.getDeviceId(), msg.getMessageId());
+                                                                if (replySink.isCancelled()) {
+                                                                    log.info("cancel receive device[{}] message[{}] reply", operator.getDeviceId(), msg.getMessageId());
+                                                                }
                                                             }
                                                         })
                                                         .subscribe(replySink::next);
