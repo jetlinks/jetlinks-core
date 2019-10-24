@@ -1,37 +1,49 @@
 package org.jetlinks.core.device;
 
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.message.BroadcastMessage;
 import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.message.Message;
+import org.jetlinks.core.server.MessageHandler;
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.EmitterProcessor;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.*;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
+@Slf4j
+public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, MessageHandler {
 
-    private EmitterProcessor<Message> messageEmitterProcessor = EmitterProcessor.create();
+    private FluxProcessor<Message, Message> messageEmitterProcessor;
 
-    private Map<String, EmitterProcessor<DeviceMessageReply>> replyProcessor = new ConcurrentHashMap<>();
+    private Map<String, FluxProcessor<DeviceMessageReply, DeviceMessageReply>> replyProcessor = new ConcurrentHashMap<>();
 
     private Map<String, AtomicInteger> partCache = new ConcurrentHashMap<>();
 
     @Setter
-    private ReplyFailureHandler handler;
+    private ReplyFailureHandler replyFailureHandler = (error, message) -> log.warn("unhandled reply message:{}", message, error);
 
     private Map<String, Function<Publisher<String>, Flux<DeviceStateInfo>>> stateHandler = new ConcurrentHashMap<>();
 
+    public StandaloneDeviceMessageBroker() {
+        this(EmitterProcessor.create(false));
+
+    }
+
+    public StandaloneDeviceMessageBroker(FluxProcessor<Message, Message> processor) {
+        this.messageEmitterProcessor = processor;
+    }
 
     @Override
-    public Flux<Message> handleDeviceMessage(String serverId) {
+    public Flux<Message> handleSendToDeviceMessage(String serverId) {
         return messageEmitterProcessor
                 .map(Function.identity());
     }
@@ -42,9 +54,9 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
     }
 
     @Override
-    public Flux<DeviceStateInfo> getDeviceState(String serviceId, Publisher<String> deviceIdList) {
+    public Flux<DeviceStateInfo> getDeviceState(String serviceId, Collection<String> deviceIdList) {
         return Mono.justOrEmpty(stateHandler.get(serviceId))
-                .flatMapMany(fun -> fun.apply(deviceIdList));
+                .flatMapMany(fun -> fun.apply(Flux.fromIterable(deviceIdList)));
     }
 
     @Override
@@ -55,12 +67,10 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
 
             String partMsgId = message.getHeader(Headers.fragmentBodyMessageId).orElse(null);
             if (partMsgId != null) {
-                EmitterProcessor<DeviceMessageReply> processor = replyProcessor.getOrDefault(partMsgId, replyProcessor.get(messageId));
+                FluxProcessor<DeviceMessageReply, DeviceMessageReply> processor = replyProcessor.getOrDefault(partMsgId, replyProcessor.get(messageId));
 
-                if (processor == null || processor.isCancelled()) {
-                    if (handler != null) {
-                        handler.handle(message);
-                    }
+                if (processor == null || processor.isDisposed()) {
+                    replyFailureHandler.handle(new NullPointerException("no reply handler"), message);
                     replyProcessor.remove(partMsgId);
                     return Mono.just(false);
                 }
@@ -74,22 +84,26 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
                 }
                 return Mono.just(true);
             }
-            EmitterProcessor<DeviceMessageReply> processor = replyProcessor.get(messageId);
+            FluxProcessor<DeviceMessageReply, DeviceMessageReply> processor = replyProcessor.get(messageId);
 
-            if (processor != null) {
+            if (processor != null && !processor.isDisposed()) {
                 processor.onNext(message);
                 processor.onComplete();
+            } else {
+                replyProcessor.remove(messageId);
+                replyFailureHandler.handle(new NullPointerException("no reply handler"), message);
+                return Mono.just(false);
             }
             return Mono.just(true);
-        });
+        }).doOnError(err -> replyFailureHandler.handle(err, message));
     }
 
     @Override
     public Flux<DeviceMessageReply> handleReply(String messageId, Duration timeout) {
 
         return replyProcessor
-                .computeIfAbsent(messageId, ignore -> EmitterProcessor.create(true))
-                .timeout(timeout)
+                .computeIfAbsent(messageId, ignore -> UnicastProcessor.create())
+                .timeout(timeout, Mono.error(() -> new DeviceOperationException(ErrorCode.TIME_OUT)))
                 .doFinally(signal -> replyProcessor.remove(messageId));
     }
 
@@ -101,7 +115,7 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
 
         return Flux.from(message)
                 .doOnNext(messageEmitterProcessor::onNext)
-                .then(Mono.just(Long.valueOf(messageEmitterProcessor.inners().count()).intValue()));
+                .then(Mono.just(Long.valueOf(messageEmitterProcessor.downstreamCount()).intValue()));
     }
 
     @Override
@@ -109,4 +123,6 @@ public class StandaloneDeviceMessageHandler implements DeviceMessageHandler {
         // TODO: 2019-10-19 发送广播消息
         return Mono.just(0);
     }
+
+
 }

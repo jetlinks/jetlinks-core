@@ -8,4 +8,5 @@ public interface BroadcastMessage extends Message {
     String getAddress();
 
     Message getMessage();
+
 }

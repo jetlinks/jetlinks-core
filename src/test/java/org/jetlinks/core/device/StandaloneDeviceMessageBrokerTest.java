@@ -11,14 +11,14 @@ import reactor.test.StepVerifier;
 
 import java.time.Duration;
 
-public class StandaloneDeviceMessageHandlerTest {
+public class StandaloneDeviceMessageBrokerTest {
 
 
     @Test
     public void testSimpleSend() {
-        StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler();
+        StandaloneDeviceMessageBroker handler = new StandaloneDeviceMessageBroker();
 
-        handler.handleDeviceMessage("test")
+        handler.handleSendToDeviceMessage("test")
                 .subscribe(msg -> {
                     handler.reply(new FunctionInvokeMessageReply().from(msg).success())
                             .subscribe();
@@ -43,7 +43,7 @@ public class StandaloneDeviceMessageHandlerTest {
 
     @Test
     public void testNoHandler() {
-        StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler();
+        StandaloneDeviceMessageBroker handler = new StandaloneDeviceMessageBroker();
         FunctionInvokeMessage message = new FunctionInvokeMessage();
         message.setFunctionId("test");
         message.setMessageId("test");
@@ -58,8 +58,8 @@ public class StandaloneDeviceMessageHandlerTest {
 
     @Test
     public void testParting() {
-        StandaloneDeviceMessageHandler handler = new StandaloneDeviceMessageHandler();
-        handler.handleDeviceMessage("test")
+        StandaloneDeviceMessageBroker handler = new StandaloneDeviceMessageBroker();
+        handler.handleSendToDeviceMessage("test")
                 .subscribe(msg -> {
                     handler.reply(new FunctionInvokeMessageReply()
                             .from(msg)

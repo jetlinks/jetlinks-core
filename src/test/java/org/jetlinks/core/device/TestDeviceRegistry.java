@@ -22,9 +22,9 @@ public class TestDeviceRegistry implements DeviceRegistry {
 
     private ProtocolSupports supports;
 
-    private DeviceMessageHandler handler;
+    private DeviceOperationBroker handler;
 
-    public TestDeviceRegistry(ProtocolSupports supports, DeviceMessageHandler handler) {
+    public TestDeviceRegistry(ProtocolSupports supports, DeviceOperationBroker handler) {
         this.supports = supports;
         this.handler = handler;
     }

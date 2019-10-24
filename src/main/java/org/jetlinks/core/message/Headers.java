@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit;
 
 public interface Headers {
 
+
     /**
      * 强制回复消息
      */
@@ -23,5 +24,9 @@ public interface Headers {
     //分片数量
     HeaderKey<Integer> fragmentNumber = HeaderKey.of("frg_num", 0);
 
+
+    HeaderKey<String> sendFrom = HeaderKey.of("send-from", null);
+
+    HeaderKey<String> replyTo = HeaderKey.of("reply-to", null);
 
 }

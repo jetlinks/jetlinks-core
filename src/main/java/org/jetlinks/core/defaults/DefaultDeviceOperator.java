@@ -14,7 +14,6 @@ import org.jetlinks.core.message.DisconnectDeviceMessage;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.utils.IdUtils;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Collections;
@@ -29,7 +28,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     private ConfigStorageManager manager;
 
-    private DeviceMessageHandler handler;
+    private DeviceOperationBroker handler;
 
     private DeviceRegistry registry;
 
@@ -41,7 +40,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
                                  ConfigStorageManager storageManager,
-                                 DeviceMessageHandler handler,
+                                 DeviceOperationBroker handler,
                                  DeviceMessageSenderInterceptor interceptor,
                                  DeviceRegistry registry) {
         this.id = id;
@@ -88,7 +87,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<Byte> checkState() {
         return getConnectionServerId()
-                .flatMapMany(server -> handler.getDeviceState(server, Flux.just(id)))
+                .flatMapMany(server -> handler.getDeviceState(server, Collections.singletonList(id)))
                 .next()
                 .map(DeviceStateInfo::getState)
                 .defaultIfEmpty(DeviceState.offline)

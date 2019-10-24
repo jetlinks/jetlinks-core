@@ -19,21 +19,21 @@ public class DefaultDeviceOperatorTest {
 
     private DeviceRegistry registry;
 
-    private DeviceMessageHandler deviceMessageHandler;
+    private StandaloneDeviceMessageBroker deviceMessageBroker;
 
     @Before
     public void init() {
         registry = new TestDeviceRegistry(new TestProtocolSupport(),
-                deviceMessageHandler = new StandaloneDeviceMessageHandler());
+                deviceMessageBroker = new StandaloneDeviceMessageBroker());
 
     }
 
     @Test
     public void testMessageSend() {
 
-        deviceMessageHandler.handleDeviceMessage("test")
+        deviceMessageBroker.handleSendToDeviceMessage("test")
                 .cast(RepayableDeviceMessage.class)
-                .subscribe(msg -> deviceMessageHandler
+                .subscribe(msg -> deviceMessageBroker
                         .reply(msg.newReply().success())
                         .subscribe());
 
@@ -54,7 +54,7 @@ public class DefaultDeviceOperatorTest {
     @Test
     public void testCheckHandledState() {
 
-        deviceMessageHandler
+        deviceMessageBroker
                 .handleGetDeviceState("test", idStream -> Flux.from(idStream)
                         .map(s -> new DeviceStateInfo(s, DeviceState.unknown)));
 
@@ -85,7 +85,7 @@ public class DefaultDeviceOperatorTest {
     @Test
     public void testMessageSendPartingReply() {
 
-        deviceMessageHandler.handleDeviceMessage("test")
+        deviceMessageBroker.handleSendToDeviceMessage("test")
                 .cast(RepayableDeviceMessage.class)
                 .subscribe(deviceMessage -> Flux.range(0, 5)
                         .map(i -> (deviceMessage).newReply()
@@ -95,7 +95,7 @@ public class DefaultDeviceOperatorTest {
                                 .addHeader(Headers.fragmentPart, i)
                                 .success())
                         .delayElements(Duration.ofMillis(500))
-                        .flatMap(deviceMessageHandler::reply)
+                        .flatMap(deviceMessageBroker::reply)
                         .subscribe());
 
         registry.registry(DeviceInfo.builder()

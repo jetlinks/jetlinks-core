@@ -1,9 +1,10 @@
 package org.jetlinks.core.message;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
 
-public interface Message {
+public interface Message extends Serializable {
 
     String getMessageId();
 

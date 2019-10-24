@@ -4,5 +4,5 @@ import org.jetlinks.core.message.DeviceMessageReply;
 
 public interface ReplyFailureHandler {
 
-    void handle(DeviceMessageReply message);
+    void handle(Throwable err, DeviceMessageReply message);
 }
