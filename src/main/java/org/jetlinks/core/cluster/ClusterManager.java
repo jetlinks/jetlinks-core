@@ -8,6 +8,8 @@ public interface ClusterManager {
 
     ClusterNotifier getNotifier();
 
+    HaManager getHaManager();
+
     <T> ClusterQueue<T> getQueue(String queueId);
 
     <T> ClusterTopic<T> getTopic(String topic);

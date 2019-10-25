@@ -17,4 +17,6 @@ public interface ClusterQueue<T> {
     Mono<Boolean> addBatch(Publisher<? extends Collection<T>> publisher);
 
     void setLocalConsumerPercent(float percent);
+
+    void stop();
 }
