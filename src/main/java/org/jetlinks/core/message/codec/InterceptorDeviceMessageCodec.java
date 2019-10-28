@@ -1,17 +1,12 @@
 package org.jetlinks.core.message.codec;
 
-import lombok.AllArgsConstructor;
-import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.Message;
-import org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor;
 import org.jetlinks.core.message.interceptor.DeviceMessageCodecInterceptor;
+import org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor;
 import org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor;
 import reactor.core.publisher.Mono;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -19,19 +14,22 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @author zhouhao
  * @since 1.0
  **/
-@AllArgsConstructor
-public class DefaultDeviceMessageCodec implements DeviceMessageCodec {
+public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
 
     private DeviceMessageCodec messageCodec;
+
+    private List<DeviceMessageDecodeInterceptor> decodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
+
+    private List<DeviceMessageEncodeInterceptor> encodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
+
+    public InterceptorDeviceMessageCodec(DeviceMessageCodec codec) {
+        this.messageCodec = codec;
+    }
 
     @Override
     public Transport getSupportTransport() {
         return messageCodec.getSupportTransport();
     }
-
-    private List<DeviceMessageDecodeInterceptor> decodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
-
-    private List<DeviceMessageEncodeInterceptor> encodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
 
     public void register(DeviceMessageCodecInterceptor interceptor) {
         if (interceptor instanceof DeviceMessageDecodeInterceptor) {

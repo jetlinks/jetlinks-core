@@ -1,15 +1,15 @@
 package org.jetlinks.core.message.interceptor;
 
 import org.jetlinks.core.message.codec.EncodedMessage;
+import org.jetlinks.core.message.codec.InterceptorDeviceMessageCodec;
 import org.jetlinks.core.message.codec.MessageEncodeContext;
-import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
 
 /**
  * 设备消息解码拦截器,用于在对消息进行编码时进行自定义处理
  *
  * @see MessageEncodeContext
- * @see org.jetlinks.core.message.codec.DefaultDeviceMessageCodec
+ * @see InterceptorDeviceMessageCodec
  */
 public interface DeviceMessageEncodeInterceptor extends DeviceMessageCodecInterceptor {
 

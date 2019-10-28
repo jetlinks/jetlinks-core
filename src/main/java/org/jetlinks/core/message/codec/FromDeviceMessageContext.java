@@ -12,7 +12,7 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
     DeviceSession getSession();
 
     @Override
-    default DeviceOperator getDeviceOperator() {
+    default DeviceOperator getDevice() {
         return getSession().getOperator();
     }
 

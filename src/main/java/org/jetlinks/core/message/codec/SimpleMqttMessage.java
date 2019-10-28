@@ -14,10 +14,10 @@ public class SimpleMqttMessage implements MqttMessage {
 
     private String deviceId;
 
-    private int qosLevel = 0;
+    private int qosLevel;
 
     private ByteBuf payload;
 
-    private int messageId = -1;
+    private int messageId;
 
 }

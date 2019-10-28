@@ -19,4 +19,6 @@ public interface ClusterQueue<T> {
     void setLocalConsumerPercent(float percent);
 
     void stop();
+
+    Mono<Integer> size();
 }
