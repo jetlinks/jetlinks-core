@@ -13,6 +13,8 @@ public interface ClusterCache<K,V> {
 
     Mono<Boolean> put(K key, V value);
 
+    Mono<Boolean> putIfAbsent(K key, V value);
+
     Mono<Boolean> remove(K key);
 
     Mono<Boolean> remove(Collection<K> key);
