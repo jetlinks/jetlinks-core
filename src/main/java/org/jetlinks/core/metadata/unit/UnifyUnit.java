@@ -2,7 +2,10 @@ package org.jetlinks.core.metadata.unit;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.hswebframework.web.dict.EnumDict;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -15,7 +18,7 @@ import java.util.stream.Stream;
  */
 @Getter
 @AllArgsConstructor
-public enum UnifyUnit implements StandardUnit {
+public enum UnifyUnit implements StandardUnit, EnumDict<String> {
 
     //常用单位
     percent("百分比", "%", "common", "百分比(%)"),
@@ -138,5 +141,28 @@ public enum UnifyUnit implements StandardUnit {
                 .filter(unifyUnit -> unifyUnit.getId().equals(value) || unifyUnit.getSymbol().equals(value))
                 .findFirst()
                 .orElse(null);
+    }
+
+    @Override
+    public String getValue() {
+        return name();
+    }
+
+    @Override
+    public String getText() {
+        return getName().concat("(").concat(getSymbol()+")");
+    }
+
+    @Override
+    public Object getWriteJSONObject() {
+        Map<String, Object> jsonObject = new HashMap<>();
+        jsonObject.put("id", this.getValue());
+        jsonObject.put("value", this.getValue());
+        jsonObject.put("text", this.getText());
+        jsonObject.put("symbol", this.getSymbol());
+        jsonObject.put("name", this.getName());
+        jsonObject.put("type", this.getType());
+        jsonObject.put("description", this.getDescription());
+        return jsonObject;
     }
 }
