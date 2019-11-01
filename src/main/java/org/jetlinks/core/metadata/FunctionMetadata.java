@@ -10,7 +10,7 @@ public interface FunctionMetadata extends Metadata ,Jsonable{
 
     List<PropertyMetadata> getInputs();
 
-    PropertyMetadata getOutput();
+    DataType getOutput();
 
     boolean isAsync();
 

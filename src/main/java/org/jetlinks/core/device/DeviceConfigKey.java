@@ -15,7 +15,7 @@ public enum DeviceConfigKey implements ConfigKey<String> {
 
     protocol("消息协议"),
 
-    gatewayDeviceId("网关设备ID"),
+    parentMeshDeviceId("上级组网设备ID"),
 
     connectionServerId("当前设备连接的设备ID"),
 

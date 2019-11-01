@@ -8,7 +8,7 @@ import org.jetlinks.core.metadata.ValidateResult;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
@@ -21,9 +21,11 @@ public class DateTimeType implements DataType, Converter<Date> {
 
     private String format = TIMESTAMP_FORMAT;
 
-    private String tzOffset = "+8";
+    private ZoneId zoneId = ZoneId.systemDefault();
 
     private DateTimeFormatter formatter;
+
+    private String description;
 
     @Override
     public String getId() {
@@ -35,10 +37,6 @@ public class DateTimeType implements DataType, Converter<Date> {
         return "时间";
     }
 
-    @Override
-    public String getDescription() {
-        return "时间";
-    }
 
     protected DateTimeFormatter getFormatter() {
         if (formatter == null) {
@@ -66,7 +64,7 @@ public class DateTimeType implements DataType, Converter<Date> {
             return "";
         }
         return LocalDateTime
-                .ofInstant(dateValue.toInstant(), ZoneOffset.of(tzOffset))
+                .ofInstant(dateValue.toInstant(), zoneId)
                 .format(getFormatter());
     }
 
@@ -76,7 +74,7 @@ public class DateTimeType implements DataType, Converter<Date> {
             return Date.from(((Instant) value));
         }
         if (value instanceof LocalDateTime) {
-            return Date.from(((LocalDateTime) value).toInstant(ZoneOffset.of(tzOffset)));
+            return Date.from(((LocalDateTime) value).atZone(zoneId).toInstant());
 
         }
 
@@ -88,7 +86,8 @@ public class DateTimeType implements DataType, Converter<Date> {
         }
         if (value instanceof String) {
             return Date.from(LocalDateTime.parse(((String) value), getFormatter())
-                    .toInstant(ZoneOffset.of(tzOffset)));
+                    .atZone(zoneId)
+                    .toInstant());
         }
 
         return null;

@@ -42,8 +42,5 @@ public class FloatType extends NumberType<Float> {
         return "单精度浮点数";
     }
 
-    @Override
-    public String getDescription() {
-        return "单精度浮点数";
-    }
+
 }

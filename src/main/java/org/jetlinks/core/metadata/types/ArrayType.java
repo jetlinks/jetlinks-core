@@ -2,19 +2,24 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Getter
 @Setter
-public class ArrayType implements DataType {
+public class ArrayType implements DataType, Converter<List<Object>> {
 
     private DataType elementType;
 
     public static final String ID = "array";
+
+    private String description;
 
     @Override
     public String getId() {
@@ -24,11 +29,6 @@ public class ArrayType implements DataType {
     @Override
     public String getName() {
         return "数组";
-    }
-
-    @Override
-    public String getDescription() {
-        return "数组类型,由多个元素组成";
     }
 
     @Override
@@ -56,5 +56,19 @@ public class ArrayType implements DataType {
         }
 
         return value;
+    }
+
+    @Override
+    public List<Object> convert(Object value) {
+        if (value instanceof Collection) {
+            return ((Collection<Object>) value).stream()
+                    .map(val -> {
+                        if (elementType instanceof Converter) {
+                            return ((Converter) elementType).convert(val);
+                        }
+                        return val;
+                    }).collect(Collectors.toList());
+        }
+        return Collections.singletonList(value);
     }
 }

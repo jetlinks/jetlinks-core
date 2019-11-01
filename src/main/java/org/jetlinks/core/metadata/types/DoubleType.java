@@ -15,6 +15,7 @@ public class DoubleType extends NumberType<Double> {
 
     private Integer scale;
 
+
     @Override
     public Object format(Object value) {
         if (value instanceof Number) {
@@ -42,8 +43,4 @@ public class DoubleType extends NumberType<Double> {
         return "双精度浮点数";
     }
 
-    @Override
-    public String getDescription() {
-        return "双精度浮点数";
-    }
 }

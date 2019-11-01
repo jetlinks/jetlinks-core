@@ -73,7 +73,7 @@ public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessage
                 .getMetadata()
                 .flatMap(metadata -> Mono.justOrEmpty(metadata.getFunction(function)))
                 .switchIfEmpty(Mono.error(() -> new FunctionUndefinedException(function, "功能[" + function + "]未定义")))
-                .doOnNext(functionMetadata -> {
+                .flatMap(functionMetadata -> {
                     List<PropertyMetadata> metadataInputs = functionMetadata.getInputs();
                     List<FunctionParameter> inputs = message.getInputs();
 
@@ -87,10 +87,12 @@ public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessage
 
                         metadata.getValueType()
                                 .validate(value)
-                                .ifFail(result -> new IllegalParameterException(metadata.getId(), result.getErrorMsg()));
+                                .ifFail(result -> {
+                                    throw new IllegalParameterException(metadata.getId(), result.getErrorMsg());
+                                });
                     }
+                    return Mono.just(this);
                 })
-                .then(Mono.just(this))
                 ;
     }
 

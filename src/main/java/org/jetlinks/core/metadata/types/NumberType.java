@@ -26,6 +26,10 @@ public abstract class NumberType<N extends Number> implements UnitSupported, Dat
     //单位
     private ValueUnit unit;
 
+    @Getter
+    @Setter
+    private String description;
+
     public Object format(Object value) {
         ValueUnit unit = getUnit();
         if (unit == null) {

@@ -3,6 +3,7 @@ package org.jetlinks.core.metadata.types;
 public class LongType extends NumberType<Long> {
     public static final String ID = "long";
 
+
     @Override
     public String getId() {
         return ID;
@@ -13,10 +14,6 @@ public class LongType extends NumberType<Long> {
         return "长整型";
     }
 
-    @Override
-    public String getDescription() {
-        return "64位整型数字";
-    }
 
     @Override
     public Long convert(Object value) {

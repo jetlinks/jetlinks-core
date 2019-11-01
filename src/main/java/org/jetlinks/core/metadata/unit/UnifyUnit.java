@@ -18,7 +18,7 @@ import java.util.stream.Stream;
  */
 @Getter
 @AllArgsConstructor
-public enum UnifyUnit implements StandardUnit, EnumDict<String> {
+public enum UnifyUnit implements ValueUnit, EnumDict<String> {
 
     //常用单位
     percent("百分比", "%", "common", "百分比(%)"),

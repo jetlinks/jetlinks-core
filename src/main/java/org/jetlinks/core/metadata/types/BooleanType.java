@@ -4,12 +4,12 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
-import org.jetlinks.core.metadata.Formattable;
+import org.jetlinks.core.metadata.FormatSupport;
 import org.jetlinks.core.metadata.ValidateResult;
 
 @Getter
 @Setter
-public class BooleanType implements DataType, Formattable, Converter<Boolean> {
+public class BooleanType implements DataType, FormatSupport, Converter<Boolean> {
     public static final String ID = "boolean";
 
     private String trueText = "是";
@@ -20,6 +20,8 @@ public class BooleanType implements DataType, Formattable, Converter<Boolean> {
 
     private String falseValue = "false";
 
+    private String description;
+
     @Override
     public String getId() {
         return ID;
@@ -28,11 +30,6 @@ public class BooleanType implements DataType, Formattable, Converter<Boolean> {
     @Override
     public String getName() {
         return "布尔值";
-    }
-
-    @Override
-    public String getDescription() {
-        return "布尔类型";
     }
 
     public Boolean convert(Object value) {

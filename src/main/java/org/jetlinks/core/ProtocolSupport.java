@@ -1,9 +1,10 @@
 package org.jetlinks.core;
 
-import org.jetlinks.core.device.*;
+import org.jetlinks.core.device.AuthenticationRequest;
+import org.jetlinks.core.device.AuthenticationResponse;
+import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.device.MqttAuthenticationRequest;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
-import org.jetlinks.core.message.codec.MessageDecodeContext;
-import org.jetlinks.core.message.codec.MessageEncodeContext;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 import org.jetlinks.core.server.GatewayServerContextListener;
@@ -11,7 +12,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
-import java.util.List;
 
 /**
  * 消息协议支持接口，通过实现此接口来自定义消息协议
@@ -36,7 +36,7 @@ public interface ProtocolSupport {
      */
     String getDescription();
 
-    Flux<Transport> getSupportedTransport();
+    Flux<? extends Transport> getSupportedTransport();
 
     /**
      * 获取设备消息编码解码器
@@ -48,7 +48,7 @@ public interface ProtocolSupport {
      * @return 消息编解码器
      */
     @Nonnull
-    Mono<DeviceMessageCodec> getMessageCodec(Transport transport);
+    Mono<? extends DeviceMessageCodec> getMessageCodec(Transport transport);
 
     /**
      * 网关服务上下文监听器
@@ -56,7 +56,7 @@ public interface ProtocolSupport {
      * @param transport
      * @return
      */
-    Mono<GatewayServerContextListener<?>> getServerContextHandler(Transport transport);
+    Mono<? extends GatewayServerContextListener<?>> getServerContextHandler(Transport transport);
 
     /**
      * 获取设备元数据编解码器

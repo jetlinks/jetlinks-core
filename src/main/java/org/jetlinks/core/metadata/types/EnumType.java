@@ -20,6 +20,8 @@ public class EnumType implements DataType {
 
     private volatile List<Element> elements;
 
+    private String description;
+
     @Override
     public String getId() {
         return ID;
@@ -28,11 +30,6 @@ public class EnumType implements DataType {
     @Override
     public String getName() {
         return "枚举";
-    }
-
-    @Override
-    public String getDescription() {
-        return "枚举类型";
     }
 
     @Override

@@ -1,5 +1,5 @@
 package org.jetlinks.core.metadata;
 
-public interface Formattable {
+public interface FormatSupport {
     Object format(Object value);
 }
