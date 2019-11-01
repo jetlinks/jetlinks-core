@@ -14,5 +14,5 @@ import lombok.Setter;
 public class ChildDeviceMessageReply extends CommonDeviceMessageReply {
     private String childDeviceId;
 
-    private DeviceMessageReply childDeviceMessageReply;
+    private Message childDeviceMessage;
 }

@@ -58,12 +58,12 @@ public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
     }
 
     @Override
-    public <T extends Message> Mono<T> decode(MessageDecodeContext context) {
+    public Mono< Message> decode(MessageDecodeContext context) {
         return Mono.defer(() -> {
             for (DeviceMessageDecodeInterceptor interceptor : decodeDeviceMessageInterceptors) {
                 interceptor.preDecode(context);
             }
-            Mono<T> message = messageCodec.decode(context);
+            Mono<? extends Message> message = messageCodec.decode(context);
 
             for (DeviceMessageDecodeInterceptor interceptor : decodeDeviceMessageInterceptors) {
                 message = message.flatMap(msg -> interceptor.postDecode(context, msg));

@@ -8,6 +8,7 @@ import reactor.core.publisher.Mono;
 /**
  * @author zhouhao
  * @since 1.0.0
+ * @see ChildrenDeviceSession
  */
 public interface DeviceSession {
     String getId();
@@ -31,4 +32,5 @@ public interface DeviceSession {
     boolean isAlive();
 
     void onClose(Runnable call);
+
 }

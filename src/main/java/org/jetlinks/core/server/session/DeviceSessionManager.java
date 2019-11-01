@@ -2,6 +2,7 @@ package org.jetlinks.core.server.session;
 
 import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * 设备会话管理器,用于管理所有设备连接会话
@@ -34,6 +35,14 @@ public interface DeviceSessionManager {
      * @return 被注销的会话, 不存在则返回<code>null</code>
      */
     DeviceSession unregister(String idOrDeviceId);
+
+    boolean sessionIsAlive(String deviceId);
+
+    Mono<ChildrenDeviceSession> getSession(String deviceId, String childrenId);
+
+    Mono<ChildrenDeviceSession> registerChildren(String deviceId, String childrenDeviceId);
+
+    Mono<ChildrenDeviceSession> unRegisterChildren(String deviceId, String childrenId);
 
     Flux<DeviceSession> onRegister();
 

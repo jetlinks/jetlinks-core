@@ -11,8 +11,13 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class ChildDeviceMessage extends CommonDeviceMessage {
+public class ChildDeviceMessage extends CommonDeviceMessage implements RepayableDeviceMessage<ChildDeviceMessageReply> {
     private String childDeviceId;
 
-    private DeviceMessage childDeviceMessage;
+    private Message childDeviceMessage;
+
+    @Override
+    public ChildDeviceMessageReply newReply() {
+        return new ChildDeviceMessageReply();
+    }
 }

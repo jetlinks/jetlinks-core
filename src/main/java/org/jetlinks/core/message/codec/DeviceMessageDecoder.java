@@ -13,5 +13,5 @@ public interface DeviceMessageDecoder {
      * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
      * @see org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor
      */
-    <T extends Message> Mono<T> decode(MessageDecodeContext context);
+    Mono<? extends Message> decode(MessageDecodeContext context);
 }
