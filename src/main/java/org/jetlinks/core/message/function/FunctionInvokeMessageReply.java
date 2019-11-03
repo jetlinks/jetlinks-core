@@ -20,8 +20,6 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
     private Object output;
 
     public FunctionInvokeMessageReply() {
-        //默认支持异步
-        addHeader(Headers.asyncSupport, true);
     }
 
     public static FunctionInvokeMessageReply create() {

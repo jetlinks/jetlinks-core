@@ -9,8 +9,13 @@ public interface DeviceMessageDecoder {
      *
      * @param context 消息上下文
      * @return 解码结果
+     * @see MqttMessage
      * @see org.jetlinks.core.message.DeviceMessageReply
      * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
+     * @see org.jetlinks.core.message.function.FunctionInvokeMessageReply
+     * @see org.jetlinks.core.message.ChildDeviceMessageReply
+     * @see org.jetlinks.core.message.DeviceOnlineMessage
+     * @see org.jetlinks.core.message.DeviceOfflineMessage
      * @see org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor
      */
     Mono<? extends Message> decode(MessageDecodeContext context);

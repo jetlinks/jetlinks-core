@@ -1,6 +1,7 @@
 package org.jetlinks.core.server.session;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Getter
+@Slf4j
 public class ChildrenDeviceSession implements DeviceSession {
     private String id;
 
@@ -40,6 +42,7 @@ public class ChildrenDeviceSession implements DeviceSession {
 
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
+        log.info("send child device[{}:{}] message", parent.getDeviceId(), deviceId);
         return parent.send(encodedMessage);
     }
 
@@ -73,4 +76,8 @@ public class ChildrenDeviceSession implements DeviceSession {
         closeListener.add(call);
     }
 
+    @Override
+    public String toString() {
+        return "children device[" + deviceId + "] in " + getParent();
+    }
 }

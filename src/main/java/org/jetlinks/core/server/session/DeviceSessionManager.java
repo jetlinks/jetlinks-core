@@ -4,6 +4,8 @@ import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.Nullable;
+
 /**
  * 设备会话管理器,用于管理所有设备连接会话
  *
@@ -18,6 +20,7 @@ public interface DeviceSessionManager {
      * @param idOrDeviceId 设备ID或者会话ID
      * @return 设备会话, 不存在则返回<code>null</code>
      */
+    @Nullable
     DeviceSession getSession(String idOrDeviceId);
 
     /**
@@ -26,6 +29,7 @@ public interface DeviceSessionManager {
      * @param session 新的设备会话
      * @return 旧的设备会话, 不存在则返回<code>null</code>
      */
+    @Nullable
     DeviceSession register(DeviceSession session);
 
     /**
@@ -38,7 +42,8 @@ public interface DeviceSessionManager {
 
     boolean sessionIsAlive(String deviceId);
 
-    Mono<ChildrenDeviceSession> getSession(String deviceId, String childrenId);
+    @Nullable
+    ChildrenDeviceSession getSession(String deviceId, String childrenId);
 
     Mono<ChildrenDeviceSession> registerChildren(String deviceId, String childrenDeviceId);
 

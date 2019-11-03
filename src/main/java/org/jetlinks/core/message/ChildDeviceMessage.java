@@ -4,9 +4,12 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 子设备消息
+ * 发往子设备的消息,通常是通过网关设备接入平台的设备.
  *
  * @author zhouhao
+ * @see Message
+ * @see ChildDeviceMessageReply
+ * @see org.jetlinks.core.device.DeviceConfigKey#parentMeshDeviceId
  * @since 1.0.0
  */
 @Getter

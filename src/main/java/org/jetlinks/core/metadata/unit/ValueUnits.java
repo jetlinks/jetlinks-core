@@ -1,15 +1,28 @@
 package org.jetlinks.core.metadata.unit;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 public class ValueUnits {
 
     private static final List<ValueUnitSupplier> suppliers = new CopyOnWriteArrayList<>();
 
     static {
-        ValueUnits.register((id) -> Optional.ofNullable(UnifyUnit.of(id)));
+        ValueUnits.register(new ValueUnitSupplier() {
+            @Override
+            public Optional<ValueUnit> getById(String id) {
+                return Optional.ofNullable(UnifyUnit.of(id));
+            }
+
+            @Override
+            public List<ValueUnit> getAll() {
+                return Arrays.asList(UnifyUnit.values());
+            }
+        });
     }
 
     public static void register(ValueUnitSupplier supplier) {
@@ -24,5 +37,12 @@ public class ValueUnits {
             }
         }
         return Optional.empty();
+    }
+
+    public static List<ValueUnit> getAllUnit() {
+        return suppliers.stream()
+                .map(ValueUnitSupplier::getAll)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
     }
 }
