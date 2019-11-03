@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Date;
 
@@ -13,7 +14,7 @@ public class DateTimeTypeTest {
     @Test
     public void test(){
         DateTimeType timeType=new DateTimeType();
-
+        timeType.setZoneId(ZoneId.of("Asia/Shanghai"));
         Assert.assertTrue(timeType.validate(System.currentTimeMillis()).isSuccess());
 
 
