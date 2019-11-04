@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.utils.time.DateFormatter;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
@@ -85,6 +86,10 @@ public class DateTimeType implements DataType, Converter<Date> {
             return new Date(((Number) value).longValue());
         }
         if (value instanceof String) {
+            Date data = DateFormatter.fromString(((String) value));
+            if (data != null) {
+                return data;
+            }
             return Date.from(LocalDateTime.parse(((String) value), getFormatter())
                     .atZone(zoneId)
                     .toInstant());
