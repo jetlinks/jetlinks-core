@@ -1,8 +1,11 @@
 package org.jetlinks.core.metadata.types;
 
+import java.util.Map;
+
 public class IntType extends NumberType<Integer> {
     public static final String ID = "int";
 
+    private Map<String, Object> expands;
 
     @Override
     public String getId() {

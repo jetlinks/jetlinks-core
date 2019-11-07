@@ -21,6 +21,7 @@ public class ObjectType implements DataType, Converter<Map<String, Object>> {
 
     private List<PropertyMetadata> properties;
 
+    private Map<String, Object> expands;
 
     private String description;
 

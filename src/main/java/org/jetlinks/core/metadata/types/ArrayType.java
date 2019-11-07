@@ -9,6 +9,7 @@ import org.jetlinks.core.metadata.ValidateResult;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Getter
@@ -20,6 +21,8 @@ public class ArrayType implements DataType, Converter<List<Object>> {
     public static final String ID = "array";
 
     private String description;
+
+    private Map<String, Object> expands;
 
     @Override
     public String getId() {

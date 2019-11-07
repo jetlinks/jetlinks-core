@@ -1,8 +1,11 @@
 package org.jetlinks.core.metadata.types;
 
+import java.util.Map;
+
 public class LongType extends NumberType<Long> {
     public static final String ID = "long";
 
+    private Map<String, Object> expands;
 
     @Override
     public String getId() {

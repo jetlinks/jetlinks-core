@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 import static java.math.BigDecimal.ROUND_HALF_UP;
 
@@ -14,6 +15,8 @@ public class FloatType extends NumberType<Float> {
     public static final String ID = "float";
 
     private Integer scale;
+
+    private Map<String, Object> expands;
 
     @Override
     public Object format(Object value) {

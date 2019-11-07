@@ -22,6 +22,8 @@ public class EnumType implements DataType {
 
     private String description;
 
+    private Map<String, Object> expands;
+
     @Override
     public String getId() {
         return ID;

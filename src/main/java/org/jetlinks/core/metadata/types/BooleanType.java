@@ -7,6 +7,8 @@ import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.FormatSupport;
 import org.jetlinks.core.metadata.ValidateResult;
 
+import java.util.Map;
+
 @Getter
 @Setter
 public class BooleanType implements DataType, FormatSupport, Converter<Boolean> {
@@ -21,6 +23,8 @@ public class BooleanType implements DataType, FormatSupport, Converter<Boolean> 
     private String falseValue = "false";
 
     private String description;
+
+    private Map<String, Object> expands;
 
     @Override
     public String getId() {

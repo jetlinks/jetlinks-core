@@ -6,12 +6,16 @@ import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
 
+import java.util.Map;
+
 @Getter
 @Setter
 public class StringType implements DataType, Converter<String> {
     public static final String ID = "string";
 
     private String description;
+
+    private Map<String, Object> expands;
 
     @Override
     public String getId() {

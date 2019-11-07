@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -27,6 +28,8 @@ public class DateTimeType implements DataType, Converter<Date> {
     private DateTimeFormatter formatter;
 
     private String description;
+
+    private Map<String, Object> expands;
 
     @Override
     public String getId() {
