@@ -2,11 +2,8 @@ package org.jetlinks.core.message.interceptor;
 
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.DeviceMessage;
-import org.jetlinks.core.message.DeviceMessageReply;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.util.concurrent.CompletionStage;
 
 /**
  * 设备消息发送拦截器,用于在消息发送端拦截处理消息.
@@ -35,6 +32,6 @@ public interface DeviceMessageSenderInterceptor {
      * @param <R>     回复的消息类型
      * @return 新的回复结果
      */
-    <R extends DeviceMessageReply> Flux<R> afterReply(DeviceOperator device, DeviceMessage message, R reply);
+    <R extends DeviceMessage> Flux<R> afterReply(DeviceOperator device, DeviceMessage message, R reply);
 
 }

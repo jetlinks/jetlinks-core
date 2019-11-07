@@ -5,7 +5,6 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * 消息发送器,用于发送消息给设备.
@@ -43,16 +42,16 @@ public interface DeviceMessageSender {
      * @param replyMapping 消息回复转换器
      * @param <R>          回复类型
      * @return 异步发送结果
-     * @see this#send(RepayableDeviceMessage)
+     * @see this#send(Publisher)
      */
-    <R extends DeviceMessageReply> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping);
+    <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping);
 
     /**
      * 发送{@link org.jetlinks.core.message.function.FunctionInvokeMessage}消息更便捷的API
      *
      * @param function 要执行的功能
      * @return FunctionInvokeMessageSender
-     * @see this#send(RepayableDeviceMessage)
+     * @see this#send(Publisher)
      * @see org.jetlinks.core.message.function.FunctionInvokeMessage
      * @see FunctionInvokeMessageSender
      */
@@ -63,7 +62,7 @@ public interface DeviceMessageSender {
      *
      * @param property 要获取的属性列表
      * @return ReadPropertyMessageSender
-     * @see this#send(RepayableDeviceMessage)
+     * @see this#send(Publisher)
      * @see org.jetlinks.core.message.property.ReadPropertyMessage
      * @see ReadPropertyMessageSender
      */
@@ -73,7 +72,7 @@ public interface DeviceMessageSender {
      * 发送{@link org.jetlinks.core.message.property.WritePropertyMessage}消息更便捷的API
      *
      * @return WritePropertyMessageSender
-     * @see this#send(RepayableDeviceMessage)
+     * @see this#send(Publisher)
      * @see org.jetlinks.core.message.property.WritePropertyMessage
      * @see WritePropertyMessageSender
      */

@@ -1,7 +1,6 @@
 package org.jetlinks.core.device;
 
 import org.jetlinks.core.message.DeviceMessage;
-import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -27,7 +26,7 @@ public class CompositeDeviceMessageSenderInterceptor implements DeviceMessageSen
     }
 
     @Override
-    public <R extends DeviceMessageReply> Flux<R> afterReply(DeviceOperator device, DeviceMessage message, R reply) {
+    public <R extends DeviceMessage> Flux<R> afterReply(DeviceOperator device, DeviceMessage message, R reply) {
 
         Flux<R> flux = Flux.just(reply);
 

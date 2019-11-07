@@ -5,6 +5,8 @@ import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
 
+import java.util.Optional;
+
 /**
  * @author zhouhao
  * @since 1.0.0
@@ -32,5 +34,9 @@ public interface DeviceSession {
     boolean isAlive();
 
     void onClose(Runnable call);
+
+    default Optional<String> getServerId(){
+        return Optional.empty();
+    }
 
 }

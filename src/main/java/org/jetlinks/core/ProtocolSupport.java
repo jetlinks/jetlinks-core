@@ -6,12 +6,14 @@ import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.device.MqttAuthenticationRequest;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
+import org.jetlinks.core.metadata.ConfigMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 import org.jetlinks.core.server.GatewayServerContextListener;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import java.util.Map;
 
 /**
  * 消息协议支持接口，通过实现此接口来自定义消息协议
@@ -84,4 +86,14 @@ public interface ProtocolSupport {
             @Nonnull AuthenticationRequest request,
             @Nonnull DeviceOperator deviceOperation);
 
+    /**
+     * 获取协议所需的配置信息定义
+     *
+     * @return 配置定义
+     * @see DeviceOperator#getConfigs(String...)
+     * @see DeviceOperator#setConfigs(Map)
+     */
+    default Mono<ConfigMetadata> getConfigMetadata(Transport transport) {
+        return Mono.empty();
+    }
 }

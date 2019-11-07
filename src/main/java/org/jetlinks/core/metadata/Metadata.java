@@ -21,4 +21,16 @@ public interface Metadata {
         return Optional.ofNullable(getExpands())
                 .map(map -> map.get(name));
     }
+
+    default void setExpands(Map<String, Object> expands) {
+    }
+
+    default void setName(String name) {
+
+    }
+
+    default void setDescription(String description) {
+
+    }
+
 }

@@ -9,6 +9,7 @@ import org.jetlinks.core.device.AuthenticationResponse;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
+import org.jetlinks.core.metadata.ConfigMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 import org.jetlinks.core.server.GatewayServerContextListener;
 import reactor.core.publisher.Flux;
@@ -32,6 +33,9 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private DeviceMetadataCodec metadataCodec;
 
     @Getter(AccessLevel.PRIVATE)
+    private final Map<String, Supplier<Mono<ConfigMetadata>>> configMetadata = new ConcurrentHashMap<>();
+
+    @Getter(AccessLevel.PRIVATE)
     private final Map<String, Supplier<Mono<DeviceMessageCodec>>> messageCodecSupports = new ConcurrentHashMap<>();
 
     @Getter(AccessLevel.PRIVATE)
@@ -50,6 +54,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     public void addAuthenticator(Transport transport, Authenticator authenticator) {
         authenticators.put(transport.getId(), authenticator);
+    }
+
+    public void addConfigMetadata(Transport transport, Supplier<Mono<ConfigMetadata>> authenticator) {
+        configMetadata.put(transport.getId(), authenticator);
     }
 
     @Override
@@ -83,5 +91,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
                 .flatMap(at -> at.authenticate(request, deviceOperation))
                 .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("unsupported authentication request : " + request)));
+    }
+
+    @Override
+    public Mono<ConfigMetadata> getConfigMetadata(Transport transport) {
+        return configMetadata.getOrDefault(transport.getId(), Mono::empty).get();
+
     }
 }

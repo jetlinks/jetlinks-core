@@ -48,7 +48,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         return ((T) obj);
     }
 
-    public <R extends DeviceMessageReply> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping) {
+    public <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping) {
         return operator
                 .getConnectionServerId()
                 .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)))

@@ -1,13 +1,13 @@
 package org.jetlinks.core.message.codec;
 
 import io.netty.buffer.ByteBuf;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class SimpleMqttMessage implements MqttMessage {
 
     private String topic;
@@ -19,5 +19,11 @@ public class SimpleMqttMessage implements MqttMessage {
     private ByteBuf payload;
 
     private int messageId;
+
+    private boolean will;
+
+    private boolean dup;
+
+    private boolean retain;
 
 }
