@@ -1,7 +1,12 @@
 package org.jetlinks.core.metadata.types;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.Map;
 
+@Getter
+@Setter
 public class LongType extends NumberType<Long> {
     public static final String ID = "long";
 
@@ -16,7 +21,6 @@ public class LongType extends NumberType<Long> {
     public String getName() {
         return "长整型";
     }
-
 
     @Override
     public Long convert(Object value) {

@@ -21,6 +21,9 @@ public class DataTypes {
         supports.put(LongType.ID, LongType::new);
         supports.put(ObjectType.ID, ObjectType::new);
         supports.put(StringType.ID, StringType::new);
+
+        supports.put(FileType.ID, FileType::new);
+        supports.put(PasswordType.ID, PasswordType::new);
     }
 
     public static void register(String id, Supplier<DataType> supplier) {

@@ -7,6 +7,7 @@ import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Getter
 @Setter
@@ -47,6 +48,17 @@ public class FileType implements DataType, Converter<String> {
     public enum BodyType {
         url,
         base64,
-        binary
+        binary;
+        public static Optional<BodyType> of(String name){
+            if(name==null){
+                return Optional.empty();
+            }
+            for (BodyType value : values()) {
+                if(value.name().equalsIgnoreCase(name)){
+                    return Optional.of(value);
+                }
+            }
+            return Optional.empty();
+        }
     }
 }
