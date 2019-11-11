@@ -7,4 +7,8 @@ public class DisconnectDeviceMessage extends CommonDeviceMessage implements Repa
         return new DisconnectDeviceMessageReply();
     }
 
+    public MessageType getMessageType() {
+        return MessageType.DISCONNECT;
+    }
+
 }

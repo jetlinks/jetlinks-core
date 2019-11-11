@@ -9,4 +9,7 @@ public interface BroadcastMessage extends Message {
 
     Message getMessage();
 
+    default MessageType getMessageType() {
+        return MessageType.BROADCAST;
+    }
 }

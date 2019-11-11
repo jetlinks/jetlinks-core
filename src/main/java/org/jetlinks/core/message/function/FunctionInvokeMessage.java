@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
+import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.RepayableDeviceMessage;
 
 import java.util.ArrayList;
@@ -23,6 +24,11 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
     public FunctionInvokeMessage() {
 
     }
+
+    public MessageType getMessageType() {
+        return MessageType.INVOKE_FUNCTION;
+    }
+
 
     private List<FunctionParameter> inputs = new ArrayList<>();
 

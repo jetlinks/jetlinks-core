@@ -3,6 +3,7 @@ package org.jetlinks.core.message.property;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
+import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.RepayableDeviceMessage;
 
 import java.util.LinkedHashMap;
@@ -26,4 +27,10 @@ public class WritePropertyMessage extends CommonDeviceMessage implements Repayab
     public WritePropertyMessageReply newReply() {
         return new WritePropertyMessageReply().from(this);
     }
+
+    public MessageType getMessageType() {
+        return MessageType.WRITE_PROPERTY;
+    }
+
+
 }

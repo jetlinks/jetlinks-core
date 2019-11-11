@@ -16,6 +16,11 @@ public interface EncodedMessage {
     @Nonnull
     String getDeviceId();
 
+    @Nonnull
+    default MessagePayloadType getPayloadType() {
+        return MessagePayloadType.JSON;
+    }
+
     static EmptyMessage empty() {
         return EmptyMessage.INSTANCE;
     }

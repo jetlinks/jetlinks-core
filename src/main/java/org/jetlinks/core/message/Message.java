@@ -5,6 +5,8 @@ import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.jetlinks.core.message.MessageType.UNKNOWN;
+
 /**
  * 设备消息
  *
@@ -19,10 +21,12 @@ import java.util.Optional;
  * @see DeviceOfflineMessage
  * @see ChildDeviceMessage
  * @see ChildDeviceMessageReply
- * @see ChildDeviceOfflineMessage
- * @see ChildDeviceOnlineMessage
  */
 public interface Message extends Serializable {
+
+    default MessageType getMessageType() {
+        return UNKNOWN;
+    }
 
     /**
      * @return 消息ID

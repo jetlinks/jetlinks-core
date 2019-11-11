@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
+import org.jetlinks.core.message.MessageType;
 
 import java.util.Map;
 
@@ -30,4 +31,9 @@ public class WritePropertyMessageReply extends CommonDeviceMessageReply<WritePro
         super.fromJson(jsonObject);
         this.properties = jsonObject.getJSONObject("properties");
     }
+
+    public MessageType getMessageType() {
+        return MessageType.WRITE_PROPERTY_REPLY;
+    }
+
 }

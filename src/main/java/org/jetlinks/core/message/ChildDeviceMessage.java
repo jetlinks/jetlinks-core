@@ -23,4 +23,8 @@ public class ChildDeviceMessage extends CommonDeviceMessage implements Repayable
     public ChildDeviceMessageReply newReply() {
         return new ChildDeviceMessageReply();
     }
+
+    public MessageType getMessageType() {
+        return MessageType.CHILD;
+    }
 }

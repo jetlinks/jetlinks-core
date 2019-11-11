@@ -15,4 +15,9 @@ public class ChildDeviceMessageReply extends CommonDeviceMessageReply {
     private String childDeviceId;
 
     private Message childDeviceMessage;
+
+    public MessageType getMessageType() {
+        return MessageType.CHILD_REPLY;
+    }
+
 }

@@ -26,4 +26,5 @@ public class SimpleMqttMessage implements MqttMessage {
 
     private boolean retain;
 
+    private MessagePayloadType payloadType;
 }
