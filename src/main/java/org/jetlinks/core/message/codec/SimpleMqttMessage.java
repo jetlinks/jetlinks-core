@@ -27,4 +27,14 @@ public class SimpleMqttMessage implements MqttMessage {
     private boolean retain;
 
     private MessagePayloadType payloadType;
+
+    @Override
+    public String toString() {
+        return deviceId + " => " + getTopic() +
+                " | messageId " + getMessageId() +
+                " | QoS " + getQosLevel() +
+                " | dup " + isDup() +
+                " | retain " + isRetain() +
+                " | will " + isWill();
+    }
 }
