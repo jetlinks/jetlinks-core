@@ -22,6 +22,6 @@ public interface DeviceMessageEncoder {
      * @see org.jetlinks.core.message.ChildDeviceMessage 子设备消息
      * @see org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor
      */
-    Mono<EncodedMessage> encode(MessageEncodeContext context);
+    Mono<? extends EncodedMessage> encode(MessageEncodeContext context);
 
 }

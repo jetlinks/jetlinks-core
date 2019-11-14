@@ -1,8 +1,9 @@
 package org.jetlinks.core.message.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import lombok.Getter;
-import org.jetlinks.coap.CoapPacket;
+import org.eclipse.californium.core.server.resources.CoapExchange;
 
 import javax.annotation.Nonnull;
 
@@ -10,22 +11,22 @@ import javax.annotation.Nonnull;
  * @author zhouhao
  * @since 1.0.0
  */
-public class CoAPMessage implements EncodedMessage {
+public class CoapMessage implements EncodedMessage {
 
     private String deviceId;
 
     @Getter
-    protected CoapPacket packet;
+    protected CoapExchange exchange;
 
-    public CoAPMessage(String deviceId, CoapPacket packet) {
+    public CoapMessage(String deviceId, CoapExchange exchange) {
         this.deviceId = deviceId;
-        this.packet = packet;
+        this.exchange = exchange;
     }
 
     @Nonnull
     @Override
     public ByteBuf getPayload() {
-        throw new UnsupportedOperationException();
+        return Unpooled.copiedBuffer(exchange.getRequestPayload());
     }
 
     @Nonnull
@@ -36,6 +37,6 @@ public class CoAPMessage implements EncodedMessage {
 
     @Override
     public String toString() {
-        return packet.toString(true, false, true, false);
+        return exchange.toString();
     }
 }

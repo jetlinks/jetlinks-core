@@ -46,7 +46,7 @@ public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
             for (DeviceMessageEncodeInterceptor interceptor : encodeDeviceMessageInterceptors) {
                 interceptor.preEncode(context);
             }
-            Mono<EncodedMessage> message = messageCodec.encode(context);
+            Mono<? extends EncodedMessage> message = messageCodec.encode(context);
 
             for (DeviceMessageEncodeInterceptor interceptor : encodeDeviceMessageInterceptors) {
                 message = message.flatMap(msg -> interceptor.postEncode(context, msg));

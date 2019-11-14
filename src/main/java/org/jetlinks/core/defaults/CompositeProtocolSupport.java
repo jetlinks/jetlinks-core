@@ -48,6 +48,14 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         messageCodecSupports.put(transport.getId(), supplier);
     }
 
+    public void addMessageCodecSupport(Transport transport, DeviceMessageCodec codec) {
+        messageCodecSupports.put(transport.getId(), () -> Mono.just(codec));
+    }
+
+    public void addMessageCodecSupport(DeviceMessageCodec codec) {
+        addMessageCodecSupport(codec.getSupportTransport(), codec);
+    }
+
     public void addContextListener(Transport transport, Supplier<Mono<GatewayServerContextListener<?>>> supplier) {
         contextListener.put(transport.getId(), supplier);
     }
@@ -58,6 +66,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     public void addConfigMetadata(Transport transport, Supplier<Mono<ConfigMetadata>> authenticator) {
         configMetadata.put(transport.getId(), authenticator);
+    }
+
+    public void addConfigMetadata(Transport transport, ConfigMetadata authenticator) {
+        configMetadata.put(transport.getId(), () -> Mono.just(authenticator));
     }
 
     @Override

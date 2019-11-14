@@ -22,6 +22,8 @@ public class EnumType implements DataType {
 
     private String description;
 
+    private boolean multi;
+
     private Map<String, Object> expands;
 
     @Override
@@ -61,7 +63,7 @@ public class EnumType implements DataType {
                 .orElse(stringVal);
     }
 
-    public void addElement(Element element) {
+    public EnumType addElement(Element element) {
         if (elements == null) {
             synchronized (this) {
                 if (elements == null) {
@@ -70,6 +72,7 @@ public class EnumType implements DataType {
             }
         }
         elements.add(element);
+        return this;
     }
 
     @Getter
@@ -81,14 +84,22 @@ public class EnumType implements DataType {
 
         private String text;
 
+        private String description;
+
+
+        public static Element of(String value,String text){
+            return of(value,text,null);
+        }
+
         public static Element of(Map<String, String> map) {
-            return Element.of(map.get("value"), map.get("text"));
+            return Element.of(map.get("value"), map.get("text"), map.get("description"));
         }
 
         public Map<String, Object> toMap() {
             Map<String, Object> map = new HashMap<>();
             map.put("value", value);
             map.put("text", text);
+            map.put("description", description);
 
             return map;
         }

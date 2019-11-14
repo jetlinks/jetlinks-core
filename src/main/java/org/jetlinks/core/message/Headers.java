@@ -36,4 +36,8 @@ public interface Headers {
     HeaderKey<String> sendFrom = HeaderKey.of("send-from", null);
     HeaderKey<String> replyFrom = HeaderKey.of("reply-from", null);
 
+    //设备上报属性信息
+    HeaderKey<Boolean> reportProperties = HeaderKey.of("report-properties", false);
+    //上报派生属性
+    HeaderKey<Boolean> reportDerivedMetadata = HeaderKey.of("derived-metadata",false);
 }
