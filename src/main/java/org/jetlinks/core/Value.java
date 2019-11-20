@@ -2,19 +2,24 @@ package org.jetlinks.core;
 
 public interface Value {
     default String asString() {
-        return as(String.class);
+        return String.valueOf(get());
     }
 
     default int asInt() {
-        return as(Integer.TYPE);
+        return asNumber().intValue();
     }
 
     default long asLong() {
-        return as(Long.TYPE);
+        return asNumber().longValue();
     }
 
     default boolean asBoolean() {
-        return as(Boolean.TYPE);
+        return Boolean.TRUE.equals(get())
+                || "true".equals(get());
+    }
+
+    default Number asNumber() {
+        return as(Number.class);
     }
 
     Object get();
