@@ -14,6 +14,7 @@ public interface EncodedMessage {
     ByteBuf getPayload();
 
     @Nonnull
+    @Deprecated
     String getDeviceId();
 
     @Nonnull
