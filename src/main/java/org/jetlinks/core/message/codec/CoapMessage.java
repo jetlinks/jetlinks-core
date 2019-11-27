@@ -1,42 +1,54 @@
 package org.jetlinks.core.message.codec;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import lombok.Getter;
-import org.eclipse.californium.core.server.resources.CoapExchange;
+import org.eclipse.californium.core.coap.Option;
+import org.eclipse.californium.core.coap.OptionNumberRegistry;
 
 import javax.annotation.Nonnull;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * @author zhouhao
- * @since 1.0.0
+ * @since 1.0
  */
-public class CoapMessage implements EncodedMessage {
+public interface CoapMessage extends EncodedMessage {
 
-    private String deviceId;
+    /**
+     * request uri path
+     * e.g. /device/1/property/report
+     *
+     * @return path
+     */
+    @Nonnull
+    String getPath();
 
-    @Getter
-    protected CoapExchange exchange;
+    @Nonnull
+    List<Option> getOptions();
 
-    public CoapMessage(String deviceId, CoapExchange exchange) {
-        this.deviceId = deviceId;
-        this.exchange = exchange;
+    /**
+     * @param number option flag
+     * @return option value
+     * @see OptionNumberRegistry
+     * @see OptionNumberRegistry#CONTENT_FORMAT
+     */
+    @Nonnull
+    default Optional<Option> getOption(int number) {
+        return getOptions()
+                .stream()
+                .filter(opt -> opt.getNumber() == number)
+                .findFirst();
     }
 
     @Nonnull
-    @Override
-    public ByteBuf getPayload() {
-        return Unpooled.copiedBuffer(exchange.getRequestPayload());
+    default Optional<String> getStringOption(int number) {
+        return getOption(number)
+                .map(Option::getStringValue);
     }
 
     @Nonnull
-    @Override
-    public String getDeviceId() {
-        return deviceId;
+    default Optional<Integer> getIntOption(int number) {
+        return getOption(number)
+                .map(Option::getIntegerValue);
     }
 
-    @Override
-    public String toString() {
-        return exchange.toString();
-    }
 }

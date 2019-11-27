@@ -9,9 +9,9 @@ import reactor.core.publisher.Flux;
 public interface MqttGatewayServerContext extends GatewayServerContext {
 
     /**
-     * @return MQTT or MQTT_SSL
+     * @return MQTT or MQTT_TLS
      * @see DefaultTransport#MQTT
-     * @see DefaultTransport#MQTT_SSL
+     * @see DefaultTransport#MQTT_TLS
      */
     @Override
     Transport getTransport();

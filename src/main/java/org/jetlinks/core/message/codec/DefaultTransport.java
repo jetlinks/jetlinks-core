@@ -10,17 +10,17 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum DefaultTransport implements Transport {
     MQTT("MQTT"),
-    MQTT_SSL("MQTT SSL"),
+    MQTT_TLS("MQTT TLS"),
     UDP("UDP"),
     UDP_DTLS("UDP DTLS"),
     CoAP("CoAP"),
     CoAP_DTLS("CoAP DTLS"),
     TCP("TCP"),
-    TCP_SSL("TCP SSL"),
+    TCP_TLS("TCP TLS"),
     HTTP("HTTP"),
     HTTPS("HTTPS"),
     WebSocket("WebSocket"),
-    WebSockets("WebSocket SSL");
+    WebSockets("WebSocket TLS");
 
     @Getter
     private String name;
