@@ -12,7 +12,7 @@ public class SimpleMqttMessage implements MqttMessage {
 
     private String topic;
 
-    private String deviceId;
+    private String clientId;
 
     private int qosLevel;
 
@@ -30,7 +30,7 @@ public class SimpleMqttMessage implements MqttMessage {
 
     @Override
     public String toString() {
-        return deviceId + " => " + getTopic() +
+        return getTopic() + " => " +
                 " | messageId " + getMessageId() +
                 " | QoS " + getQosLevel() +
                 " | dup " + isDup() +

@@ -14,10 +14,6 @@ public interface EncodedMessage {
     ByteBuf getPayload();
 
     @Nonnull
-    @Deprecated
-    String getDeviceId();
-
-    @Nonnull
     default MessagePayloadType getPayloadType() {
         return MessagePayloadType.JSON;
     }
@@ -26,20 +22,8 @@ public interface EncodedMessage {
         return EmptyMessage.INSTANCE;
     }
 
-    static EncodedMessage simple(String deviceId, ByteBuf data) {
-        return new EncodedMessage() {
-            @Nonnull
-            @Override
-            public ByteBuf getPayload() {
-                return data;
-            }
-
-            @Nonnull
-            @Override
-            public String getDeviceId() {
-                return deviceId;
-            }
-        };
+    static EncodedMessage simple(ByteBuf data) {
+        return () -> data;
     }
 
 }

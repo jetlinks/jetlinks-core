@@ -28,8 +28,5 @@ public class DefaultCoapMessage implements CoapMessage {
     @Getter
     private List<Option> options;
 
-    @Getter
-    private String deviceId;
-
 
 }

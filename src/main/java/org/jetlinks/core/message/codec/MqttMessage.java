@@ -11,6 +11,8 @@ public interface MqttMessage extends EncodedMessage {
     @Nonnull
     String getTopic();
 
+    String getClientId();
+
     int getMessageId();
 
     default boolean isWill() {

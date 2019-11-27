@@ -21,9 +21,4 @@ public final class EmptyMessage implements EncodedMessage {
         throw new UnsupportedOperationException("无法从空消息中获取ByteBuf");
     }
 
-    @Nonnull
-    @Override
-    public String getDeviceId() {
-        throw new UnsupportedOperationException();
-    }
 }

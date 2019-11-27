@@ -15,13 +15,10 @@ import java.util.List;
  */
 public class CoapExchangeMessage implements CoapMessage {
 
-    private String deviceId;
-
     @Getter
     protected CoapExchange exchange;
 
-    public CoapExchangeMessage(String deviceId, CoapExchange exchange) {
-        this.deviceId = deviceId;
+    public CoapExchangeMessage(CoapExchange exchange) {
         this.exchange = exchange;
     }
 
@@ -29,12 +26,6 @@ public class CoapExchangeMessage implements CoapMessage {
     @Override
     public ByteBuf getPayload() {
         return Unpooled.wrappedBuffer(exchange.getRequestPayload());
-    }
-
-    @Nonnull
-    @Override
-    public String getDeviceId() {
-        return deviceId;
     }
 
     @Override
