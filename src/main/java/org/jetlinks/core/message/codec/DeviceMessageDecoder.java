@@ -1,7 +1,7 @@
 package org.jetlinks.core.message.codec;
 
 import org.jetlinks.core.message.Message;
-import reactor.core.publisher.Mono;
+import org.reactivestreams.Publisher;
 
 public interface DeviceMessageDecoder {
     /**
@@ -18,5 +18,5 @@ public interface DeviceMessageDecoder {
      * @see org.jetlinks.core.message.DeviceOfflineMessage
      * @see org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor
      */
-    Mono<? extends Message> decode(MessageDecodeContext context);
+    Publisher<? extends Message> decode(MessageDecodeContext context);
 }
