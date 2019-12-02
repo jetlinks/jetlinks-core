@@ -5,7 +5,6 @@ import org.jetlinks.core.message.interceptor.DeviceMessageCodecInterceptor;
 import org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor;
 import org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -42,12 +41,12 @@ public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
     }
 
     @Override
-    public Mono<EncodedMessage> encode(MessageEncodeContext context) {
-        return Mono.defer(() -> {
+    public Flux<? extends EncodedMessage> encode(MessageEncodeContext context) {
+        return Flux.defer(() -> {
             for (DeviceMessageEncodeInterceptor interceptor : encodeDeviceMessageInterceptors) {
                 interceptor.preEncode(context);
             }
-            Mono<? extends EncodedMessage> message = messageCodec.encode(context);
+            Flux<? extends EncodedMessage> message = Flux.from(messageCodec.encode(context));
 
             for (DeviceMessageEncodeInterceptor interceptor : encodeDeviceMessageInterceptors) {
                 message = message.flatMap(msg -> interceptor.postEncode(context, msg));

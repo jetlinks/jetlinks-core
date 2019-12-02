@@ -1,6 +1,6 @@
 package org.jetlinks.core.message.codec;
 
-import reactor.core.publisher.Mono;
+import org.reactivestreams.Publisher;
 
 /**
  * 设备消息编码器,用于将消息对象编码为对应消息协议的消息
@@ -22,6 +22,6 @@ public interface DeviceMessageEncoder {
      * @see org.jetlinks.core.message.ChildDeviceMessage 子设备消息
      * @see org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor
      */
-    Mono<? extends EncodedMessage> encode(MessageEncodeContext context);
+    Publisher<? extends EncodedMessage> encode(MessageEncodeContext context);
 
 }
