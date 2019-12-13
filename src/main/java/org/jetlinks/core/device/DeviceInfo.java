@@ -46,6 +46,9 @@ public class DeviceInfo implements Serializable {
     private Map<String, Object> configuration = new HashMap<>();
 
     public DeviceInfo addConfig(String key, Object value) {
+        if(value==null){
+            return this;
+        }
         if (configuration == null) {
             configuration = new HashMap<>();
         }

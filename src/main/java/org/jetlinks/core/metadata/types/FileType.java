@@ -6,19 +6,14 @@ import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
 
-import java.util.Map;
 import java.util.Optional;
 
 @Getter
 @Setter
-public class FileType implements DataType, Converter<String> {
+public class FileType extends AbstractType<FileType> implements DataType, Converter<String> {
     public static final String ID = "file";
 
-    private String description;
-
     private BodyType bodyType = BodyType.url;
-
-    private Map<String, Object> expands;
 
     @Override
     public String getId() {
@@ -28,6 +23,11 @@ public class FileType implements DataType, Converter<String> {
     @Override
     public String getName() {
         return "文件";
+    }
+
+    public FileType bodyType(BodyType type) {
+        this.bodyType = type;
+        return this;
     }
 
     @Override
@@ -49,12 +49,13 @@ public class FileType implements DataType, Converter<String> {
         url,
         base64,
         binary;
-        public static Optional<BodyType> of(String name){
-            if(name==null){
+
+        public static Optional<BodyType> of(String name) {
+            if (name == null) {
                 return Optional.empty();
             }
             for (BodyType value : values()) {
-                if(value.name().equalsIgnoreCase(name)){
+                if (value.name().equalsIgnoreCase(name)) {
                     return Optional.of(value);
                 }
             }

@@ -15,16 +15,12 @@ import java.util.Map;
 
 @Getter
 @Setter
-public class EnumType implements DataType {
+public class EnumType extends AbstractType<EnumType> implements DataType {
     public static final String ID = "enum";
 
     private volatile List<Element> elements;
 
-    private String description;
-
     private boolean multi;
-
-    private Map<String, Object> expands;
 
     @Override
     public String getId() {
@@ -35,6 +31,13 @@ public class EnumType implements DataType {
     public String getName() {
         return "枚举";
     }
+
+
+    public EnumType multi(boolean multi){
+        this.multi=multi;
+        return this;
+    }
+
 
     @Override
     public ValidateResult validate(Object value) {

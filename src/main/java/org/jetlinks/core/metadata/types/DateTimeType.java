@@ -12,11 +12,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
-import java.util.Map;
 
 @Getter
 @Setter
-public class DateTimeType implements DataType, Converter<Date> {
+public class DateTimeType extends AbstractType<DateTimeType> implements DataType, Converter<Date> {
     public static final String ID = "date";
 
     public static final String TIMESTAMP_FORMAT = "timestamp";
@@ -27,9 +26,18 @@ public class DateTimeType implements DataType, Converter<Date> {
 
     private DateTimeFormatter formatter;
 
-    private String description;
+    public DateTimeType timeZone(ZoneId zoneId) {
+        this.zoneId = zoneId;
 
-    private Map<String, Object> expands;
+        return this;
+    }
+
+    public DateTimeType format(String format) {
+        this.format = format;
+        this.getFormatter();
+        return this;
+    }
+
 
     @Override
     public String getId() {

@@ -9,20 +9,15 @@ import org.jetlinks.core.metadata.ValidateResult;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Getter
 @Setter
-public class ArrayType implements DataType, Converter<List<Object>> {
-
-    private DataType elementType;
+public class ArrayType extends AbstractType<ArrayType> implements DataType, Converter<List<Object>> {
 
     public static final String ID = "array";
 
-    private String description;
-
-    private Map<String, Object> expands;
+    private DataType elementType;
 
     @Override
     public String getId() {
@@ -34,10 +29,15 @@ public class ArrayType implements DataType, Converter<List<Object>> {
         return "数组";
     }
 
+    public ArrayType elementType(DataType elementType) {
+        this.elementType = elementType;
+        return this;
+    }
+
     @Override
     public ValidateResult validate(Object value) {
         if (elementType != null && value instanceof Collection) {
-            Collection collection = ((Collection) value);
+            Collection<?> collection = ((Collection<?>) value);
             for (Object data : collection) {
                 ValidateResult result = elementType.validate(data);
                 if (!result.isSuccess()) {
@@ -52,7 +52,7 @@ public class ArrayType implements DataType, Converter<List<Object>> {
     public Object format(Object value) {
 
         if (elementType != null && value instanceof Collection) {
-            Collection<Object> collection = ((Collection) value);
+            Collection<?> collection = ((Collection<?>) value);
             return collection.stream()
                     .map(data -> elementType.format(data))
                     .collect(Collectors.toList());
@@ -64,10 +64,10 @@ public class ArrayType implements DataType, Converter<List<Object>> {
     @Override
     public List<Object> convert(Object value) {
         if (value instanceof Collection) {
-            return ((Collection<Object>) value).stream()
+            return ((Collection<?>) value).stream()
                     .map(val -> {
                         if (elementType instanceof Converter) {
-                            return ((Converter) elementType).convert(val);
+                            return ((Converter<?>) elementType).convert(val);
                         }
                         return val;
                     }).collect(Collectors.toList());

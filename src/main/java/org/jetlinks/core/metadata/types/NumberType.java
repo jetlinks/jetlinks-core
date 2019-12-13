@@ -15,7 +15,7 @@ import java.util.function.Function;
 
 @Getter
 @Setter
-public abstract class NumberType<N extends Number> implements UnitSupported, DataType, Converter<N> {
+public abstract class NumberType<N extends Number> extends AbstractType<NumberType<N>> implements UnitSupported, DataType, Converter<N> {
 
     //最大值
     private Number max;
@@ -26,9 +26,21 @@ public abstract class NumberType<N extends Number> implements UnitSupported, Dat
     //单位
     private ValueUnit unit;
 
-    @Getter
-    @Setter
-    private String description;
+    public NumberType<N> unit(ValueUnit unit) {
+        this.unit = unit;
+        return this;
+    }
+
+    public NumberType<N> max(Number max) {
+        this.max = max;
+        return this;
+    }
+
+    public NumberType<N> min(Number min) {
+        this.min = min;
+        return this;
+    }
+
 
     public Object format(Object value) {
         ValueUnit unit = getUnit();

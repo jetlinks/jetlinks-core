@@ -3,14 +3,10 @@ package org.jetlinks.core.metadata.types;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Map;
-
 @Getter
 @Setter
 public class IntType extends NumberType<Integer> {
     public static final String ID = "int";
-
-    private Map<String, Object> expands;
 
     @Override
     public String getId() {

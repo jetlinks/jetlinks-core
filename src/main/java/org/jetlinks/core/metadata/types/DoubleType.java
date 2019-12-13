@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.util.Map;
 
 import static java.math.BigDecimal.ROUND_HALF_UP;
 
@@ -16,8 +15,6 @@ public class DoubleType extends NumberType<Double> {
 
     private Integer scale;
 
-    private Map<String, Object> expands;
-
     @Override
     public Object format(Object value) {
         if (value instanceof Number) {
@@ -28,6 +25,11 @@ public class DoubleType extends NumberType<Double> {
             return super.format(scaled);
         }
         return super.format(value);
+    }
+
+    public DoubleType scale(Integer scale) {
+        this.scale = scale;
+        return this;
     }
 
     @Override

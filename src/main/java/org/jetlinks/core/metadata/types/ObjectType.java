@@ -16,14 +16,10 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @Slf4j
-public class ObjectType implements DataType, Converter<Map<String, Object>> {
+public class ObjectType extends AbstractType<ObjectType> implements DataType, Converter<Map<String, Object>> {
     public static final String ID = "object";
 
     private List<PropertyMetadata> properties;
-
-    private Map<String, Object> expands;
-
-    private String description;
 
     @Override
     public String getId() {
@@ -42,6 +38,17 @@ public class ObjectType implements DataType, Converter<Map<String, Object>> {
         return properties
                 .stream()
                 .collect(Collectors.toMap(PropertyMetadata::getId, Function.identity(), (_1, _2) -> _1));
+    }
+
+    public ObjectType addPropertyMetadata(PropertyMetadata property) {
+
+        if (this.properties == null) {
+            this.properties = new ArrayList<>();
+        }
+
+        this.properties.add(property);
+
+        return this;
     }
 
     @Override
