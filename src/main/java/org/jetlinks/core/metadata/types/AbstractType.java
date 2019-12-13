@@ -25,9 +25,9 @@ public abstract class AbstractType<R> implements DataType {
         return (R) this;
     }
 
-    public <V> R expand(ConfigKeyValue<V>... kvs) {
-        for (ConfigKeyValue<V> kv : kvs) {
-            expand(kv, kv.getValue());
+    public R expand(ConfigKeyValue<?>... kvs) {
+        for (ConfigKeyValue<?> kv : kvs) {
+            expand(kv.getKey(), kv.getValue());
         }
         return (R) this;
     }
@@ -48,5 +48,9 @@ public abstract class AbstractType<R> implements DataType {
         return (R) this;
     }
 
+    public R description(String description) {
+        this.description = description;
+        return (R) this;
+    }
 
 }

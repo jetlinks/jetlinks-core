@@ -12,8 +12,17 @@ public interface ConfigKey<V> {
     }
 
     static <T> ConfigKey<T> of(String key) {
-        return () -> key;
+        return of(key, key);
     }
+
+    static <T> ConfigKey<T> of(String key, String name) {
+        return SimpleConfigKey.of(key, name, (Class<T>) Object.class);
+    }
+
+    static <T> ConfigKey<T> of(String key, String name, Class<T> type) {
+        return SimpleConfigKey.of(key, name, type);
+    }
+
 
     default ConfigKeyValue<V> value(V value) {
         return new ConfigKeyValue<V>() {
