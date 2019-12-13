@@ -1,8 +1,12 @@
 package org.jetlinks.core.device;
 
 import lombok.*;
+import org.jetlinks.core.config.ConfigKey;
+import org.jetlinks.core.config.ConfigKeyValue;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author zhouhao
@@ -35,4 +39,27 @@ public class DeviceInfo implements Serializable {
      * 元数据
      */
     private String metadata;
+
+    /**
+     * 其他配置
+     */
+    private Map<String, Object> configuration = new HashMap<>();
+
+    public DeviceInfo addConfig(String key, Object value) {
+        if (configuration == null) {
+            configuration = new HashMap<>();
+        }
+        configuration.put(key, value);
+        return this;
+    }
+
+    public <T> DeviceInfo addConfig(ConfigKey<T> key, T value) {
+        addConfig(key.getKey(), value);
+        return this;
+    }
+
+    public <T> DeviceInfo addConfig(ConfigKeyValue<T> keyValue) {
+        addConfig(keyValue.getKey(), keyValue.getValue());
+        return this;
+    }
 }

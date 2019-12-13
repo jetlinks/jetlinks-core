@@ -1,11 +1,12 @@
 package org.jetlinks.core.device;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import org.jetlinks.core.config.ConfigKey;
+import org.jetlinks.core.config.ConfigKeyValue;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author zhouhao
@@ -14,6 +15,7 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
 @AllArgsConstructor
 public class ProductInfo implements Serializable {
     private static final long serialVersionUID = -6849794470754667710L;
@@ -32,4 +34,33 @@ public class ProductInfo implements Serializable {
      * 元数据
      */
     private String metadata;
+
+    /**
+     * 其他配置
+     */
+    private Map<String, Object> configuration = new HashMap<>();
+
+    public ProductInfo(String id, String protocol, String metadata) {
+        this.id = id;
+        this.protocol = protocol;
+        this.metadata = metadata;
+    }
+
+    public ProductInfo addConfig(String key, Object value) {
+        if (configuration == null) {
+            configuration = new HashMap<>();
+        }
+        configuration.put(key, value);
+        return this;
+    }
+
+    public <T> ProductInfo addConfig(ConfigKey<T> key, T value) {
+        addConfig(key.getKey(), value);
+        return this;
+    }
+
+    public <T> ProductInfo addConfig(ConfigKeyValue<T> keyValue) {
+        addConfig(keyValue.getKey(), keyValue.getValue());
+        return this;
+    }
 }

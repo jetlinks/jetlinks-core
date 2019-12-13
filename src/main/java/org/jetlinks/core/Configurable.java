@@ -36,7 +36,7 @@ public interface Configurable {
      */
     Mono<Boolean> setConfig(String key, Object value);
 
-    default Mono<Boolean> setConfig(ConfigKeyValue keyValue) {
+    default Mono<Boolean> setConfig(ConfigKeyValue<?> keyValue) {
         return setConfig(keyValue.getKey(), keyValue.getValue());
     }
 
@@ -44,7 +44,7 @@ public interface Configurable {
         return setConfig(key.getKey(), value);
     }
 
-    default Mono<Boolean> setConfigs(ConfigKeyValue... keyValues) {
+    default Mono<Boolean> setConfigs(ConfigKeyValue<?>... keyValues) {
         return setConfigs(Arrays.stream(keyValues)
                 .filter(ConfigKeyValue::isNotNull)
                 .collect(Collectors.toMap(ConfigKeyValue::getKey, ConfigKeyValue::getValue)));

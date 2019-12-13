@@ -6,8 +6,19 @@ import reactor.core.publisher.Mono;
 
 public interface ClusterTopic<T> {
 
-    Flux<T> subscribe();
+    Flux<TopicMessage<T>> subscribePattern();
+
+    default Flux<T> subscribe() {
+        return subscribePattern()
+                .map(TopicMessage::getMessage);
+    }
 
     Mono<Integer> publish(Publisher<? extends T> publisher);
+
+    interface TopicMessage<T> {
+        String getTopic();
+
+        T getMessage();
+    }
 
 }

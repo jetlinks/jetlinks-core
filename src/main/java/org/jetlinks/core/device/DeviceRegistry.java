@@ -35,6 +35,12 @@ public interface DeviceRegistry {
      */
     Mono<DeviceOperator> registry(DeviceInfo deviceInfo);
 
+    /**
+     * 注册产品(型号)信息
+     *
+     * @param productInfo 产品(型号)信息
+     * @return 注册结果
+     */
     Mono<DeviceProductOperator> registry(ProductInfo productInfo);
 
 
