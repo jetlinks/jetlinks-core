@@ -49,7 +49,6 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
         return "时间";
     }
 
-
     protected DateTimeFormatter getFormatter() {
         if (formatter == null) {
             formatter = DateTimeFormatter.ofPattern(format);

@@ -10,6 +10,10 @@ public interface DataType extends Metadata, FormatSupport {
 
     ValidateResult validate(Object value);
 
+    default String getType() {
+        return getId();
+    }
+
     @Override
     default Map<String, Object> getExpands() {
         return null;
