@@ -52,10 +52,10 @@ public interface Configurable {
 
     default <V> Mono<V> getConfig(ConfigKey<V> key) {
         return getConfig(key.getKey())
-                .map(value -> value.as(key.getType()));
+                .flatMap(value -> Mono.justOrEmpty(value.as(key.getType())));
     }
 
-    default <V> Mono<Values> getConfigs(ConfigKey<V>... key) {
+    default Mono<Values> getConfigs(ConfigKey<?>... key) {
         return getConfigs(Arrays.stream(key)
                 .map(ConfigKey::getKey)
                 .collect(Collectors.toSet()));
@@ -92,7 +92,7 @@ public interface Configurable {
      */
     Mono<Boolean> removeConfigs(Collection<String> key);
 
-    default Mono<Boolean> removeConfigs(ConfigKey... key) {
+    default Mono<Boolean> removeConfigs(ConfigKey<?>... key) {
         return removeConfigs(Arrays.stream(key).map(ConfigKey::getKey).collect(Collectors.toSet()));
     }
 

@@ -19,20 +19,21 @@ public interface StorageConfigurable extends Configurable {
 
     @Override
     default Mono<Value> getConfig(String key) {
-        return getReactiveStorage()
-                .flatMap(store -> store.getConfig(key))
-                .switchIfEmpty(Mono.defer(() -> getParent()
-                        .flatMap(parent -> parent.getConfig(key))));
+        return getConfig(key, true);
     }
 
-    @Override
-    default Mono<Values> getConfigs(Collection<String> keys) {
+    default Mono<Value> getConfig(String key, boolean fallbackParent) {
+        return getReactiveStorage()
+                .flatMap(store -> store.getConfig(key))
+                .switchIfEmpty(Mono.defer(() -> fallbackParent ? getParent().flatMap(parent -> parent.getConfig(key)) : Mono.empty()));
+    }
 
+    default Mono<Values> getConfigs(Collection<String> keys, boolean fallbackParent) {
         return getReactiveStorage()
                 .flatMap(store -> store.getConfigs(keys))
                 .flatMap(values -> {
                     //尝试获取上一级的配置
-                    if (!keys.isEmpty() && values.size() != keys.size()) {
+                    if (!keys.isEmpty() && values.size() != keys.size() && fallbackParent) {
                         Set<String> nonExistent = values.getNonExistentKeys(keys);
                         return getParent()
                                 .flatMap(parent -> parent.getConfigs(nonExistent))
@@ -41,6 +42,11 @@ public interface StorageConfigurable extends Configurable {
                     }
                     return Mono.just(values);
                 });
+    }
+
+    @Override
+    default Mono<Values> getConfigs(Collection<String> keys) {
+        return getConfigs(keys, true);
     }
 
     @Override

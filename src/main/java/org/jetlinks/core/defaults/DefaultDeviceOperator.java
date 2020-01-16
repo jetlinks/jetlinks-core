@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.ProtocolSupports;
 import org.jetlinks.core.Value;
+import org.jetlinks.core.Values;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigStorage;
 import org.jetlinks.core.config.ConfigStorageManager;
@@ -14,8 +15,11 @@ import org.jetlinks.core.message.DisconnectDeviceMessage;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.utils.IdUtils;
+import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -64,12 +68,14 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<String> getConnectionServerId() {
-        return getConfig(DeviceConfigKey.connectionServerId);
+        return getSelfConfig(DeviceConfigKey.connectionServerId.getKey())
+                .map(Value::asString);
     }
 
     @Override
     public Mono<String> getSessionId() {
-        return getConfig(DeviceConfigKey.sessionId);
+        return getSelfConfig(DeviceConfigKey.connectionServerId.getKey())
+                .map(Value::asString);
     }
 
     @Override
@@ -79,40 +85,66 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<Byte> getState() {
-        return getConfig("state")
+        return getSelfConfig("state")
                 .map(v -> v.as(Byte.class))
                 .defaultIfEmpty(DeviceState.unknown);
     }
 
     @Override
     public Mono<Byte> checkState() {
-        return getConnectionServerId()
-                .flatMapMany(server -> handler.getDeviceState(server, Collections.singletonList(id)))
-                .next()
-                .map(DeviceStateInfo::getState)
-                .defaultIfEmpty(DeviceState.offline)
-                .flatMap(state ->
-                        getState()
-                                .defaultIfEmpty(DeviceState.unknown)
+        return getConfigs(Arrays.asList(DeviceConfigKey.connectionServerId.getKey(), "state"))
+                .flatMap(values -> {
+                    String server = values
+                            .getValue(DeviceConfigKey.connectionServerId.getKey())
+                            .map(Value::asString)
+                            .orElse(null);
+                    Byte state = values.getValue("state").map(val -> val.as(Byte.class)).orElse(DeviceState.unknown);
+
+                    if (StringUtils.hasText(server)) {
+                        return handler.getDeviceState(server, Collections.singletonList(id))
+                                .map(DeviceStateInfo::getState)
+                                .singleOrEmpty()
+                                .defaultIfEmpty(DeviceState.offline)
                                 .flatMap(current -> {
                                     if (!current.equals(state)) {
-                                        log.warn("device[{}] state changed to {}", getDeviceId(), state);
-                                        return putState(state)
-                                                .thenReturn(state);
+                                        log.info("device[{}] state changed to {}", getDeviceId(), current);
+                                        return putState(current)
+                                                .thenReturn(current);
                                     }
                                     return Mono.just(state);
-                                }));
+                                })
+                                ;
+
+                    }
+                    return Mono.just(state);
+                });
+//        return getConnectionServerId()
+//                .flatMapMany(server -> handler.getDeviceState(server, Collections.singletonList(id)))
+//                .singleOrEmpty()
+//                .map(DeviceStateInfo::getState)
+//                .defaultIfEmpty(DeviceState.offline)
+//                .flatMap(state ->
+//                        getState()
+//                                .defaultIfEmpty(DeviceState.unknown)
+//                                .flatMap(current -> {
+//                                    if (!current.equals(state)) {
+//                                        log.warn("device[{}] state changed to {}", getDeviceId(), state);
+//                                        return putState(state)
+//                                                .thenReturn(state);
+//                                    }
+//                                    return Mono.just(state);
+//                                }));
     }
 
     @Override
     public Mono<Long> getOnlineTime() {
-        return getConfig("onlineTime")
+        return getSelfConfig("onlineTime")
                 .map(val -> val.as(Long.class));
     }
 
     @Override
     public Mono<Long> getOfflineTime() {
-        return getConfig("offlineTime")
+        return getSelfConfig("offlineTime")
                 .map(val -> val.as(Long.class));
     }
 
@@ -127,12 +159,22 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     }
 
     @Override
+    public Mono<Value> getSelfConfig(String key) {
+        return getConfig(key, false);
+    }
+
+    @Override
+    public Mono<Values> getSelfConfigs(Collection<String> keys) {
+        return getConfigs(keys, false);
+    }
+
+    @Override
     public Mono<Boolean> offline() {
         return removeConfigs(DeviceConfigKey.connectionServerId, DeviceConfigKey.sessionId)
                 .flatMap(nil -> setConfigs(
                         ConfigKey.of("offlineTime").value(System.currentTimeMillis()),
                         ConfigKey.of("state").value(DeviceState.offline)
-                )) .doOnError(err -> log.error("offline device error", err));
+                )).doOnError(err -> log.error("offline device error", err));
     }
 
     @Override
@@ -157,12 +199,13 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<DeviceMetadata> getMetadata() {
-        return Mono.justOrEmpty(metadataCache.get())
-                .switchIfEmpty(getProtocol()
-                        .flatMap(protocol -> getConfig(DeviceConfigKey.metadata)
-                                .flatMap(protocol.getMetadataCodec()::decode)
-                                .doOnNext(metadataCache::set)))
-                .switchIfEmpty(getParent().flatMap(DeviceProductOperator::getMetadata));
+        return getParent().flatMap(DeviceProductOperator::getMetadata);
+//        return Mono.justOrEmpty(metadataCache.get())
+//                .switchIfEmpty(getProtocol()
+//                        .flatMap(protocol -> getConfig(DeviceConfigKey.metadata)
+//                                .flatMap(protocol.getMetadataCodec()::decode)))
+//                .switchIfEmpty(getParent().flatMap(DeviceProductOperator::getMetadata))
+//                .doOnNext(metadataCache::set);
     }
 
 
@@ -177,7 +220,13 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<ProtocolSupport> getProtocol() {
         return getConfig(DeviceConfigKey.protocol)
-                .flatMap(supports::getProtocol);
+                .flatMap(supports::getProtocol)
+                .switchIfEmpty(getParent().flatMap(DeviceProductOperator::getProtocol));
+    }
+
+    @Override
+    public Mono<DeviceProductOperator> getProduct() {
+        return getParent();
     }
 
     @Override

@@ -3,10 +3,15 @@ package org.jetlinks.core.device;
 
 import org.jetlinks.core.Configurable;
 import org.jetlinks.core.ProtocolSupport;
+import org.jetlinks.core.Value;
+import org.jetlinks.core.Values;
+import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import reactor.core.publisher.Mono;
 
-import java.util.function.Consumer;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 /**
  * 设备操作接口
@@ -66,6 +71,23 @@ public interface DeviceOperator extends Configurable {
      */
     Mono<Boolean> online(String serverId, String sessionId);
 
+    Mono<Value> getSelfConfig(String key);
+
+    Mono<Values> getSelfConfigs(Collection<String> keys);
+
+    default Mono<Values> getSelfConfigs(String... keys) {
+        return getSelfConfigs(Arrays.asList(keys));
+    }
+
+    default <V> Mono<V> getSelfConfig(ConfigKey<V> key) {
+        return getSelfConfig(key.getKey())
+                .map(value -> value.as(key.getType()));
+    }
+
+    default Mono<Values> getSelfConfigs(ConfigKey<?>... keys) {
+        return getSelfConfigs(Arrays.stream(keys).map(ConfigKey::getKey).collect(Collectors.toSet()));
+    }
+
     /**
      * @return 是否在线
      */
@@ -120,4 +142,5 @@ public interface DeviceOperator extends Configurable {
      */
     Mono<Boolean> updateMetadata(String metadata);
 
+    Mono<DeviceProductOperator> getProduct();
 }

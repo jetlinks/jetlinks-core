@@ -1,6 +1,9 @@
 package org.jetlinks.core.device;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Collection;
 
 /**
  * 设备注册中心
@@ -17,6 +20,16 @@ public interface DeviceRegistry {
      * @return 设备操作接口
      */
     Mono<DeviceOperator> getDevice(String deviceId);
+
+    /**
+     * 批量检查设备真实状态
+     *
+     * @param id ID
+     * @return 设备状态信息流
+     */
+   default Flux<DeviceStateInfo> checkDeviceState(Flux<? extends Collection<String>> id){
+       return Flux.error(new UnsupportedOperationException());
+   }
 
     /**
      * 获取设备产品操作,请勿缓存返回值,注册中心已经实现本地缓存.

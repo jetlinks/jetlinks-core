@@ -5,10 +5,7 @@ import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.message.event.EventMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
-import org.jetlinks.core.message.property.ReadPropertyMessage;
-import org.jetlinks.core.message.property.ReadPropertyMessageReply;
-import org.jetlinks.core.message.property.WritePropertyMessage;
-import org.jetlinks.core.message.property.WritePropertyMessageReply;
+import org.jetlinks.core.message.property.*;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -20,20 +17,34 @@ import java.util.function.Supplier;
 public enum MessageType {
 
     UNKNOWN(null),
+    //上报设备属性
+    REPORT_PROPERTY(ReportPropertyMessage::new),
 
+    //下行读写属性
     READ_PROPERTY(ReadPropertyMessage::new),
     WRITE_PROPERTY(WritePropertyMessage::new),
-
+    //上行读写属性回复
     READ_PROPERTY_REPLY(ReadPropertyMessageReply::new),
     WRITE_PROPERTY_REPLY(WritePropertyMessageReply::new),
+    //下行调用功能
     INVOKE_FUNCTION(FunctionInvokeMessage::new),
+    //上行调用功能回复
     INVOKE_FUNCTION_REPLY(FunctionInvokeMessageReply::new),
+    //事件消息
     EVENT(EventMessage::new),
+
+    //广播,暂未支持
     BROADCAST(null),
+    //设备上线
     ONLINE(DeviceOnlineMessage::new),
+    //设备离线
     OFFLINE(DeviceOfflineMessage::new),
+    //平台主动断开连接
     DISCONNECT(DisconnectDeviceMessage::new),
+    //断开回复
     DISCONNECT_REPLY(DisconnectDeviceMessageReply::new),
+
+    //下行子设备消息
     CHILD(ChildDeviceMessage::new) {
         @Override
         @SuppressWarnings("all")
@@ -48,6 +59,7 @@ public enum MessageType {
             return (T) children;
         }
     },
+    //上行子设备消息回复
     CHILD_REPLY(ChildDeviceMessageReply::new) {
         @Override
         @SuppressWarnings("all")

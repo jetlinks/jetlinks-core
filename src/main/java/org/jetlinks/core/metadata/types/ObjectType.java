@@ -8,10 +8,11 @@ import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.PropertyMetadata;
 import org.jetlinks.core.metadata.ValidateResult;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -29,15 +30,6 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
     @Override
     public String getName() {
         return "对象类型";
-    }
-
-    public Map<String, PropertyMetadata> getPropertyMap() {
-        if (properties == null) {
-            return Collections.emptyMap();
-        }
-        return properties
-                .stream()
-                .collect(Collectors.toMap(PropertyMetadata::getId, Function.identity(), (_1, _2) -> _1));
     }
 
     public ObjectType addPropertyMetadata(PropertyMetadata property) {
