@@ -43,7 +43,7 @@ public class ReportPropertyMessage extends CommonDeviceMessageReply<ReportProper
     }
 
     public MessageType getMessageType() {
-        return MessageType.READ_PROPERTY_REPLY;
+        return MessageType.REPORT_PROPERTY;
     }
 
 }
