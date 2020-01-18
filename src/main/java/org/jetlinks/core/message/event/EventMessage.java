@@ -2,7 +2,7 @@ package org.jetlinks.core.message.event;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.jetlinks.core.message.CommonDeviceMessageReply;
+import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
 
 /**
@@ -11,7 +11,7 @@ import org.jetlinks.core.message.MessageType;
  */
 @Getter
 @Setter
-public class EventMessage extends CommonDeviceMessageReply<EventMessage> {
+public class EventMessage extends CommonDeviceMessage {
 
     private String event;
 

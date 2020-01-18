@@ -25,6 +25,8 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     private Map<String, Object> headers;
 
+    private long timestamp = System.currentTimeMillis();
+
     @Override
     public DeviceMessage addHeader(String header, Object value) {
         if (headers == null) {
@@ -41,8 +43,6 @@ public class CommonDeviceMessage implements DeviceMessage {
         }
         return this;
     }
-
-    private long timestamp = System.currentTimeMillis();
 
     @Override
     public JSONObject toJson() {
