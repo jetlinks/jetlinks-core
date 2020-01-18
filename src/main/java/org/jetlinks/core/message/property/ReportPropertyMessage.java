@@ -3,7 +3,7 @@ package org.jetlinks.core.message.property;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
-import org.jetlinks.core.message.CommonDeviceMessageReply;
+import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
 
 import java.util.Map;
@@ -16,7 +16,7 @@ import java.util.Map;
  */
 @Getter
 @Setter
-public class ReportPropertyMessage extends CommonDeviceMessageReply<ReportPropertyMessage> {
+public class ReportPropertyMessage extends CommonDeviceMessage {
 
     private Map<String, Object> properties;
 
@@ -31,7 +31,6 @@ public class ReportPropertyMessage extends CommonDeviceMessageReply<ReportProper
     public ReportPropertyMessage success(Map<String, Object> properties) {
 
         this.properties = properties;
-        super.setSuccess(true);
         return this;
 
     }
