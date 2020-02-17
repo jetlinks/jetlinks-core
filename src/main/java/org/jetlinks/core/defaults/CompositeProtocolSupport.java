@@ -6,9 +6,11 @@ import lombok.Setter;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.device.AuthenticationRequest;
 import org.jetlinks.core.device.AuthenticationResponse;
+import org.jetlinks.core.device.CompositeDeviceMessageSenderInterceptor;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
+import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.ConfigMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 import org.jetlinks.core.server.GatewayServerContextListener;
@@ -39,7 +41,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private final Map<String, Supplier<Mono<DeviceMessageCodec>>> messageCodecSupports = new ConcurrentHashMap<>();
 
     @Getter(AccessLevel.PRIVATE)
-    private Map<String, Supplier<Mono<GatewayServerContextListener<?>>>> contextListener = new ConcurrentHashMap<>();
+    @Setter(AccessLevel.PRIVATE)
+    private DeviceMessageSenderInterceptor deviceMessageSenderInterceptor;
 
     @Getter(AccessLevel.PRIVATE)
     private Map<String, Authenticator> authenticators = new ConcurrentHashMap<>();
@@ -56,12 +59,24 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         addMessageCodecSupport(codec.getSupportTransport(), codec);
     }
 
-    public void addContextListener(Transport transport, Supplier<Mono<GatewayServerContextListener<?>>> supplier) {
-        contextListener.put(transport.getId(), supplier);
-    }
-
     public void addAuthenticator(Transport transport, Authenticator authenticator) {
         authenticators.put(transport.getId(), authenticator);
+    }
+
+    public synchronized void addMessageSenderInterceptor(DeviceMessageSenderInterceptor interceptor) {
+        if (this.deviceMessageSenderInterceptor == null) {
+            this.deviceMessageSenderInterceptor = interceptor;
+        } else {
+            CompositeDeviceMessageSenderInterceptor composite;
+            if (!(this.deviceMessageSenderInterceptor instanceof CompositeDeviceMessageSenderInterceptor)) {
+                composite = new CompositeDeviceMessageSenderInterceptor();
+                composite.addInterceptor(this.deviceMessageSenderInterceptor);
+            } else {
+                composite = ((CompositeDeviceMessageSenderInterceptor) this.deviceMessageSenderInterceptor);
+            }
+            composite.addInterceptor(interceptor);
+            this.deviceMessageSenderInterceptor = composite;
+        }
     }
 
     public void addConfigMetadata(Transport transport, Supplier<Mono<ConfigMetadata>> authenticator) {
@@ -85,11 +100,6 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         return messageCodecSupports.getOrDefault(transport.getId(), Mono::empty).get();
     }
 
-    @Override
-    public Mono<GatewayServerContextListener<?>> getServerContextHandler(Transport transport) {
-        return contextListener.getOrDefault(transport.getId(), Mono::empty).get();
-    }
-
     @Nonnull
     @Override
     public DeviceMetadataCodec getMetadataCodec() {
@@ -108,6 +118,5 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Override
     public Mono<ConfigMetadata> getConfigMetadata(Transport transport) {
         return configMetadata.getOrDefault(transport.getId(), Mono::empty).get();
-
     }
 }

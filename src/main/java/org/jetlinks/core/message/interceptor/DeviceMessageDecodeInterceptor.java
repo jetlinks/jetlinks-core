@@ -1,9 +1,7 @@
 package org.jetlinks.core.message.interceptor;
 
-import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.Message;
 import org.jetlinks.core.message.codec.MessageDecodeContext;
-import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
 
 /**
@@ -16,9 +14,9 @@ public interface DeviceMessageDecodeInterceptor extends DeviceMessageCodecInterc
     /**
      * 解码前执行
      *
-     * @param context
+     * @param context 上下文
      */
-    void preDecode(MessageDecodeContext context);
+   default void preDecode(MessageDecodeContext context){}
 
     /**
      * 解码后执行
@@ -27,6 +25,8 @@ public interface DeviceMessageDecodeInterceptor extends DeviceMessageCodecInterc
      * @param deviceMessage 解码后的设备消息
      * @return 新的设备消息
      */
-    <T extends Message,R extends T> Mono<T> postDecode(MessageDecodeContext context, R deviceMessage);
+    default <T extends Message,R extends T> Mono<T> postDecode(MessageDecodeContext context, R deviceMessage){
+        return Mono.empty();
+    }
 
 }

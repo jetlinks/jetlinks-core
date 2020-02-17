@@ -6,6 +6,7 @@ import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.device.MqttAuthenticationRequest;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
+import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.ConfigMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 import org.jetlinks.core.server.GatewayServerContextListener;
@@ -56,9 +57,21 @@ public interface ProtocolSupport {
      * 网关服务上下文监听器
      *
      * @param transport
-     * @return
+     * @deprecated
      */
-    Mono<? extends GatewayServerContextListener<?>> getServerContextHandler(Transport transport);
+    @Deprecated
+    default Mono<? extends GatewayServerContextListener<?>> getServerContextHandler(Transport transport) {
+        return Mono.empty();
+    }
+
+    /**
+     * 获取设备消息发送拦截器, 用于拦截发送消息的行为.
+     *
+     * @return 监听器
+     */
+    default Mono<DeviceMessageSenderInterceptor> getSenderInterceptor() {
+        return Mono.just(DeviceMessageSenderInterceptor.DO_NOTING);
+    }
 
     /**
      * 获取设备元数据编解码器

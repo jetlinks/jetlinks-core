@@ -53,7 +53,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         this.registry = registry;
         this.handler = handler;
         this.configStorageKey = "device:" + id;
-        this.messageSender = new DefaultDeviceMessageSender(handler, this, interceptor);
+        this.messageSender = new DefaultDeviceMessageSender(handler, this);
     }
 
     @Override

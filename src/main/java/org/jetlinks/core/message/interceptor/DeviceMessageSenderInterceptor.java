@@ -14,17 +14,22 @@ import reactor.core.publisher.Mono;
  */
 public interface DeviceMessageSenderInterceptor {
 
+    DeviceMessageSenderInterceptor DO_NOTING = new DeviceMessageSenderInterceptor() {
+    };
+
     /**
-     * 在消息发送前触发,如果设备未在线,将不会触发此方法. 执行此方法后将使用返回值{@link DeviceMessage}进行发送到设备.
+     * 在消息发送前触发. 执行此方法后将使用返回值{@link DeviceMessage}进行发送到设备.
      *
      * @param device  设备操作接口
      * @param message 消息对象
      * @return 新的消息
      */
-    Mono<DeviceMessage> preSend(DeviceOperator device, DeviceMessage message);
+    default Mono<DeviceMessage> preSend(DeviceOperator device, DeviceMessage message) {
+        return Mono.just(message);
+    }
 
     /**
-     * 在消息收到回复后触发,并返回新的值.
+     * 在消息发送后触发.
      *
      * @param device  设备操作接口
      * @param message 源消息
@@ -32,6 +37,8 @@ public interface DeviceMessageSenderInterceptor {
      * @param <R>     回复的消息类型
      * @return 新的回复结果
      */
-    <R extends DeviceMessage> Flux<R> afterReply(DeviceOperator device, DeviceMessage message, R reply);
+    default <R extends DeviceMessage> Flux<R> afterSent(DeviceOperator device, DeviceMessage message, Flux<R> reply) {
+        return reply;
+    }
 
 }

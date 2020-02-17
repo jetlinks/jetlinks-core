@@ -18,7 +18,8 @@ public interface DeviceMessageEncodeInterceptor extends DeviceMessageCodecInterc
      *
      * @param context 编码上下文
      */
-    void preEncode(MessageEncodeContext context);
+    default void preEncode(MessageEncodeContext context) {
+    }
 
     /**
      * 编码后执行
@@ -27,6 +28,8 @@ public interface DeviceMessageEncodeInterceptor extends DeviceMessageCodecInterc
      * @param message 已编码的消息
      * @return 新的消息
      */
-    Mono<EncodedMessage> postEncode(MessageEncodeContext context, EncodedMessage message);
+    default Mono<EncodedMessage> postEncode(MessageEncodeContext context, EncodedMessage message) {
+        return Mono.just(message);
+    }
 
 }
