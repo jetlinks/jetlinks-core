@@ -83,7 +83,11 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
             return ((Number) value);
         }
         if (value instanceof String) {
-            return new BigDecimal(((String) value));
+            try {
+                return new BigDecimal(((String) value));
+            } catch (NumberFormatException e) {
+                return null;
+            }
         }
         if (value instanceof Date) {
             return ((Date) value).getTime();
