@@ -13,6 +13,10 @@ public class DoubleTypeTest {
         Assert.assertEquals(doubleType.format(2.134D), "2.13");
         Assert.assertEquals(doubleType.format(2.135D), "2.14");
 
+        Assert.assertEquals(doubleType.format("1.0"),"1.00");
+
+        Assert.assertEquals(doubleType.format("a"),"a");
+
 
     }
 }

@@ -17,14 +17,15 @@ public class FloatType extends NumberType<Float> {
 
     @Override
     public Object format(Object value) {
-        if (value instanceof Number) {
-            int scale = this.scale == null ? 2 : this.scale;
-            String scaled = new BigDecimal(value.toString())
-                    .setScale(scale, ROUND_HALF_UP)
-                    .toString();
-            return super.format(scaled);
+        Number val = convertNumber(value);
+        if (val == null) {
+            return value;
         }
-        return super.format(value);
+        int scale = this.scale == null ? 2 : this.scale;
+        String scaled = new BigDecimal(val.toString())
+                .setScale(scale, ROUND_HALF_UP)
+                .toString();
+        return super.format(scaled);
     }
 
     public FloatType scale(Integer scale) {
