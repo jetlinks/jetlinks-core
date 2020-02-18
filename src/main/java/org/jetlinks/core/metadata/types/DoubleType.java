@@ -19,7 +19,7 @@ public class DoubleType extends NumberType<Double> {
     public Object format(Object value) {
         Number val = convertNumber(value);
         if (val == null) {
-            return value;
+            return super.format(value);
         }
         int scale = this.scale == null ? 2 : this.scale;
         String scaled = new BigDecimal(val.toString())

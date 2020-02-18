@@ -19,7 +19,7 @@ public class FloatType extends NumberType<Float> {
     public Object format(Object value) {
         Number val = convertNumber(value);
         if (val == null) {
-            return value;
+            return super.format(value);
         }
         int scale = this.scale == null ? 2 : this.scale;
         String scaled = new BigDecimal(val.toString())
@@ -35,7 +35,7 @@ public class FloatType extends NumberType<Float> {
 
     @Override
     public Float convert(Object value) {
-        return super.convertNumber(value,Number::floatValue);
+        return super.convertNumber(value, Number::floatValue);
     }
 
     @Override
