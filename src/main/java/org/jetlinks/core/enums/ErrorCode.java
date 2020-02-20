@@ -3,8 +3,11 @@ package org.jetlinks.core.enums;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.Optional;
+
 /**
  * @author bsetfeng
+ * @author zhouhao
  * @version 1.0
  **/
 @Getter
@@ -20,8 +23,19 @@ public enum ErrorCode {
     PARAMETER_ERROR("参数错误"),
     PARAMETER_UNDEFINED("参数未定义"),
     FUNCTION_UNDEFINED("功能未定义"),
-    PROPERTY_UNDEFINED("属性未定义")
+    PROPERTY_UNDEFINED("属性未定义"),
+    UNKNOWN("未知错误")
     ;
 
     private String text;
+
+    public static Optional<ErrorCode> of(String code){
+        for (ErrorCode value : values()) {
+            if(value.name().equalsIgnoreCase(code)){
+                return Optional.of(value);
+            }
+        }
+        return Optional.empty();
+    }
+
 }

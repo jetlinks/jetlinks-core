@@ -58,6 +58,12 @@ public interface FunctionInvokeMessageSender {
      */
     Flux<FunctionInvokeMessageReply> send();
 
+    default Mono<Void> sendAndForget() {
+        return header(Headers.sendAndForget, true)
+                .send()
+                .then();
+    }
+
     default FunctionInvokeMessageSender accept(Consumer<FunctionInvokeMessageSender> consumer) {
         consumer.accept(this);
         return this;

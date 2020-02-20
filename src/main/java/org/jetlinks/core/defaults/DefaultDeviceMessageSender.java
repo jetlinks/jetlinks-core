@@ -43,8 +43,19 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
     }
 
     protected <T extends DeviceMessageReply> T convertReply(Object obj) {
-        // TODO: 2019-10-18 更好的转化实现
-        return ((T) obj);
+        if (obj instanceof DeviceMessageReply) {
+            DeviceMessageReply reply = ((DeviceMessageReply) obj);
+            if (!reply.isSuccess()) {
+                //如果是可识别的错误则直接抛出异常
+                ErrorCode.of(reply.getCode())
+                        .map(DeviceOperationException::new)
+                        .ifPresent(err -> {
+                            throw err;
+                        });
+            }
+            return (T) reply;
+        }
+        throw new DeviceOperationException(ErrorCode.SYSTEM_ERROR, new ClassCastException("can not cast " + obj.getClass() + " to DeviceMessageReply"));
     }
 
     private <R extends DeviceMessage> Flux<R> logReply(DeviceMessage msg, Flux<R> flux) {
@@ -68,7 +79,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
 
     public <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping) {
         return Mono.zip(
-                operator.getConnectionServerId().defaultIfEmpty("_"), //当前设备连接的服务器ID
+                operator.getConnectionServerId().defaultIfEmpty("-"), //当前设备连接的服务器ID
                 operator.getProtocol()
                         .flatMap(ProtocolSupport::getSenderInterceptor)     //拦截器
                         .defaultIfEmpty(DeviceMessageSenderInterceptor.DO_NOTING))
@@ -85,6 +96,14 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                 Flux<R> replyStream = handler
                                         .handleReply(msg.getMessageId(), Duration.ofMillis(msg.getHeader(Headers.timeout).orElse(defaultTimeout)))
                                         .map(replyMapping)
+                                        .onErrorResume(DeviceOperationException.class, error -> {
+                                            if (error.getCode() == ErrorCode.CLIENT_OFFLINE) {
+                                                return operator
+                                                        .checkState()
+                                                        .then(Mono.error(error));
+                                            }
+                                            return Mono.error(error);
+                                        })
                                         .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
                                         .as(flux -> this.logReply(msg, flux));
                                 //发送消息到设备连接的服务器
@@ -94,7 +113,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                         .flatMap(len -> {
                                             //设备未连接到服务器
                                             if (len == 0) {
-                                                //尝试发起状态检查,已同步设备的真实状态
+                                                //尝试发起状态检查,同步设备的真实状态
                                                 return operator
                                                         .checkState()
                                                         .then(Mono.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));

@@ -9,7 +9,7 @@ public interface Headers {
      *
      * @see Message#getMessageId()
      */
-    HeaderKey<Boolean> forceReply = HeaderKey.of("force-reply", true);
+    HeaderKey<Boolean> forceReply = HeaderKey.of("forceReply", true);
 
     /**
      * 异步消息,当发往设备的消息标记了为异步时,设备网关服务发送消息到设备后将立即回复{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING}到发送端
@@ -17,6 +17,11 @@ public interface Headers {
      * @see org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING
      */
     HeaderKey<Boolean> async = HeaderKey.of("async", false);
+
+    /**
+     * 发送既不管
+     */
+    HeaderKey<Boolean> sendAndForget = HeaderKey.of("sendAndForget", false);
 
     /**
      * 指定发送消息的超时时间
@@ -44,5 +49,5 @@ public interface Headers {
     HeaderKey<Boolean> reportProperties = HeaderKey.of("report-properties", false);
 
     //上报派生属性
-    HeaderKey<Boolean> reportDerivedMetadata = HeaderKey.of("derived-metadata",false);
+    HeaderKey<Boolean> reportDerivedMetadata = HeaderKey.of("derived-metadata", false);
 }

@@ -3,6 +3,7 @@ package org.jetlinks.core.message;
 import org.jetlinks.core.message.property.WritePropertyMessage;
 import org.jetlinks.core.message.property.WritePropertyMessageReply;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.Map;
@@ -33,6 +34,10 @@ public interface WritePropertyMessageSender {
      * @see org.jetlinks.core.enums.ErrorCode#CLIENT_OFFLINE
      */
     Flux<WritePropertyMessageReply> send();
+
+    default Mono<Void> sendAndForget() {
+        return header(Headers.sendAndForget, true).send().then();
+    }
 
     default WritePropertyMessageSender write(Map<String, Object> properties) {
 

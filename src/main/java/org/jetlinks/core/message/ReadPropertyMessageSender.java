@@ -3,6 +3,7 @@ package org.jetlinks.core.message;
 import org.jetlinks.core.message.property.ReadPropertyMessage;
 import org.jetlinks.core.message.property.ReadPropertyMessageReply;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -35,6 +36,10 @@ public interface ReadPropertyMessageSender {
      * @see org.jetlinks.core.enums.ErrorCode#CLIENT_OFFLINE
      */
     Flux<ReadPropertyMessageReply> send();
+
+    default Mono<Void> sendAndForget() {
+        return header(Headers.sendAndForget, true).send().then();
+    }
 
     ReadPropertyMessageSender read(Collection<String> property);
 
