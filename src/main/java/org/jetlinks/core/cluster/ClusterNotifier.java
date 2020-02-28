@@ -33,7 +33,7 @@ public interface ClusterNotifier {
      * @param <T>          返回值结果类型
      * @return 返回结果
      */
-    <T> Mono<T> sendNotifyAndReceive(String serverNodeId, String address, Mono<?> payload);
+    <T> Flux<T> sendNotifyAndReceive(String serverNodeId, String address, Publisher<?> payload);
 
     /**
      * 调用此方法开始处理通知,当收到对应消息地址上的消息时,消息会进入Flux下游
@@ -52,6 +52,6 @@ public interface ClusterNotifier {
      * @param <T>          消息类型
      * @param <R>          处理结果类型
      */
-    <T, R> void handleNotify(String address, Function<T, Mono<R>> replyHandler);
+    <T, R> Mono<Void> handleNotify(String address, Function<T, Publisher<R>> replyHandler);
 
 }
