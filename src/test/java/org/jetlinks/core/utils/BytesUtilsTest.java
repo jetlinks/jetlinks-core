@@ -22,25 +22,47 @@ public class BytesUtilsTest {
 
     @Test
     public void testLong() {
-        long val = Integer.MAX_VALUE + 100L;
+        {
+            long val = new Random().nextLong();
 
-        Assert.assertEquals(BytesUtils.highBytesToLong(BytesUtils.toHighBytes(val)), val);
-        Assert.assertEquals(BytesUtils.lowBytesToLong(BytesUtils.toLowBytes(val)), val);
+            Assert.assertEquals(BytesUtils.highBytesToLong(BytesUtils.toHighBytes(val)), val);
+            Assert.assertEquals(BytesUtils.lowBytesToLong(BytesUtils.toLowBytes(val)), val);
+        }
 
+        {
+            long val = -new Random().nextLong();
+
+            Assert.assertEquals(BytesUtils.highBytesToLong(BytesUtils.toHighBytes(val)), val);
+            Assert.assertEquals(BytesUtils.lowBytesToLong(BytesUtils.toLowBytes(val)), val);
+        }
     }
 
     @Test
     public void testDouble() {
-        double val = new Random().nextDouble();
-        Assert.assertEquals(BytesUtils.highBytesToDouble(BytesUtils.toHighBytes(val)), val, 0);
-        Assert.assertEquals(BytesUtils.lowBytesToDouble(BytesUtils.toLowBytes(val)), val, 0);
+        {
+            double val = new Random().nextDouble();
+            Assert.assertEquals(BytesUtils.highBytesToDouble(BytesUtils.toHighBytes(val)), val, 0);
+            Assert.assertEquals(BytesUtils.lowBytesToDouble(BytesUtils.toLowBytes(val)), val, 0);
+        }
+        {
+            double val = -new Random().nextDouble();
+            Assert.assertEquals(BytesUtils.highBytesToDouble(BytesUtils.toHighBytes(val)), val, 0);
+            Assert.assertEquals(BytesUtils.lowBytesToDouble(BytesUtils.toLowBytes(val)), val, 0);
+        }
     }
 
     @Test
     public void testFloat() {
-        float val = new Random().nextFloat();
-        Assert.assertEquals(BytesUtils.highBytesToFloat(BytesUtils.toHighBytes(val)), val, 0);
-        Assert.assertEquals(BytesUtils.lowBytesToFloat(BytesUtils.toLowBytes(val)), val, 0);
+        {
+            float val = new Random().nextFloat();
+            Assert.assertEquals(BytesUtils.highBytesToFloat(BytesUtils.toHighBytes(val)), val, 0);
+            Assert.assertEquals(BytesUtils.lowBytesToFloat(BytesUtils.toLowBytes(val)), val, 0);
+        }
+        {
+            float val = -new Random().nextFloat();
+            Assert.assertEquals(BytesUtils.highBytesToFloat(BytesUtils.toHighBytes(val)), val, 0);
+            Assert.assertEquals(BytesUtils.lowBytesToFloat(BytesUtils.toLowBytes(val)), val, 0);
+        }
     }
 
     @Test
