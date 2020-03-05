@@ -8,6 +8,7 @@ import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.FormatSupport;
 import org.jetlinks.core.metadata.ValidateResult;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Getter
@@ -39,6 +40,17 @@ public class GeoType extends AbstractType<GeoType> implements DataType, FormatSu
     @Override
     public String getName() {
         return "地理位置";
+    }
+
+    public Map<String, Object> convertToMap(Object value) {
+        Map<String, Object> mapGeoPoint = new HashMap<>();
+
+        GeoPoint point = convert(value);
+        if (point != null) {
+            mapGeoPoint.put(getLatProperty(), point.getLat());
+            mapGeoPoint.put(getLonProperty(), point.getLon());
+        }
+        return mapGeoPoint;
     }
 
     public GeoPoint convert(Object value) {

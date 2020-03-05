@@ -6,8 +6,6 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.*;
-
 public class GeoTypeTest {
 
     @Test
@@ -16,8 +14,8 @@ public class GeoTypeTest {
 
         GeoPoint point = type.convert("1234.112,1211.23");
 
-        Assert.assertEquals(point.getLatitude(), 1234.112, 0);
-        Assert.assertEquals(point.getLongitude(), 1211.23, 0);
+        Assert.assertEquals(point.getLat(), 1234.112, 0);
+        Assert.assertEquals(point.getLon(), 1211.23, 0);
     }
 
     @Test
@@ -30,8 +28,8 @@ public class GeoTypeTest {
 
         GeoPoint point = type.convert(latlon);
 
-        Assert.assertEquals(point.getLatitude(), 1234.112, 0);
-        Assert.assertEquals(point.getLongitude(), 1211.211321, 0);
+        Assert.assertEquals(point.getLat(), 1234.112, 0);
+        Assert.assertEquals(point.getLon(), 1211.211321, 0);
     }
 
 

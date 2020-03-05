@@ -3,10 +3,7 @@ package org.jetlinks.core.metadata.types;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.jetlinks.core.metadata.Converter;
-import org.jetlinks.core.metadata.DataType;
-import org.jetlinks.core.metadata.PropertyMetadata;
-import org.jetlinks.core.metadata.ValidateResult;
+import org.jetlinks.core.metadata.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,6 +37,18 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
 
         this.properties.add(property);
 
+        return this;
+    }
+
+    public ObjectType addProperty(String property,  DataType type) {
+        return this.addProperty(property,property,type);
+    }
+
+    public ObjectType addProperty(String property, String name, DataType type) {
+        SimplePropertyMetadata metadata = new SimplePropertyMetadata();
+        metadata.setId(property);
+        metadata.setName(name);
+        metadata.setValueType(type);
         return this;
     }
 
@@ -85,7 +94,6 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
             }
             return mapValue;
         }
-        log.warn("unsupported object type:{}", value.getClass());
         return null;
     }
 

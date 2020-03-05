@@ -14,13 +14,13 @@ import java.io.Serializable;
 public class GeoPoint implements Serializable {
 
     //经度
-    private double latitude;
+    private double lat;
 
     //纬度
-    private double longitude;
+    private double lon;
 
     @Override
     public String toString() {
-        return latitude + "," + longitude;
+        return lat + "," + lon;
     }
 }
