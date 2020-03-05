@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
@@ -57,16 +58,21 @@ public class GeoType extends AbstractType<GeoType> implements DataType, FormatSu
         if (value instanceof GeoPoint) {
             return ((GeoPoint) value);
         }
+
+        if (value instanceof String) {
+            if (((String) value).startsWith("{")) {
+                value = JSON.parseObject((String) value);
+            } else {
+                String[] str = ((String) value).split("[,]");
+                if (str.length == 2) {
+                    return new GeoPoint(Double.parseDouble(str[0]), Double.parseDouble(str[1]));
+                }
+            }
+        }
         if (value instanceof Map) {
             @SuppressWarnings("all")
             JSONObject json = new JSONObject(((Map) value));
             return new GeoPoint(json.getDoubleValue(latProperty), json.getDoubleValue(lonProperty));
-        }
-        if (value instanceof String) {
-            String[] str = ((String) value).split("[,]");
-            if (str.length == 2) {
-                return new GeoPoint(Double.parseDouble(str[0]), Double.parseDouble(str[1]));
-            }
         }
         return null;
     }
