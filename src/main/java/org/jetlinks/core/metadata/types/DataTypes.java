@@ -22,6 +22,7 @@ public class DataTypes {
         supports.put(ObjectType.ID, ObjectType::new);
         supports.put(StringType.ID, StringType::new);
 
+        supports.put(GeoType.ID, GeoType::new);
         supports.put(FileType.ID, FileType::new);
         supports.put(PasswordType.ID, PasswordType::new);
     }
