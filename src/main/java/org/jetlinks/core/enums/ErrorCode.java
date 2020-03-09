@@ -24,6 +24,7 @@ public enum ErrorCode {
     PARAMETER_UNDEFINED("参数未定义"),
     FUNCTION_UNDEFINED("功能未定义"),
     PROPERTY_UNDEFINED("属性未定义"),
+    UNKNOWN_PARENT_DEVICE("未知的父设备"),
     UNKNOWN("未知错误")
     ;
 

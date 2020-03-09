@@ -53,7 +53,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         this.registry = registry;
         this.handler = handler;
         this.configStorageKey = "device:" + id;
-        this.messageSender = new DefaultDeviceMessageSender(handler, this);
+        this.messageSender = new DefaultDeviceMessageSender(handler, this,registry);
     }
 
     @Override
@@ -85,20 +85,38 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<Byte> getState() {
-        return getSelfConfig("state")
-                .map(v -> v.as(Byte.class))
+        return getSelfConfigs(Arrays.asList("state", DeviceConfigKey.connectionServerId.getKey(), DeviceConfigKey.parentGatewayId.getKey()))
+                .flatMap(values -> {
+                    Byte state = values.getValue("state")
+                            .map(val -> val.as(Byte.class))
+                            .orElse(DeviceState.unknown);
+                    String parentGatewayId = values
+                            .getValue(DeviceConfigKey.parentGatewayId)
+                            .orElse(null);
+                    //获取父级设备状态
+                    if (!state.equals(DeviceState.online) && StringUtils.hasText(parentGatewayId)) {
+                        return registry
+                                .getDevice(parentGatewayId)
+                                .flatMap(DeviceOperator::getState);
+                    }
+                    return Mono.just(state);
+                })
                 .defaultIfEmpty(DeviceState.unknown);
     }
 
     @Override
     public Mono<Byte> checkState() {
-        return getConfigs(Arrays.asList(DeviceConfigKey.connectionServerId.getKey(), "state"))
+        return getSelfConfigs(Arrays.asList(DeviceConfigKey.connectionServerId.getKey(), DeviceConfigKey.parentGatewayId.getKey(), "state"))
                 .flatMap(values -> {
                     String server = values
-                            .getValue(DeviceConfigKey.connectionServerId.getKey())
-                            .map(Value::asString)
+                            .getValue(DeviceConfigKey.connectionServerId)
                             .orElse(null);
-                    Byte state = values.getValue("state").map(val -> val.as(Byte.class)).orElse(DeviceState.unknown);
+                    String parentGatewayId = values
+                            .getValue(DeviceConfigKey.parentGatewayId)
+                            .orElse(null);
+                    Byte state = values.getValue("state")
+                            .map(val -> val.as(Byte.class))
+                            .orElse(DeviceState.unknown);
 
                     if (StringUtils.hasText(server)) {
                         return handler.getDeviceState(server, Collections.singletonList(id))
@@ -112,28 +130,14 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                                 .thenReturn(current);
                                     }
                                     return Mono.just(state);
-                                })
-                                ;
-
+                                });
+                    } else if (StringUtils.hasText(parentGatewayId)) {
+                        return registry.getDevice(parentGatewayId)
+                                .flatMap(DeviceOperator::checkState)
+                                .defaultIfEmpty(DeviceState.offline);
                     }
                     return Mono.just(state);
                 });
-//        return getConnectionServerId()
-//                .flatMapMany(server -> handler.getDeviceState(server, Collections.singletonList(id)))
-//                .singleOrEmpty()
-//                .map(DeviceStateInfo::getState)
-//                .defaultIfEmpty(DeviceState.offline)
-//                .flatMap(state ->
-//                        getState()
-//                                .defaultIfEmpty(DeviceState.unknown)
-//                                .flatMap(current -> {
-//                                    if (!current.equals(state)) {
-//                                        log.warn("device[{}] state changed to {}", getDeviceId(), state);
-//                                        return putState(state)
-//                                                .thenReturn(state);
-//                                    }
-//                                    return Mono.just(state);
-//                                }));
     }
 
     @Override

@@ -9,7 +9,7 @@ import lombok.Setter;
  * @author zhouhao
  * @see Message
  * @see ChildDeviceMessageReply
- * @see org.jetlinks.core.device.DeviceConfigKey#parentMeshDeviceId
+ * @see org.jetlinks.core.device.DeviceConfigKey#parentGatewayId
  * @since 1.0.0
  */
 @Getter
@@ -21,7 +21,11 @@ public class ChildDeviceMessage extends CommonDeviceMessage implements Repayable
 
     @Override
     public ChildDeviceMessageReply newReply() {
-        return new ChildDeviceMessageReply();
+        ChildDeviceMessageReply reply= new ChildDeviceMessageReply();
+        reply.messageId(getMessageId());
+        reply.deviceId(getDeviceId());
+        reply.setChildDeviceId(getChildDeviceId());
+        return reply;
     }
 
     public MessageType getMessageType() {

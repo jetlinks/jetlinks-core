@@ -15,13 +15,15 @@ public enum DeviceConfigKey implements ConfigKey<String> {
 
     protocol("消息协议"),
 
-    parentMeshDeviceId("上级组网设备ID"),
+    parentGatewayId("上级网关设备ID"),
 
-    connectionServerId("当前设备连接的设备ID"),
+    connectionServerId("当前设备连接的服务ID"),
 
     sessionId("设备会话ID");
 
     String name;
+
+    public static ConfigKey<Boolean> isGatewayDevice = ConfigKey.of("isGatewayDevice", "是否为网关设备");
 
     @Override
     public String getKey() {

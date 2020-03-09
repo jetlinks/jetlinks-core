@@ -3,10 +3,9 @@ package org.jetlinks.core.defaults;
 import org.jetlinks.core.Value;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.device.*;
-import org.jetlinks.core.message.FunctionInvokeMessageSender;
-import org.jetlinks.core.message.Headers;
-import org.jetlinks.core.message.RepayableDeviceMessage;
+import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
+import org.jetlinks.core.message.property.ReadPropertyMessageReply;
 import org.jetlinks.core.utils.IdUtils;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,6 +13,7 @@ import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
+import java.util.Collections;
 
 public class DefaultDeviceOperatorTest {
 
@@ -25,6 +25,69 @@ public class DefaultDeviceOperatorTest {
     public void init() {
         registry = new TestDeviceRegistry(new TestProtocolSupport(),
                 deviceMessageBroker = new StandaloneDeviceMessageBroker());
+
+    }
+
+    @Test
+    public void testParent(){
+
+        deviceMessageBroker
+                .handleGetDeviceState("test2", idStream -> Flux.from(idStream)
+                        .map(s -> new DeviceStateInfo(s, DeviceState.online)));
+
+        deviceMessageBroker.handleSendToDeviceMessage("test2")
+                .cast(ChildDeviceMessage.class)
+                .subscribe(msg->{
+                    ChildDeviceMessageReply reply=msg.newReply();
+                    reply.setChildDeviceId(msg.getChildDeviceId());
+                    reply.setChildDeviceMessage(new ReadPropertyMessageReply()
+                            .messageId(msg.getMessageId())
+                            .success(Collections.singletonMap("name","test")));
+
+                    deviceMessageBroker.reply(reply)
+                    .subscribe();
+                });
+        registry.registry(DeviceInfo.builder()
+                .id("test-gateway")
+                .build())
+                .flatMap(operator -> operator.online("test2","test"))
+                .then()
+                .as(StepVerifier::create)
+                .expectComplete()
+                .verify();
+
+        registry.registry(DeviceInfo.builder()
+                .id("test-children")
+                .build())
+                .flatMap(operator -> operator.setConfig(DeviceConfigKey.parentGatewayId,"test-gateway"))
+                .then()
+                .as(StepVerifier::create)
+                .expectComplete()
+                .verify();
+
+        registry.getDevice("test-children")
+                .flatMap(DeviceOperator::getState)
+                .as(StepVerifier::create)
+                .expectNext(DeviceState.online)
+                .verifyComplete();
+
+        registry.getDevice("test-children")
+                .flatMap(DeviceOperator::checkState)
+                .as(StepVerifier::create)
+                .expectNext(DeviceState.online)
+                .verifyComplete();
+
+        registry.getDevice("test-children")
+                .map(DeviceOperator::messageSender)
+                .flatMapMany(sender-> sender.readProperty("name")
+                         .send())
+                .take(1)
+                .map(ReadPropertyMessageReply::getProperties)
+                .map(prop->prop.get("name"))
+                .as(StepVerifier::create)
+                .expectNext("test")
+                .verifyComplete();
+
 
     }
 
