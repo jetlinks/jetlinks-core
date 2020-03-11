@@ -74,7 +74,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<String> getSessionId() {
-        return getSelfConfig(DeviceConfigKey.connectionServerId.getKey())
+        return getSelfConfig(DeviceConfigKey.sessionId.getKey())
                 .map(Value::asString);
     }
 
