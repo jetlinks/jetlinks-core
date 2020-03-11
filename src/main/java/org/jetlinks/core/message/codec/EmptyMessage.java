@@ -1,6 +1,7 @@
 package org.jetlinks.core.message.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
 import javax.annotation.Nonnull;
 
@@ -18,7 +19,7 @@ public final class EmptyMessage implements EncodedMessage {
     @Nonnull
     @Override
     public ByteBuf getPayload() {
-        throw new UnsupportedOperationException("无法从空消息中获取ByteBuf");
+        return Unpooled.wrappedBuffer(new byte[0]);
     }
 
 }

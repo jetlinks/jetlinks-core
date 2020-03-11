@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * @author zhouhao
@@ -18,11 +19,11 @@ public interface EncodedMessage {
         return ByteBufUtil.getBytes(getPayload());
     }
 
-    default byte[] getBytes(int start, int len) {
-        return ByteBufUtil.getBytes(getPayload(), start, len);
+    default byte[] getBytes(int offset, int len) {
+        return ByteBufUtil.getBytes(getPayload(), offset, len);
     }
 
-    @Nonnull
+    @Nullable
     default MessagePayloadType getPayloadType() {
         return MessagePayloadType.JSON;
     }
@@ -32,7 +33,11 @@ public interface EncodedMessage {
     }
 
     static EncodedMessage simple(ByteBuf data) {
-        return () -> data;
+        return simple(data, MessagePayloadType.BINARY);
+    }
+
+    static EncodedMessage simple(ByteBuf data, MessagePayloadType payloadType) {
+        return SimpleEncodedMessage.of(data, payloadType);
     }
 
 }
