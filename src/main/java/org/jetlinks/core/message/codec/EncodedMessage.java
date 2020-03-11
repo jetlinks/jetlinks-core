@@ -1,6 +1,7 @@
 package org.jetlinks.core.message.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 
 import javax.annotation.Nonnull;
 
@@ -12,6 +13,14 @@ public interface EncodedMessage {
 
     @Nonnull
     ByteBuf getPayload();
+
+    default byte[] getBytes() {
+        return ByteBufUtil.getBytes(getPayload());
+    }
+
+    default byte[] getBytes(int start, int len) {
+        return ByteBufUtil.getBytes(getPayload(), start, len);
+    }
 
     @Nonnull
     default MessagePayloadType getPayloadType() {
