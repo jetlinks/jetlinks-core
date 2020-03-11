@@ -156,7 +156,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     public Mono<Boolean> online(String serverId, String sessionId) {
         return setConfigs(
                 DeviceConfigKey.connectionServerId.value(serverId),
-                DeviceConfigKey.sessionId.value(serverId),
+                DeviceConfigKey.sessionId.value(sessionId),
                 ConfigKey.of("onlineTime").value(System.currentTimeMillis()),
                 ConfigKey.of("state").value(DeviceState.online))
                 .doOnError(err -> log.error("online device error", err));
