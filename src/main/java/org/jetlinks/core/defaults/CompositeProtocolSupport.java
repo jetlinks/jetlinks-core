@@ -13,7 +13,6 @@ import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.ConfigMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
-import org.jetlinks.core.server.GatewayServerContextListener;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -91,7 +90,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     public Flux<Transport> getSupportedTransport() {
         return Flux.fromIterable(messageCodecSupports.values())
                 .flatMap(Supplier::get)
-                .map(DeviceMessageCodec::getSupportTransport);
+                .map(DeviceMessageCodec::getSupportTransport)
+                .distinct(Transport::getId);
     }
 
     @Nonnull
