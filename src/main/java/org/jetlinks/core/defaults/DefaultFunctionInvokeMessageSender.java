@@ -3,6 +3,7 @@ package org.jetlinks.core.defaults;
 import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.FunctionInvokeMessageSender;
+import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.message.exception.FunctionUndefinedException;
 import org.jetlinks.core.message.exception.IllegalParameterException;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
@@ -98,7 +99,17 @@ public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessage
 
     @Override
     public Flux<FunctionInvokeMessageReply> send() {
+        if (message.getHeader(Headers.async).isPresent()) {
+            return doSend();
+        }
+        return operator
+                .getMetadata()
+                .flatMap(meta -> Mono.justOrEmpty(meta.getFunction(message.getFunctionId())))
+                .doOnNext(func -> async(func.isAsync()))
+                .thenMany(doSend());
+    }
 
+    private Flux<FunctionInvokeMessageReply> doSend() {
         return operator
                 .messageSender()
                 .send(Mono.just(message));
