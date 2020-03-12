@@ -28,10 +28,6 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     private final String id;
 
-    private final String configStorageKey;
-
-    private ConfigStorageManager manager;
-
     private DeviceOperationBroker handler;
 
     private DeviceRegistry registry;
@@ -40,6 +36,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     protected ProtocolSupports supports;
 
+    private Mono<ConfigStorage> storageMono;
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
@@ -49,16 +46,16 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                  DeviceRegistry registry) {
         this.id = id;
         this.supports = supports;
-        this.manager = storageManager;
         this.registry = registry;
         this.handler = handler;
-        this.configStorageKey = "device:" + id;
-        this.messageSender = new DefaultDeviceMessageSender(handler, this,registry);
+        this.messageSender = new DefaultDeviceMessageSender(handler, this, registry);
+        storageMono = storageManager.getStorage("device:" + id);
+
     }
 
     @Override
     public Mono<ConfigStorage> getReactiveStorage() {
-        return manager.getStorage(configStorageKey);
+        return storageMono;
     }
 
     @Override

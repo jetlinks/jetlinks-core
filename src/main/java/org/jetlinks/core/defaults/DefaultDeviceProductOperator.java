@@ -3,13 +3,12 @@ package org.jetlinks.core.defaults;
 import lombok.Getter;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.ProtocolSupports;
-import org.jetlinks.core.Value;
-import org.jetlinks.core.device.DeviceConfigKey;
-import org.jetlinks.core.device.DeviceProductOperator;
-import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.config.ConfigStorage;
 import org.jetlinks.core.config.ConfigStorageManager;
 import org.jetlinks.core.config.StorageConfigurable;
+import org.jetlinks.core.device.DeviceConfigKey;
+import org.jetlinks.core.device.DeviceProductOperator;
+import org.jetlinks.core.metadata.DeviceMetadata;
 import reactor.core.publisher.Mono;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -21,17 +20,17 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
 
     private final ProtocolSupports protocolSupports;
 
-    private final ConfigStorageManager storageManager;
 
     private AtomicReference<DeviceMetadata> metadataCache = new AtomicReference<>();
 
+    private Mono<ConfigStorage> storageMono;
 
     public DefaultDeviceProductOperator(String id,
                                         ProtocolSupports supports,
                                         ConfigStorageManager manager) {
         this.id = id;
         this.protocolSupports = supports;
-        this.storageManager = manager;
+        storageMono = manager.getStorage("device-product:".concat(id));
     }
 
     @Override
@@ -58,7 +57,6 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
 
     @Override
     public Mono<ConfigStorage> getReactiveStorage() {
-        return storageManager
-                .getStorage("device-product:".concat(id));
+        return storageMono;
     }
 }
