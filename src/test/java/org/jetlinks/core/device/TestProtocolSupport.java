@@ -2,11 +2,10 @@ package org.jetlinks.core.device;
 
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.ProtocolSupports;
-import org.jetlinks.core.message.DeviceMessage;
-import org.jetlinks.core.message.codec.*;
+import org.jetlinks.core.message.codec.DeviceMessageCodec;
+import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
-import org.jetlinks.core.server.GatewayServerContextListener;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -40,10 +39,6 @@ public class TestProtocolSupport implements ProtocolSupport , ProtocolSupports {
         return Mono.empty();
     }
 
-    @Override
-    public Mono<GatewayServerContextListener<?>> getServerContextHandler(Transport transport) {
-        return Mono.empty();
-    }
 
     @Nonnull
     @Override

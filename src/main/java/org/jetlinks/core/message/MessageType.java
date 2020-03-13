@@ -39,6 +39,12 @@ public enum MessageType {
     ONLINE(DeviceOnlineMessage::new),
     //设备离线
     OFFLINE(DeviceOfflineMessage::new),
+
+    //注册
+    REGISTER(DeviceRegisterMessage::new),
+    //注销
+    UN_REGISTER(DeviceUnRegisterMessage::new),
+
     //平台主动断开连接
     DISCONNECT(DisconnectDeviceMessage::new),
     //断开回复

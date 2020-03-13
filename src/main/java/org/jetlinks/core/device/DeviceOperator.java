@@ -37,6 +37,21 @@ public interface DeviceOperator extends Configurable {
     Mono<String> getSessionId();
 
     /**
+     * 获取设备地址,通常是ip地址.
+     *
+     * @return 地址
+     */
+    Mono<String> getAddress();
+
+    /**
+     * 设置设备地址
+     *
+     * @param address 地址
+     * @return Mono
+     */
+    Mono<Void> setAddress(String address);
+
+    /**
      * @param state 状态
      * @see DeviceState#online
      */
@@ -69,7 +84,11 @@ public interface DeviceOperator extends Configurable {
      * @param serverId  设备所在服务ID
      * @param sessionId 会话ID
      */
-    Mono<Boolean> online(String serverId, String sessionId);
+    default Mono<Boolean> online(String serverId, String sessionId) {
+        return online(serverId, sessionId, null);
+    }
+
+    Mono<Boolean> online(String serverId, String sessionId, String address);
 
     Mono<Value> getSelfConfig(String key);
 

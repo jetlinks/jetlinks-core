@@ -9,7 +9,6 @@ import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.ConfigMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
-import org.jetlinks.core.server.GatewayServerContextListener;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -52,17 +51,6 @@ public interface ProtocolSupport {
      */
     @Nonnull
     Mono<? extends DeviceMessageCodec> getMessageCodec(Transport transport);
-
-    /**
-     * 网关服务上下文监听器
-     *
-     * @param transport
-     * @deprecated
-     */
-    @Deprecated
-    default Mono<? extends GatewayServerContextListener<?>> getServerContextHandler(Transport transport) {
-        return Mono.empty();
-    }
 
     /**
      * 获取设备消息发送拦截器, 用于拦截发送消息的行为.

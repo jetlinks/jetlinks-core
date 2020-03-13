@@ -76,6 +76,18 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     }
 
     @Override
+    public Mono<String> getAddress() {
+        return getConfig("address")
+                .map(Value::asString);
+    }
+
+    @Override
+    public Mono<Void> setAddress(String address) {
+        return setConfig("address", address)
+                .then();
+    }
+
+    @Override
     public Mono<Boolean> putState(byte state) {
         return setConfig("state", state);
     }
@@ -134,26 +146,36 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                 .defaultIfEmpty(DeviceState.offline);
                     }
                     return Mono.just(state);
-                });
+                })
+                .defaultIfEmpty(DeviceState.unknown);
     }
 
     @Override
     public Mono<Long> getOnlineTime() {
         return getSelfConfig("onlineTime")
-                .map(val -> val.as(Long.class));
+                .map(val -> val.as(Long.class))
+                .switchIfEmpty(Mono.defer(() ->
+                        this.getSelfConfig(DeviceConfigKey.parentGatewayId)
+                                .flatMap(registry::getDevice)
+                                .flatMap(DeviceOperator::getOnlineTime)));
     }
 
     @Override
     public Mono<Long> getOfflineTime() {
         return getSelfConfig("offlineTime")
-                .map(val -> val.as(Long.class));
+                .map(val -> val.as(Long.class))
+                .switchIfEmpty(Mono.defer(() ->
+                        this.getSelfConfig(DeviceConfigKey.parentGatewayId)
+                                .flatMap(registry::getDevice)
+                                .flatMap(DeviceOperator::getOfflineTime)));
     }
 
     @Override
-    public Mono<Boolean> online(String serverId, String sessionId) {
+    public Mono<Boolean> online(String serverId, String sessionId, String address) {
         return setConfigs(
                 DeviceConfigKey.connectionServerId.value(serverId),
                 DeviceConfigKey.sessionId.value(sessionId),
+                ConfigKey.of("address").value(address),
                 ConfigKey.of("onlineTime").value(System.currentTimeMillis()),
                 ConfigKey.of("state").value(DeviceState.online))
                 .doOnError(err -> log.error("online device error", err));
