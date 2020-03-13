@@ -141,13 +141,21 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<Long> getOnlineTime() {
         return getSelfConfig("onlineTime")
-                .map(val -> val.as(Long.class));
+                .map(val -> val.as(Long.class))
+                .switchIfEmpty(Mono.defer(() ->
+                        this.getSelfConfig(DeviceConfigKey.parentGatewayId)
+                                .flatMap(registry::getDevice)
+                                .flatMap(DeviceOperator::getOnlineTime)));
     }
 
     @Override
     public Mono<Long> getOfflineTime() {
         return getSelfConfig("offlineTime")
-                .map(val -> val.as(Long.class));
+                .map(val -> val.as(Long.class))
+                .switchIfEmpty(Mono.defer(() ->
+                        this.getSelfConfig(DeviceConfigKey.parentGatewayId)
+                                .flatMap(registry::getDevice)
+                                .flatMap(DeviceOperator::getOfflineTime)));
     }
 
     @Override
