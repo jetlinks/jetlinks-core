@@ -5,18 +5,22 @@ import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.Nullable;
+import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.Optional;
 
 /**
  * @author zhouhao
- * @since 1.0.0
  * @see ChildrenDeviceSession
+ * @since 1.0.0
  */
 public interface DeviceSession {
     String getId();
 
     String getDeviceId();
 
+    @Nullable
     DeviceOperator getOperator();
 
     long lastPingTime();
@@ -35,8 +39,19 @@ public interface DeviceSession {
 
     void onClose(Runnable call);
 
-    default Optional<String> getServerId(){
+    default Optional<String> getServerId() {
         return Optional.empty();
     }
 
+    default Optional<InetSocketAddress> getClientAddress() {
+        return Optional.empty();
+    }
+
+    default void keepAlive() {
+        ping();
+    }
+
+    default void setKeepAliveTimeout(Duration timeout) {
+
+    }
 }
