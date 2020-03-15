@@ -60,6 +60,7 @@ public interface FunctionInvokeMessageSender {
 
     default Mono<Void> sendAndForget() {
         return header(Headers.sendAndForget, true)
+                .async()
                 .send()
                 .then();
     }

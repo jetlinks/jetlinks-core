@@ -36,7 +36,10 @@ public interface WritePropertyMessageSender {
     Flux<WritePropertyMessageReply> send();
 
     default Mono<Void> sendAndForget() {
-        return header(Headers.sendAndForget, true).send().then();
+        return header(Headers.sendAndForget, true)
+                .async()
+                .send()
+                .then();
     }
 
     default WritePropertyMessageSender write(Map<String, Object> properties) {
