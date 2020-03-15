@@ -32,10 +32,10 @@ public interface Headers {
     //分片消息ID(为平台下发消息时的消息ID)
     HeaderKey<String> fragmentBodyMessageId = HeaderKey.of("frag_msg_id", null);
     //分片数量
-    HeaderKey<Integer> fragmentNumber = HeaderKey.of("frg_num", 0);
+    HeaderKey<Integer> fragmentNumber = HeaderKey.of("frag_num", 0);
 
     //当前分片
-    HeaderKey<Integer> fragmentPart = HeaderKey.of("frg_part", 0);
+    HeaderKey<Integer> fragmentPart = HeaderKey.of("frag_part", 0);
 
     //集群间消息传递标记
     HeaderKey<String> sendFrom = HeaderKey.of("send-from", null);
