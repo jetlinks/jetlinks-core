@@ -49,7 +49,7 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
         metadata.setId(property);
         metadata.setName(name);
         metadata.setValueType(type);
-        return this;
+        return addPropertyMetadata(metadata);
     }
 
     @Override
