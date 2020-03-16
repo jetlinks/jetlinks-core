@@ -27,9 +27,9 @@ public interface DeviceRegistry {
      * @param id ID
      * @return 设备状态信息流
      */
-   default Flux<DeviceStateInfo> checkDeviceState(Flux<? extends Collection<String>> id){
-       return Flux.error(new UnsupportedOperationException());
-   }
+    default Flux<DeviceStateInfo> checkDeviceState(Flux<? extends Collection<String>> id) {
+        return Flux.error(new UnsupportedOperationException());
+    }
 
     /**
      * 获取设备产品操作,请勿缓存返回值,注册中心已经实现本地缓存.
@@ -46,7 +46,7 @@ public interface DeviceRegistry {
      * @return 设备操作接口
      * @see this#getDevice(String)
      */
-    Mono<DeviceOperator> registry(DeviceInfo deviceInfo);
+    Mono<DeviceOperator> register(DeviceInfo deviceInfo);
 
     /**
      * 注册产品(型号)信息
@@ -54,14 +54,38 @@ public interface DeviceRegistry {
      * @param productInfo 产品(型号)信息
      * @return 注册结果
      */
-    Mono<DeviceProductOperator> registry(ProductInfo productInfo);
+    Mono<DeviceProductOperator> register(ProductInfo productInfo);
 
+    @Deprecated
+    default Mono<DeviceOperator> registry(DeviceInfo deviceInfo) {
+        return register(deviceInfo);
+    }
+
+    @Deprecated
+    default Mono<DeviceProductOperator> registry(ProductInfo deviceInfo) {
+        return register(deviceInfo);
+    }
+
+    @Deprecated
+    default Mono<Void> unRegistry(String deviceId) {
+        return unregisterDevice(deviceId);
+    }
 
     /**
      * 注销设备
      *
      * @param deviceId 设备ID
+     * @return void
      */
-    Mono<Void> unRegistry(String deviceId);
+    Mono<Void> unregisterDevice(String deviceId);
+
+    /**
+     * 注销产品型号
+     *
+     * @param productId 产品型号ID
+     * @return void
+     */
+    Mono<Void> unregisterProduct(String productId);
+
 
 }

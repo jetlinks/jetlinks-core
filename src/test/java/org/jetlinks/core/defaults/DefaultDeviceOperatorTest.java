@@ -47,7 +47,7 @@ public class DefaultDeviceOperatorTest {
                     deviceMessageBroker.reply(reply)
                     .subscribe();
                 });
-        registry.registry(DeviceInfo.builder()
+        registry.register(DeviceInfo.builder()
                 .id("test-gateway")
                 .build())
                 .flatMap(operator -> operator.online("test2","test"))
@@ -56,7 +56,7 @@ public class DefaultDeviceOperatorTest {
                 .expectComplete()
                 .verify();
 
-        registry.registry(DeviceInfo.builder()
+        registry.register(DeviceInfo.builder()
                 .id("test-children")
                 .build())
                 .flatMap(operator -> operator.setConfig(DeviceConfigKey.parentGatewayId,"test-gateway"))
@@ -100,7 +100,7 @@ public class DefaultDeviceOperatorTest {
                         .reply(msg.newReply().success())
                         .subscribe());
 
-        registry.registry(DeviceInfo.builder()
+        registry.register(DeviceInfo.builder()
                 .id("test")
                 .build())
                 .zipWhen(operator -> operator.online("test", "test"), (o, r) -> o)
@@ -121,7 +121,7 @@ public class DefaultDeviceOperatorTest {
                 .handleGetDeviceState("test", idStream -> Flux.from(idStream)
                         .map(s -> new DeviceStateInfo(s, DeviceState.unknown)));
 
-        registry.registry(DeviceInfo.builder()
+        registry.register(DeviceInfo.builder()
                 .id("test")
                 .build())
                 .doOnNext(operator -> operator.online("test", "test").subscribe())
@@ -134,7 +134,7 @@ public class DefaultDeviceOperatorTest {
 
     @Test
     public void testCheckState() {
-        registry.registry(DeviceInfo.builder()
+        registry.register(DeviceInfo.builder()
                 .id("test")
                 .build())
                 .doOnNext(operator -> operator.online("test", "test").subscribe())
@@ -161,7 +161,7 @@ public class DefaultDeviceOperatorTest {
                         .flatMap(deviceMessageBroker::reply)
                         .subscribe());
 
-        registry.registry(DeviceInfo.builder()
+        registry.register(DeviceInfo.builder()
                 .id("test")
                 .build())
                 .zipWhen(operator -> operator.online("test", "test"), (o, r) -> o)
@@ -179,7 +179,7 @@ public class DefaultDeviceOperatorTest {
     public void testConfig() {
         DeviceInfo deviceInfo = new DeviceInfo();
         deviceInfo.setId("test");
-        registry.registry(deviceInfo)
+        registry.register(deviceInfo)
                 .then(registry.getDevice("test"))
                 .flatMap(operator -> operator.setConfig(ConfigKey.of("clientId").value("test")))
                 .then(registry.getDevice("test"))
@@ -194,7 +194,7 @@ public class DefaultDeviceOperatorTest {
     public void testConfigMulti() {
         DeviceInfo deviceInfo = new DeviceInfo();
         deviceInfo.setId("test");
-        registry.registry(deviceInfo)
+        registry.register(deviceInfo)
                 .then(registry.getDevice("test"))
                 .flatMap(operator -> operator.setConfigs(ConfigKey.of("clientId").value("test"), ConfigKey.of("password").value("test")))
                 .then(registry.getDevice("test"))
@@ -207,12 +207,12 @@ public class DefaultDeviceOperatorTest {
 
     @Test
     public void testConfigParentPart() {
-        registry.registry(ProductInfo.builder()
+        registry.register(ProductInfo.builder()
                 .id("test-prod")
                 .build())
                 .flatMap(po -> po.setConfig("password", "test"))
                 .then(
-                        registry.registry(DeviceInfo.builder()
+                        registry.register(DeviceInfo.builder()
                                 .id("test")
                                 .productId("test-prod")
                                 .build())
