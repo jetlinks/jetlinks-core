@@ -18,6 +18,9 @@ class SimpleValue implements Value {
         if (nativeValue == null) {
             return null;
         }
+        if(type.isInstance(nativeValue)){
+            return (T)nativeValue;
+        }
         return FastBeanCopier.DEFAULT_CONVERT.convert(
                 nativeValue, type, FastBeanCopier.EMPTY_CLASS_ARRAY
         );

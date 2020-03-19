@@ -49,5 +49,6 @@ public interface Headers {
     HeaderKey<Boolean> reportProperties = HeaderKey.of("report-properties", false);
 
     //上报派生属性
+    @Deprecated
     HeaderKey<Boolean> reportDerivedMetadata = HeaderKey.of("derived-metadata", false);
 }
