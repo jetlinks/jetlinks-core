@@ -5,11 +5,15 @@ import java.util.concurrent.TimeUnit;
 public interface Headers {
 
     /**
-     * 默认只有{@link DeviceMessageReply} 才会处理回复逻辑,此标记将强制进行回复
-     *
-     * @see Message#getMessageId()
+     * 强制执行
      */
-    HeaderKey<Boolean> forceReply = HeaderKey.of("forceReply", true);
+    HeaderKey<Boolean> force = HeaderKey.of("force", true);
+
+    /**
+     * 保持在线,与{@link DeviceOnlineMessage}配合使用.
+     */
+    HeaderKey<Boolean> keepOnline = HeaderKey.of("keepOnline", true);
+
 
     /**
      * 异步消息,当发往设备的消息标记了为异步时,设备网关服务发送消息到设备后将立即回复{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING}到发送端
