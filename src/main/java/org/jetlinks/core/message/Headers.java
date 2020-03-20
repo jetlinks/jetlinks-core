@@ -19,6 +19,11 @@ public interface Headers {
     HeaderKey<Boolean> async = HeaderKey.of("async", false);
 
     /**
+     * 客户端地址,通常为设备IP地址
+     */
+    HeaderKey<String> clientAddress = HeaderKey.of("cliAddr", "/");
+
+    /**
      * 发送既不管
      */
     HeaderKey<Boolean> sendAndForget = HeaderKey.of("sendAndForget", false);
