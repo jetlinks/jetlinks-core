@@ -88,5 +88,6 @@ public class KeepOnlineSession implements DeviceSession {
     @Override
     public void setKeepAliveTimeout(Duration timeout) {
         keepAliveTimeOutMs = timeout.toMillis();
+        parent.setKeepAliveTimeout(timeout);
     }
 }

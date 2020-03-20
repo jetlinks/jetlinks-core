@@ -3,6 +3,8 @@ package org.jetlinks.core.message.codec;
 import org.jetlinks.core.message.Message;
 import org.reactivestreams.Publisher;
 
+import javax.annotation.Nonnull;
+
 public interface DeviceMessageDecoder {
     /**
      * 解码，用于将收到设备上传的消息解码为可读的消息
@@ -18,5 +20,6 @@ public interface DeviceMessageDecoder {
      * @see org.jetlinks.core.message.DeviceOfflineMessage
      * @see org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor
      */
-    Publisher<? extends Message> decode(MessageDecodeContext context);
+    @Nonnull
+    Publisher<? extends Message> decode(@Nonnull MessageDecodeContext context);
 }

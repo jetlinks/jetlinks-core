@@ -6,6 +6,7 @@ import org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor;
 import org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor;
 import reactor.core.publisher.Flux;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -40,8 +41,9 @@ public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
         }
     }
 
+    @Nonnull
     @Override
-    public Flux<? extends EncodedMessage> encode(MessageEncodeContext context) {
+    public Flux<? extends EncodedMessage> encode(@Nonnull MessageEncodeContext context) {
         return Flux.defer(() -> {
             for (DeviceMessageEncodeInterceptor interceptor : encodeDeviceMessageInterceptors) {
                 interceptor.preEncode(context);
@@ -57,8 +59,9 @@ public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
 
     }
 
+    @Nonnull
     @Override
-    public Flux<? extends Message> decode(MessageDecodeContext context) {
+    public Flux<? extends Message> decode(@Nonnull MessageDecodeContext context) {
         return Flux.defer(() -> {
             for (DeviceMessageDecodeInterceptor interceptor : decodeDeviceMessageInterceptors) {
                 interceptor.preDecode(context);

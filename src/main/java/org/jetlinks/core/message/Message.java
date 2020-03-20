@@ -67,6 +67,7 @@ public interface Message extends Serializable {
      */
     DeviceMessage addHeaderIfAbsent(String header, Object value);
 
+
     /**
      * 删除一个header
      *
@@ -82,6 +83,14 @@ public interface Message extends Serializable {
      */
     default <T> DeviceMessage addHeader(HeaderKey<T> header, T value) {
         return addHeader(header.getKey(), value);
+    }
+
+    /**
+     * @see Headers
+     * @see this#addHeaderIfAbsent(String, Object)
+     */
+    default <T> DeviceMessage addHeaderIfAbsent(HeaderKey<T> header, T value) {
+        return addHeaderIfAbsent(header.getKey(), value);
     }
 
     @SuppressWarnings("all")
