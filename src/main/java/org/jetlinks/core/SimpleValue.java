@@ -1,6 +1,7 @@
 package org.jetlinks.core;
 
 import lombok.AllArgsConstructor;
+import org.hswebframework.web.bean.FastBeanCopier;
 
 @AllArgsConstructor(staticName = "of")
 class SimpleValue implements Value {
@@ -14,7 +15,14 @@ class SimpleValue implements Value {
 
     @Override
     public <T> T as(Class<T> type) {
-        // TODO: 2019-10-19 不同类型转换支持
-        return type.cast(nativeValue);
+        if (nativeValue == null) {
+            return null;
+        }
+        if(type.isInstance(nativeValue)){
+            return (T)nativeValue;
+        }
+        return FastBeanCopier.DEFAULT_CONVERT.convert(
+                nativeValue, type, FastBeanCopier.EMPTY_CLASS_ARRAY
+        );
     }
 }

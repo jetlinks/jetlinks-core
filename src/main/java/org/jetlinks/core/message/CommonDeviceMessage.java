@@ -37,8 +37,17 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     @Override
+    public DeviceMessage addHeaderIfAbsent(String header, Object value) {
+        if (headers == null) {
+            this.headers = new LinkedHashMap<>();
+        }
+        this.headers.putIfAbsent(header, value);
+        return this;
+    }
+
+    @Override
     public DeviceMessage removeHeader(String header) {
-        if(this.headers!=null){
+        if (this.headers != null) {
             this.headers.remove(header);
         }
         return this;

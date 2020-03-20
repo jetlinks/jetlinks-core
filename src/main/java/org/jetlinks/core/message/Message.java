@@ -34,7 +34,7 @@ public interface Message extends Serializable {
     String getMessageId();
 
     /**
-     * @return 时间戳
+     * @return 毫秒时间戳
      * @see System#currentTimeMillis()
      */
     long getTimestamp();
@@ -59,6 +59,15 @@ public interface Message extends Serializable {
     DeviceMessage addHeader(String header, Object value);
 
     /**
+     * 添加header,如果header已存在则放弃
+     *
+     * @param header header key
+     * @param value  header 值
+     * @return this
+     */
+    DeviceMessage addHeaderIfAbsent(String header, Object value);
+
+    /**
      * 删除一个header
      *
      * @param header header
@@ -71,7 +80,7 @@ public interface Message extends Serializable {
      * @see Headers
      * @see this#addHeader(String, Object)
      */
-    default <T> DeviceMessage addHeader(HeaderKey<T> header, Object value) {
+    default <T> DeviceMessage addHeader(HeaderKey<T> header, T value) {
         return addHeader(header.getKey(), value);
     }
 

@@ -17,10 +17,14 @@ public interface DeviceMetadata extends Metadata ,Jsonable {
 
     List<EventMetadata> getEvents();
 
+    List<PropertyMetadata> getTags();
+
     Optional<EventMetadata> getEvent(String id);
 
     Optional<PropertyMetadata> getProperty(String id);
 
     Optional<FunctionMetadata> getFunction(String id);
+
+    Optional<PropertyMetadata> getTag(String id);
 
 }

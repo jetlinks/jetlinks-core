@@ -34,7 +34,7 @@ public interface DeviceMessageReply extends DeviceMessage {
     DeviceMessageReply addHeader(String header, Object value);
 
     @Override
-    default <T> DeviceMessageReply addHeader(HeaderKey<T> header, Object value) {
+    default <T> DeviceMessageReply addHeader(HeaderKey<T> header, T value) {
         addHeader(header.getKey(), value);
         return this;
     }

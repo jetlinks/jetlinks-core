@@ -17,6 +17,10 @@ public class FunctionInvokeMessageTest {
         Assert.assertNotNull(message.getInputs());
         Assert.assertTrue(message.getHeader("test").isPresent());
 
+        message.addHeaderIfAbsent("test","test2");
+        Assert.assertEquals(message.getHeader("test").orElse(null),"test");
+
+
         message.addInput("test",1);
 
         Assert.assertEquals(message.getInputs().size(),1);

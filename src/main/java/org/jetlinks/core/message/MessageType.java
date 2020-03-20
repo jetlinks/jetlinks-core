@@ -50,6 +50,9 @@ public enum MessageType {
     //断开回复
     DISCONNECT_REPLY(DisconnectDeviceMessageReply::new),
 
+    //派生属性
+    DERIVED_METADATA(DerivedMetadataMessage::new),
+
     //下行子设备消息
     CHILD(ChildDeviceMessage::new) {
         @Override

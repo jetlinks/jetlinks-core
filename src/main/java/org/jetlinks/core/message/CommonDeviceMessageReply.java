@@ -36,6 +36,15 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     private Map<String, Object> headers;
 
     @Override
+    public ME addHeaderIfAbsent(String header, Object value) {
+        if (headers == null) {
+            this.headers = new LinkedHashMap<>();
+        }
+        this.headers.putIfAbsent(header, value);
+        return (ME) this;
+    }
+
+    @Override
     public ME addHeader(String header, Object value) {
         if (headers == null) {
             this.headers = new LinkedHashMap<>();
@@ -111,7 +120,7 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     }
 
     @Override
-    public <T> ME addHeader(HeaderKey<T> header, Object value) {
+    public <T> ME addHeader(HeaderKey<T> header, T value) {
         return (ME) DeviceMessageReply.super.addHeader(header, value);
     }
 

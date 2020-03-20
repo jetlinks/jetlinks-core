@@ -6,11 +6,11 @@ public interface Value {
     }
 
     default int asInt() {
-        return asNumber().intValue();
+        return as(Integer.class);
     }
 
     default long asLong() {
-        return asNumber().longValue();
+        return as(Long.class);
     }
 
     default boolean asBoolean() {
