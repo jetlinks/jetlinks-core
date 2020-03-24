@@ -133,7 +133,26 @@ public class DefaultDeviceOperatorTest {
     }
 
     @Test
+    public void testCheckStateEmpty() {
+        deviceMessageBroker
+                .handleGetDeviceState("test", idStream -> Flux.empty());
+
+        registry.register(DeviceInfo.builder()
+                .id("test")
+                .build())
+                .doOnNext(operator -> operator.online("test", "test").subscribe())
+                .flatMap(DeviceOperator::checkState)
+                .log()
+                .as(StepVerifier::create)
+                .expectNext(DeviceState.online)
+                .verifyComplete();
+    }
+    @Test
     public void testCheckState() {
+        deviceMessageBroker
+                .handleGetDeviceState("test", idStream -> Flux.from(idStream)
+                        .map(s -> new DeviceStateInfo(s, DeviceState.offline)));
+
         registry.register(DeviceInfo.builder()
                 .id("test")
                 .build())
