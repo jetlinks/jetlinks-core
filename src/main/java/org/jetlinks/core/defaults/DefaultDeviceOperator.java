@@ -131,7 +131,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                         return handler.getDeviceState(server, Collections.singletonList(id))
                                 .map(DeviceStateInfo::getState)
                                 .singleOrEmpty()
-                                .defaultIfEmpty(DeviceState.offline)
+                                .switchIfEmpty(getState())
                                 .flatMap(current -> {
                                     if (!current.equals(state)) {
                                         log.info("device[{}] state changed to {}", getDeviceId(), current);
