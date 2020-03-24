@@ -18,6 +18,7 @@ import org.jetlinks.core.utils.IdUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -94,7 +95,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<Byte> getState() {
-        return getSelfConfigs(Arrays.asList("state", DeviceConfigKey.connectionServerId.getKey(), DeviceConfigKey.parentGatewayId.getKey()))
+        return getSelfConfigs(Arrays.asList("state", DeviceConfigKey.parentGatewayId.getKey()))
                 .flatMap(values -> {
                     Byte state = values.getValue("state")
                             .map(val -> val.as(Byte.class))
@@ -126,12 +127,14 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                     Byte state = values.getValue("state")
                             .map(val -> val.as(Byte.class))
                             .orElse(DeviceState.unknown);
+                    Mono<Byte> fallback = getState();
 
                     if (StringUtils.hasText(server)) {
                         return handler.getDeviceState(server, Collections.singletonList(id))
                                 .map(DeviceStateInfo::getState)
                                 .singleOrEmpty()
-                                .switchIfEmpty(getState())
+                                .timeout(Duration.ofSeconds(1), fallback)
+                                .switchIfEmpty(fallback)
                                 .flatMap(current -> {
                                     if (!current.equals(state)) {
                                         log.info("device[{}] state changed to {}", getDeviceId(), current);
