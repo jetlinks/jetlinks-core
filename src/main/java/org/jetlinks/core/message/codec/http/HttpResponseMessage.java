@@ -1,9 +1,12 @@
 package org.jetlinks.core.message.codec.http;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.springframework.http.MediaType;
 
 import javax.annotation.Nonnull;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +23,30 @@ public interface HttpResponseMessage extends EncodedMessage {
         return getHeaders().stream()
                 .filter(header -> header.getName().equals(name))
                 .findFirst();
+    }
+
+
+    default String print() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("HTTP").append(" ").append(getStatus());
+        builder.append("Content-Type: ").append(getContentType()).append("\n");
+        
+        for (Header header : getHeaders()) {
+            builder
+                    .append(header.getName()).append(": ").append(String.join(",", header.getValue()))
+                    .append("\n");
+        }
+        ByteBuf payload = getPayload();
+        if (payload.readableBytes() == 0) {
+            return builder.toString();
+        }
+        builder.append("\n");
+        if (ByteBufUtil.isText(payload, StandardCharsets.UTF_8)) {
+            builder.append(payload.toString(StandardCharsets.UTF_8));
+        } else {
+            ByteBufUtil.appendPrettyHexDump(builder, payload);
+        }
+        return builder.toString();
     }
 
 }

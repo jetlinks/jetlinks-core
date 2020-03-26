@@ -22,4 +22,8 @@ public final class EmptyMessage implements EncodedMessage {
         return Unpooled.wrappedBuffer(new byte[0]);
     }
 
+    @Override
+    public String toString() {
+        return "empty message";
+    }
 }

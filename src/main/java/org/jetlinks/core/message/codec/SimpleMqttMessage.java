@@ -30,11 +30,6 @@ public class SimpleMqttMessage implements MqttMessage {
 
     @Override
     public String toString() {
-        return getTopic() + " => " +
-                " | messageId " + getMessageId() +
-                " | QoS " + getQosLevel() +
-                " | dup " + isDup() +
-                " | retain " + isRetain() +
-                " | will " + isWill();
+        return print();
     }
 }

@@ -43,6 +43,9 @@ public interface Headers {
     //分片数量
     HeaderKey<Integer> fragmentNumber = HeaderKey.of("frag_num", 0);
 
+    //是否为最后一个分配,如果分片数量不确定则使用这个来表示分片结束了.
+    HeaderKey<Boolean> fragmentLast = HeaderKey.of("frag_last", false);
+
     //当前分片
     HeaderKey<Integer> fragmentPart = HeaderKey.of("frag_part", 0);
 

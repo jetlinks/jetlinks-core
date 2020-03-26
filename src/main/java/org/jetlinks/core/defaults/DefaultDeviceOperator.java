@@ -127,14 +127,13 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                     Byte state = values.getValue("state")
                             .map(val -> val.as(Byte.class))
                             .orElse(DeviceState.unknown);
-                    Mono<Byte> fallback = getState();
 
                     if (StringUtils.hasText(server)) {
                         return handler.getDeviceState(server, Collections.singletonList(id))
                                 .map(DeviceStateInfo::getState)
                                 .singleOrEmpty()
-                                .timeout(Duration.ofSeconds(1), fallback)
-                                .switchIfEmpty(fallback)
+                                .timeout(Duration.ofSeconds(1), Mono.just(state))
+                                .defaultIfEmpty(state)
                                 .flatMap(current -> {
                                     if (!current.equals(state)) {
                                         log.info("device[{}] state changed to {}", getDeviceId(), current);
