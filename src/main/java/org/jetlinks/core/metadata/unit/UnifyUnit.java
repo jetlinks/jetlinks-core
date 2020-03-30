@@ -112,6 +112,26 @@ public enum UnifyUnit implements ValueUnit, EnumDict<String> {
     mPerSec("米每秒", "m/s", "speed", "速度单位:米每秒(m/s)"),
     kmPerHr("千米每小时", "km/h", "speed", "速度单位:千米每小时(km/h)"),
     knots("节", "kn", "speed", "速度单位:节(kn)"),
+
+
+    //==================电(electricity)单位===================
+
+    volt("伏特", "V", "electricity", "电压:伏特(V)"),
+    kiloVolt("千伏", "kV", "electricity", "电压:千伏(kV)"),
+    milliVolt("毫伏", "mV", "electricity", "电压:毫伏(mV)"),
+    microVolt("微伏", "μV", "electricity", "电压:微伏(μV)"),
+
+
+    ampere("安培", "A", "electricity", "电流:安培(A)"),
+    milliAmpere("毫安", "mA", "electricity", "电流:毫安(mA)"),
+    microAmpere("微安", "μA", "electricity", "电流:微安(μA)"),
+    nanoAmpere("纳安", "nA", "electricity", "电流:纳安(nA)"),
+
+    ohm("欧姆","Ω","electricity","电阻:欧姆(Ω)"),
+    kiloOhm("千欧","KΩ","electricity","电阻:千欧(KΩ)"),
+    millionOhm("兆欧","MΩ","electricity","电阻:兆欧(MΩ)"),
+
+
     ;
 
     private final String name;
