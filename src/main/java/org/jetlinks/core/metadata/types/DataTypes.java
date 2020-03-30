@@ -20,7 +20,9 @@ public class DataTypes {
         supports.put(IntType.ID, IntType::new);
         supports.put(LongType.ID, LongType::new);
         supports.put(ObjectType.ID, ObjectType::new);
+
         supports.put(StringType.ID, StringType::new);
+        supports.put("text", StringType::new);
 
         supports.put(GeoType.ID, GeoType::new);
         supports.put(FileType.ID, FileType::new);
