@@ -21,116 +21,114 @@ import java.util.stream.Stream;
 public enum UnifyUnit implements ValueUnit, EnumDict<String> {
 
     //常用单位
-    percent("百分比", "%", "common", "百分比(%)"),
-    count("次", "count", "common", "次"),
-    turnPerSeconds("转每分钟", "turn/m", "common", "转每分钟"),
+    percent("百分比", "%", "常用单位", "百分比(%)"),
+    count("次", "count", "常用单位", "次"),
+    turnPerSeconds("转每分钟", "r/min", "常用单位", "转每分钟"),
 
     //计量单位
     //=====https://baike.baidu.com/item/%E4%B8%AD%E5%9B%BD%E6%B3%95%E5%AE%9A%E8%AE%A1%E9%87%8F%E5%8D%95%E4%BD%8D/662681#1_1=======
     //==================长度(length)单位===================
-    nanometer("纳米", "nm", "length", "长度单位:纳米(nm)"),
-    micron("微米", "μm", "length", "长度单位:微米(μm)"),
-    millimeter("毫米", "mm", "length", "长度单位:毫米(mm)"),
-    centimeter("厘米", "cm", "length", "长度单位:厘米(cm)"),
-    meter("米", "m", "length", "长度单位:米(m)"),
-    kilometer("千米", "km", "length", "长度单位:千米(km)"),
+    nanometer("纳米", "nm", "长度单位", "长度单位:纳米(nm)"),
+    micron("微米", "μm", "长度单位", "长度单位:微米(μm)"),
+    millimeter("毫米", "mm", "长度单位", "长度单位:毫米(mm)"),
+    centimeter("厘米", "cm", "长度单位", "长度单位:厘米(cm)"),
+    meter("米", "m", "长度单位", "长度单位:米(m)"),
+    kilometer("千米", "km", "长度单位", "长度单位:千米(km)"),
 
     //==================面积(area)单位===================
-    squareMillimeter("平方毫米", "mm²", "area", "面积单位:平方毫米(mm²)"),
-    squareCentimeter("平方厘米", "cm²", "area", "面积单位:平方厘米(cm²)"),
-    squareMeter("平方米", "m²", "area", "面积单位:平方米(m²)"),
-    squareKilometer("平方千米", "km²", "area", "面积单位:平方千米(km²)"),
-    hectare("公顷", "hm²", "area", "面积单位:公顷(hm²)"),
+    squareMillimeter("平方毫米", "mm²", "面积单位", "面积单位:平方毫米(mm²)"),
+    squareCentimeter("平方厘米", "cm²", "面积单位", "面积单位:平方厘米(cm²)"),
+    squareMeter("平方米", "m²", "面积单位", "面积单位:平方米(m²)"),
+    squareKilometer("平方千米", "km²", "面积单位", "面积单位:平方千米(km²)"),
+    hectare("公顷", "hm²", "面积单位", "面积单位:公顷(hm²)"),
 
 
     //==================时间(time)单位===================
 
-    days("天", "d", "time", "时间单位:天(d)"),
-    hour("小时", "h", "time", "时间单位:小时(h)"),
-    minutes("分钟", "min", "time", "时间单位:分钟(m)"),
-    seconds("秒", "s", "time", "时间单位:秒(s)"),
-    milliseconds("毫秒", "ms", "time", "时间单位:毫秒(ms)"),
-    microseconds("微秒", "μs", "time", "时间单位:微秒(μs)"),
-    nanoseconds("纳秒", "ns", "time", "时间单位:纳秒(ns)"),
+    days("天", "d", "时间单位", "时间单位:天(d)"),
+    hour("小时", "h", "时间单位", "时间单位:小时(h)"),
+    minutes("分钟", "min", "时间单位", "时间单位:分钟(m)"),
+    seconds("秒", "s", "时间单位", "时间单位:秒(s)"),
+    milliseconds("毫秒", "ms", "时间单位", "时间单位:毫秒(ms)"),
+    microseconds("微秒", "μs", "时间单位", "时间单位:微秒(μs)"),
+    nanoseconds("纳秒", "ns", "时间单位", "时间单位:纳秒(ns)"),
 
 
     //==================体积(volume)单位===================
-    cubicMillimeter("立方毫米", "mm³", "volume", "体积单位:立方毫米(mm³)"),
-    cubicCentimeter("立方厘米", "cm³", "volume", "体积单位:立方厘米(cm³)"),
-    cubicMeter("立方米", "m³", "volume", "体积单位:立方米(m³)"),
-    cubicKilometer("立方千米", "km³", "volume", "体积单位:立方千米(km³)"),
+    cubicMillimeter("立方毫米", "mm³", "体积单位", "体积单位:立方毫米(mm³)"),
+    cubicCentimeter("立方厘米", "cm³", "体积单位", "体积单位:立方厘米(cm³)"),
+    cubicMeter("立方米", "m³", "体积单位", "体积单位:立方米(m³)"),
+    cubicKilometer("立方千米", "km³", "体积单位", "体积单位:立方千米(km³)"),
 
 
     //==================容积(capacity)单位===================
-    milliliter("毫升", "mL", "capacity", "容积单位:毫升(mL)"),
-    litre("升", "L", "capacity", "容积单位:升(L)"),
+    milliliter("毫升", "mL", "容积单位", "容积单位:毫升(mL)"),
+    litre("升", "L", "容积单位", "容积单位:升(L)"),
 
     //==================质量(mass)单位===================
-    milligram("毫克", "mg", "mass", "重量单位:毫克(mg)"),
-    gramme("克", "g", "mass", "重量单位:克(g)"),
-    kilogram("千克", "kg", "mass", "重量单位:千克(kg)"),
-    ton("吨", "t", "mass", "重量单位:吨(t)"),
-
-    //==================力(force)单位 ====================
-    newton("牛顿", "N", "force", "力单位:牛顿(N)"),
+    milligram("毫克", "mg", "质量单位", "重量单位:毫克(mg)"),
+    gramme("克", "g", "质量单位", "重量单位:克(g)"),
+    kilogram("千克", "kg", "质量单位", "重量单位:千克(kg)"),
+    ton("吨", "t", "质量单位", "重量单位:吨(t)"),
 
     //==================压力(pressure)单位===================
-    pascal("帕斯卡", "Pa", "pressure", "压力单位:帕斯卡(Pa)"),
-    kiloPascal("千帕斯卡", "kPa", "pressure", "压力单位:千帕斯卡(kPa)"),
+    pascal("帕斯卡", "Pa", "压力单位", "压力单位:帕斯卡(Pa)"),
+    kiloPascal("千帕斯卡", "kPa", "压力单位", "压力单位:千帕斯卡(kPa)"),
+    newton("牛顿", "N", "力单位", "力单位:牛顿(N)"),
+    newtonMeter("牛·米", "N.m", "力单位", "力单位:牛·米(N.m)"),
 
     //==================温度(temperature)单位===================
-    kelvin("开尔文", "K", "temperature", "温度单位:开尔文(K)"),
-    celsiusDegrees("摄氏度", "℃", "temperature", "温度单位:摄氏度(℃)"),
-    fahrenheit("华氏度", "℉", "temperature", "温度单位:华氏度(℉)"),
+    kelvin("开尔文", "K", "温度单位", "温度单位:开尔文(K)"),
+    celsiusDegrees("摄氏度", "℃", "温度单位", "温度单位:摄氏度(℃)"),
+    fahrenheit("华氏度", "℉", "温度单位", "温度单位:华氏度(℉)"),
 
     //==================能(energy)单位 ====================
-    joule("焦耳", "J", "pressure", "能单位:焦耳(J)"),
-    electronVolts("电子伏", "eV", "pressure", "能单位:电子伏(eV)"),
-    kWattsHour("千瓦·时", "kW·h", "pressure", "能单位:千瓦·时(kW·h)"),
-    cal("卡", "cal", "pressure", "能单位:卡(cal)"),
+    joule("焦耳", "J", "能量单位", "能单位:焦耳(J)"),
+    cal("卡", "cal", "能量单位", "能单位:卡(cal)"),
 
 
     //==================功率(power)单位===================
-    watt("瓦特", "W", "power", "功率单位:瓦特(W)"),
-    kilowatt("千瓦特", "kW", "power", "功率单位:千瓦特(kW)"),
+    watt("瓦特", "W", "功率单位", "功率单位:瓦特(W)"),
+    kilowatt("千瓦特", "kW", "功率单位", "功率单位:千瓦特(kW)"),
 
     //==================角度(angle)单位===================
-    radian("弧度", "rad", "angle", "角度单位:弧度(rad)"),
-    degrees("度", "°", "angle", "角度单位:度(°)"),
-    fen("[角]分", "′", "angle", "角度单位:分(′)"),
-    angleSeconds("[角]秒", "″", "angle", "角度单位:度(″)"),
+    radian("弧度", "rad", "角度单位", "角度单位:弧度(rad)"),
+    degrees("度", "°", "角度单位", "角度单位:度(°)"),
+    fen("[角]分", "′", "角度单位", "角度单位:分(′)"),
+    angleSeconds("[角]秒", "″", "角度单位", "角度单位:度(″)"),
 
 
     //==================频率(frequency)单位===================
 
-    hertz("赫兹", "Hz", "frequency", "频率单位:赫兹(Hz)"),
-    megahertz("兆赫兹", "MHz", "frequency", "频率单位:兆赫兹(MHz)"),
-    ghertz("G赫兹", "GHz", "frequency", "频率单位:G赫兹(GHz)"),
+    hertz("赫兹", "Hz", "频率单位", "频率单位:赫兹(Hz)"),
+    megahertz("兆赫兹", "MHz", "频率单位", "频率单位:兆赫兹(MHz)"),
+    ghertz("G赫兹", "GHz", "频率单位", "频率单位:G赫兹(GHz)"),
 
     //==================速度(speed)单位===================
 
-    mPerSec("米每秒", "m/s", "speed", "速度单位:米每秒(m/s)"),
-    kmPerHr("千米每小时", "km/h", "speed", "速度单位:千米每小时(km/h)"),
-    knots("节", "kn", "speed", "速度单位:节(kn)"),
+    mPerSec("米每秒", "m/s", "速度单位", "速度单位:米每秒(m/s)"),
+    kmPerHr("千米每小时", "km/h", "速度单位", "速度单位:千米每小时(km/h)"),
+    knots("节", "kn", "速度单位", "速度单位:节(kn)"),
 
 
     //==================电(electricity)单位===================
 
-    volt("伏特", "V", "electricity", "电压:伏特(V)"),
-    kiloVolt("千伏", "kV", "electricity", "电压:千伏(kV)"),
-    milliVolt("毫伏", "mV", "electricity", "电压:毫伏(mV)"),
-    microVolt("微伏", "μV", "electricity", "电压:微伏(μV)"),
+    volt("伏特", "V", "电力单位", "电压:伏特(V)"),
+    kiloVolt("千伏", "kV", "电力单位", "电压:千伏(kV)"),
+    milliVolt("毫伏", "mV", "电力单位", "电压:毫伏(mV)"),
+    microVolt("微伏", "μV", "电力单位", "电压:微伏(μV)"),
 
 
-    ampere("安培", "A", "electricity", "电流:安培(A)"),
-    milliAmpere("毫安", "mA", "electricity", "电流:毫安(mA)"),
-    microAmpere("微安", "μA", "electricity", "电流:微安(μA)"),
-    nanoAmpere("纳安", "nA", "electricity", "电流:纳安(nA)"),
+    ampere("安培", "A", "电力单位", "电流:安培(A)"),
+    milliAmpere("毫安", "mA", "电力单位", "电流:毫安(mA)"),
+    microAmpere("微安", "μA", "电力单位", "电流:微安(μA)"),
+    nanoAmpere("纳安", "nA", "电力单位", "电流:纳安(nA)"),
 
-    ohm("欧姆","Ω","electricity","电阻:欧姆(Ω)"),
-    kiloOhm("千欧","KΩ","electricity","电阻:千欧(KΩ)"),
-    millionOhm("兆欧","MΩ","electricity","电阻:兆欧(MΩ)"),
-
+    ohm("欧姆","Ω","电力单位","电阻:欧姆(Ω)"),
+    kiloOhm("千欧","KΩ","电力单位","电阻:千欧(KΩ)"),
+    millionOhm("兆欧","MΩ","电力单位","电阻:兆欧(MΩ)"),
+    electronVolts("电子伏", "eV", "电力单位", "能单位:电子伏(eV)"),
+    kWattsHour("千瓦·时", "kW·h", "电力单位", "能单位:千瓦·时(kW·h)"),
 
     ;
 
