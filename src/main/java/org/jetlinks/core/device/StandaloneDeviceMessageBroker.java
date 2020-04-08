@@ -10,6 +10,7 @@ import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.message.Message;
 import org.jetlinks.core.server.MessageHandler;
 import org.reactivestreams.Publisher;
+import org.springframework.util.StringUtils;
 import reactor.core.publisher.*;
 
 import java.time.Duration;
@@ -64,6 +65,10 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
         return Mono.defer(() -> {
 
             String messageId = message.getMessageId();
+            if (StringUtils.isEmpty(messageId)) {
+                log.warn("reply message messageId is empty: {}", message);
+                return Mono.just(false);
+            }
 
             String partMsgId = message.getHeader(Headers.fragmentBodyMessageId).orElse(null);
             if (partMsgId != null) {
