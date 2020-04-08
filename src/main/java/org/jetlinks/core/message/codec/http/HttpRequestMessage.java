@@ -52,11 +52,13 @@ public interface HttpRequestMessage extends EncodedMessage {
     default String print() {
         StringBuilder builder = new StringBuilder();
         builder.append(getMethod()).append(" ").append(getUrl());
-        if (CollectionUtils.isEmpty(getQueryParameters())) {
+        if (!CollectionUtils.isEmpty(getQueryParameters())) {
             builder.append("?").append(getQueryParameters().entrySet().stream()
                     .map(e -> e.getKey().concat("=").concat(e.getValue()))
                     .collect(Collectors.joining("&")))
                     .append("\n");
+        } else {
+            builder.append("\n");
         }
         for (Header header : getHeaders()) {
             builder

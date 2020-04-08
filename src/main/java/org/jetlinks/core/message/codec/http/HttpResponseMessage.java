@@ -10,6 +10,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * HTTP响应消息
+ *
+ * @author zhouhao
+ * @see SimpleHttpResponseMessage
+ * @since 1.0
+ */
 public interface HttpResponseMessage extends EncodedMessage {
 
     int getStatus();
@@ -25,12 +32,10 @@ public interface HttpResponseMessage extends EncodedMessage {
                 .findFirst();
     }
 
-
     default String print() {
         StringBuilder builder = new StringBuilder();
-        builder.append("HTTP").append(" ").append(getStatus());
+        builder.append("HTTP").append(" ").append(getStatus()).append("\n");
         builder.append("Content-Type: ").append(getContentType()).append("\n");
-        
         for (Header header : getHeaders()) {
             builder
                     .append(header.getName()).append(": ").append(String.join(",", header.getValue()))
