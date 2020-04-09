@@ -6,7 +6,9 @@ import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nullable;
+import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.util.Optional;
 
 public class KeepOnlineSession implements DeviceSession {
 
@@ -83,6 +85,11 @@ public class KeepOnlineSession implements DeviceSession {
     @Override
     public void onClose(Runnable call) {
 
+    }
+
+    @Override
+    public Optional<InetSocketAddress> getClientAddress() {
+        return parent.getClientAddress();
     }
 
     @Override
