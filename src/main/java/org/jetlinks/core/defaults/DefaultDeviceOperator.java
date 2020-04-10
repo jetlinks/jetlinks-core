@@ -12,7 +12,6 @@ import org.jetlinks.core.config.StorageConfigurable;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.DisconnectDeviceMessage;
-import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.utils.IdUtils;
 import org.springframework.util.StringUtils;
@@ -43,7 +42,6 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                  ProtocolSupports supports,
                                  ConfigStorageManager storageManager,
                                  DeviceOperationBroker handler,
-                                 DeviceMessageSenderInterceptor interceptor,
                                  DeviceRegistry registry) {
         this.id = id;
         this.supports = supports;

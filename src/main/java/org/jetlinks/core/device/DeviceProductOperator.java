@@ -3,6 +3,7 @@ package org.jetlinks.core.device;
 import org.jetlinks.core.Configurable;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -32,4 +33,8 @@ public interface DeviceProductOperator extends Configurable {
      */
     Mono<ProtocolSupport> getProtocol();
 
+    /**
+     * @return 获取产品下的所有设备
+     */
+    Flux<DeviceOperator> getDevices();
 }

@@ -56,4 +56,11 @@ public interface ClusterManager {
      */
     <K, V> ClusterCache<K, V> getCache(String cache);
 
+    /**
+     * 获取Set结构
+     * @param name 名称
+     * @param <V> 集合元素类型
+     * @return ClusterSet
+     */
+    <V> ClusterSet<V> getSet(String name);
 }
