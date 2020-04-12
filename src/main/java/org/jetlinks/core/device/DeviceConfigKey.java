@@ -19,7 +19,9 @@ public enum DeviceConfigKey implements ConfigKey<String> {
 
     connectionServerId("当前设备连接的服务ID"),
 
-    sessionId("设备会话ID");
+    sessionId("设备会话ID"),
+    
+    shadow("设备影子");
 
     String name;
 
