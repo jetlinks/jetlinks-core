@@ -20,6 +20,8 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
 
     public static final String TIMESTAMP_FORMAT = "timestamp";
 
+    public static final DateTimeType GLOBAL = new DateTimeType();
+
     private String format = TIMESTAMP_FORMAT;
 
     private ZoneId zoneId = ZoneId.systemDefault();

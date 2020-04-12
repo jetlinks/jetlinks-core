@@ -15,6 +15,8 @@ public class DoubleType extends NumberType<Double> {
 
     private Integer scale;
 
+    public static final DoubleType GLOBAL = new DoubleType();
+
     @Override
     public Object format(Object value) {
         Number val = convertNumber(value);

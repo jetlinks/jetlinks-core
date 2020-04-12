@@ -7,6 +7,7 @@ import lombok.Setter;
 @Setter
 public class LongType extends NumberType<Long> {
     public static final String ID = "long";
+    public static final LongType GLOBAL = new LongType();
 
     @Override
     public String getId() {

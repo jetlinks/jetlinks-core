@@ -19,6 +19,26 @@ public class GeoTypeTest {
     }
 
     @Test
+    public void testConvertJsoArr() {
+        GeoType type = new GeoType();
+
+        GeoPoint point = type.convert("[1234.112,1211.23]");
+
+        Assert.assertEquals(point.getLat(), 1234.112, 0);
+        Assert.assertEquals(point.getLon(), 1211.23, 0);
+    }
+
+    @Test
+    public void testConvertArr() {
+        GeoType type = new GeoType();
+
+        GeoPoint point = type.convert(new Object[]{1234.112,"1211.23"});
+
+        Assert.assertEquals(point.getLat(), 1234.112, 0);
+        Assert.assertEquals(point.getLon(), 1211.23, 0);
+    }
+
+    @Test
     public void testConvertMap() {
         GeoType type = new GeoType();
 
