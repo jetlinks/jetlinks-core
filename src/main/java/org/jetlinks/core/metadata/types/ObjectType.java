@@ -1,8 +1,10 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSON;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.metadata.*;
 
 import java.util.ArrayList;
@@ -83,6 +85,12 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
         if (value == null) {
             return null;
         }
+        if (value instanceof String && ((String) value).startsWith("{")) {
+            value = JSON.parseObject(String.valueOf(value));
+        }
+        if (!(value instanceof Map)) {
+            value = FastBeanCopier.copy(value, new HashMap<>());
+        }
         if (value instanceof Map) {
             Map<String, Object> mapValue = new HashMap<>(((Map) value));
             if (properties != null) {
@@ -103,7 +111,7 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
     public Map<String, Object> convert(Object value) {
         return handle(value, (type, data) -> {
             if (type instanceof Converter) {
-                return ((Converter) type).convert(data);
+                return ((Converter<?>) type).convert(data);
             }
             return data;
         });
