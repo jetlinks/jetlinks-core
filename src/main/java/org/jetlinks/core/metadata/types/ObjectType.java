@@ -40,8 +40,8 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
         return this;
     }
 
-    public ObjectType addProperty(String property,  DataType type) {
-        return this.addProperty(property,property,type);
+    public ObjectType addProperty(String property, DataType type) {
+        return this.addProperty(property, property, type);
     }
 
     public ObjectType addProperty(String property, String name, DataType type) {
@@ -83,13 +83,15 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
         if (value == null) {
             return null;
         }
-        if (properties != null && value instanceof Map) {
+        if (value instanceof Map) {
             Map<String, Object> mapValue = new HashMap<>(((Map) value));
-            for (PropertyMetadata property : properties) {
-                Object data = mapValue.get(property.getId());
-                DataType type = property.getValueType();
-                if (data != null) {
-                    mapValue.put(property.getId(), mapping.apply(type, data));
+            if (properties != null) {
+                for (PropertyMetadata property : properties) {
+                    Object data = mapValue.get(property.getId());
+                    DataType type = property.getValueType();
+                    if (data != null) {
+                        mapValue.put(property.getId(), mapping.apply(type, data));
+                    }
                 }
             }
             return mapValue;
