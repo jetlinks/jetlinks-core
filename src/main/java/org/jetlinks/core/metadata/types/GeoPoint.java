@@ -19,10 +19,10 @@ import java.util.Map;
 public class GeoPoint implements Serializable {
 
     //经度
-    private double lat;
+    private double lon;
 
     //纬度
-    private double lon;
+    private double lat;
 
 
     public static GeoPoint of(Object val) {
