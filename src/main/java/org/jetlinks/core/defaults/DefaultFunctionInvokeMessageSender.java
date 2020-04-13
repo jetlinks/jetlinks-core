@@ -10,6 +10,7 @@ import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.function.FunctionParameter;
 import org.jetlinks.core.metadata.PropertyMetadata;
+import org.jetlinks.core.metadata.ValidateResult;
 import org.jetlinks.core.utils.IdUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -74,26 +75,30 @@ public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessage
                 .getMetadata()
                 .flatMap(metadata -> Mono.justOrEmpty(metadata.getFunction(function)))
                 .switchIfEmpty(Mono.error(() -> new FunctionUndefinedException(function, "功能[" + function + "]未定义")))
-                .flatMap(functionMetadata -> {
+                .doOnNext(functionMetadata -> {
                     List<PropertyMetadata> metadataInputs = functionMetadata.getInputs();
                     List<FunctionParameter> inputs = message.getInputs();
 
                     Map<String, FunctionParameter> properties = inputs.stream()
                             .collect(Collectors.toMap(FunctionParameter::getName, Function.identity(), (t1, t2) -> t1));
                     for (PropertyMetadata metadata : metadataInputs) {
+                        FunctionParameter parameter = properties.get(metadata.getId());
                         Object value = Optional
-                                .ofNullable(properties.get(metadata.getId()))
+                                .ofNullable(parameter)
                                 .map(FunctionParameter::getValue)
                                 .orElse(null);
 
-                        metadata.getValueType()
-                                .validate(value)
-                                .ifFail(result -> {
-                                    throw new IllegalParameterException(metadata.getId(), result.getErrorMsg());
-                                });
+                        ValidateResult validateResult = metadata.getValueType().validate(value);
+
+                        validateResult.ifFail(result -> {
+                            throw new IllegalParameterException(metadata.getId(), result.getErrorMsg());
+                        });
+                        if (parameter != null && validateResult.getValue() != null) {
+                            parameter.setValue(validateResult.getValue());
+                        }
                     }
-                    return Mono.just(this);
                 })
+                .thenReturn(this)
                 ;
     }
 
