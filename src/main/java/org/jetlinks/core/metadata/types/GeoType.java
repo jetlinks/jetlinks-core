@@ -1,7 +1,5 @@
 package org.jetlinks.core.metadata.types;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.metadata.Converter;
@@ -16,6 +14,8 @@ import java.util.Map;
 @Setter
 public class GeoType extends AbstractType<GeoType> implements DataType, FormatSupport, Converter<GeoPoint> {
     public static final String ID = "geoPoint";
+
+    public static final GeoType GLOBAL = new GeoType();
 
     //经度字段
     private String latProperty = "lat";
@@ -48,33 +48,14 @@ public class GeoType extends AbstractType<GeoType> implements DataType, FormatSu
 
         GeoPoint point = convert(value);
         if (point != null) {
-            mapGeoPoint.put(getLatProperty(), point.getLat());
-            mapGeoPoint.put(getLonProperty(), point.getLon());
+            mapGeoPoint.put("lat", point.getLat());
+            mapGeoPoint.put("lon", point.getLon());
         }
         return mapGeoPoint;
     }
 
     public GeoPoint convert(Object value) {
-        if (value instanceof GeoPoint) {
-            return ((GeoPoint) value);
-        }
-
-        if (value instanceof String) {
-            if (((String) value).startsWith("{")) {
-                value = JSON.parseObject((String) value);
-            } else {
-                String[] str = ((String) value).split("[,]");
-                if (str.length == 2) {
-                    return new GeoPoint(Double.parseDouble(str[0]), Double.parseDouble(str[1]));
-                }
-            }
-        }
-        if (value instanceof Map) {
-            @SuppressWarnings("all")
-            JSONObject json = new JSONObject(((Map) value));
-            return new GeoPoint(json.getDoubleValue(latProperty), json.getDoubleValue(lonProperty));
-        }
-        return null;
+        return GeoPoint.of(value);
     }
 
     @Override

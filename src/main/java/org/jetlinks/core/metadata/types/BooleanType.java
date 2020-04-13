@@ -12,6 +12,8 @@ import org.jetlinks.core.metadata.ValidateResult;
 public class BooleanType extends AbstractType<BooleanType> implements DataType, FormatSupport, Converter<Boolean> {
     public static final String ID = "boolean";
 
+    public static final BooleanType GLOBAL = new BooleanType();
+
     private String trueText = "是";
 
     private String falseText = "否";

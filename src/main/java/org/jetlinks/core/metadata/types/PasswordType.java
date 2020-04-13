@@ -10,6 +10,7 @@ import org.jetlinks.core.metadata.ValidateResult;
 @Setter
 public class PasswordType extends AbstractType<PasswordType> implements DataType, Converter<String> {
     public static final String ID = "password";
+    public static final PasswordType GLOBAL = new PasswordType();
 
     @Override
     public String getId() {

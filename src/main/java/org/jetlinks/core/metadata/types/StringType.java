@@ -10,6 +10,7 @@ import org.jetlinks.core.metadata.ValidateResult;
 @Setter
 public class StringType extends AbstractType<StringType> implements DataType, Converter<String> {
     public static final String ID = "string";
+    public static final StringType GLOBAL = new StringType();
 
     @Override
     public String getId() {

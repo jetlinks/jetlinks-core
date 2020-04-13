@@ -8,6 +8,8 @@ import lombok.Setter;
 public class IntType extends NumberType<Integer> {
     public static final String ID = "int";
 
+    public static final IntType GLOBAL = new IntType();
+
     @Override
     public String getId() {
         return ID;
