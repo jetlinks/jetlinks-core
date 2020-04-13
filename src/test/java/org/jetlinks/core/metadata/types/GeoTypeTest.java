@@ -14,8 +14,8 @@ public class GeoTypeTest {
 
         GeoPoint point = type.convert("1234.112,1211.23");
 
-        Assert.assertEquals(point.getLat(), 1234.112, 0);
-        Assert.assertEquals(point.getLon(), 1211.23, 0);
+        Assert.assertEquals(point.getLon(), 1234.112, 0);
+        Assert.assertEquals(point.getLat(), 1211.23, 0);
     }
 
     @Test
@@ -24,8 +24,8 @@ public class GeoTypeTest {
 
         GeoPoint point = type.convert("[1234.112,1211.23]");
 
-        Assert.assertEquals(point.getLat(), 1234.112, 0);
-        Assert.assertEquals(point.getLon(), 1211.23, 0);
+        Assert.assertEquals(point.getLon(), 1234.112, 0);
+        Assert.assertEquals(point.getLat(), 1211.23, 0);
     }
 
     @Test
@@ -34,8 +34,8 @@ public class GeoTypeTest {
 
         GeoPoint point = type.convert(new Object[]{1234.112,"1211.23"});
 
-        Assert.assertEquals(point.getLat(), 1234.112, 0);
-        Assert.assertEquals(point.getLon(), 1211.23, 0);
+        Assert.assertEquals(point.getLon(), 1234.112, 0);
+        Assert.assertEquals(point.getLat(), 1211.23, 0);
     }
 
     @Test

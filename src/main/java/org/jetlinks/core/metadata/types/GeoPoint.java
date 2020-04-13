@@ -34,29 +34,29 @@ public class GeoPoint implements Serializable {
         if (val instanceof String) {
             String strVal = String.valueOf(val);
             if (strVal.startsWith("{")) {
-                // {"lat":lat,"lon":"lon"}
+                // {"lon":"lon","lat":lat}
                 val = JSON.parseObject(strVal);
             } else if (strVal.startsWith("[")) {
-                // [lat,lon]
+                // [lon,lat]
                 val = JSON.parseArray(strVal);
             } else {
-                // lat,lon
+                // lon,lat
                 val = strVal.split("[,]");
             }
         }
-        //{"lat":lat,"lon":lon} or {"x":lat,"y":lon}
+        //{"lat":lat,"lon":lon} or {"x":lon,"y":lat}
         if (val instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<Object, Object> mapVal = ((Map<Object, Object>) val);
-            Object lat = mapVal.getOrDefault("lat", mapVal.get("x"));
-            Object lon = mapVal.getOrDefault("lon", mapVal.get("y"));
-            val = new Object[]{lat, lon};
+            Object lon = mapVal.getOrDefault("lon", mapVal.get("x"));
+            Object lat = mapVal.getOrDefault("lat", mapVal.get("y"));
+            val = new Object[]{lon,lat};
         }
-        //  [lat,lon]
+        //  [lon,lat]
         if (val instanceof Collection) {
             val = ((Collection<?>) val).toArray();
         }
-        //  [lat,lon]
+        //  [lon,lat]
         if (val instanceof Object[]) {
             Object[] arr = ((Object[]) val);
             if (arr.length >= 2) {
