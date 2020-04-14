@@ -17,6 +17,7 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 public class GeoPoint implements Serializable {
+    private static final long serialVersionUID = -6849794470754667710L;
 
     //经度
     private double lon;
