@@ -27,6 +27,8 @@ public class DataTypes {
         supports.put(GeoType.ID, GeoType::new);
         supports.put(FileType.ID, FileType::new);
         supports.put(PasswordType.ID, PasswordType::new);
+        supports.put(GeoShapeType.ID, GeoShapeType::new);
+
     }
 
     public static void register(String id, Supplier<DataType> supplier) {
