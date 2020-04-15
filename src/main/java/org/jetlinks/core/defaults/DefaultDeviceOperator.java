@@ -114,40 +114,45 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<Byte> checkState() {
-        return getSelfConfigs(Arrays.asList(DeviceConfigKey.connectionServerId.getKey(), DeviceConfigKey.parentGatewayId.getKey(), "state"))
-                .flatMap(values -> {
-                    String server = values
-                            .getValue(DeviceConfigKey.connectionServerId)
-                            .orElse(null);
-                    String parentGatewayId = values
-                            .getValue(DeviceConfigKey.parentGatewayId)
-                            .orElse(null);
-                    Byte state = values.getValue("state")
-                            .map(val -> val.as(Byte.class))
-                            .orElse(DeviceState.unknown);
+        return getProtocol()
+                .flatMap(ProtocolSupport::getStateChecker)
+                .flatMap(checker -> checker.checkState(this))
+                .switchIfEmpty(Mono.defer(() -> getSelfConfigs(Arrays.asList(
+                        DeviceConfigKey.connectionServerId.getKey(),
+                        DeviceConfigKey.parentGatewayId.getKey(), "state"))
+                        .flatMap(values -> {
+                            String server = values
+                                    .getValue(DeviceConfigKey.connectionServerId)
+                                    .orElse(null);
+                            String parentGatewayId = values
+                                    .getValue(DeviceConfigKey.parentGatewayId)
+                                    .orElse(null);
+                            Byte state = values.getValue("state")
+                                    .map(val -> val.as(Byte.class))
+                                    .orElse(DeviceState.unknown);
 
-                    if (StringUtils.hasText(server)) {
-                        return handler.getDeviceState(server, Collections.singletonList(id))
-                                .map(DeviceStateInfo::getState)
-                                .singleOrEmpty()
-                                .timeout(Duration.ofSeconds(1), Mono.just(state))
-                                .defaultIfEmpty(state)
-                                .flatMap(current -> {
-                                    if (!current.equals(state)) {
-                                        log.info("device[{}] state changed to {}", getDeviceId(), current);
-                                        return putState(current)
-                                                .thenReturn(current);
-                                    }
-                                    return Mono.just(state);
-                                });
-                    } else if (StringUtils.hasText(parentGatewayId)) {
-                        return registry.getDevice(parentGatewayId)
-                                .flatMap(DeviceOperator::checkState)
-                                .defaultIfEmpty(DeviceState.offline);
-                    }
-                    return Mono.just(state);
-                })
-                .defaultIfEmpty(DeviceState.unknown);
+                            if (StringUtils.hasText(server)) {
+                                return handler.getDeviceState(server, Collections.singletonList(id))
+                                        .map(DeviceStateInfo::getState)
+                                        .singleOrEmpty()
+                                        .timeout(Duration.ofSeconds(1), Mono.just(state))
+                                        .defaultIfEmpty(state)
+                                        .flatMap(current -> {
+                                            if (!current.equals(state)) {
+                                                log.info("device[{}] state changed to {}", getDeviceId(), current);
+                                                return putState(current)
+                                                        .thenReturn(current);
+                                            }
+                                            return Mono.just(state);
+                                        });
+                            } else if (StringUtils.hasText(parentGatewayId)) {
+                                return registry.getDevice(parentGatewayId)
+                                        .flatMap(DeviceOperator::checkState)
+                                        .defaultIfEmpty(DeviceState.offline);
+                            }
+                            return Mono.just(state);
+                        })
+                )).defaultIfEmpty(DeviceState.unknown);
     }
 
     @Override

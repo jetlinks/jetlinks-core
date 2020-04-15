@@ -1,9 +1,6 @@
 package org.jetlinks.core;
 
-import org.jetlinks.core.device.AuthenticationRequest;
-import org.jetlinks.core.device.AuthenticationResponse;
-import org.jetlinks.core.device.DeviceOperator;
-import org.jetlinks.core.device.MqttAuthenticationRequest;
+import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
@@ -86,6 +83,16 @@ public interface ProtocolSupport {
     Mono<AuthenticationResponse> authenticate(
             @Nonnull AuthenticationRequest request,
             @Nonnull DeviceOperator deviceOperation);
+
+    /**
+     * 获取自定义设备状态检查器,用于检查设备状态.
+     *
+     * @return 设备状态检查器
+     */
+    @Nonnull
+    default Mono<DeviceStateChecker> getStateChecker() {
+        return Mono.empty();
+    }
 
     /**
      * 获取协议所需的配置信息定义

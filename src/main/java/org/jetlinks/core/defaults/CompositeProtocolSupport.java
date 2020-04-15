@@ -4,10 +4,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.ProtocolSupport;
-import org.jetlinks.core.device.AuthenticationRequest;
-import org.jetlinks.core.device.AuthenticationResponse;
-import org.jetlinks.core.device.CompositeDeviceMessageSenderInterceptor;
-import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
@@ -46,6 +43,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Getter(AccessLevel.PRIVATE)
     private Map<String, Authenticator> authenticators = new ConcurrentHashMap<>();
 
+    private DeviceStateChecker deviceStateChecker;
+
     public void addMessageCodecSupport(Transport transport, Supplier<Mono<DeviceMessageCodec>> supplier) {
         messageCodecSupports.put(transport.getId(), supplier);
     }
@@ -61,6 +60,7 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     public void addAuthenticator(Transport transport, Authenticator authenticator) {
         authenticators.put(transport.getId(), authenticator);
     }
+
 
     public synchronized void addMessageSenderInterceptor(DeviceMessageSenderInterceptor interceptor) {
         if (this.deviceMessageSenderInterceptor == null) {
@@ -118,5 +118,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Override
     public Mono<ConfigMetadata> getConfigMetadata(Transport transport) {
         return configMetadata.getOrDefault(transport.getId(), Mono::empty).get();
+    }
+
+    @Nonnull
+    @Override
+    public Mono<DeviceStateChecker> getStateChecker() {
+        return Mono.justOrEmpty(deviceStateChecker);
     }
 }
