@@ -6,4 +6,8 @@ import reactor.core.publisher.Mono;
 public interface ProtocolSupportProvider {
 
     Mono<? extends ProtocolSupport> create(ServiceContext context);
+
+    default void close(){
+
+    }
 }
