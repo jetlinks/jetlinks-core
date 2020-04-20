@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.utils.time.DateFormatter;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
@@ -15,6 +16,7 @@ import java.util.Date;
 
 @Getter
 @Setter
+@Slf4j
 public class DateTimeType extends AbstractType<DateTimeType> implements DataType, Converter<Date> {
     public static final String ID = "date";
 
@@ -39,7 +41,6 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
         this.getFormatter();
         return this;
     }
-
 
     @Override
     public String getId() {
@@ -68,17 +69,22 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
 
     @Override
     public String format(Object value) {
-        if (value instanceof Number && TIMESTAMP_FORMAT.equals(format)) {
-            return value.toString();
+        try {
+            if (TIMESTAMP_FORMAT.equals(format)) {
+                return String.valueOf(convert(value).getTime());
+            }
+            Date dateValue = convert(value);
+            if (dateValue == null) {
+                return "";
+            }
+            return LocalDateTime
+                    .ofInstant(dateValue.toInstant(), zoneId)
+                    .format(getFormatter());
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
         }
 
-        Date dateValue = convert(value);
-        if (dateValue == null) {
-            return "";
-        }
-        return LocalDateTime
-                .ofInstant(dateValue.toInstant(), zoneId)
-                .format(getFormatter());
+        return "";
     }
 
     public Date convert(Object value) {
@@ -106,8 +112,7 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
                     .atZone(zoneId)
                     .toInstant());
         }
-
-        return null;
+        throw new IllegalArgumentException("can not format datetime :" + value);
     }
 
 
