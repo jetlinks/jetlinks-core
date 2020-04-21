@@ -60,6 +60,12 @@ public enum UnifyUnit implements ValueUnit, EnumDict<String> {
     cubicMeter("立方米", "m³", "体积单位", "体积单位:立方米(m³)"),
     cubicKilometer("立方千米", "km³", "体积单位", "体积单位:立方千米(km³)"),
 
+    //==================流速单位==================
+    cubicMeterPerSec("立方米每秒","m³/s","流量单位","流量单位:立方米每秒(m³/s)"),
+    cubicKilometerPerSec("立方千米每秒","km³/s","流量单位","流量单位:立方千米每秒(km³/s)"),
+    cubicCentimeterPerSec("立方厘米每秒","cm³/s","流量单位","流量单位:立方厘米每秒(cm³/s)"),
+    litrePerSec("升每秒","l/s","流量单位","流量单位:升每秒(l/s)"),
+
 
     //==================容积(capacity)单位===================
     milliliter("毫升", "mL", "容积单位", "容积单位:毫升(mL)"),
