@@ -22,22 +22,26 @@ import java.util.function.Function;
 @Slf4j
 public class DefaultDeviceMessageSender implements DeviceMessageSender {
 
-    private DeviceOperationBroker handler;
+    private final DeviceOperationBroker handler;
 
-    private DeviceOperator operator;
+    private final DeviceOperator operator;
 
-    private DeviceRegistry registry;
+    private final DeviceRegistry registry;
 
     @Setter
     @Getter
     private long defaultTimeout = TimeUnit.SECONDS.toMillis(10);
 
+    private final DeviceMessageSenderInterceptor globalInterceptor;
+
     public DefaultDeviceMessageSender(DeviceOperationBroker handler,
                                       DeviceOperator operator,
-                                      DeviceRegistry registry) {
+                                      DeviceRegistry registry,
+                                      DeviceMessageSenderInterceptor interceptor) {
         this.handler = handler;
         this.operator = operator;
         this.registry = registry;
+        this.globalInterceptor = interceptor;
     }
 
     @Override
@@ -90,19 +94,9 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
 
     private <R extends DeviceMessage> Flux<R> logReply(DeviceMessage msg, Flux<R> flux) {
         if (log.isDebugEnabled()) {
-            return flux.doOnNext(r -> {
-                if (log.isDebugEnabled()) {
-                    log.debug("receive device[{}] message[{}]: {}", operator.getDeviceId(), r.getMessageId(), r);
-                }
-            }).doOnComplete(() -> {
-                if (log.isDebugEnabled()) {
-                    log.debug("complete receive device[{}] message[{}]", operator.getDeviceId(), msg.getMessageId());
-                }
-            }).doOnCancel(() -> {
-                if (log.isDebugEnabled()) {
-                    log.debug("cancel receive device[{}] message[{}]", operator.getDeviceId(), msg.getMessageId());
-                }
-            });
+            return flux.doOnNext(r -> log.debug("receive device[{}] message[{}]: {}", operator.getDeviceId(), r.getMessageId(), r))
+                    .doOnComplete(() -> log.debug("complete receive device[{}] message[{}]", operator.getDeviceId(), msg.getMessageId()))
+                    .doOnCancel(() -> log.debug("cancel receive device[{}] message[{}]", operator.getDeviceId(), msg.getMessageId()));
         }
         return flux;
     }
@@ -116,7 +110,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                 operator.getSelfConfig(DeviceConfigKey.parentGatewayId).defaultIfEmpty("")
         ).flatMapMany(serverAndInterceptor -> {
 
-            DeviceMessageSenderInterceptor interceptor = serverAndInterceptor.getT2();
+            DeviceMessageSenderInterceptor interceptor = serverAndInterceptor.getT2().andThen(globalInterceptor);
             String server = serverAndInterceptor.getT1();
             String parentGatewayId = serverAndInterceptor.getT3();
             //设备未连接,有上级网关设备则通过父级设备发送消息

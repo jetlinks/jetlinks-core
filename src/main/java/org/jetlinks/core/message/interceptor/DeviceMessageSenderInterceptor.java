@@ -1,5 +1,6 @@
 package org.jetlinks.core.message.interceptor;
 
+import org.jetlinks.core.device.CompositeDeviceMessageSenderInterceptor;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.DeviceMessage;
 import reactor.core.publisher.Flux;
@@ -39,6 +40,20 @@ public interface DeviceMessageSenderInterceptor {
      */
     default <R extends DeviceMessage> Flux<R> afterSent(DeviceOperator device, DeviceMessage message, Flux<R> reply) {
         return reply;
+    }
+
+    default DeviceMessageSenderInterceptor andThen(DeviceMessageSenderInterceptor interceptor) {
+        if (this == DO_NOTING) {
+            return interceptor;
+        }
+        if (this instanceof CompositeDeviceMessageSenderInterceptor) {
+            ((CompositeDeviceMessageSenderInterceptor) this).addInterceptor(interceptor);
+            return this;
+        }
+        CompositeDeviceMessageSenderInterceptor composite = new CompositeDeviceMessageSenderInterceptor();
+        composite.addInterceptor(this);
+        composite.addInterceptor(interceptor);
+        return composite;
     }
 
 }

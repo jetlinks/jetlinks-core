@@ -12,6 +12,7 @@ import org.jetlinks.core.config.StorageConfigurable;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.DisconnectDeviceMessage;
+import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.utils.IdUtils;
 import org.springframework.util.StringUtils;
@@ -28,27 +29,37 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     private final String id;
 
-    private DeviceOperationBroker handler;
+    private final DeviceOperationBroker handler;
 
-    private DeviceRegistry registry;
+    private final DeviceRegistry registry;
 
-    private DeviceMessageSender messageSender;
+    private final DeviceMessageSender messageSender;
 
-    protected ProtocolSupports supports;
+    private final ProtocolSupports supports;
 
-    private Mono<ConfigStorage> storageMono;
+    private final Mono<ConfigStorage> storageMono;
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
                                  ConfigStorageManager storageManager,
                                  DeviceOperationBroker handler,
                                  DeviceRegistry registry) {
+        this(id, supports, storageManager, handler, registry, DeviceMessageSenderInterceptor.DO_NOTING);
+
+    }
+
+    public DefaultDeviceOperator(String id,
+                                 ProtocolSupports supports,
+                                 ConfigStorageManager storageManager,
+                                 DeviceOperationBroker handler,
+                                 DeviceRegistry registry,
+                                 DeviceMessageSenderInterceptor interceptor) {
         this.id = id;
         this.supports = supports;
         this.registry = registry;
         this.handler = handler;
-        this.messageSender = new DefaultDeviceMessageSender(handler, this, registry);
-        storageMono = storageManager.getStorage("device:" + id);
+        this.messageSender = new DefaultDeviceMessageSender(handler, this, registry, interceptor);
+        this.storageMono = storageManager.getStorage("device:" + id);
 
     }
 

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class CompositeDeviceMessageSenderInterceptor implements DeviceMessageSenderInterceptor {
-    private List<DeviceMessageSenderInterceptor> interceptors = new CopyOnWriteArrayList<>();
+    private final List<DeviceMessageSenderInterceptor> interceptors = new CopyOnWriteArrayList<>();
 
     public void addInterceptor(DeviceMessageSenderInterceptor interceptor) {
         interceptors.add(interceptor);
@@ -35,5 +35,11 @@ public class CompositeDeviceMessageSenderInterceptor implements DeviceMessageSen
         }
         return flux;
 
+    }
+
+    @Override
+    public DeviceMessageSenderInterceptor andThen(DeviceMessageSenderInterceptor interceptor) {
+        interceptors.add(interceptor);
+        return this;
     }
 }
