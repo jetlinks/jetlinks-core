@@ -25,14 +25,16 @@ public enum ErrorCode {
     FUNCTION_UNDEFINED("功能未定义"),
     PROPERTY_UNDEFINED("属性未定义"),
     UNKNOWN_PARENT_DEVICE("未知的父设备"),
-    UNKNOWN("未知错误")
-    ;
+    UNKNOWN("未知错误");
 
-    private String text;
+    private final String text;
 
-    public static Optional<ErrorCode> of(String code){
+    public static Optional<ErrorCode> of(String code) {
+        if (code == null) {
+            return Optional.empty();
+        }
         for (ErrorCode value : values()) {
-            if(value.name().equalsIgnoreCase(code)){
+            if (value.name().equalsIgnoreCase(code)) {
                 return Optional.of(value);
             }
         }

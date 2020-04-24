@@ -58,6 +58,11 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                             });
                 }
                 if (messageReply.getChildDeviceMessage() == null) {
+                    ErrorCode.of(messageReply.getCode())
+                            .map(DeviceOperationException::new)
+                            .ifPresent(err -> {
+                                throw err;
+                            });
                     throw new DeviceOperationException(ErrorCode.NO_REPLY);
                 }
                 return convertReply(((ChildDeviceMessageReply) reply).getChildDeviceMessage());
@@ -124,6 +129,10 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                             children.setTimestamp(msg.getTimestamp());
                             children.setChildDeviceId(operator.getDeviceId());
                             children.setChildDeviceMessage(msg);
+
+                            // https://github.com/jetlinks/jetlinks-pro/issues/19
+                            children.setHeaders(msg.getHeaders());
+
                             return registry
                                     .getDevice(parentGatewayId)
                                     .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.UNKNOWN_PARENT_DEVICE, "未知的父设备:" + parentGatewayId)))
