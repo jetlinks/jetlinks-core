@@ -19,9 +19,7 @@ import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
@@ -151,7 +149,14 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                         .flatMap(current -> {
                                             if (!current.equals(state)) {
                                                 log.info("device[{}] state changed to {}", getDeviceId(), current);
-                                                return putState(current)
+                                                Map<String, Object> configs = new HashMap<>();
+                                                configs.put("state", state);
+                                                if (state == DeviceState.online) {
+                                                    configs.put("onlineTime", System.currentTimeMillis());
+                                                } else if (state == DeviceState.offline) {
+                                                    configs.put("offlineTime", System.currentTimeMillis());
+                                                }
+                                                return setConfigs(configs)
                                                         .thenReturn(current);
                                             }
                                             return Mono.just(state);
