@@ -35,7 +35,9 @@ public interface HttpResponseMessage extends EncodedMessage {
     default String print() {
         StringBuilder builder = new StringBuilder();
         builder.append("HTTP").append(" ").append(getStatus()).append("\n");
-        builder.append("Content-Type: ").append(getContentType()).append("\n");
+        if (null != getContentType()) {
+            builder.append("Content-Type: ").append(getContentType()).append("\n");
+        }
         for (Header header : getHeaders()) {
             builder
                     .append(header.getName()).append(": ").append(String.join(",", header.getValue()))
