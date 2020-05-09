@@ -1,5 +1,6 @@
 package org.jetlinks.core.message.codec.http;
 
+import org.springframework.http.MediaType;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
@@ -19,4 +20,24 @@ public interface HttpExchangeMessage extends HttpRequestMessage {
     @Nonnull
     Mono<Void> response(@Nonnull HttpResponseMessage message);
 
+    default Mono<Void> ok(@Nonnull String message) {
+        return response(
+                SimpleHttpResponseMessage.builder()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(message)
+                        .build()
+        );
+    }
+
+    default Mono<Void> error(int status, @Nonnull String message) {
+        return response(SimpleHttpResponseMessage.builder()
+                .contentType(MediaType.APPLICATION_JSON)
+                .status(status)
+                .body(message)
+                .build());
+    }
+
+    default SimpleHttpResponseMessage.SimpleHttpResponseMessageBuilder newResponse() {
+        return SimpleHttpResponseMessage.builder();
+    }
 }

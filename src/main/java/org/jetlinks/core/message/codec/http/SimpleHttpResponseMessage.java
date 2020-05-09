@@ -101,6 +101,9 @@ public class SimpleHttpResponseMessage implements HttpResponseMessage {
         }
 
         public SimpleHttpResponseMessage build() {
+            if (payload == null) {
+                payload = Unpooled.wrappedBuffer(new byte[0]);
+            }
             return new SimpleHttpResponseMessage(status, contentType, headers, payload);
         }
 
