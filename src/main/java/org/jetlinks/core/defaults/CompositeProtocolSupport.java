@@ -61,6 +61,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         authenticators.put(transport.getId(), authenticator);
     }
 
+    @Override
+    public Mono<DeviceMessageSenderInterceptor> getSenderInterceptor() {
+        return Mono.justOrEmpty(deviceMessageSenderInterceptor)
+                .defaultIfEmpty(DeviceMessageSenderInterceptor.DO_NOTING);
+    }
 
     public synchronized void addMessageSenderInterceptor(DeviceMessageSenderInterceptor interceptor) {
         if (this.deviceMessageSenderInterceptor == null) {
