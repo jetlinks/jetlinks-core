@@ -3,6 +3,7 @@ package org.jetlinks.core.message;
 import lombok.AllArgsConstructor;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.message.event.EventMessage;
+import org.jetlinks.core.message.firmware.*;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.property.*;
@@ -83,6 +84,22 @@ public enum MessageType {
             return (T) children;
         }
     },
+
+    //读取设备固件信息
+    READ_FIRMWARE(ReadFirmwareMessage::new),
+
+    //读取设备固件信息回复
+    READ_FIRMWARE_REPLY(ReadFirmwareMessageReply::new),
+
+    //上报设备固件信息
+    REPORT_FIRMWARE(ReportFirmwareMessage::new),
+
+    //更新设备固件
+    UPGRADE_FIRMWARE(UpgradeFirmwareMessage::new),
+
+    //更新设备固件信息回复
+    UPGRADE_FIRMWARE_REPLY(UpgradeFirmwareMessageReply::new),
+
     ;
 
     Supplier<? extends Message> newInstance;
