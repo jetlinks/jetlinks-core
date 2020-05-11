@@ -3,8 +3,8 @@ package org.jetlinks.core.message.firmware;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
+import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.RepayableDeviceMessage;
-import org.jetlinks.core.metadata.types.FileType;
 
 import java.util.Map;
 
@@ -12,28 +12,34 @@ import java.util.Map;
  * 更新设备固件
  *
  * @since 1.0.3
+ * @see UpgradeFirmwareMessageReply
  */
 @Getter
 @Setter
 public class UpgradeFirmwareMessage extends CommonDeviceMessageReply<UpgradeFirmwareMessageReply> implements RepayableDeviceMessage<UpgradeFirmwareMessageReply> {
 
     /**
-     * 固件类型: url,binary,base64
+     * 固件下载地址
      */
-    private FileType.BodyType type;
+    private String url;
 
     /**
-     * 固件内容
+     * 固件版本
      */
-    private Object body;
+    private String version;
 
     /**
-     * 更新参数
+     * 其他参数
      */
     private Map<String, Object> parameters;
 
     @Override
     public UpgradeFirmwareMessageReply newReply() {
         return new UpgradeFirmwareMessageReply();
+    }
+
+    @Override
+    public MessageType getMessageType() {
+        return MessageType.UPGRADE_FIRMWARE;
     }
 }

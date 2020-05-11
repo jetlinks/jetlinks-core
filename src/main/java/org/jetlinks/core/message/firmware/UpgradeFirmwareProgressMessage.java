@@ -5,26 +5,24 @@ import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
 
-import java.util.Map;
-
 /**
- * 设备上报固件信息
+ * 上报固件更新进度
  *
- * @since 1.0.3
  * @author zhouhao
+ * @since 1.3
  */
 @Getter
 @Setter
-public class ReportFirmwareMessage extends CommonDeviceMessage {
+public class UpgradeFirmwareProgressMessage extends CommonDeviceMessage {
 
-    //版本号
-    private String version;
+    //进度0-100
+    private int progress;
 
-    //其他属性
-    private Map<String, Object> properties;
+    //是否已完成
+    private boolean complete;
 
     @Override
     public MessageType getMessageType() {
-        return MessageType.REPORT_FIRMWARE;
+        return MessageType.UPGRADE_FIRMWARE_PROGRESS;
     }
 }

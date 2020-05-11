@@ -12,12 +12,17 @@ import java.util.Map;
  *
  * @see ReadFirmwareMessage
  * @since 1.0.3
+ * @author zhouhao
  */
 @Getter
 @Setter
 public class ReadFirmwareMessageReply extends CommonDeviceMessageReply<ReadFirmwareMessageReply> {
 
-    private Map<String, Object> firmwareInfo;
+    //固件版本号
+    private String version;
+
+    //其他信息
+    private Map<String, Object> properties;
 
     @Override
     public MessageType getMessageType() {

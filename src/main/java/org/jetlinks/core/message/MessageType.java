@@ -94,11 +94,19 @@ public enum MessageType {
     //上报设备固件信息
     REPORT_FIRMWARE(ReportFirmwareMessage::new),
 
+    //设备拉取固件信息
+    REQUEST_FIRMWARE(RequestFirmwareMessage::new),
+    //设备拉取固件信息响应
+    REQUEST_FIRMWARE_REPLY(RequestFirmwareMessageReply::new),
+
     //更新设备固件
     UPGRADE_FIRMWARE(UpgradeFirmwareMessage::new),
 
     //更新设备固件信息回复
     UPGRADE_FIRMWARE_REPLY(UpgradeFirmwareMessageReply::new),
+
+    //上报固件更新进度
+    UPGRADE_FIRMWARE_PROGRESS(UpgradeFirmwareProgressMessage::new),
 
     ;
 

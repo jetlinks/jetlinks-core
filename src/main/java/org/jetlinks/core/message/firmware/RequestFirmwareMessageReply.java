@@ -6,17 +6,17 @@ import org.jetlinks.core.message.CommonDeviceMessageReply;
 import org.jetlinks.core.message.MessageType;
 
 /**
- * 固件更新回复
+ * 拉取固件信息响应
  *
- * @author zhouhao
  * @since 1.0.3
+ * @author zhouhao
  */
 @Getter
 @Setter
-public class UpgradeFirmwareMessageReply extends CommonDeviceMessageReply<UpgradeFirmwareMessageReply> {
+public class RequestFirmwareMessageReply extends CommonDeviceMessageReply<RequestFirmwareMessageReply> {
 
     @Override
     public MessageType getMessageType() {
-        return MessageType.UPGRADE_FIRMWARE_REPLY;
+        return MessageType.REQUEST_FIRMWARE_REPLY;
     }
 }
