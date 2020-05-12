@@ -32,24 +32,22 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
         return "枚举";
     }
 
-
-    public EnumType multi(boolean multi){
-        this.multi=multi;
+    public EnumType multi(boolean multi) {
+        this.multi = multi;
         return this;
     }
-
 
     @Override
     public ValidateResult validate(Object value) {
         if (elements == null) {
-            return ValidateResult.fail("值不在枚举中");
+            return ValidateResult.fail("值[" + value + "]不在枚举中");
         }
         return elements
                 .stream()
                 .filter(ele -> ele.value.equals(String.valueOf(value)))
                 .findFirst()
                 .map(e -> ValidateResult.success())
-                .orElseGet(() -> ValidateResult.fail("值不在枚举中"));
+                .orElseGet(() -> ValidateResult.fail("值[" + value + "]不在枚举中"));
     }
 
     @Override
@@ -90,8 +88,8 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
         private String description;
 
 
-        public static Element of(String value,String text){
-            return of(value,text,null);
+        public static Element of(String value, String text) {
+            return of(value, text, null);
         }
 
         public static Element of(Map<String, String> map) {

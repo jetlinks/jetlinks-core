@@ -87,13 +87,16 @@ public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessage
                                 .ofNullable(parameter)
                                 .map(FunctionParameter::getValue)
                                 .orElse(null);
+                        if (value == null) {
+                            continue;
+                        }
 
                         ValidateResult validateResult = metadata.getValueType().validate(value);
 
                         validateResult.ifFail(result -> {
                             throw new IllegalParameterException(metadata.getId(), result.getErrorMsg());
                         });
-                        if (parameter != null && validateResult.getValue() != null) {
+                        if (validateResult.getValue() != null) {
                             parameter.setValue(validateResult.getValue());
                         }
                     }
