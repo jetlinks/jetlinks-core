@@ -29,6 +29,6 @@ public class RequestFirmwareMessage extends CommonDeviceMessage implements Repay
 
     @Override
     public RequestFirmwareMessageReply newReply() {
-        return new RequestFirmwareMessageReply();
+        return new RequestFirmwareMessageReply().from(this);
     }
 }

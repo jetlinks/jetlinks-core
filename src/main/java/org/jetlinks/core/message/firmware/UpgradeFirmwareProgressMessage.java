@@ -24,6 +24,12 @@ public class UpgradeFirmwareProgressMessage extends CommonDeviceMessage {
     //升级中的固件版本
     private String version;
 
+    //是否成功
+    private boolean success;
+
+    //错误原因
+    private String errorReason;
+
     @Override
     public MessageType getMessageType() {
         return MessageType.UPGRADE_FIRMWARE_PROGRESS;

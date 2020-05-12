@@ -13,7 +13,7 @@ public class ReadFirmwareMessage extends CommonDeviceMessage implements Repayabl
 
     @Override
     public ReadFirmwareMessageReply newReply() {
-        return new ReadFirmwareMessageReply();
+        return new ReadFirmwareMessageReply().from(this);
     }
 
     @Override
