@@ -78,7 +78,7 @@ public class SimpleHttpResponseMessage implements HttpResponseMessage {
                 if (body.startsWith("[") || body.startsWith("{")) {
                     response.setContentType(MediaType.APPLICATION_JSON);
                 } else {
-                    response.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+                    response.setContentType(MediaType.TEXT_PLAIN);
                 }
             }
             response.setPayload(Unpooled.wrappedBuffer(body.getBytes()));
