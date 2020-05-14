@@ -40,6 +40,47 @@ public class SimpleMqttMessage implements MqttMessage {
         return print();
     }
 
+    /**
+     * <pre>
+     *     QoS0 /topic
+     *
+     *     {"hello":"world"}
+     * </pre>
+     *
+     * @param str
+     * @return
+     */
+    public static SimpleMqttMessage of(String str) {
+        SimpleMqttMessage mqttMessage = new SimpleMqttMessage();
+        TextMessageParser.of(
+                start -> {
+                    //QoS0 /topic
+                    String[] qosAndTopic = start.split("[ ]");
+                    if (qosAndTopic.length == 1) {
+                        mqttMessage.setTopic(qosAndTopic[0]);
+                    } else {
+                        mqttMessage.setTopic(qosAndTopic[1]);
+                        String qos = qosAndTopic[0].toLowerCase();
+                        if (qos.length() == 1) {
+                            mqttMessage.setQosLevel(Integer.parseInt(qos));
+                        } else {
+                            mqttMessage.setQosLevel(Integer.parseInt(qos.substring(qos.length() - 1)));
+                        }
+                    }
+                },
+                (header, value) -> {
+
+                },
+                body -> {
+                    mqttMessage.setPayload(Unpooled.wrappedBuffer(body.getBody()));
+                    mqttMessage.setPayloadType(body.getType());
+                },
+                () -> mqttMessage.setPayload(Unpooled.wrappedBuffer(new byte[0]))
+        ).parse(str);
+
+        return mqttMessage;
+    }
+
     public static class SimpleMqttMessageBuilder {
         private String topic;
         private String clientId;

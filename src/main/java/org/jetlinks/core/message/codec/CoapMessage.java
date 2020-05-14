@@ -4,10 +4,12 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import org.apache.commons.codec.binary.Hex;
 import org.eclipse.californium.core.coap.CoAP;
+import org.eclipse.californium.core.coap.MediaTypeRegistry;
 import org.eclipse.californium.core.coap.Option;
 import org.eclipse.californium.core.coap.OptionNumberRegistry;
 
 import javax.annotation.Nonnull;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -71,7 +73,7 @@ public interface CoapMessage extends EncodedMessage {
         builder.append("\n");
 
         ByteBuf byteBuf = getPayload();
-        if (ByteBufUtil.isText(byteBuf, StandardCharsets.UTF_8)) {
+        if (getOption(OptionNumberRegistry.CONTENT_FORMAT).isPresent()) {
             builder.append(byteBuf.toString(StandardCharsets.UTF_8));
         } else {
             if (pretty) {
@@ -81,6 +83,24 @@ public interface CoapMessage extends EncodedMessage {
             }
         }
         return builder.toString();
+    }
+
+    static Option parseOption(String option, String value) {
+        boolean valueIsNumber = org.hswebframework.utils.StringUtils.isNumber(option);
+        boolean valueIsHex = value.startsWith("0x");
+        int num = OptionNumberRegistry.toNumber(option);
+        if (num == -1 && valueIsNumber) {
+            num = Integer.parseInt(option);
+        }
+        if (num == OptionNumberRegistry.CONTENT_FORMAT && !valueIsNumber) {
+            return new Option(num, MediaTypeRegistry.parse(value));
+        } else if (OptionNumberRegistry.getFormatByNr(num) == OptionNumberRegistry.optionFormats.INTEGER) {
+            return new Option(num, new BigDecimal(value).longValue());
+        } else if (valueIsHex) {
+            return new Option(num, ByteBufUtil.decodeHexDump(value.substring(2)));
+        } else {
+            return new Option(num, value);
+        }
     }
 
 }

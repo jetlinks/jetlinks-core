@@ -5,13 +5,13 @@ import io.netty.buffer.Unpooled;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
+import org.jetlinks.core.message.codec.MessagePayloadType;
+import org.jetlinks.core.message.codec.TextMessageParser;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.util.StringUtils;
 
 import java.net.URLDecoder;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,71 +44,58 @@ public class SimpleHttpRequestMessage implements HttpRequestMessage {
     @SuppressWarnings("all")
     public static SimpleHttpRequestMessage of(String httpString) {
         SimpleHttpRequestMessage request = new SimpleHttpRequestMessage();
-        String[] lines = httpString.split("[\n]");
-        String[] firstLine = lines[0].split("[ ]");
-        String method = firstLine[0];
-        String url = firstLine[1];
-
-        // POST http://www.baidu.com?s=jetlinks
-        if (url.contains("?")) {
-            String parameters = URLDecoder.decode(url.substring(url.indexOf("?") + 1), "UTF-8");
-            url = url.substring(0, url.indexOf("?"));
-            request.setQueryParameters(
-                    Stream.of(parameters.split("[&]"))
-                            .map(str -> str.split("[=]"))
-                            .filter(arr -> arr.length > 1)
-                            .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1]))
-            );
-        }
-        request.setMethod(HttpMethod.resolve(method));
-        request.setUrl(url);
-
-        //headers
         HttpHeaders httpHeaders = new HttpHeaders();
-        int lineIndex = 1;
-        for (; lineIndex < lines.length; lineIndex++) {
-            String[] line = lines[lineIndex].split("[:]");
-            if (!StringUtils.isEmpty(line[0])) {
-                if (line.length > 1) {
-                    httpHeaders.add(line[0].trim(), line[1].trim());
+        TextMessageParser.of(
+                start -> {
+                    String[] firstLine = start.split("[ ]");
+                    String method = firstLine[0];
+                    String url = firstLine[1];
+                    if (url.contains("?")) {
+                        String parameters = URLDecoder.decode(url.substring(url.indexOf("?") + 1), "UTF-8");
+                        url = url.substring(0, url.indexOf("?"));
+                        request.setQueryParameters(
+                                Stream.of(parameters.split("[&]"))
+                                        .map(str -> str.split("[=]"))
+                                        .filter(arr -> arr.length > 1)
+                                        .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1]))
+                        );
+                    }
+                    request.setMethod(HttpMethod.resolve(method));
+                    request.setUrl(url);
+                },
+                httpHeaders::add,
+                body -> {
+                    request.setPayload(Unpooled.wrappedBuffer(body.getBody()));
+
+                    if (httpHeaders.getContentType() == null) {
+                        if (body.getType() == MessagePayloadType.JSON) {
+                            httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+                        } else if (body.getType() == MessagePayloadType.STRING) {
+                            httpHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+                        }
+                    }
+                    request.setContentType(httpHeaders.getContentType());
+
+                    if (MediaType.APPLICATION_FORM_URLENCODED.includes(httpHeaders.getContentType())) {
+                        request.setRequestParam(
+                                Stream.of(body.getBodyString().split("[&]"))
+                                        .map(str -> str.split("[=]"))
+                                        .filter(arr -> arr.length > 1)
+                                        .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1]))
+                        );
+                    }
+                },
+                () -> {
+                    request.setPayload(Unpooled.wrappedBuffer(new byte[0]));
                 }
-            } else {
-                break;
-            }
-        }
-        request.setHeaders(httpHeaders
-                .entrySet()
+
+        ).parse(httpString);
+
+        request.setHeaders(httpHeaders.entrySet()
                 .stream()
                 .map(e -> new Header(e.getKey(), e.getValue().toArray(new String[0])))
                 .collect(Collectors.toList()));
 
-        request.setContentType(httpHeaders.getContentType());
-
-        String body = null;
-        //body
-        if (lineIndex < lines.length) {
-            body = String.join("\n", Arrays.copyOfRange(lines, lineIndex, lines.length)).trim();
-            //识别contentType
-            if (request.getContentType() == null) {
-                if (body.startsWith("[") || body.startsWith("{")) {
-                    request.setContentType(MediaType.APPLICATION_JSON);
-                } else {
-                    request.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-                }
-            }
-            request.setPayload(Unpooled.wrappedBuffer(body.getBytes()));
-        } else {
-            request.setPayload(Unpooled.wrappedBuffer(new byte[0]));
-        }
-
-        if (body != null && MediaType.APPLICATION_FORM_URLENCODED.includes(request.getContentType())) {
-            request.setRequestParam(
-                    Stream.of(body.split("[&]"))
-                            .map(str -> str.split("[=]"))
-                            .filter(arr -> arr.length > 1)
-                            .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1]))
-            );
-        }
         return request;
     }
 }

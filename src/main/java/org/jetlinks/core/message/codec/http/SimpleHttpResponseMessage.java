@@ -6,12 +6,17 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jetlinks.core.message.codec.MessagePayloadType;
+import org.jetlinks.core.message.codec.TextMessageParser;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.util.StringUtils;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -50,41 +55,36 @@ public class SimpleHttpResponseMessage implements HttpResponseMessage {
     @SuppressWarnings("all")
     public static SimpleHttpResponseMessage of(String httpString){
         SimpleHttpResponseMessage response=new SimpleHttpResponseMessage();
-        String[] lines = httpString.split("[\n]");
-        String[] firstLine = lines[0].split("[ ]");
-
-        response.setStatus(Integer.parseInt(firstLine[1].trim()));
-
         HttpHeaders httpHeaders = new HttpHeaders();
-        int lineIndex = 1;
-        for (; lineIndex < lines.length; lineIndex++) {
-            String[] line = lines[lineIndex].split("[:]");
-            if (!StringUtils.isEmpty(line[0])) {
-                if (line.length > 1) {
-                    httpHeaders.add(line[0].trim(), line[1].trim());
-                }
-            } else {
-                break;
-            }
-        }
-        response.setContentType(httpHeaders.getContentType());
+        TextMessageParser.of(
+                start -> {
+                    String[] firstLine = start.split("[ ]");
+                    response.setStatus(Integer.parseInt(firstLine[1].trim()));
+                },
+                httpHeaders::add,
+                body -> {
+                    response.setPayload(Unpooled.wrappedBuffer(body.getBody()));
 
-        String body = null;
-        //body
-        if (lineIndex < lines.length) {
-            body = String.join("\n", Arrays.copyOfRange(lines, lineIndex, lines.length)).trim();
-            //识别contentType
-            if (response.getContentType() == null) {
-                if (body.startsWith("[") || body.startsWith("{")) {
-                    response.setContentType(MediaType.APPLICATION_JSON);
-                } else {
-                    response.setContentType(MediaType.TEXT_PLAIN);
+                    if (httpHeaders.getContentType() == null) {
+                        if (body.getType() == MessagePayloadType.JSON) {
+                            response.setContentType(MediaType.APPLICATION_JSON);
+                        } else if (body.getType() == MessagePayloadType.STRING) {
+                            response.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+                        }
+                    }
+                    response.setContentType(httpHeaders.getContentType());
+
+                },
+                () -> {
+                    response.setPayload(Unpooled.wrappedBuffer(new byte[0]));
                 }
-            }
-            response.setPayload(Unpooled.wrappedBuffer(body.getBytes()));
-        } else {
-            response.setPayload(Unpooled.wrappedBuffer(new byte[0]));
-        }
+
+        ).parse(httpString);
+
+        response.setHeaders(httpHeaders.entrySet()
+                .stream()
+                .map(e -> new Header(e.getKey(), e.getValue().toArray(new String[0])))
+                .collect(Collectors.toList()));
 
         return response;
     }

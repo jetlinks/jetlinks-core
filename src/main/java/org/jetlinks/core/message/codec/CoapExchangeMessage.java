@@ -5,7 +5,9 @@ import io.netty.buffer.Unpooled;
 import lombok.Getter;
 import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.coap.Option;
+import org.eclipse.californium.core.coap.Response;
 import org.eclipse.californium.core.server.resources.CoapExchange;
+import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -30,6 +32,21 @@ public class CoapExchangeMessage implements CoapMessage {
     }
 
     static byte[] empty = new byte[0];
+
+    public void response(CoapResponseMessage message) {
+        Response response = new Response(message.getCode());
+
+        if (CollectionUtils.isEmpty(message.getOptions())) {
+            message.getOptions().forEach(response.getOptions()::addOption);
+        }
+        byte[] payload = message.payloadAsBytes();
+        if (payload.length > 0) {
+            response.setPayload(payload);
+        }
+
+        exchange.advanced().sendResponse(response);
+
+    }
 
     @Nonnull
     @Override
