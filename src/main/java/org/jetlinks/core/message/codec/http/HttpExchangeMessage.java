@@ -24,6 +24,7 @@ public interface HttpExchangeMessage extends HttpRequestMessage {
         return response(
                 SimpleHttpResponseMessage.builder()
                         .contentType(MediaType.APPLICATION_JSON)
+                        .status(200)
                         .body(message)
                         .build()
         );
