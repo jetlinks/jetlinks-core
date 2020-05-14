@@ -43,6 +43,7 @@ public class DefaultCoapResponseMessageTest {
                 String.join("\n"
                         ,"2.01"
                         ,"1022: 1"
+                        ,"Content-Format: application/json"
                         ,""
                         ,"ok"
                 )
