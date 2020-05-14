@@ -3,10 +3,7 @@ package org.jetlinks.core.message.codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import org.apache.commons.codec.binary.Hex;
-import org.eclipse.californium.core.coap.CoAP;
-import org.eclipse.californium.core.coap.MediaTypeRegistry;
-import org.eclipse.californium.core.coap.Option;
-import org.eclipse.californium.core.coap.OptionNumberRegistry;
+import org.eclipse.californium.core.coap.*;
 
 import javax.annotation.Nonnull;
 import java.math.BigDecimal;
@@ -59,6 +56,14 @@ public interface CoapMessage extends EncodedMessage {
     default Optional<Integer> getIntOption(int number) {
         return getOption(number)
                 .map(Option::getIntegerValue);
+    }
+
+    default Request createRequest(){
+        Request request=new Request(getCode());
+        request.setURI(getPath());
+        request.setPayload(payloadAsBytes());
+        getOptions().forEach(request.getOptions()::addOption);
+        return request;
     }
 
     default String print(boolean pretty) {

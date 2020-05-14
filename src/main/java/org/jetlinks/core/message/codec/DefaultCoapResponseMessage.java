@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import lombok.Getter;
 import lombok.Setter;
+import org.eclipse.californium.core.CoapResponse;
 import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.coap.Option;
 
@@ -57,4 +58,11 @@ public class DefaultCoapResponseMessage implements CoapResponseMessage {
         return msg;
     }
 
+    public static DefaultCoapResponseMessage of(CoapResponse response) {
+        DefaultCoapResponseMessage msg = new DefaultCoapResponseMessage();
+        msg.setCode(response.getCode());
+        msg.setOptions(response.getOptions().asSortedList());
+        msg.setPayload(Unpooled.wrappedBuffer(response.getPayload() == null ? new byte[0] : response.getPayload()));
+        return msg;
+    }
 }

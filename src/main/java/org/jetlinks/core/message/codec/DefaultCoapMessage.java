@@ -33,6 +33,7 @@ public class DefaultCoapMessage implements CoapMessage {
         return print(true);
     }
 
+
     @SneakyThrows
     public static DefaultCoapMessage of(String coapString) {
         DefaultCoapMessage request = new DefaultCoapMessage();
@@ -44,15 +45,9 @@ public class DefaultCoapMessage implements CoapMessage {
                     request.setCode(CoAP.Code.valueOf(firstLine[0]));
                     request.setPath(firstLine[1]);
                 },
-                (option, value) -> {
-                    options.add(CoapMessage.parseOption(option,value));
-                },
-                body -> {
-                    request.setPayload(Unpooled.wrappedBuffer(body.getBody()));
-                },
-                () -> {
-                    request.setPayload(Unpooled.wrappedBuffer(new byte[0]));
-                }
+                (option, value) -> options.add(CoapMessage.parseOption(option,value)),
+                body -> request.setPayload(Unpooled.wrappedBuffer(body.getBody())),
+                () -> request.setPayload(Unpooled.wrappedBuffer(new byte[0]))
         ).parse(coapString);
 
         return request;

@@ -3,6 +3,7 @@ package org.jetlinks.core.message.codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import org.apache.commons.codec.binary.Hex;
+import org.eclipse.californium.core.CoapResponse;
 import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.coap.Option;
 import org.eclipse.californium.core.coap.OptionNumberRegistry;
@@ -66,7 +67,32 @@ public interface CoapResponseMessage extends EncodedMessage {
             }
         }
         return builder.toString();
+    }
 
+    /**
+     * 根据响应文本创建响应消息
+     * <pre>
+     *     CREATED 2.01
+     *     Content-Format: application/json
+     *
+     *     {"success":true}
+     * </pre>
+     *
+     * @param text 文本内容
+     * @return 响应消息
+     */
+    static CoapResponseMessage fromText(String text) {
+        return DefaultCoapResponseMessage.of(text);
+    }
+
+    /**
+     * 根据CoAP响应创建消息
+     *
+     * @param response CoAP响应
+     * @return 消息
+     */
+    static CoapResponseMessage fromResponse(CoapResponse response) {
+        return DefaultCoapResponseMessage.of(response);
     }
 
 }
