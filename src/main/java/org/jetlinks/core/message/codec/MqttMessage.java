@@ -37,11 +37,12 @@ public interface MqttMessage extends EncodedMessage {
 
     default String print() {
         StringBuilder builder = new StringBuilder();
-        builder.append("Topic: ").append(getTopic()).append("\n")
-                .append("QoS: ").append(getQosLevel()).append("\n")
-                .append("Dup: ").append(isDup()).append("\n")
-                .append("Retain: ").append(isRetain()).append("\n")
-                .append("Will: ").append(isWill()).append("\n");
+        builder.append("qos").append(getQosLevel()).append(" ").append(getTopic()).append("\n")
+                .append("messageId: ").append(getMessageId()).append("\n")
+                .append("dup: ").append(isDup()).append("\n")
+                .append("retain: ").append(isRetain()).append("\n")
+                .append("will: ").append(isWill()).append("\n\n");
+
         ByteBuf payload = getPayload();
         if (ByteBufUtil.isText(payload, StandardCharsets.UTF_8)) {
             builder.append(payload.toString(StandardCharsets.UTF_8));
