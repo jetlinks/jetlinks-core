@@ -40,8 +40,8 @@ public interface WebSocketSession {
 
     WebSocketMessage binaryMessage(ByteBuf message);
 
-    WebSocketMessage pingMessage();
+    WebSocketMessage pingMessage(ByteBuf message);
 
-    WebSocketMessage pongMessage();
+    WebSocketMessage pongMessage(ByteBuf message);
 
 }
