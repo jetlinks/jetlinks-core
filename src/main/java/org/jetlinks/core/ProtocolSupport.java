@@ -35,6 +35,9 @@ public interface ProtocolSupport {
      */
     String getDescription();
 
+    /**
+     * @return 获取支持的协议类型
+     */
     Flux<? extends Transport> getSupportedTransport();
 
     /**
@@ -83,6 +86,20 @@ public interface ProtocolSupport {
     Mono<AuthenticationResponse> authenticate(
             @Nonnull AuthenticationRequest request,
             @Nonnull DeviceOperator deviceOperation);
+
+    /**
+     * 对不明确对设备进行认证
+     *
+     * @param request  认证请求
+     * @param registry 注册中心
+     * @return 认证结果
+     */
+    @Nonnull
+    default Mono<AuthenticationResponse> authenticate(
+            @Nonnull AuthenticationRequest request,
+            @Nonnull DeviceRegistry registry) {
+        return Mono.error(new UnsupportedOperationException());
+    }
 
     /**
      * 获取自定义设备状态检查器,用于检查设备状态.
