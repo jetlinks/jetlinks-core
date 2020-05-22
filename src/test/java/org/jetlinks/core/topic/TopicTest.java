@@ -1,6 +1,7 @@
 package org.jetlinks.core.topic;
 
 import lombok.extern.slf4j.Slf4j;
+import org.junit.Assert;
 import org.junit.Test;
 import reactor.test.StepVerifier;
 
@@ -8,6 +9,168 @@ import java.time.Duration;
 
 @Slf4j
 public class TopicTest {
+
+
+    @Test
+    public void testPattern4() {
+        Topic<String> root = Topic.createRoot();
+        root.append("/device/*/*/**").subscribe("1");
+
+        root.findTopic("/device/0/message/property/report")
+                .filter(topicPart -> topicPart.getSubscribers().size() > 0)
+                .doOnNext(System.out::println)
+                .map(Topic::getTopic)
+                .as(StepVerifier::create)
+                .expectNext("/device/*/*/**")
+                .verifyComplete()
+        ;
+    }
+
+
+    @Test
+    public void testPattern3() {
+        Topic<String> root = Topic.createRoot();
+        root.append("/device/0/message/property/*/reply").subscribe("1");
+        root.append("/device/0/message/property/report").subscribe("1");
+
+        root.findTopic("/device/0/message/property/report")
+                .filter(topicPart -> topicPart.getSubscribers().size() > 0)
+                .doOnNext(System.out::println)
+                .map(Topic::getTopic)
+                .as(StepVerifier::create)
+                .expectNext("/device/0/message/property/report")
+                .verifyComplete()
+        ;
+    }
+
+    @Test
+    public void testMatch2() {
+        Topic<String> root = Topic.createRoot();
+        root.append("/device/*/online");
+
+        root.findTopic("/device/0/message/property/report")
+                .doOnNext(System.out::println)
+                .map(Topic<String>::getTopic)
+                .as(StepVerifier::create)
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    public void testFast() {
+        Topic<String> root = Topic.createRoot();
+
+        root.append("/device/0/message");
+
+        root.findTopic("/device/0/message")
+                .doOnNext(System.out::println)
+                .map(Topic::getTopic)
+                .as(StepVerifier::create)
+                .expectNext("/device/0/message")
+                .verifyComplete()
+        ;
+        ///device/**/event/*
+    }
+
+
+    @Test
+    public void testSimple1() {
+        Topic<String> root = Topic.createRoot();
+
+        root.append("/device/0/message/event/**");
+
+        root.findTopic("/device/0/message/event/fire_alarm")
+                .doOnNext(System.out::println)
+                .map(Topic::getTopic)
+                .as(StepVerifier::create)
+                .expectNext("/device/0/message/event/**")
+                .verifyComplete()
+        ;
+        ///device/**/event/*
+    }
+
+    @Test
+    public void testPattern2() {
+        Topic<String> root = Topic.createRoot();
+
+        root.append("/device/**/fire_alarm");
+
+        root.findTopic("/device/test001/message/event/fire_alarm")
+                .doOnNext(System.out::println)
+                .map(Topic::getTopic)
+                .as(StepVerifier::create)
+                .expectNext("/device/**", "/device/**/fire_alarm")
+                .verifyComplete()
+        ;
+        ///device/**/event/*
+    }
+
+    @Test
+    public void testPattern() {
+        Topic<String> root = Topic.createRoot();
+
+        root.append("/device/**/event/*");
+
+        root.findTopic("/device/test001/message/event/fire_alarm")
+                .doOnNext(System.out::println)
+                .map(Topic::getTopic)
+                .as(StepVerifier::create)
+                .expectNext("/device/**", "/device/**/event/*")
+                .verifyComplete()
+        ;
+        ///device/**/event/*
+    }
+
+    @Test
+    public void testMatch() {
+        Topic<String> root = Topic.createRoot();
+        root.append("/1/org/2/dev/3");
+        root.append("/1/org/2/dev/4");
+
+        root.findTopic("/1/org/**/4")
+                .map(Topic::getTopic)
+                .as(StepVerifier::create)
+                .expectNext("/1/org/2/dev/4")
+                .verifyComplete();
+
+        root.findTopic("/1/org/*/*/3")
+                .map(Topic::getTopic)
+                .as(StepVerifier::create)
+                .expectNext("/1/org/2/dev/3")
+                .verifyComplete();
+    }
+
+    @Test
+    public void testSimple() {
+        Topic<String> root = Topic.createRoot();
+
+        root.append("/**");
+
+        root.append("/1/*");
+
+        root.append("/1/org/2/dev/3");
+        root.append("/1/org/2/dev/4");
+//
+        root.append("/1/org/*");
+
+        root.append("/1/org/**");
+
+        root.findTopic("/1/org/*/dev/*")
+                .doOnNext(System.out::println)
+                .subscribe();
+        System.out.println();
+
+        root.findTopic("/1/org/2/dev/3")
+                .doOnNext(System.out::println)
+                .map(Topic::getTopic)
+                .as(StepVerifier::create)
+                .expectNext("/**", "/1/org/**", "/1/org/2/dev/3")
+                .verifyComplete();
+
+        Assert.assertNull(root.getTopic("/1/org/5").orElse(null));
+
+
+    }
 
     @Test
     public void testSub() {
