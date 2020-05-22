@@ -48,6 +48,7 @@ public interface EncodedMessage {
     }
 
     @Nullable
+    @Deprecated
     default MessagePayloadType getPayloadType() {
         return MessagePayloadType.JSON;
     }
