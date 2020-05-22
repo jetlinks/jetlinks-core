@@ -116,7 +116,20 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     public Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
                                                      @Nonnull DeviceOperator deviceOperation) {
         return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
-                .flatMap(at -> at.authenticate(request, deviceOperation))
+                .flatMap(at -> at
+                        .authenticate(request, deviceOperation)
+                        .defaultIfEmpty(AuthenticationResponse.error(400, "unsupported")))
+                .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("unsupported authentication request : " + request)));
+    }
+
+    @Nonnull
+    @Override
+    public Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
+                                                     @Nonnull DeviceRegistry registry) {
+        return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
+                .flatMap(at -> at
+                        .authenticate(request, registry)
+                        .defaultIfEmpty(AuthenticationResponse.error(400, "unsupported")))
                 .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("unsupported authentication request : " + request)));
     }
 
