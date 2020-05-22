@@ -106,6 +106,10 @@ public final class Topic<T> {
         }
     }
 
+    public final void unsubscribeAll() {
+        this.subscribers.clear();
+    }
+
     public Collection<Topic<T>> getChildren() {
         return child.values();
     }
@@ -223,5 +227,10 @@ public final class Topic<T> {
         return total;
     }
 
+    public void clean(){
+        unsubscribeAll();
+        getChildren().forEach(Topic::clean);
+        child.clear();
+    }
 
 }
