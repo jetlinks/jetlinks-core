@@ -23,10 +23,8 @@ public interface Authenticator {
      * @param device  设备
      * @return 认证结果
      */
-    default Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
-                                                      @Nonnull DeviceOperator device) {
-        return Mono.just(AuthenticationResponse.success());
-    }
+    Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
+                                              @Nonnull DeviceOperator device);
 
     /**
      * 在网络连接建立的时候,可能无法获取设备的标识(如:http,websocket等),则会调用此方法来进行认证.
