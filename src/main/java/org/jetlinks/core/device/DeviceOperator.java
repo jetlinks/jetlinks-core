@@ -112,6 +112,14 @@ public interface DeviceOperator extends Configurable {
      */
     default Mono<Boolean> isOnline() {
         return getState()
+                .flatMap(state -> {
+                    //设备离线时,检测一下真实状态
+                    if (state.equals(DeviceState.offline)) {
+                        return checkState();
+                    } else {
+                        return Mono.just(state);
+                    }
+                })
                 .map(state -> state.equals(DeviceState.online))
                 .defaultIfEmpty(false);
     }
