@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class TestDeviceRegistry implements DeviceRegistry {
 
-    private DeviceMessageSenderInterceptor interceptor = new CompositeDeviceMessageSenderInterceptor();
+    private CompositeDeviceMessageSenderInterceptor interceptor = new CompositeDeviceMessageSenderInterceptor();
 
     private ConfigStorageManager manager = new TestConfigStorageManager();
 
@@ -46,7 +46,7 @@ public class TestDeviceRegistry implements DeviceRegistry {
         return Mono.defer(() -> {
             DefaultDeviceOperator operator = new DefaultDeviceOperator(
                     deviceInfo.getId(),
-                    supports, manager, handler, this
+                    supports, manager, handler, this,interceptor
             );
             operatorMap.put(operator.getDeviceId(), operator);
 
@@ -95,5 +95,9 @@ public class TestDeviceRegistry implements DeviceRegistry {
         return Mono.justOrEmpty(productId)
                 .map(productOperatorMap::remove)
                 .then();
+    }
+
+    public void addInterceptor(DeviceMessageSenderInterceptor interceptor){
+        this.interceptor.addInterceptor(interceptor);
     }
 }

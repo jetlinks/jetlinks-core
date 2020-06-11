@@ -5,6 +5,7 @@ import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
+import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.message.property.ReadPropertyMessageReply;
 import org.jetlinks.core.utils.IdUtils;
 import org.junit.Before;
@@ -17,7 +18,7 @@ import java.util.Collections;
 
 public class DefaultDeviceOperatorTest {
 
-    private DeviceRegistry registry;
+    private TestDeviceRegistry registry;
 
     private StandaloneDeviceMessageBroker deviceMessageBroker;
 
@@ -26,6 +27,17 @@ public class DefaultDeviceOperatorTest {
         registry = new TestDeviceRegistry(new TestProtocolSupport(),
                 deviceMessageBroker = new StandaloneDeviceMessageBroker());
 
+        registry.addInterceptor(
+                new DeviceMessageSenderInterceptor() {
+                    @Override
+                    public <R extends DeviceMessage> Flux<R> afterSent(DeviceOperator device, DeviceMessage message, Flux<R> reply) {
+                        return reply
+                                .doOnNext(msg->{
+                                    msg.addHeader("1",2);
+                                });
+                    }
+                }
+        );
     }
 
     @Test

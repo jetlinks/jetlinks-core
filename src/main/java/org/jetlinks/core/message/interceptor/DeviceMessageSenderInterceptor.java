@@ -46,10 +46,6 @@ public interface DeviceMessageSenderInterceptor {
         if (this == DO_NOTING) {
             return interceptor;
         }
-        if (this instanceof CompositeDeviceMessageSenderInterceptor) {
-            ((CompositeDeviceMessageSenderInterceptor) this).addInterceptor(interceptor);
-            return this;
-        }
         CompositeDeviceMessageSenderInterceptor composite = new CompositeDeviceMessageSenderInterceptor();
         composite.addInterceptor(this);
         composite.addInterceptor(interceptor);
