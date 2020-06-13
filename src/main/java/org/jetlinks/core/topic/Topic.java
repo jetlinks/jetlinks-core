@@ -141,6 +141,9 @@ public final class Topic<T> {
     }
 
     public Flux<Topic<T>> findTopic(String topic) {
+        if (!topic.startsWith("/")) {
+            topic = "/" + topic;
+        }
         return find(topic, this);
     }
 
@@ -153,6 +156,7 @@ public final class Topic<T> {
         return Flux.create(sink -> {
             ArrayDeque<Topic<T>> cache = new ArrayDeque<>();
             cache.add(topicPart);
+
             String[] topicParts = topic.split("[/]");
             String nextPart = null;
             while (!cache.isEmpty() && !sink.isCancelled()) {
@@ -227,7 +231,7 @@ public final class Topic<T> {
         return total;
     }
 
-    public void clean(){
+    public void clean() {
         unsubscribeAll();
         getChildren().forEach(Topic::clean);
         child.clear();
