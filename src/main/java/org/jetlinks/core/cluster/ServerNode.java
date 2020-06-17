@@ -1,6 +1,7 @@
 package org.jetlinks.core.cluster;
 
 import lombok.*;
+import org.hswebframework.web.bean.FastBeanCopier;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -22,6 +23,10 @@ public class ServerNode implements Serializable {
 
     private Map<String, Object> tags;
 
+    private boolean leader;
+
+    private long uptime;
+
     private long lastKeepAlive;
 
     public boolean hasTag(String tag) {
@@ -37,4 +42,7 @@ public class ServerNode implements Serializable {
         return id.equals(another.getId());
     }
 
+    public ServerNode copy(){
+        return FastBeanCopier.copy(this,new ServerNode());
+    }
 }
