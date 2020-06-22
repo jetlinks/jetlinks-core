@@ -100,6 +100,6 @@ public class GeoPoint implements Serializable {
 
     @Override
     public String toString() {
-        return lat + "," + lon;
+        return lon + "," + lat;
     }
 }
