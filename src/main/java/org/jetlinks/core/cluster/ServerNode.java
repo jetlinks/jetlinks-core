@@ -13,6 +13,7 @@ import java.util.Optional;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ServerNode implements Serializable {
+    private static final long serialVersionUID = -6849794470754667710L;
 
     @NonNull
     private String id;
