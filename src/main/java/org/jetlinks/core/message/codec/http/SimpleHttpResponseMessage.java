@@ -76,7 +76,7 @@ public class SimpleHttpResponseMessage implements HttpResponseMessage {
 
                 },
                 () -> {
-                    response.setPayload(Unpooled.wrappedBuffer(new byte[0]));
+                    response.setPayload(Unpooled.EMPTY_BUFFER);
                 }
 
         ).parse(httpString);

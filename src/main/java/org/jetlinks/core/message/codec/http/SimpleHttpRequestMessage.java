@@ -86,7 +86,10 @@ public class SimpleHttpRequestMessage implements HttpRequestMessage {
                     }
                 },
                 () -> {
-                    request.setPayload(Unpooled.wrappedBuffer(new byte[0]));
+                    if (request.getContentType() == null) {
+                        request.setContentType(httpHeaders.getContentType());
+                    }
+                    request.setPayload(Unpooled.EMPTY_BUFFER);
                 }
 
         ).parse(httpString);
