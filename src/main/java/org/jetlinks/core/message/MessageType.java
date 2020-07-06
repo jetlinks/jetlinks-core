@@ -108,6 +108,8 @@ public enum MessageType {
     //上报固件更新进度
     UPGRADE_FIRMWARE_PROGRESS(UpgradeFirmwareProgressMessage::new),
 
+    //透传消息
+    DIRECT(DirectDeviceMessage::new)
     ;
 
     Supplier<? extends Message> newInstance;

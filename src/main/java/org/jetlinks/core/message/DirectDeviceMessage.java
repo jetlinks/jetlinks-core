@@ -18,4 +18,8 @@ public class DirectDeviceMessage extends CommonDeviceMessage {
     @Nonnull
     private byte[] payload;
 
+    @Override
+    public MessageType getMessageType() {
+        return MessageType.DIRECT;
+    }
 }
