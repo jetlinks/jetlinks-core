@@ -23,16 +23,19 @@ import java.util.function.Function;
 @Slf4j
 public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, MessageHandler {
 
-    private FluxProcessor<Message, Message> messageEmitterProcessor;
+    private final FluxProcessor<Message, Message> messageEmitterProcessor;
 
-    private Map<String, FluxProcessor<DeviceMessageReply, DeviceMessageReply>> replyProcessor = new ConcurrentHashMap<>();
 
-    private Map<String, AtomicInteger> partCache = new ConcurrentHashMap<>();
+    private final FluxSink<Message> sink;
+
+    private final Map<String, FluxProcessor<DeviceMessageReply, DeviceMessageReply>> replyProcessor = new ConcurrentHashMap<>();
+
+    private final Map<String, AtomicInteger> partCache = new ConcurrentHashMap<>();
 
     @Setter
     private ReplyFailureHandler replyFailureHandler = (error, message) -> log.warn("unhandled reply message:{}", message, error);
 
-    private Map<String, Function<Publisher<String>, Flux<DeviceStateInfo>>> stateHandler = new ConcurrentHashMap<>();
+    private final Map<String, Function<Publisher<String>, Flux<DeviceStateInfo>>> stateHandler = new ConcurrentHashMap<>();
 
     public StandaloneDeviceMessageBroker() {
         this(EmitterProcessor.create(false));
@@ -41,6 +44,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
 
     public StandaloneDeviceMessageBroker(FluxProcessor<Message, Message> processor) {
         this.messageEmitterProcessor = processor;
+        this.sink=processor.sink();
     }
 
     @Override
@@ -119,7 +123,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
         }
 
         return Flux.from(message)
-                .doOnNext(messageEmitterProcessor::onNext)
+                .doOnNext(sink::next)
                 .then(Mono.just(Long.valueOf(messageEmitterProcessor.downstreamCount()).intValue()));
     }
 
