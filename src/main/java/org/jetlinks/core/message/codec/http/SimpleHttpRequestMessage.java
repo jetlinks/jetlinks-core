@@ -11,7 +11,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 
-import java.net.URLDecoder;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,6 +23,8 @@ public class SimpleHttpRequestMessage implements HttpRequestMessage {
     //消息体
     private ByteBuf payload;
 
+    private String path;
+
     private String url;
 
     //请求方法
@@ -34,8 +35,6 @@ public class SimpleHttpRequestMessage implements HttpRequestMessage {
 
     //参数
     private Map<String, String> queryParameters;
-
-    private Map<String, String> requestParam;
 
     //请求类型
     private MediaType contentType;
@@ -51,16 +50,17 @@ public class SimpleHttpRequestMessage implements HttpRequestMessage {
                     String method = firstLine[0];
                     String url = firstLine[1];
                     if (url.contains("?")) {
-                        String parameters = URLDecoder.decode(url.substring(url.indexOf("?") + 1), "UTF-8");
+                        String parameters = url.substring(url.indexOf("?") + 1);
                         url = url.substring(0, url.indexOf("?"));
                         request.setQueryParameters(
                                 Stream.of(parameters.split("[&]"))
-                                        .map(str -> str.split("[=]"))
+                                        .map(str -> str.split("[=]", 2))
                                         .filter(arr -> arr.length > 1)
-                                        .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1]))
+                                        .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1], (a, b) -> String.join(",", a, b)))
                         );
                     }
                     request.setMethod(HttpMethod.resolve(method));
+                    request.setPath(HttpUtils.getUrlPath(url));
                     request.setUrl(url);
                 },
                 httpHeaders::add,
@@ -75,15 +75,6 @@ public class SimpleHttpRequestMessage implements HttpRequestMessage {
                         }
                     }
                     request.setContentType(httpHeaders.getContentType());
-
-                    if (MediaType.APPLICATION_FORM_URLENCODED.includes(httpHeaders.getContentType())) {
-                        request.setRequestParam(
-                                Stream.of(body.getBodyString().split("[&]"))
-                                        .map(str -> str.split("[=]"))
-                                        .filter(arr -> arr.length > 1)
-                                        .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1]))
-                        );
-                    }
                 },
                 () -> {
                     if (request.getContentType() == null) {

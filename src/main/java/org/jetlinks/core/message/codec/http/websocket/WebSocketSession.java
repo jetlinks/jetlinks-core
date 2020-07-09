@@ -15,6 +15,10 @@ public interface WebSocketSession {
 
     Optional<InetSocketAddress> getRemoteAddress();
 
+    default String getPath() {
+        return getUri();
+    }
+
     String getUri();
 
     @Nonnull

@@ -48,8 +48,6 @@ public class SimpleHttpRequestMessageTest {
         assertEquals(message.getContentType(), MediaType.APPLICATION_FORM_URLENCODED);
 
         assertEquals(message.getPayload().toString(StandardCharsets.UTF_8),"b=c&d=e");
-        assertEquals(message.getRequestParam().get("b"),"c");
-        assertEquals(message.getRequestParam().get("d"),"e");
 
     }
 
