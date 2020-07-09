@@ -44,7 +44,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
 
     public StandaloneDeviceMessageBroker(FluxProcessor<Message, Message> processor) {
         this.messageEmitterProcessor = processor;
-        this.sink=processor.sink();
+        this.sink=processor.sink(FluxSink.OverflowStrategy.BUFFER);
     }
 
     @Override

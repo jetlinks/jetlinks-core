@@ -9,9 +9,10 @@ public class HttpUtilsTest {
 
 
     @Test
-    public void test(){
+    public void testDecode(){
 
-        Map<String,String> params = HttpUtils.parseEncodedUrlParams("a=b&b=c&c=a=b&d=a&d=c");
+        String str="a=b&b=c&c=a=b&d=a&d=c";
+        Map<String,String> params = HttpUtils.parseEncodedUrlParams(str);
 
         Assert.assertEquals(params.get("a"),"b");
         Assert.assertEquals(params.get("b"),"c");
@@ -20,13 +21,19 @@ public class HttpUtilsTest {
     }
 
     @Test
-    public void testEncoded(){
+    public void testDecodeEncoded(){
 
-        Map<String,String> params = HttpUtils.parseEncodedUrlParams("a=%e6%b5%8b%e8%af%95&b+c=a%26b");
+        String str="a=%e6%b5%8b%e8%af%95&b+c=a%26b";
+
+        Map<String,String> params = HttpUtils.parseEncodedUrlParams(str);
 
         Assert.assertEquals(params.get("a"),"测试");
         Assert.assertEquals(params.get("b c"),"a&b");
+
+        Assert.assertEquals(HttpUtils.createEncodedUrlParams(params).toLowerCase(),str.toLowerCase());
+
     }
+
 
     @Test
     public void testPath(){
