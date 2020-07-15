@@ -56,21 +56,6 @@ public interface DeviceRegistry {
      */
     Mono<DeviceProductOperator> register(ProductInfo productInfo);
 
-    @Deprecated
-    default Mono<DeviceOperator> registry(DeviceInfo deviceInfo) {
-        return register(deviceInfo);
-    }
-
-    @Deprecated
-    default Mono<DeviceProductOperator> registry(ProductInfo deviceInfo) {
-        return register(deviceInfo);
-    }
-
-    @Deprecated
-    default Mono<Void> unRegistry(String deviceId) {
-        return unregisterDevice(deviceId);
-    }
-
     /**
      * 注销设备
      *
