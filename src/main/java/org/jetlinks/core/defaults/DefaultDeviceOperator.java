@@ -168,7 +168,11 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                         .defaultIfEmpty(DeviceState.offline);
                             }
 
-                            return Mono.just(DeviceState.offline);
+                            if (state.equals(DeviceState.online)) {
+                                return Mono.just(DeviceState.offline);
+                            } else {
+                                return Mono.just(state);
+                            }
                         })
                 )).defaultIfEmpty(DeviceState.unknown);
     }
