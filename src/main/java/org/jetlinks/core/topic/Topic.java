@@ -89,15 +89,15 @@ public final class Topic<T> {
 
     @SafeVarargs
     public final void subscribe(T... subscribers) {
-        for (T sessionId : subscribers) {
-            this.subscribers.computeIfAbsent(sessionId, i -> new AtomicInteger()).incrementAndGet();
+        for (T subscriber : subscribers) {
+            this.subscribers.computeIfAbsent(subscriber, i -> new AtomicInteger()).incrementAndGet();
         }
     }
 
     @SafeVarargs
     public final void unsubscribe(T... subscribers) {
-        for (T sessionId : subscribers) {
-            this.subscribers.computeIfPresent(sessionId, (k, v) -> {
+        for (T subscriber : subscribers) {
+            this.subscribers.computeIfPresent(subscriber, (k, v) -> {
                 if (v.decrementAndGet() <= 0) {
                     return null;
                 }
