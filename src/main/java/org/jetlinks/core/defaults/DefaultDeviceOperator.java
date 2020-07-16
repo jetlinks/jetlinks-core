@@ -141,7 +141,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                     .orElse(DeviceState.unknown);
 
                             if (StringUtils.hasText(server)) {
-                                return handler.getDeviceState(server, Collections.singletonList(id))
+                                return handler
+                                        .getDeviceState(server, Collections.singletonList(id))
                                         .map(DeviceStateInfo::getState)
                                         .singleOrEmpty()
                                         .timeout(Duration.ofSeconds(1), Mono.just(state))
@@ -166,7 +167,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                         .flatMap(DeviceOperator::checkState)
                                         .defaultIfEmpty(DeviceState.offline);
                             }
-                            return Mono.just(state);
+
+                            return Mono.just(DeviceState.offline);
                         })
                 )).defaultIfEmpty(DeviceState.unknown);
     }
