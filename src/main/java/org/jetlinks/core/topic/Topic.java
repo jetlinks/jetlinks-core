@@ -8,14 +8,12 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 
-import java.util.ArrayDeque;
-import java.util.Collection;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
 @EqualsAndHashCode(of = "part")
 public final class Topic<T> {
@@ -95,14 +93,25 @@ public final class Topic<T> {
     }
 
     @SafeVarargs
-    public final void unsubscribe(T... subscribers) {
+    public final List<T> unsubscribe(T... subscribers) {
+        List<T> unsub = new ArrayList<>();
         for (T subscriber : subscribers) {
             this.subscribers.computeIfPresent(subscriber, (k, v) -> {
                 if (v.decrementAndGet() <= 0) {
+                    unsub.add(k);
                     return null;
                 }
                 return v;
             });
+        }
+        return unsub;
+    }
+
+    public final void unsubscribe(Predicate<T> predicate) {
+        for (Map.Entry<T, AtomicInteger> entry : this.subscribers.entrySet()) {
+            if (predicate.test(entry.getKey()) && entry.getValue().decrementAndGet() <= 0) {
+                this.subscribers.remove(entry.getKey());
+            }
         }
     }
 

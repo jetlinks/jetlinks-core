@@ -30,6 +30,10 @@ public final class Subscription {
         return new Subscription(subscriber, topic, features);
     }
 
+    public boolean hasFeature(Subscription.Feature feature) {
+        return feature.in(feature);
+    }
+
     @AllArgsConstructor
     @Getter
     @Dict("subscription-feature")
