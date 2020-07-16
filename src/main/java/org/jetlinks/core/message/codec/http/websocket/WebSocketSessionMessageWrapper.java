@@ -2,10 +2,8 @@ package org.jetlinks.core.message.codec.http.websocket;
 
 import io.netty.buffer.ByteBuf;
 import lombok.AllArgsConstructor;
-import org.jetlinks.core.message.codec.MessagePayloadType;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 @AllArgsConstructor(staticName = "of")
 public class WebSocketSessionMessageWrapper implements WebSocketSessionMessage {
@@ -30,9 +28,4 @@ public class WebSocketSessionMessageWrapper implements WebSocketSessionMessage {
         return message.getPayload();
     }
 
-    @Nullable
-    @Override
-    public MessagePayloadType getPayloadType() {
-        return message.getPayloadType();
-    }
 }

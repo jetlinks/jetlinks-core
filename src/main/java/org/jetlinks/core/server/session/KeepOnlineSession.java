@@ -84,7 +84,7 @@ public class KeepOnlineSession implements DeviceSession {
 
     @Override
     public void onClose(Runnable call) {
-
+        parent.onClose(call);
     }
 
     @Override
