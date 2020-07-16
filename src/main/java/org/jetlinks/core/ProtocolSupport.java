@@ -88,7 +88,7 @@ public interface ProtocolSupport {
             @Nonnull DeviceOperator deviceOperation);
 
     /**
-     * 对不明确对设备进行认证
+     * 对不明确的设备进行认证
      *
      * @param request  认证请求
      * @param registry 注册中心
