@@ -63,4 +63,11 @@ public interface ClusterManager {
      * @return ClusterSet
      */
     <V> ClusterSet<V> getSet(String name);
+
+    /**
+     * 获取计数器
+     * @param name 名称
+     * @return 计数器
+     */
+    ClusterCounter getCounter(String name);
 }
