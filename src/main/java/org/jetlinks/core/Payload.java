@@ -35,7 +35,7 @@ public interface Payload {
         return getBody().toString(StandardCharsets.UTF_8);
     }
 
-    Payload voidPayload = () -> Unpooled.wrappedBuffer(new byte[0]);
+    Payload voidPayload = () -> Unpooled.EMPTY_BUFFER;
 
     static Payload of(ByteBuf body) {
         return () -> body;
