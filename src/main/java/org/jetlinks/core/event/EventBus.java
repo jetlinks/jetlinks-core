@@ -20,13 +20,13 @@ public interface EventBus {
 
     <T> Flux<T> subscribe(Subscription subscription, Decoder<T> type);
 
-    default <T> Flux<T> subscribe(Subscription subscription, Class<T> type) {
-        return subscribe(subscription, Codecs.lookup(type));
-    }
-
     <T> Mono<Integer> publish(String topic, Publisher<T> event);
 
     <T> Mono<Integer> publish(String topic, Encoder<T> encoder, Publisher<? extends T> eventStream);
+
+    default <T> Flux<T> subscribe(Subscription subscription, Class<T> type) {
+        return subscribe(subscription, Codecs.lookup(type));
+    }
 
     default <T> Mono<Integer> publish(String topic, Encoder<T> encoder, T event) {
         return publish(topic, encoder, Mono.just(event));

@@ -5,9 +5,12 @@ import lombok.Getter;
 import org.hswebframework.web.dict.Dict;
 import org.hswebframework.web.dict.EnumDict;
 
+import java.io.Serializable;
+
 @AllArgsConstructor
 @Getter
-public final class Subscription {
+public final class Subscription implements Serializable {
+    private static final long serialVersionUID = -6849794470754667710L;
 
     public static final Feature[] DEFAULT_FEATURES = {
             Feature.autoUnsubscribe, Feature.local
