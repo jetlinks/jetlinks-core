@@ -36,7 +36,11 @@ public class ValueUnits {
                 return unit;
             }
         }
-        return Optional.empty();
+        //json ?
+        if (id.startsWith("{")) {
+            return Optional.ofNullable(JsonValueUnit.of(id));
+        }
+        return Optional.of(SymbolValueUnit.of(id));
     }
 
     public static List<ValueUnit> getAllUnit() {
