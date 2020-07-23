@@ -27,6 +27,11 @@ public class StringCodec implements Codec<String> {
     }
 
     @Override
+    public Class<String> forType() {
+        return String.class;
+    }
+
+    @Override
     public String decode(@Nonnull Payload payload) {
 
         return payload.getBody().toString(charset);

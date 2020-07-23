@@ -11,7 +11,6 @@ import java.util.function.Supplier;
 
 @Getter
 @Setter
-@AllArgsConstructor(staticName = "of")
 @NoArgsConstructor
 public class NativePayload implements Payload {
 
@@ -19,10 +18,20 @@ public class NativePayload implements Payload {
 
     private Supplier<ByteBuf> bodySupplier;
 
+    private volatile ByteBuf ref;
+
+    public static NativePayload of(Object nativeObject, Supplier<ByteBuf> bodySupplier) {
+        NativePayload payload = new NativePayload();
+
+        payload.nativeObject = nativeObject;
+        payload.bodySupplier = bodySupplier;
+        return payload;
+    }
+
     @Nonnull
     @Override
     public ByteBuf getBody() {
-        return bodySupplier.get();
+        return ref == null ? ref = bodySupplier.get() : ref;
     }
 
     @Override
@@ -31,5 +40,10 @@ public class NativePayload implements Payload {
             return type.cast(nativeObject);
         }
         return Payload.super.bodyAs(type);
+    }
+
+    @Override
+    public String toString() {
+        return nativeObject == null ? "null" : nativeObject.toString();
     }
 }

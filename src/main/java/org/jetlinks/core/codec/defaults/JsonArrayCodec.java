@@ -13,19 +13,28 @@ public class JsonArrayCodec<T, R> implements Codec<R> {
 
     private final Class<T> type;
 
+    private final Class<R> resultType;
+
     private final Function<List<T>, R> mapper;
 
-    private JsonArrayCodec(Class<T> type, Function<List<T>, R> mapper) {
+    private JsonArrayCodec(Class<T> type, Class<R> resultType, Function<List<T>, R> mapper) {
         this.type = type;
+        this.resultType = resultType;
         this.mapper = mapper;
     }
 
+    @SuppressWarnings("all")
     public static <T> JsonArrayCodec<T, List<T>> of(Class<T> type) {
-        return of(type, Function.identity());
+        return JsonArrayCodec.of(type,(Class) List.class, Function.identity());
     }
 
-    public static <T, R> JsonArrayCodec<T, R> of(Class<T> type, Function<List<T>, R> function) {
-        return new JsonArrayCodec<>(type, function);
+    public static <T, R> JsonArrayCodec<T, R> of(Class<T> type, Class<R> resultType, Function<List<T>, R> function) {
+        return new JsonArrayCodec<>(type, resultType,function);
+    }
+
+    @Override
+    public Class<R> forType() {
+        return resultType;
     }
 
     @Override

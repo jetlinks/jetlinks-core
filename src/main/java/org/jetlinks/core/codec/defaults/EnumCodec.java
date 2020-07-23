@@ -14,6 +14,12 @@ public class EnumCodec<T extends Enum<?>> implements Codec<T> {
     private final T[] values;
 
     @Override
+    @SuppressWarnings("all")
+    public Class<T> forType() {
+        return (Class<T>) values[0].getDeclaringClass();
+    }
+
+    @Override
     public T decode(@Nonnull Payload payload) {
         byte[] bytes = payload.bodyAsBytes();
 

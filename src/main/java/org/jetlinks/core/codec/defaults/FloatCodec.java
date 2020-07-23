@@ -16,6 +16,11 @@ public class FloatCodec implements Codec<Float> {
     }
 
     @Override
+    public Class<Float> forType() {
+        return Float.class;
+    }
+
+    @Override
     public Float decode(@Nonnull Payload payload) {
         return BytesUtils.beToFloat(payload.bodyAsBytes());
     }

@@ -9,12 +9,10 @@ import java.io.Serializable;
 
 @AllArgsConstructor
 @Getter
-public final class Subscription implements Serializable {
+public class Subscription implements Serializable {
     private static final long serialVersionUID = -6849794470754667710L;
 
-    public static final Feature[] DEFAULT_FEATURES = {
-            Feature.autoUnsubscribe, Feature.local
-    };
+    public static final Feature[] DEFAULT_FEATURES = {Feature.local};
 
     //订阅者标识
     private final String subscriber;
@@ -33,8 +31,12 @@ public final class Subscription implements Serializable {
         return new Subscription(subscriber, topic, features);
     }
 
+    public Subscription copy(Feature... newFeatures) {
+        return new Subscription(subscriber, topics, newFeatures);
+    }
+
     public boolean hasFeature(Subscription.Feature feature) {
-        return feature.in(feature);
+        return feature.in(this.features);
     }
 
     @AllArgsConstructor
@@ -46,10 +48,8 @@ public final class Subscription implements Serializable {
         queue("Queue"),
         //订阅本地消息
         local("订阅本地消息"),
-        //订阅集群消息
-        cluster("订阅集群消息"),
-        //自动取消订阅
-        autoUnsubscribe("自动取消订阅");
+        //订阅来自代理的消息
+        broker("订阅代理消息");
 
         private final String text;
 

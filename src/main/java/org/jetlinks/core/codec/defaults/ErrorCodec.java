@@ -25,6 +25,11 @@ public class ErrorCodec implements Codec<Throwable> {
     Function<String, Throwable> mapping;
 
     @Override
+    public Class<Throwable> forType() {
+        return Throwable.class;
+    }
+
+    @Override
     public Throwable decode(@Nonnull Payload payload) {
         return mapping.apply(payload.bodyAsString());
     }

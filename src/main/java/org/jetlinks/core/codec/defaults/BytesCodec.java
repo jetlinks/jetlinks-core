@@ -15,6 +15,11 @@ public class BytesCodec implements Codec<byte[]> {
     }
 
     @Override
+    public Class<byte[]> forType() {
+        return byte[].class;
+    }
+
+    @Override
     public byte[] decode(@Nonnull Payload payload) {
         return payload.bodyAsBytes();
     }

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.jetlinks.core.Payload;
 
 import javax.annotation.Nonnull;
+import java.util.Map;
 
 @Getter
 @NoArgsConstructor
@@ -21,5 +22,13 @@ public class TopicPayload implements Payload {
     @Override
     public ByteBuf getBody() {
         return payload.getBody();
+    }
+
+    @Override
+    public String toString() {
+        return "{" +
+                "topic='" + topic + '\'' +
+                ", payload=" + payload +
+                '}';
     }
 }

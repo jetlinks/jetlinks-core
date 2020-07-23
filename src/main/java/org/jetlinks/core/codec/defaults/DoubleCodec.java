@@ -16,6 +16,11 @@ public class DoubleCodec implements Codec<Double> {
     }
 
     @Override
+    public Class<Double> forType() {
+        return Double.class;
+    }
+
+    @Override
     public Double decode(@Nonnull Payload payload) {
         return BytesUtils.beToDouble(payload.bodyAsBytes());
     }

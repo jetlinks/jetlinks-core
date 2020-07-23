@@ -17,6 +17,11 @@ import javax.annotation.Nullable;
 public class DeviceMessageCodec implements Codec<DeviceMessage> {
     public static DeviceMessageCodec INSTANCE = new DeviceMessageCodec();
 
+    @Override
+    public Class<DeviceMessage> forType() {
+        return DeviceMessage.class;
+    }
+
     @Nullable
     @Override
     public DeviceMessage decode(@Nonnull Payload payload) {

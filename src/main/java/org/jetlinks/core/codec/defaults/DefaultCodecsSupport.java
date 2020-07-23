@@ -64,7 +64,7 @@ public class DefaultCodecsSupport implements CodecsSupport {
             } else if (Payload.class.isAssignableFrom(refType)) {
                 codec = (Codec<T>) DirectCodec.INSTANCE;
             } else if (Set.class.isAssignableFrom(ref.toClass())) {
-                codec = (Codec<T>) JsonArrayCodec.of(ref.getGeneric(0).toClass(), HashSet::new);
+                codec = (Codec<T>) JsonArrayCodec.of(ref.getGeneric(0).toClass(), HashSet.class, HashSet::new);
             }
         }
         if (refType.isInterface()) {

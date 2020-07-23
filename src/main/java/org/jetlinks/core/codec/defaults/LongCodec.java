@@ -16,6 +16,11 @@ public class LongCodec implements Codec<Long> {
     }
 
     @Override
+    public Class<Long> forType() {
+        return Long.class;
+    }
+
+    @Override
     public Long decode(@Nonnull Payload payload) {
         return BytesUtils.beToLong(payload.bodyAsBytes());
     }

@@ -15,6 +15,11 @@ public class BooleanCodec implements Codec<Boolean> {
     }
 
     @Override
+    public Class<Boolean> forType() {
+        return Boolean.class;
+    }
+
+    @Override
     public Boolean decode(@Nonnull Payload payload) {
         byte[] data = payload.bodyAsBytes();
 

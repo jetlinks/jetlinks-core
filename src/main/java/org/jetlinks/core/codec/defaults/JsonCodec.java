@@ -20,6 +20,11 @@ public class JsonCodec<T> implements Codec<T> {
     }
 
     @Override
+    public Class<T> forType() {
+        return (Class<T>) type;
+    }
+
+    @Override
     public T decode(@Nonnull Payload payload) {
         return JSON.parseObject(payload.bodyAsBytes(), type);
     }

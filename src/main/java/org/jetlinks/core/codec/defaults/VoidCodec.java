@@ -12,6 +12,11 @@ public class VoidCodec implements Codec<Void> {
     public static VoidCodec INSTANCE = new VoidCodec();
 
     @Override
+    public Class<Void> forType() {
+        return Void.class;
+    }
+
+    @Override
     public Void decode(@Nonnull Payload payload) {
         return null;
     }
@@ -22,4 +27,8 @@ public class VoidCodec implements Codec<Void> {
         return () -> Unpooled.wrappedBuffer(new byte[0]);
     }
 
+    @Override
+    public boolean isDecodeFrom(Object nativeObject) {
+        return nativeObject == null;
+    }
 }

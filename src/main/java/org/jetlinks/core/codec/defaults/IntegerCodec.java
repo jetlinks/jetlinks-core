@@ -16,6 +16,11 @@ public class IntegerCodec implements Codec<Integer> {
     }
 
     @Override
+    public Class<Integer> forType() {
+        return Integer.class;
+    }
+
+    @Override
     public Integer decode(@Nonnull Payload payload) {
         return BytesUtils.beToInt(payload.bodyAsBytes());
     }
