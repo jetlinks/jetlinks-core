@@ -3,6 +3,7 @@ package org.jetlinks.core.codec.defaults;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
 import org.jetlinks.core.codec.CodecsSupport;
+import org.jetlinks.core.event.TopicPayload;
 import org.jetlinks.core.message.DeviceMessage;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
@@ -44,6 +45,8 @@ public class DefaultCodecsSupport implements CodecsSupport {
             staticCodec.put(HashMap.class, codec);
             staticCodec.put(LinkedHashMap.class, codec);
         }
+
+        staticCodec.put(TopicPayload.class, TopicPayloadCodec.INSTANCE);
 
     }
 
