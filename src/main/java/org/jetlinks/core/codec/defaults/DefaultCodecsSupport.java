@@ -1,8 +1,10 @@
 package org.jetlinks.core.codec.defaults;
 
+import io.netty.buffer.ByteBuf;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
 import org.jetlinks.core.codec.CodecsSupport;
+import org.jetlinks.core.event.Subscription;
 import org.jetlinks.core.event.TopicPayload;
 import org.jetlinks.core.message.DeviceMessage;
 import org.reactivestreams.Publisher;
@@ -47,6 +49,9 @@ public class DefaultCodecsSupport implements CodecsSupport {
         }
 
         staticCodec.put(TopicPayload.class, TopicPayloadCodec.INSTANCE);
+        staticCodec.put(Subscription.class, SubscriptionCodec.INSTANCE);
+
+        staticCodec.put(ByteBuf.class, ByteBufCodec.INSTANCE);
 
     }
 
@@ -73,7 +78,9 @@ public class DefaultCodecsSupport implements CodecsSupport {
         if (refType.isInterface()) {
             return Optional.empty();
         }
-
+        if (ByteBuf.class.isAssignableFrom(refType)) {
+            codec = (Codec<T>) ByteBufCodec.INSTANCE;
+        }
         if (codec == null) {
             codec = JsonCodec.of(refType);
         }

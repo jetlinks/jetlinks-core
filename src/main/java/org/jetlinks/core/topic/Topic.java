@@ -240,6 +240,17 @@ public final class Topic<T> {
         return total;
     }
 
+    public Flux<Topic<T>> getAllSubscriber() {
+        List<Flux<Topic<T>>> all = new ArrayList<>();
+
+        all.add(Flux.fromIterable(this.getChildren()));
+
+        for (Topic<T> tTopic : getChildren()) {
+            all.add(tTopic.getAllSubscriber());
+        }
+        return Flux.concat(all);
+    }
+
     public void clean() {
         unsubscribeAll();
         getChildren().forEach(Topic::clean);

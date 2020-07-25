@@ -9,7 +9,6 @@ public interface Decoder<T> {
 
     Class<T> forType();
 
-    @Nullable
     T decode(@Nonnull Payload payload);
 
     default boolean isDecodeFrom(Object nativeObject){

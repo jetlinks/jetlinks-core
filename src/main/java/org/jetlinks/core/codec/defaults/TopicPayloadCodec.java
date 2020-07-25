@@ -48,12 +48,15 @@ public class TopicPayloadCodec implements Codec<TopicPayload> {
 
         byte[] topic = body.getTopic().getBytes();
         byte[] topicLen = BytesUtils.intToBe(topic.length);
+
+        body.retain();
         return Payload.of(
                 ByteBufAllocator.DEFAULT.compositeBuffer()
                         .addComponents(true,
                                 Unpooled.wrappedBuffer(topicLen),
                                 Unpooled.wrappedBuffer(topic),
-                                body.getBody())
+                                body.getBody()
+                               )
         );
 
     }

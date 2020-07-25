@@ -14,6 +14,9 @@ import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 
 public class SubscriptionCodec implements Codec<Subscription> {
+
+    public static final SubscriptionCodec INSTANCE = new SubscriptionCodec();
+
     @Override
     public Class<Subscription> forType() {
         return Subscription.class;

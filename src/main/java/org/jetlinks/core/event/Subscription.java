@@ -44,8 +44,8 @@ public class Subscription implements Serializable {
     @Dict("subscription-feature")
     public enum Feature implements EnumDict<String> {
 
-        //按queue订阅,如果相同的订阅者都使用queue模式,只有一个订阅者收到消息
-        queue("Queue"),
+        //如果相同的订阅者,只有一个订阅者收到消息
+        atMostOnce("at most once"),
         //订阅本地消息
         local("订阅本地消息"),
         //订阅来自代理的消息

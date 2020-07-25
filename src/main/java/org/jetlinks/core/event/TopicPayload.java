@@ -25,6 +25,26 @@ public class TopicPayload implements Payload {
     }
 
     @Override
+    public void release() {
+        payload.release();
+    }
+
+    @Override
+    public void release(int dec) {
+        payload.release();
+    }
+
+    @Override
+    public void retain() {
+        payload.retain();
+    }
+
+    @Override
+    public void retain(int inc) {
+        payload.retain(inc);
+    }
+
+    @Override
     public String toString() {
         return "{" +
                 "topic='" + topic + '\'' +

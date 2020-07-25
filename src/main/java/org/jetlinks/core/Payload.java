@@ -3,10 +3,13 @@ package org.jetlinks.core;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
 import org.jetlinks.core.codec.Codecs;
+import org.jetlinks.core.codec.Decoder;
 
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
+import java.util.function.Function;
 
 /**
  * 消息负载
@@ -23,12 +26,57 @@ public interface Payload {
         return Codecs.lookup(type).decode(this);
     }
 
-    default byte[] bodyAsBytes() {
-        return ByteBufUtil.getBytes(getBody());
+    default <T> T decode(Decoder<T> decoder, boolean release) {
+        try {
+            return decoder.decode(this);
+        } finally {
+            if (release) {
+                release();
+            }
+        }
     }
 
-    default byte[] bodyAsBytes(int offset, int length) {
-        return ByteBufUtil.getBytes(getBody(), offset, length);
+    default void retain() {
+        getBody().retain();
+    }
+
+    default void retain(int inc) {
+        getBody().retain(inc);
+    }
+
+    default void release(int dec) {
+        getBody().release(dec);
+    }
+
+    default void release() {
+        getBody().release();
+    }
+
+    default <T> T convert(Function<ByteBuf, T> mapper) {
+        return convert(mapper, true);
+    }
+
+    default <T> T convert(Function<ByteBuf, T> mapper, boolean release) {
+        ByteBuf body = getBody();
+        try {
+            return mapper.apply(body);
+        } finally {
+            if (release) {
+                release();
+            }
+        }
+    }
+
+    default byte[] bodyAsBytes() {
+        return bodyAsBytes(true);
+    }
+
+    default byte[] bodyAsBytes(boolean release) {
+        return convert(ByteBufUtil::getBytes, release);
+    }
+
+    default byte[] bodyAsBytes(int offset, int length, boolean release) {
+        return convert(byteBuf -> ByteBufUtil.getBytes(byteBuf, offset, length), release);
     }
 
     default String bodyAsString() {

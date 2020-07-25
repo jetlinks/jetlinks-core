@@ -26,10 +26,6 @@ public class TopicPayloadCodecTest {
         Assert.assertEquals(decode.getTopic(),topicPayload.getTopic());
         Assert.assertEquals(decode.getBody().toString(StandardCharsets.UTF_8),"hello");
 
-        Assert.assertEquals(decode.getTopic(),topicPayload.getTopic());
-        Assert.assertEquals(decode.getBody().toString(StandardCharsets.UTF_8),"hello");
-
-
     }
 
 }

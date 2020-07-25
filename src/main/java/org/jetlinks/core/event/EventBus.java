@@ -1,5 +1,6 @@
 package org.jetlinks.core.event;
 
+import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.codec.Encoder;
