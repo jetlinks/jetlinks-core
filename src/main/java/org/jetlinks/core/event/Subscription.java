@@ -45,7 +45,7 @@ public class Subscription implements Serializable {
     public enum Feature implements EnumDict<String> {
 
         //如果相同的订阅者,只有一个订阅者收到消息
-        atMostOnce("at most once"),
+        shared("shared"),
         //订阅本地消息
         local("订阅本地消息"),
         //订阅来自代理的消息
