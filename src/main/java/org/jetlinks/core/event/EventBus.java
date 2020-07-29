@@ -4,6 +4,7 @@ import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.codec.Encoder;
+import org.jetlinks.core.codec.defaults.DirectCodec;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -44,6 +45,17 @@ public interface EventBus {
      * @return 订阅者数量
      */
     <T> Mono<Long> publish(String topic, Publisher<T> event);
+
+//    /**
+//     * 延迟推送,当有订阅者时,再推送数据
+//     *
+//     * @param topic topic
+//     * @param event event supplier
+//     * @param <T>   数据类型
+//     * @return 每次推送的订阅者
+//     */
+//    <T> Flux<Long> publish(String topic, Supplier<Publisher<T>> event);
+
 
     /**
      * 推送消息流，并指定编码器用于进行事件序列化
@@ -91,7 +103,15 @@ public interface EventBus {
      */
     @SuppressWarnings("all")
     default <T> Mono<Long> publish(String topic, T event) {
+        if (event instanceof Payload) {
+            return publish(topic, ((Payload) event));
+        }
         return publish(topic, Codecs.lookup(event.getClass()), event);
+    }
+
+
+    default Mono<Long> publish(String topic, Payload event) {
+        return publish(topic, DirectCodec.INSTANCE, event);
     }
 
 }

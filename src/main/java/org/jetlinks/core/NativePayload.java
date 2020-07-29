@@ -1,7 +1,6 @@
 package org.jetlinks.core;
 
 import io.netty.buffer.ByteBuf;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -9,28 +8,33 @@ import org.jetlinks.core.codec.Decoder;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Getter
 @Setter
 @NoArgsConstructor
-public class NativePayload implements Payload {
+public class NativePayload<T> implements Payload {
 
-    private Object nativeObject;
+    private T nativeObject;
 
-    private Supplier<ByteBuf> bodySupplier;
+    private Function<T, Payload> bodySupplier;
 
     private volatile ByteBuf ref;
 
     private AtomicInteger retainCount = new AtomicInteger();
     private AtomicInteger releaseCount = new AtomicInteger();
 
-    public static NativePayload of(Object nativeObject, Supplier<ByteBuf> bodySupplier) {
-        NativePayload payload = new NativePayload();
+    public static <T> NativePayload<T> of(T nativeObject, Function<T, Payload> bodySupplier) {
+        NativePayload<T> payload = new NativePayload<>();
 
         payload.nativeObject = nativeObject;
         payload.bodySupplier = bodySupplier;
         return payload;
+    }
+
+    public static <T> NativePayload<T> of(T nativeObject, Supplier<Payload> bodySupplier) {
+        return of(nativeObject, v -> bodySupplier.get());
     }
 
 
@@ -43,6 +47,11 @@ public class NativePayload implements Payload {
         return Payload.super.decode(decoder, release);
     }
 
+    @Override
+    public Object decode() {
+        return nativeObject;
+    }
+
     @Nonnull
     @Override
     public ByteBuf getBody() {
@@ -51,7 +60,7 @@ public class NativePayload implements Payload {
                 if (ref != null) {
                     return ref;
                 }
-                ByteBuf buf = bodySupplier.get();
+                ByteBuf buf = bodySupplier.apply(nativeObject).getBody();
                 if (retainCount.get() > 0) {
                     buf.retain(retainCount.get());
                 }

@@ -13,6 +13,8 @@ import org.jetlinks.core.codec.defaults.ErrorCodec;
  */
 public interface RpcDefinition<REQ, RES> {
 
+    String getId();
+
     /**
      * 服务地址
      *
@@ -37,27 +39,22 @@ public interface RpcDefinition<REQ, RES> {
         return ErrorCodec.DEFAULT;
     }
 
-    static <REQ, RES> RpcDefinition<REQ, RES> of(String address,
+    static <REQ, RES> RpcDefinition<REQ, RES> of(String id,
+                                                 String address,
                                                  Codec<REQ> requestCodec,
                                                  Codec<RES> responseCodec) {
-        return new DefaultRpcDefinition<>(address, requestCodec, responseCodec);
+        return new DefaultRpcDefinition<>(id, address, requestCodec, responseCodec);
     }
 
     static RpcDefinition<Void, Void> of(String address) {
-        return new DefaultRpcDefinition<>(address, Codecs.lookup(Void.class), Codecs.lookup(Void.class));
+        return new DefaultRpcDefinition<>(address, address, Codecs.lookup(Void.class), Codecs.lookup(Void.class));
     }
 
-    static <REQ, RES> RpcDefinition<REQ, RES> of(String address,
+    static <REQ, RES> RpcDefinition<REQ, RES> of(String id,
+                                                 String address,
                                                  Class<REQ> requestType,
                                                  Class<RES> responseType) {
-        return new DefaultRpcDefinition<>(address, Codecs.lookup(requestType), Codecs.lookup(responseType));
+        return new DefaultRpcDefinition<>(id,address, Codecs.lookup(requestType), Codecs.lookup(responseType));
     }
 
-    static <RES> RpcDefinition<Void, RES> ofNoParameter(String address, Class<RES> responseType) {
-        return new DefaultRpcDefinition<>(address, Codecs.lookup(Void.class), Codecs.lookup(responseType));
-    }
-
-    static <REQ> RpcDefinition<REQ, Void> ofNoResponse(String address, Class<REQ> requestType) {
-        return new DefaultRpcDefinition<>(address, Codecs.lookup(requestType), Codecs.lookup(Void.class));
-    }
 }

@@ -75,11 +75,17 @@ public class DefaultCodecsSupport implements CodecsSupport {
                 codec = (Codec<T>) JsonArrayCodec.of(ref.getGeneric(0).toClass(), HashSet.class, HashSet::new);
             }
         }
-        if (refType.isInterface()) {
-            return Optional.empty();
-        }
         if (ByteBuf.class.isAssignableFrom(refType)) {
             codec = (Codec<T>) ByteBufCodec.INSTANCE;
+        }
+        if (DeviceMessage.class.isAssignableFrom(refType)) {
+            codec = (Codec<T>) DeviceMessageCodec.INSTANCE;
+        }
+        if (codec != null) {
+            return Optional.of(codec);
+        }
+        if (refType.isInterface()) {
+            return Optional.empty();
         }
         if (codec == null) {
             codec = JsonCodec.of(refType);

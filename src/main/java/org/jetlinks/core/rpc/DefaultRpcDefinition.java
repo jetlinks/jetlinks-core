@@ -2,20 +2,18 @@ package org.jetlinks.core.rpc;
 
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.jetlinks.core.codec.Codec;
 
 @AllArgsConstructor
+@Getter
 public class DefaultRpcDefinition<REQ, RES> implements RpcDefinition<REQ, RES> {
-
+    private final String id;
     private final String address;
 
     private final Codec<REQ> requestCodec;
     private final Codec<RES> responseCodec;
 
-    @Override
-    public String getAddress() {
-        return address;
-    }
 
     @Override
     public Codec<REQ> requestCodec() {
@@ -26,5 +24,4 @@ public class DefaultRpcDefinition<REQ, RES> implements RpcDefinition<REQ, RES> {
     public Codec<RES> responseCodec() {
         return responseCodec;
     }
-
 }

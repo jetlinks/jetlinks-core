@@ -1,7 +1,6 @@
 package org.jetlinks.core.codec.defaults;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
@@ -49,14 +48,10 @@ public class TopicPayloadCodec implements Codec<TopicPayload> {
         byte[] topic = body.getTopic().getBytes();
         byte[] topicLen = BytesUtils.intToBe(topic.length);
 
-        body.retain();
-        return Payload.of(
-                ByteBufAllocator.DEFAULT.compositeBuffer()
-                        .addComponents(true,
-                                Unpooled.wrappedBuffer(topicLen),
-                                Unpooled.wrappedBuffer(topic),
-                                body.getBody()
-                               )
+        return Payload.of(Unpooled.buffer()
+                .writeBytes(topicLen)
+                .writeBytes(topic)
+                .writeBytes(body.bodyAsBytes())
         );
 
     }

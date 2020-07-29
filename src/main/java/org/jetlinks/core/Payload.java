@@ -3,7 +3,6 @@ package org.jetlinks.core;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
-import io.netty.util.ReferenceCountUtil;
 import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.codec.Decoder;
 
@@ -36,6 +35,18 @@ public interface Payload {
         }
     }
 
+    default <T> T decode(Decoder<T> decoder) {
+        return decode(decoder, false);
+    }
+
+    default <T> T decode(Class<T> decoder) {
+        return decode(Codecs.lookup(decoder), false);
+    }
+
+    default Object decode() {
+        return decode(Object.class);
+    }
+
     default void retain() {
         getBody().retain();
     }
@@ -53,7 +64,7 @@ public interface Payload {
     }
 
     default <T> T convert(Function<ByteBuf, T> mapper) {
-        return convert(mapper, true);
+        return convert(mapper, false);
     }
 
     default <T> T convert(Function<ByteBuf, T> mapper, boolean release) {
@@ -68,7 +79,7 @@ public interface Payload {
     }
 
     default byte[] bodyAsBytes() {
-        return bodyAsBytes(true);
+        return bodyAsBytes(false);
     }
 
     default byte[] bodyAsBytes(boolean release) {

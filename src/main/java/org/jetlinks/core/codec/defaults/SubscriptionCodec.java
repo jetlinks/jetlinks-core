@@ -1,7 +1,6 @@
 package org.jetlinks.core.codec.defaults;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import org.hswebframework.web.dict.EnumDict;
 import org.jetlinks.core.Payload;
@@ -60,16 +59,13 @@ public class SubscriptionCodec implements Codec<Subscription> {
         long features = EnumDict.toMask(body.getFeatures());
         byte[] featureBytes = BytesUtils.longToBe(features);
 
-        String topics = String.join("\t", body.getTopics());
+        byte[] topics = String.join("\t", body.getTopics()).getBytes();
 
-        return Payload.of(ByteBufAllocator
-                .DEFAULT
-                .compositeBuffer()
-                .addComponents(true,
-                        Unpooled.wrappedBuffer(subscriberLen),
-                        Unpooled.wrappedBuffer(subscriber),
-                        Unpooled.wrappedBuffer(featureBytes),
-                        Unpooled.wrappedBuffer(topics.getBytes())
-                ));
+        return Payload.of(Unpooled
+                .buffer(subscriberLen.length + subscriber.length + featureBytes.length + topics.length)
+                .writeBytes(subscriberLen)
+                .writeBytes(subscriber)
+                .writeBytes(featureBytes)
+                .writeBytes(topics));
     }
 }

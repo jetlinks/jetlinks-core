@@ -12,7 +12,7 @@ import java.io.Serializable;
 public class Subscription implements Serializable {
     private static final long serialVersionUID = -6849794470754667710L;
 
-    public static final Feature[] DEFAULT_FEATURES = {Feature.local};
+    public static final Feature[] DEFAULT_FEATURES = Subscription.Feature.values();
 
     //订阅者标识
     private final String subscriber;
@@ -23,16 +23,27 @@ public class Subscription implements Serializable {
     //订阅特性
     private final Feature[] features;
 
-    public static Subscription of(String subscriber, String[] topic) {
-        return new Subscription(subscriber, topic, DEFAULT_FEATURES);
+    private Runnable doOnSubscribe;
+
+    public static Subscription of(String subscriber, String... topic) {
+        return new Subscription(subscriber, topic, DEFAULT_FEATURES, null);
     }
 
     public static Subscription of(String subscriber, String[] topic, Feature... features) {
-        return new Subscription(subscriber, topic, features);
+        return new Subscription(subscriber, topic, features, null);
+    }
+
+    public static Subscription of(String subscriber, String topic, Feature... features) {
+        return new Subscription(subscriber, new String[]{topic}, features, null);
     }
 
     public Subscription copy(Feature... newFeatures) {
-        return new Subscription(subscriber, topics, newFeatures);
+        return new Subscription(subscriber, topics, newFeatures, null);
+    }
+
+    public Subscription onSubscribe(Runnable sub) {
+        this.doOnSubscribe = sub;
+        return this;
     }
 
     public boolean hasFeature(Subscription.Feature feature) {
