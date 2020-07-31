@@ -27,6 +27,9 @@ public enum DeviceConfigKey implements ConfigKey<String> {
 
     public static ConfigKey<Boolean> isGatewayDevice = ConfigKey.of("isGatewayDevice", "是否为网关设备");
 
+    //通常用于子设备状态
+    public static ConfigKey<Boolean> selfManageState = ConfigKey.of("selfManageState", "状态自管理");
+
     @Override
     public String getKey() {
         return name();

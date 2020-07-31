@@ -103,7 +103,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
 
     public <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping) {
         return Mono.zip(
-                operator.getConnectionServerId().defaultIfEmpty("-"), //当前设备连接的服务器ID
+                operator.getConnectionServerId().defaultIfEmpty(""), //当前设备连接的服务器ID
                 operator.getProtocol()
                         .flatMap(ProtocolSupport::getSenderInterceptor)     //拦截器
                         .defaultIfEmpty(DeviceMessageSenderInterceptor.DO_NOTING),
@@ -114,8 +114,10 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
             String server = serverAndInterceptor.getT1();
             String parentGatewayId = serverAndInterceptor.getT3();
             //设备未连接,有上级网关设备则通过父级设备发送消息
-            if ("-".equals(server) && StringUtils.hasText(parentGatewayId)) {
-                return Flux.from(message)
+            if (StringUtils.isEmpty(server) && StringUtils.hasText(parentGatewayId)) {
+                return Flux
+                        .from(message)
+                        .flatMap(msg -> interceptor.preSend(operator, msg))
                         .flatMap(msg -> {
                             ChildDeviceMessage children = new ChildDeviceMessage();
                             children.setDeviceId(parentGatewayId);
@@ -132,13 +134,15 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                     .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.UNKNOWN_PARENT_DEVICE, "未知的父设备:" + parentGatewayId)))
                                     .flatMapMany(parent -> parent
                                             .messageSender()
-                                            .send(Mono.just(children), resp -> convertReply(msg, resp)));
+                                            .send(Mono.just(children), resp -> this.convertReply(msg, resp)))
+                                    .map(r -> (R) r)
+                                    .as(flux -> interceptor.afterSent(operator, msg, flux));
                         });
             }
             return Flux.from(message)
                     .flatMap(msg -> interceptor.preSend(operator, msg))
                     .concatMap(msg -> {
-                        if ("-".equals(server)) {
+                        if (StringUtils.isEmpty(server)) {
                             return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                         }
                         //处理来自设备的回复.
