@@ -192,11 +192,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     public Mono<Byte> checkState() {
 
         return getProtocol()
-                .flatMap(protocol ->
-                        protocol //协议自定义了状态检查逻辑
-                                .getStateChecker()
-                                .defaultIfEmpty(device -> doCheckState())
-                )
+                .flatMap(ProtocolSupport::getStateChecker) //协议自定义了状态检查逻辑
+                .defaultIfEmpty(device -> doCheckState()) //默认的检查
                 .flatMap(deviceStateChecker ->
                         //检查最新状态 并和当前状态进行对比
                         Mono.zip(deviceStateChecker.checkState(this).defaultIfEmpty(DeviceState.offline), getState())
