@@ -40,6 +40,18 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
                 .collect(Collectors.toMap(FunctionParameter::getName, FunctionParameter::getValue, (a, b) -> a));
     }
 
+    public List<Object> inputsToList() {
+        return inputs.stream()
+                .map(FunctionParameter::getValue)
+                .collect(Collectors.toList());
+    }
+
+    public Object[] inputsToArray() {
+        return inputs.stream()
+                .map(FunctionParameter::getValue)
+                .toArray();
+    }
+
     public FunctionInvokeMessage addInput(String name, Object value) {
         return this.addInput(new FunctionParameter(name, value));
     }
