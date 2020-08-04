@@ -9,6 +9,8 @@ import org.jetlinks.core.message.RepayableDeviceMessage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @author zhouhao
@@ -31,6 +33,12 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
 
 
     private List<FunctionParameter> inputs = new ArrayList<>();
+
+    public Map<String, Object> inputsToMap() {
+        return inputs
+                .stream()
+                .collect(Collectors.toMap(FunctionParameter::getName, FunctionParameter::getValue, (a, b) -> a));
+    }
 
     public FunctionInvokeMessage addInput(String name, Object value) {
         return this.addInput(new FunctionParameter(name, value));
