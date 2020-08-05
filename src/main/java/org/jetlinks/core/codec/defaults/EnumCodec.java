@@ -21,7 +21,7 @@ public class EnumCodec<T extends Enum<?>> implements Codec<T> {
 
     @Override
     public T decode(@Nonnull Payload payload) {
-        byte[] bytes = payload.bodyAsBytes();
+        byte[] bytes = payload.getBytes();
 
         if (bytes.length > 0 && bytes[0] <= values.length) {
             return values[bytes[0] & 0xFF];

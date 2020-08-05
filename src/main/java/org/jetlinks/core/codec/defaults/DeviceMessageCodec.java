@@ -25,7 +25,7 @@ public class DeviceMessageCodec implements Codec<DeviceMessage> {
     @Nullable
     @Override
     public DeviceMessage decode(@Nonnull Payload payload) {
-        JSONObject json = JSON.parseObject(payload.bodyAsString());
+        JSONObject json = JSON.parseObject(payload.bodyToString());
         return MessageType
                 .convertMessage(json)
                 .map(DeviceMessage.class::cast)

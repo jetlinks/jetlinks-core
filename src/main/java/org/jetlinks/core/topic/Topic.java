@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 @EqualsAndHashCode(of = "part")
 public final class Topic<T> {
@@ -75,6 +76,20 @@ public final class Topic<T> {
             return topic = builder.append(part).toString();
         }
         return topic;
+    }
+
+    public T getSubscriberOrSubscribe(Supplier<T> supplier) {
+        if (subscribers.size() > 0) {
+            return subscribers.keySet().iterator().next();
+        }
+        synchronized (this) {
+            if (subscribers.size() > 0) {
+                return subscribers.keySet().iterator().next();
+            }
+            T sub = supplier.get();
+            subscribe(sub);
+            return sub;
+        }
     }
 
     public Set<T> getSubscribers() {

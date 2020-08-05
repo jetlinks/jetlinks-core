@@ -22,7 +22,7 @@ public class FloatCodec implements Codec<Float> {
 
     @Override
     public Float decode(@Nonnull Payload payload) {
-        return BytesUtils.beToFloat(payload.bodyAsBytes());
+        return BytesUtils.beToFloat(payload.getBytes());
     }
 
     @Override

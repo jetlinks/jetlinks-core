@@ -1,5 +1,7 @@
 package org.jetlinks.core.codec.defaults;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
@@ -41,6 +43,7 @@ public class DefaultCodecsSupport implements CodecsSupport {
         staticCodec.put(void.class, VoidCodec.INSTANCE);
 
         staticCodec.put(DeviceMessage.class, DeviceMessageCodec.INSTANCE);
+
         {
             JsonCodec<Map> codec = JsonCodec.of(Map.class);
             staticCodec.put(Map.class, codec);
@@ -52,6 +55,10 @@ public class DefaultCodecsSupport implements CodecsSupport {
         staticCodec.put(Subscription.class, SubscriptionCodec.INSTANCE);
 
         staticCodec.put(ByteBuf.class, ByteBufCodec.INSTANCE);
+
+        staticCodec.put(JSONObject.class, FastJsonCodec.INSTANCE);
+
+        staticCodec.put(JSONArray.class, FastJsonArrayCodec.INSTANCE);
 
     }
 
@@ -73,14 +80,13 @@ public class DefaultCodecsSupport implements CodecsSupport {
                 codec = (Codec<T>) DirectCodec.INSTANCE;
             } else if (Set.class.isAssignableFrom(ref.toClass())) {
                 codec = (Codec<T>) JsonArrayCodec.of(ref.getGeneric(0).toClass(), HashSet.class, HashSet::new);
+            } else if (ByteBuf.class.isAssignableFrom(refType)) {
+                codec = (Codec<T>) ByteBufCodec.INSTANCE;
+            } else if (DeviceMessage.class.isAssignableFrom(refType)) {
+                codec = (Codec<T>) DeviceMessageCodec.INSTANCE;
             }
         }
-        if (ByteBuf.class.isAssignableFrom(refType)) {
-            codec = (Codec<T>) ByteBufCodec.INSTANCE;
-        }
-        if (DeviceMessage.class.isAssignableFrom(refType)) {
-            codec = (Codec<T>) DeviceMessageCodec.INSTANCE;
-        }
+
         if (codec != null) {
             return Optional.of(codec);
         }

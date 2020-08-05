@@ -22,7 +22,7 @@ public class LongCodec implements Codec<Long> {
 
     @Override
     public Long decode(@Nonnull Payload payload) {
-        return BytesUtils.beToLong(payload.bodyAsBytes());
+        return BytesUtils.beToLong(payload.getBytes());
     }
 
     @Override

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.jetlinks.core.Payload;
+import org.jetlinks.core.utils.TopicUtils;
 
 import javax.annotation.Nonnull;
 import java.util.Map;
@@ -50,5 +51,9 @@ public class TopicPayload implements Payload {
                 "topic='" + topic + '\'' +
                 ", payload=" + payload +
                 '}';
+    }
+
+    public Map<String, String> getTopicVars(String pattern) {
+        return TopicUtils.getPathVariables(pattern, getTopic());
     }
 }

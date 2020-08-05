@@ -46,15 +46,6 @@ public interface EventBus {
      */
     <T> Mono<Long> publish(String topic, Publisher<T> event);
 
-//    /**
-//     * 延迟推送,当有订阅者时,再推送数据
-//     *
-//     * @param topic topic
-//     * @param event event supplier
-//     * @param <T>   数据类型
-//     * @return 每次推送的订阅者
-//     */
-//    <T> Flux<Long> publish(String topic, Supplier<Publisher<T>> event);
 
 
     /**

@@ -65,7 +65,7 @@ public class GeoType extends AbstractType<GeoType> implements DataType, FormatSu
 
         return geoPoint == null
                 ? ValidateResult.fail("不支持的Geo格式:" + value)
-                : ValidateResult.success();
+                : ValidateResult.success(geoPoint);
     }
 
     @Override

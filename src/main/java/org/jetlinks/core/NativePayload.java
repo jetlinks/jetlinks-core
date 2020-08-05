@@ -1,12 +1,19 @@
 package org.jetlinks.core;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.codec.Decoder;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -110,11 +117,33 @@ public class NativePayload<T> implements Payload {
     }
 
     @Override
-    public <T> T bodyAs(Class<T> type) {
-        if (type.isInstance(nativeObject)) {
-            return type.cast(nativeObject);
+    @SuppressWarnings("all")
+    public JSONArray bodyToJsonArray() {
+        if (nativeObject == null) {
+            return new JSONArray();
         }
-        return Payload.super.bodyAs(type);
+        if (nativeObject instanceof JSONArray) {
+            return ((JSONArray) nativeObject);
+        }
+        List<Object> collection;
+        if (nativeObject instanceof List) {
+            collection = ((List<Object>) nativeObject);
+        } else if (nativeObject instanceof Collection) {
+            collection = new ArrayList<>(((Collection<Object>) nativeObject));
+        } else if (nativeObject instanceof Object[]) {
+            collection = Arrays.asList(((Object[]) nativeObject));
+        } else {
+            throw new UnsupportedOperationException("body is not arry");
+        }
+        return new JSONArray(collection);
+    }
+
+    @Override
+    public JSONObject bodyToJson() {
+        if (nativeObject == null) {
+            return new JSONObject();
+        }
+        return FastBeanCopier.copy(nativeObject, JSONObject::new);
     }
 
     @Override

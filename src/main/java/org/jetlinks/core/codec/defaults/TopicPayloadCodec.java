@@ -51,7 +51,7 @@ public class TopicPayloadCodec implements Codec<TopicPayload> {
         return Payload.of(Unpooled.buffer()
                 .writeBytes(topicLen)
                 .writeBytes(topic)
-                .writeBytes(body.bodyAsBytes())
+                .writeBytes(body.getBytes())
         );
 
     }

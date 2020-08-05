@@ -26,7 +26,7 @@ public class JsonCodec<T> implements Codec<T> {
 
     @Override
     public T decode(@Nonnull Payload payload) {
-        return JSON.parseObject(payload.bodyAsBytes(), type);
+        return JSON.parseObject(payload.getBytes(), type);
     }
 
     @Override

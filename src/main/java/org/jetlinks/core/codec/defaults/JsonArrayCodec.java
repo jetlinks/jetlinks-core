@@ -39,7 +39,7 @@ public class JsonArrayCodec<T, R> implements Codec<R> {
 
     @Override
     public R decode(@Nonnull Payload payload) {
-        return mapper.apply(JSON.parseArray(payload.bodyAsString(), type));
+        return mapper.apply(JSON.parseArray(payload.bodyToString(), type));
     }
 
     @Override

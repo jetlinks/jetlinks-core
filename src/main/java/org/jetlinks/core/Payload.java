@@ -1,5 +1,8 @@
 package org.jetlinks.core;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
@@ -21,10 +24,6 @@ public interface Payload {
     @Nonnull
     ByteBuf getBody();
 
-    default <T> T bodyAs(Class<T> type) {
-        return Codecs.lookup(type).decode(this);
-    }
-
     default <T> T decode(Decoder<T> decoder, boolean release) {
         try {
             return decoder.decode(this);
@@ -44,7 +43,29 @@ public interface Payload {
     }
 
     default Object decode() {
+        byte[] payload = getBytes();
+        //maybe json
+        if (/* { }*/(payload[0] == 123 && payload[payload.length - 1] == 125)
+                || /* [ ] */(payload[0] == 91 && payload[payload.length - 1] == 93)
+        ) {
+            return JSON.parse(new String(payload));
+        }
         return decode(Object.class);
+    }
+
+    default <T> T convert(Function<ByteBuf, T> mapper) {
+        return convert(mapper, false);
+    }
+
+    default <T> T convert(Function<ByteBuf, T> mapper, boolean release) {
+        ByteBuf body = getBody();
+        try {
+            return mapper.apply(body);
+        } finally {
+            if (release) {
+                release();
+            }
+        }
     }
 
     default void retain() {
@@ -63,35 +84,28 @@ public interface Payload {
         getBody().release();
     }
 
-    default <T> T convert(Function<ByteBuf, T> mapper) {
-        return convert(mapper, false);
+    default byte[] getBytes() {
+        return getBytes(false);
     }
 
-    default <T> T convert(Function<ByteBuf, T> mapper, boolean release) {
-        ByteBuf body = getBody();
-        try {
-            return mapper.apply(body);
-        } finally {
-            if (release) {
-                release();
-            }
-        }
-    }
-
-    default byte[] bodyAsBytes() {
-        return bodyAsBytes(false);
-    }
-
-    default byte[] bodyAsBytes(boolean release) {
+    default byte[] getBytes(boolean release) {
         return convert(ByteBufUtil::getBytes, release);
     }
 
-    default byte[] bodyAsBytes(int offset, int length, boolean release) {
+    default byte[] getBytes(int offset, int length, boolean release) {
         return convert(byteBuf -> ByteBufUtil.getBytes(byteBuf, offset, length), release);
     }
 
-    default String bodyAsString() {
+    default String bodyToString() {
         return getBody().toString(StandardCharsets.UTF_8);
+    }
+
+    default JSONObject bodyToJson() {
+        return decode(JSONObject.class);
+    }
+
+    default JSONArray bodyToJsonArray() {
+        return decode(JSONArray.class);
     }
 
     Payload voidPayload = () -> Unpooled.EMPTY_BUFFER;
@@ -99,4 +113,13 @@ public interface Payload {
     static Payload of(ByteBuf body) {
         return () -> body;
     }
+
+    static Payload of(byte[] body) {
+        return of(Unpooled.wrappedBuffer(body));
+    }
+
+    static Payload of(String body) {
+        return of(body.getBytes());
+    }
+
 }
