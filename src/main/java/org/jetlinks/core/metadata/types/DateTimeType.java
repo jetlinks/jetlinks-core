@@ -66,10 +66,10 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
 
     @Override
     public ValidateResult validate(Object value) {
-        if (convert(value) == null) {
+        if ((value = convert(value)) == null) {
             return ValidateResult.fail("不是合法的时间格式");
         }
-        return ValidateResult.success();
+        return ValidateResult.success(value);
     }
 
     @Override

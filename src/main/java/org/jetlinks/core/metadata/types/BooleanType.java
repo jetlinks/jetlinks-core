@@ -75,7 +75,7 @@ public class BooleanType extends AbstractType<BooleanType> implements DataType, 
 
         return trueOrFalse == null
                 ? ValidateResult.fail("不支持的值:" + value)
-                : ValidateResult.success();
+                : ValidateResult.success(trueOrFalse);
     }
 
     @Override

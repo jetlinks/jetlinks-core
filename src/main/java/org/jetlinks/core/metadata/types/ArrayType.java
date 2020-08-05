@@ -36,16 +36,17 @@ public class ArrayType extends AbstractType<ArrayType> implements DataType, Conv
 
     @Override
     public ValidateResult validate(Object value) {
+
+        List<Object> listValue = convert(value);
         if (elementType != null && value instanceof Collection) {
-            Collection<?> collection = ((Collection<?>) value);
-            for (Object data : collection) {
+            for (Object data : listValue) {
                 ValidateResult result = elementType.validate(data);
                 if (!result.isSuccess()) {
                     return result;
                 }
             }
         }
-        return ValidateResult.success();
+        return ValidateResult.success(listValue);
     }
 
     @Override

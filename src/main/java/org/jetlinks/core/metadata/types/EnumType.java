@@ -46,7 +46,7 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
                 .stream()
                 .filter(ele -> ele.value.equals(String.valueOf(value)))
                 .findFirst()
-                .map(e -> ValidateResult.success())
+                .map(e -> ValidateResult.success(e.value))
                 .orElseGet(() -> ValidateResult.fail("值[" + value + "]不在枚举中"));
     }
 

@@ -60,18 +60,16 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
         if (properties == null || properties.isEmpty()) {
             return ValidateResult.success();
         }
-        if (value instanceof Map) {
-            Map<String, Object> mapValue = ((Map) value);
-            for (PropertyMetadata property : properties) {
-                Object data = mapValue.get(property.getId());
-                ValidateResult result = property.getValueType().validate(data);
-                if (!result.isSuccess()) {
-                    return result;
-                }
+        Map<String, Object> mapValue = convert(value);
+
+        for (PropertyMetadata property : properties) {
+            Object data = mapValue.get(property.getId());
+            ValidateResult result = property.getValueType().validate(data);
+            if (!result.isSuccess()) {
+                return result;
             }
         }
-
-        return ValidateResult.fail("不支持的格式");
+        return  ValidateResult.success(mapValue);
     }
 
     @Override

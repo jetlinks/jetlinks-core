@@ -44,6 +44,13 @@ public class ValidateResult {
         return result;
     }
 
+    public Object assertSuccess(){
+        if(!success){
+            throw new IllegalArgumentException(errorMsg);
+        }
+        return value;
+    }
+
     public void ifFail(Consumer<ValidateResult> resultConsumer) {
         if (!success) {
             resultConsumer.accept(this);

@@ -26,6 +26,8 @@ public interface WritePropertyMessageSender {
 
     WritePropertyMessageSender write(String property, Object value);
 
+    Mono<WritePropertyMessageSender> validate();
+
     /**
      * 发送消息
      *
