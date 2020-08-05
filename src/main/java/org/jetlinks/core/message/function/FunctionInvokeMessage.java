@@ -32,7 +32,6 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
         return MessageType.INVOKE_FUNCTION;
     }
 
-
     private List<FunctionParameter> inputs = new ArrayList<>();
 
     public Optional<Object> getInput(String name) {
@@ -53,6 +52,11 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
         return inputs
                 .stream()
                 .collect(Collectors.toMap(FunctionParameter::getName, FunctionParameter::getValue, (a, b) -> a));
+    }
+
+    public <T> T inputsToBean(Class<T> beanType) {
+        return new JSONObject(inputsToMap())
+                .toJavaObject(beanType);
     }
 
     public List<Object> inputsToList() {
