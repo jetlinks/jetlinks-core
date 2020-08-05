@@ -10,6 +10,7 @@ import org.jetlinks.core.message.RepayableDeviceMessage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +34,20 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
 
 
     private List<FunctionParameter> inputs = new ArrayList<>();
+
+    public Optional<Object> getInput(String name) {
+        return inputs
+                .stream()
+                .filter(param -> param.getName().equals(name))
+                .map(FunctionParameter::getValue)
+                .findFirst();
+    }
+
+    public Optional<Object> getInput(int index) {
+        return inputs.size() > index
+                ? Optional.ofNullable(inputs.get(index))
+                : Optional.empty();
+    }
 
     public Map<String, Object> inputsToMap() {
         return inputs
