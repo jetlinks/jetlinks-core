@@ -34,8 +34,12 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
 
     public FunctionInvokeMessageReply success() {
         this.setSuccess(true);
-
         return this;
+    }
+
+    public FunctionInvokeMessageReply success(Object output) {
+        return success()
+                .output(output);
     }
 
     public FunctionInvokeMessageReply output(Object output) {
@@ -48,6 +52,35 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
         super.fromJson(jsonObject);
         this.functionId = jsonObject.getString("functionId");
         this.output = jsonObject.get("output");
+    }
 
+    public static FunctionInvokeMessageReply success(String deviceId,
+                                                     String functionId,
+                                                     String messageId,
+                                                     Object output){
+        FunctionInvokeMessageReply reply = new FunctionInvokeMessageReply();
+
+        reply.setFunctionId(functionId);
+        reply.setOutput(output);
+        reply.success();
+        reply.setDeviceId(deviceId);
+        reply.setMessageId(messageId);
+
+        return reply;
+    }
+
+    public static FunctionInvokeMessageReply error(String deviceId,
+                                                     String functionId,
+                                                     String messageId,
+                                                     String message){
+        FunctionInvokeMessageReply reply = new FunctionInvokeMessageReply();
+
+        reply.setFunctionId(functionId);
+        reply.setMessage(message);
+        reply.setSuccess(false);
+        reply.setDeviceId(deviceId);
+        reply.setMessageId(messageId);
+
+        return reply;
     }
 }
