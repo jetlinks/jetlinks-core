@@ -7,6 +7,7 @@ import org.jetlinks.core.message.CommonDeviceMessageReply;
 import org.jetlinks.core.message.MessageType;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * @author zhouhao
@@ -24,6 +25,12 @@ public class WritePropertyMessageReply extends CommonDeviceMessageReply<WritePro
         reply.setTimestamp(System.currentTimeMillis());
 
         return reply;
+    }
+
+    public Optional<Object> getProperty(String property) {
+        return Optional
+                .ofNullable(properties)
+                .map(map -> map.get(property));
     }
 
     @Override

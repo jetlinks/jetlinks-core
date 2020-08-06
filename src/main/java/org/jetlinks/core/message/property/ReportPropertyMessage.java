@@ -7,6 +7,7 @@ import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 上报设备属性
@@ -29,10 +30,14 @@ public class ReportPropertyMessage extends CommonDeviceMessage {
     }
 
     public ReportPropertyMessage success(Map<String, Object> properties) {
-
         this.properties = properties;
         return this;
+    }
 
+    public Optional<Object> getProperty(String property) {
+        return Optional
+                .ofNullable(properties)
+                .map(map -> map.get(property));
     }
 
     @Override
