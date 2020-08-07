@@ -23,7 +23,7 @@ public class CodecContextTest {
 
         context.<ReadPropertyMessage>removeDownstream("test")
                 .map(ReadPropertyMessage::newReply)
-                .get()
+                .orElseThrow(()->new NullPointerException("找不到下行指令"))
                 .success(Collections.singletonMap("test","1"));
     }
 
