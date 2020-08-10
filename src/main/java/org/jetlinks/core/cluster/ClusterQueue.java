@@ -65,4 +65,11 @@ public interface ClusterQueue<T> {
      * @return 消息数量
      */
     Mono<Integer> size();
+
+    void setPollMod(Mod mod);
+
+    enum Mod {
+        FIFO,//先进先出
+        LIFO//后进先出
+    }
 }
