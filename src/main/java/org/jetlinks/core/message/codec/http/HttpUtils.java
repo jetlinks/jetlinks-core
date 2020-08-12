@@ -2,8 +2,10 @@ package org.jetlinks.core.message.codec.http;
 
 import lombok.SneakyThrows;
 import org.apache.commons.codec.net.URLCodec;
+import org.springframework.util.StringUtils;
 
 import java.net.URL;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -52,6 +54,9 @@ public class HttpUtils {
     }
 
     public static Map<String, String> parseEncodedUrlParams(String keyValueString, Supplier<Map<String, String>> supplier) {
+        if (StringUtils.isEmpty(keyValueString)) {
+            return Collections.emptyMap();
+        }
         return Stream.of(keyValueString.split("[&]"))
                 .map(par -> par.split("[=]", 2))
                 .collect(
