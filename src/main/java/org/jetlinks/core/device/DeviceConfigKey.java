@@ -21,7 +21,10 @@ public enum DeviceConfigKey implements ConfigKey<String> {
 
     sessionId("设备会话ID"),
 
-    shadow("设备影子");
+    shadow("设备影子"),
+
+    //遗言，用于缓存消息，等设备上线时发送指令
+    will("遗言");
 
     String name;
 
