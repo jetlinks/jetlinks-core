@@ -3,6 +3,7 @@ package org.jetlinks.core.metadata.types;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.hswebframework.utils.StringUtils;
 import org.hswebframework.utils.time.DateFormatter;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
@@ -58,7 +59,7 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
     }
 
     protected DateTimeFormatter getFormatter() {
-        if (formatter == null) {
+        if (formatter == null && !TIMESTAMP_FORMAT.equals(format)) {
             formatter = DateTimeFormatter.ofPattern(format);
         }
         return formatter;
@@ -109,11 +110,18 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
             return new Date(((Number) value).longValue());
         }
         if (value instanceof String) {
+            if(StringUtils.isNumber(value)){
+                return new Date(Long.parseLong((String) value));
+            }
             Date data = DateFormatter.fromString(((String) value));
             if (data != null) {
                 return data;
             }
-            return Date.from(LocalDateTime.parse(((String) value), getFormatter())
+            DateTimeFormatter formatter = getFormatter();
+            if (null == formatter) {
+                throw new IllegalArgumentException("unsupported date format:" + value);
+            }
+            return Date.from(LocalDateTime.parse(((String) value), formatter)
                     .atZone(zoneId)
                     .toInstant());
         }

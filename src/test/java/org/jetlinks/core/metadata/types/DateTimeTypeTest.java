@@ -39,4 +39,16 @@ public class DateTimeTypeTest {
         System.out.println(date);
 
     }
+
+    @Test
+    public void testTimestamp() {
+
+        long ts = 1597372303947L;
+
+        DateTimeType timeType = new DateTimeType();
+        Date date = timeType.convert(""+ts);
+
+       Assert.assertEquals(date.getTime(),ts);
+
+    }
 }
