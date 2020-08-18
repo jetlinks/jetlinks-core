@@ -10,12 +10,17 @@ import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.ConfigMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
+import reactor.core.Disposable;
+import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 @Getter
@@ -44,6 +49,38 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private Map<String, Authenticator> authenticators = new ConcurrentHashMap<>();
 
     private DeviceStateChecker deviceStateChecker;
+
+    private volatile boolean disposed;
+
+    private Disposable.Composite composite = Disposables.composite();
+
+    private List<Consumer<Map<String, Object>>> doOnInit = new CopyOnWriteArrayList<>();
+
+    @Override
+    public void dispose() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        composite.dispose();
+    }
+
+    @Override
+    public void init(Map<String, Object> configuration) {
+        for (Consumer<Map<String, Object>> mapConsumer : doOnInit) {
+            mapConsumer.accept(configuration);
+        }
+    }
+
+    public CompositeProtocolSupport doOnDispose(Disposable disposable) {
+        composite.add(disposable);
+        return this;
+    }
+
+    public CompositeProtocolSupport doOnInit(Consumer<Map<String, Object>> runnable) {
+        doOnInit.add(runnable);
+        return this;
+    }
 
     public void addMessageCodecSupport(Transport transport, Supplier<Mono<DeviceMessageCodec>> supplier) {
         messageCodecSupports.put(transport.getId(), supplier);

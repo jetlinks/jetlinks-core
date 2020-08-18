@@ -6,6 +6,7 @@ import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.ConfigMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -18,7 +19,7 @@ import java.util.Map;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface ProtocolSupport {
+public interface ProtocolSupport extends Disposable {
     /**
      * @return 协议ID
      */
@@ -121,4 +122,21 @@ public interface ProtocolSupport {
     default Mono<ConfigMetadata> getConfigMetadata(Transport transport) {
         return Mono.empty();
     }
+
+    /**
+     * 初始化协议
+     *
+     * @param configuration 配置信息
+     */
+    default void init(Map<String, Object> configuration) {
+
+    }
+
+    /**
+     * 销毁协议
+     */
+    @Override
+    default void dispose() {
+    }
+
 }

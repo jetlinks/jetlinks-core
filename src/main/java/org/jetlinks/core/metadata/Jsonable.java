@@ -1,6 +1,7 @@
 package org.jetlinks.core.metadata;
 
 import com.alibaba.fastjson.JSONObject;
+import org.hswebframework.web.bean.FastBeanCopier;
 
 /**
  * @author zhouhao
@@ -8,7 +9,11 @@ import com.alibaba.fastjson.JSONObject;
  */
 public interface Jsonable {
 
-    JSONObject toJson();
+    default JSONObject toJson() {
+        return FastBeanCopier.copy(this, JSONObject::new);
+    }
 
-    void fromJson(JSONObject json);
+    default void fromJson(JSONObject json) {
+        FastBeanCopier.copy(json, this);
+    }
 }

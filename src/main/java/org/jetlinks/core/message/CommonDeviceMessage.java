@@ -1,9 +1,9 @@
 package org.jetlinks.core.message;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.bean.FastBeanCopier;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -55,7 +55,8 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     @Override
     public JSONObject toJson() {
-        return (JSONObject) JSON.toJSON(this);
+        return FastBeanCopier.copy(this, JSONObject::new);
+//        return (JSONObject) JSON.toJSON(this);
     }
 
     @Override

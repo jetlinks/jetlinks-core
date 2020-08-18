@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 设备元数据由: 属性，功能，事件组成
+ * 物模型
  *
  * @author zhouhao
  * @since 1.0.0
  */
-public interface DeviceMetadata extends Metadata ,Jsonable {
+public interface DeviceMetadata extends Metadata, Jsonable {
 
     List<PropertyMetadata> getProperties();
 
@@ -19,12 +19,27 @@ public interface DeviceMetadata extends Metadata ,Jsonable {
 
     List<PropertyMetadata> getTags();
 
-    Optional<EventMetadata> getEvent(String id);
+    default Optional<EventMetadata> getEvent(String id) {
+        return Optional.ofNullable(getEventOrNull(id));
+    }
 
-    Optional<PropertyMetadata> getProperty(String id);
+    EventMetadata getEventOrNull(String id);
 
-    Optional<FunctionMetadata> getFunction(String id);
+    default Optional<PropertyMetadata> getProperty(String id) {
+        return Optional.ofNullable(getPropertyOrNull(id));
+    }
 
-    Optional<PropertyMetadata> getTag(String id);
+    PropertyMetadata getPropertyOrNull(String id);
 
+    default Optional<FunctionMetadata> getFunction(String id) {
+        return Optional.ofNullable(getFunctionOrNull(id));
+    }
+
+    FunctionMetadata getFunctionOrNull(String id);
+
+    default Optional<PropertyMetadata> getTag(String id) {
+        return Optional.ofNullable(getTagOrNull(id));
+    }
+
+    PropertyMetadata getTagOrNull(String id);
 }

@@ -1,8 +1,8 @@
 package org.jetlinks.core.message;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import lombok.*;
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.enums.ErrorCode;
 
 import java.util.LinkedHashMap;
@@ -126,7 +126,7 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
 
     @Override
     public JSONObject toJson() {
-        return (JSONObject) JSON.toJSON(this);
+        return FastBeanCopier.copy(this,JSONObject::new);
     }
 
     @Override

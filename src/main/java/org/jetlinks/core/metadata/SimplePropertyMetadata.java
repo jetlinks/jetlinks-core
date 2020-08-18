@@ -1,6 +1,5 @@
 package org.jetlinks.core.metadata;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,11 +20,6 @@ public class SimplePropertyMetadata implements PropertyMetadata {
 
     private Map<String, Object> expands;
 
-
-    @Override
-    public JSONObject toJson() {
-        return (JSONObject)JSON.toJSON(this);
-    }
 
     @Override
     public void fromJson(JSONObject json) {
