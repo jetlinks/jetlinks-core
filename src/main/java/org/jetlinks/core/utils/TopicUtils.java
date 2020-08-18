@@ -16,7 +16,9 @@ public class TopicUtils {
             return true;
         }
 
-        if (!topic.contains("#") && !topic.contains("+") && !topic.contains("{")) {
+        if (!topic.contains("*")
+                && !topic.contains("#") && !topic.contains("+")
+                && !topic.contains("{")) {
             return false;
         }
 
