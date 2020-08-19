@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSON;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.metadata.Converter;
@@ -54,12 +55,12 @@ public class ArrayType extends AbstractType<ArrayType> implements DataType, Conv
 
         if (elementType != null && value instanceof Collection) {
             Collection<?> collection = ((Collection<?>) value);
-            return collection.stream()
+            return JSON.toJSONString(collection.stream()
                     .map(data -> elementType.format(data))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toList()));
         }
 
-        return value;
+        return JSON.toJSONString(value);
     }
 
     @Override

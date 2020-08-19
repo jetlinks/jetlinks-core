@@ -75,7 +75,7 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
     @Override
     public Object format(Object value) {
 
-        return handle(value, DataType::format);
+        return JSON.toJSONString(handle(value, DataType::format));
     }
 
     @SuppressWarnings("all")
