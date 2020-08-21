@@ -1,5 +1,6 @@
 package org.jetlinks.core.message;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,7 +12,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class ChildDeviceMessageReply extends CommonDeviceMessageReply {
+public class ChildDeviceMessageReply extends CommonDeviceMessageReply<ChildDeviceMessageReply> {
     private String childDeviceId;
 
     private Message childDeviceMessage;
@@ -20,4 +21,12 @@ public class ChildDeviceMessageReply extends CommonDeviceMessageReply {
         return MessageType.CHILD_REPLY;
     }
 
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        if (null != childDeviceMessage) {
+            json.put("childDeviceMessage", childDeviceMessage.toJson());
+        }
+        return json;
+    }
 }

@@ -1,5 +1,7 @@
 package org.jetlinks.core.message;
 
+import org.jetlinks.core.metadata.Jsonable;
+
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Map;
@@ -22,7 +24,7 @@ import static org.jetlinks.core.message.MessageType.UNKNOWN;
  * @see ChildDeviceMessage
  * @see ChildDeviceMessageReply
  */
-public interface Message extends Serializable {
+public interface Message extends Jsonable, Serializable {
 
     default MessageType getMessageType() {
         return UNKNOWN;

@@ -126,7 +126,9 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
 
     @Override
     public JSONObject toJson() {
-        return FastBeanCopier.copy(this,JSONObject::new);
+        JSONObject json = FastBeanCopier.copy(this,JSONObject::new);
+        json.put("messageType",getMessageType().name());
+        return json;
     }
 
     @Override

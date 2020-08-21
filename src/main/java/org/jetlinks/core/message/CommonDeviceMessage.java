@@ -55,8 +55,9 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     @Override
     public JSONObject toJson() {
-        return FastBeanCopier.copy(this, JSONObject::new);
-//        return (JSONObject) JSON.toJSON(this);
+        JSONObject json = FastBeanCopier.copy(this, JSONObject::new);
+        json.put("messageType", getMessageType().name());
+        return json;
     }
 
     @Override

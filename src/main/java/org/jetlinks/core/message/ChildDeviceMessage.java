@@ -1,5 +1,6 @@
 package org.jetlinks.core.message;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -26,6 +27,15 @@ public class ChildDeviceMessage extends CommonDeviceMessage implements Repayable
         reply.deviceId(getDeviceId());
         reply.setChildDeviceId(getChildDeviceId());
         return reply;
+    }
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        if (null != childDeviceMessage) {
+            json.put("childDeviceMessage", childDeviceMessage.toJson());
+        }
+        return json;
     }
 
     public MessageType getMessageType() {
