@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import io.netty.buffer.Unpooled;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
+import org.jetlinks.core.metadata.Jsonable;
 
 import javax.annotation.Nonnull;
 
@@ -31,6 +32,9 @@ public class JsonCodec<T> implements Codec<T> {
 
     @Override
     public Payload encode(T body) {
+        if(body instanceof Jsonable){
+            return () -> Unpooled.wrappedBuffer(JSON.toJSONBytes(((Jsonable) body).toJson()));
+        }
         return () -> Unpooled.wrappedBuffer(JSON.toJSONBytes(body));
     }
 

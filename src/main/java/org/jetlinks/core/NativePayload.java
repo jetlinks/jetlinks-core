@@ -6,14 +6,13 @@ import io.netty.buffer.ByteBuf;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.codec.Decoder;
+import org.jetlinks.core.metadata.Jsonable;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -44,12 +43,19 @@ public class NativePayload<T> implements Payload {
         return of(nativeObject, v -> bodySupplier.get());
     }
 
-
     @Override
     @SuppressWarnings("all")
+    @SneakyThrows
     public <T> T decode(Decoder<T> decoder, boolean release) {
         if (decoder.isDecodeFrom(nativeObject)) {
             return (T) nativeObject;
+        }
+        Class<T> type = decoder.forType();
+        if (type == JSONObject.class || type == Map.class) {
+            return (T) bodyToJson();
+        }
+        if (Map.class.isAssignableFrom(decoder.forType())) {
+            return bodyToJson().toJavaObject(decoder.forType());
         }
         return Payload.super.decode(decoder, release);
     }
@@ -142,6 +148,9 @@ public class NativePayload<T> implements Payload {
     public JSONObject bodyToJson() {
         if (nativeObject == null) {
             return new JSONObject();
+        }
+        if (nativeObject instanceof Jsonable) {
+            return ((Jsonable) nativeObject).toJson();
         }
         return FastBeanCopier.copy(nativeObject, JSONObject::new);
     }
