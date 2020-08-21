@@ -1,6 +1,7 @@
 package org.jetlinks.core.metadata.types;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -73,9 +74,8 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
     }
 
     @Override
-    public Object format(Object value) {
-
-        return JSON.toJSONString(handle(value, DataType::format));
+    public JSONObject format(Object value) {
+        return new JSONObject(handle(value, DataType::format));
     }
 
     @SuppressWarnings("all")
