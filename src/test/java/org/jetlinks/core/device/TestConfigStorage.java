@@ -55,6 +55,12 @@ public class TestConfigStorage implements ConfigStorage {
     }
 
     @Override
+    public Mono<Value> getAndRemove(String key) {
+        return getConfig(key)
+                .flatMap(v->remove(key).thenReturn(v));
+    }
+
+    @Override
     public Mono<Boolean> remove(Collection<String> key) {
         return Flux.fromIterable(key)
                 .doOnNext(storage::remove)
