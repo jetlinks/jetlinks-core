@@ -8,6 +8,7 @@ import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Getter
@@ -74,6 +75,11 @@ public class ChildrenDeviceSession implements DeviceSession {
             closeListener = new CopyOnWriteArrayList<>();
         }
         closeListener.add(call);
+    }
+
+    @Override
+    public Optional<String> getServerId() {
+        return parent.getServerId();
     }
 
     @Override

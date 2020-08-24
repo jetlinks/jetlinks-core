@@ -24,6 +24,8 @@ public interface ConfigStorage {
 
     Mono<Boolean> remove(String key);
 
+    Mono<Value> getAndRemove(String key);
+
     Mono<Boolean> remove(Collection<String> key);
 
     Mono<Boolean> clear();

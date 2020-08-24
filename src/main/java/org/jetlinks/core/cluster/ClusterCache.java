@@ -59,6 +59,13 @@ public interface ClusterCache<K, V> {
     Mono<Boolean> remove(K key);
 
     /**
+     * 获取值然后删除
+     * @param key key
+     * @return value
+     */
+    Mono<V> getAndRemove(K key);
+
+    /**
      * 批量删除缓存
      *
      * @param key key

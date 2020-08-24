@@ -85,6 +85,14 @@ public interface Configurable {
     Mono<Boolean> removeConfig(String key);
 
     /**
+     * 获取并删除配置
+     * @param key key
+     * @return 被删除的配置
+     * @since 1.1.1
+     */
+    Mono<Value> getAndRemoveConfig(String key);
+
+    /**
      * 删除配置
      *
      * @param key key

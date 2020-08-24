@@ -100,6 +100,8 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
 
     @Override
     public FunctionInvokeMessageReply newReply() {
-        return new FunctionInvokeMessageReply().from(this);
+        FunctionInvokeMessageReply reply = new FunctionInvokeMessageReply().from(this);
+        reply.setFunctionId(this.functionId);
+        return reply;
     }
 }

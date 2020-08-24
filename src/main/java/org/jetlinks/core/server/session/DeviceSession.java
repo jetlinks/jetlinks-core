@@ -16,6 +16,7 @@ import java.util.Optional;
  * @since 1.0.0
  */
 public interface DeviceSession {
+
     String getId();
 
     String getDeviceId();

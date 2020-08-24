@@ -70,7 +70,7 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public void close() {
-
+        parent.close();
     }
 
     @Override
@@ -89,6 +89,11 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     @Override
     public void onClose(Runnable call) {
         parent.onClose(call);
+    }
+
+    @Override
+    public Optional<String> getServerId() {
+        return parent.getServerId();
     }
 
     @Override

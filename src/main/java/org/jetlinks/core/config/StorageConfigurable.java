@@ -68,6 +68,12 @@ public interface StorageConfigurable extends Configurable {
     }
 
     @Override
+   default Mono<Value> getAndRemoveConfig(String key){
+        return getReactiveStorage()
+                .flatMap(storage -> storage.getAndRemove(key));
+    }
+
+    @Override
     default Mono<Boolean> removeConfigs(Collection<String> key) {
         return getReactiveStorage()
                 .flatMap(storage -> storage.remove(key));
