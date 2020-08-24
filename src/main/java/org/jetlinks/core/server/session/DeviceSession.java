@@ -54,4 +54,12 @@ public interface DeviceSession {
     default void setKeepAliveTimeout(Duration timeout) {
 
     }
+
+    default boolean isWrapFrom(Class<?> type) {
+        return type.isInstance(this);
+    }
+
+    default <T extends DeviceSession> T unwrap(Class<T> type) {
+        return type.cast(this);
+    }
 }

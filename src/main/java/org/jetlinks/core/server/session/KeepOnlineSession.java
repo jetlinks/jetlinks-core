@@ -1,6 +1,8 @@
 package org.jetlinks.core.server.session;
 
 import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
@@ -10,13 +12,13 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Optional;
 
-public class KeepOnlineSession implements DeviceSession {
+public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSession {
 
     DeviceSession parent;
 
     private long lastKeepAliveTime = System.currentTimeMillis();
 
-    private long connectTime = System.currentTimeMillis();
+    private final long connectTime = System.currentTimeMillis();
 
     private long keepAliveTimeOutMs;
 
@@ -57,7 +59,7 @@ public class KeepOnlineSession implements DeviceSession {
             if (parent.isAlive()) {
                 return parent.send(encodedMessage);
             }
-            return Mono.just(false);
+            return Mono.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE));
         });
     }
 
@@ -79,7 +81,9 @@ public class KeepOnlineSession implements DeviceSession {
 
     @Override
     public boolean isAlive() {
-        return keepAliveTimeOutMs <= 0 || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs;
+        return keepAliveTimeOutMs <= 0
+                || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs
+                || parent.isAlive();
     }
 
     @Override
@@ -96,5 +100,20 @@ public class KeepOnlineSession implements DeviceSession {
     public void setKeepAliveTimeout(Duration timeout) {
         keepAliveTimeOutMs = timeout.toMillis();
         parent.setKeepAliveTimeout(timeout);
+    }
+
+    @Override
+    public boolean isWrapFrom(Class<?> type) {
+        return type == KeepOnlineSession.class || parent.isWrapFrom(type);
+    }
+
+    @Override
+    public <T extends DeviceSession> T unwrap(Class<T> type) {
+        return type == KeepOnlineSession.class ? type.cast(this) : parent.unwrap(type);
+    }
+
+    @Override
+    public void replaceWith(DeviceSession session) {
+        this.parent = session;
     }
 }

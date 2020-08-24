@@ -33,6 +33,18 @@ public interface DeviceSessionManager {
     DeviceSession register(DeviceSession session);
 
     /**
+     * 替换session
+     *
+     * @param oldSession 旧session
+     * @param newSession 新session
+     * @return 新session
+     * @since 1.1.1
+     */
+   default DeviceSession replace(DeviceSession oldSession, DeviceSession newSession){
+       return newSession;
+   }
+
+    /**
      * 使用会话ID或者设备ID注销设备会话
      *
      * @param idOrDeviceId 设备ID或者会话ID
@@ -61,6 +73,7 @@ public interface DeviceSessionManager {
      * @param transport 协议
      * @return 是否超过
      */
+    @Deprecated
     boolean isOutOfMaximumSessionLimit(Transport transport);
 
     /**
@@ -69,6 +82,7 @@ public interface DeviceSessionManager {
      * @param transport 协议
      * @return 最大连接数量
      */
+    @Deprecated
     long getMaximumSession(Transport transport);
 
     /**
@@ -77,6 +91,7 @@ public interface DeviceSessionManager {
      * @param transport 协议
      * @return 当前连接数量
      */
+    @Deprecated
     long getCurrentSession(Transport transport);
 
 }

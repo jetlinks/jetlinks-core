@@ -13,13 +13,13 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Getter
 @Slf4j
 public class ChildrenDeviceSession implements DeviceSession {
-    private String id;
+    private final String id;
 
-    private String deviceId;
+    private final String deviceId;
 
-    private DeviceSession parent;
+    private final DeviceSession parent;
 
-    private DeviceOperator operator;
+    private final DeviceOperator operator;
 
     private List<Runnable> closeListener;
 
@@ -74,6 +74,16 @@ public class ChildrenDeviceSession implements DeviceSession {
             closeListener = new CopyOnWriteArrayList<>();
         }
         closeListener.add(call);
+    }
+
+    @Override
+    public boolean isWrapFrom(Class<?> type) {
+        return type == ChildrenDeviceSession.class || parent.isWrapFrom(type);
+    }
+
+    @Override
+    public <T extends DeviceSession> T unwrap(Class<T> type) {
+        return type == ChildrenDeviceSession.class ? type.cast(this) : parent.unwrap(type);
     }
 
     @Override

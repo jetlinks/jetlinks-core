@@ -101,6 +101,10 @@ public interface Message extends Jsonable, Serializable {
                 .map(v -> (T) v);
     }
 
+    default <T> T getHeaderOrDefault(HeaderKey<T> key) {
+        return getHeader(key).orElseGet(key::getDefaultValue);
+    }
+
     default Optional<Object> getHeader(String header) {
         return Optional.ofNullable(getHeaders())
                 .map(headers -> headers.get(header));

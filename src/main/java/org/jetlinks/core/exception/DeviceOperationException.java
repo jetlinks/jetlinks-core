@@ -8,9 +8,9 @@ import org.jetlinks.core.enums.ErrorCode;
 public class DeviceOperationException extends RuntimeException {
 
     @Getter
-    private ErrorCode code;
+    private final ErrorCode code;
 
-    private String message;
+    private final String message;
 
     public DeviceOperationException(ErrorCode errorCode) {
         this(errorCode, errorCode.getText());

@@ -11,9 +11,14 @@ public interface Headers {
 
     /**
      * 保持在线,与{@link DeviceOnlineMessage}配合使用.
+     * @see Headers#keepOnlineTimeoutSeconds
      */
     HeaderKey<Boolean> keepOnline = HeaderKey.of("keepOnline", true);
 
+    /**
+     * 保持在线超时时间,超过指定时间未收到消息则认为离线
+     */
+    HeaderKey<Integer> keepOnlineTimeoutSeconds = HeaderKey.of("keepOnlineTimeoutSeconds", 600);
 
     /**
      * 异步消息,当发往设备的消息标记了为异步时,设备网关服务发送消息到设备后将立即回复{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING}到发送端
