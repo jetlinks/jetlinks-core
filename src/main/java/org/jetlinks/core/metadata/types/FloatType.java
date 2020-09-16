@@ -14,6 +14,7 @@ public class FloatType extends NumberType<Float> {
     public static final String ID = "float";
 
     private Integer scale;
+    public static final FloatType GLOBAL = new FloatType();
 
     @Override
     public Object format(Object value) {
