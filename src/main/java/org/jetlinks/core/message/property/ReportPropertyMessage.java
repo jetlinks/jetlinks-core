@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 上报设备属性
+ * 上报设备属性,通常由设备定时上报,方向: 设备->平台
  *
  * @author zhouhao
  * @since 1.0.0
@@ -19,6 +19,11 @@ import java.util.Optional;
 @Setter
 public class ReportPropertyMessage extends CommonDeviceMessage {
 
+    /**
+     * 属性,key为物模型中的属性ID,value为物模型对应的类型值.
+     * <p>
+     * 注意: value如果是结构体(对象类型),请勿传入在协议包中自定义的对象,应该转为{@link Map}传入.
+     */
     private Map<String, Object> properties;
 
     public static ReportPropertyMessage create() {

@@ -6,6 +6,12 @@ import org.jetlinks.core.config.ConfigKey;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 服务上下文,用于从服务中获取其他服务(如获取spring容器中的bean),配置等操作.
+ *
+ * @author zhouhao
+ * @since 1.0.0
+ */
 public interface ServiceContext {
 
     Optional<Value> getConfig(ConfigKey<String> key);

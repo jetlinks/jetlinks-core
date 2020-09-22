@@ -4,19 +4,40 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 物模型
+ * 物模型定义
  *
  * @author zhouhao
  * @since 1.0.0
  */
 public interface DeviceMetadata extends Metadata, Jsonable {
 
+    /**
+     * @return 所有属性定义
+     * @see org.jetlinks.core.message.property.ReadPropertyMessage
+     * @see org.jetlinks.core.message.property.WritePropertyMessage
+     * @see org.jetlinks.core.message.property.ReportPropertyMessage
+     * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
+     * @see org.jetlinks.core.message.property.WritePropertyMessageReply
+     */
     List<PropertyMetadata> getProperties();
 
+    /**
+     * @return 所有功能定义
+     * @see org.jetlinks.core.message.function.FunctionInvokeMessage
+     * @see org.jetlinks.core.message.function.FunctionInvokeMessageReply
+     */
     List<FunctionMetadata> getFunctions();
 
+    /**
+     * @return 事件定义
+     * @see org.jetlinks.core.message.event.EventMessage
+     */
     List<EventMetadata> getEvents();
 
+    /**
+     * @return 标签定义
+     * @see org.jetlinks.core.message.UpdateTagMessage
+     */
     List<PropertyMetadata> getTags();
 
     default Optional<EventMetadata> getEvent(String id) {

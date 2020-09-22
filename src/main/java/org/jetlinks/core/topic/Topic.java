@@ -34,7 +34,17 @@ public final class Topic<T> {
 
     private final ConcurrentMap<T, AtomicInteger> subscribers = new ConcurrentHashMap<>();
 
-    private static final AntPathMatcher matcher = new AntPathMatcher();
+    private static final AntPathMatcher matcher = new AntPathMatcher(){
+        @Override
+        protected String[] tokenizePath(String path) {
+            return path.split("/");
+        }
+    };
+
+    static {
+        matcher.setCachePatterns(true);
+        matcher.setCaseSensitive(true);
+    }
 
     public static <T> Topic<T> createRoot() {
         return new Topic<>(null, "/");
@@ -139,7 +149,7 @@ public final class Topic<T> {
     }
 
     private void ofTopic(String topic) {
-        String[] parts = topic.split("[/]", 2);
+        String[] parts = topic.split("/", 2);
         this.part = parts[0];
         if (parts.length > 1) {
             Topic<T> part = new Topic<>(this, parts[1]);
@@ -151,7 +161,7 @@ public final class Topic<T> {
         if (topic.startsWith("/")) {
             topic = topic.substring(1);
         }
-        String[] parts = topic.split("[/]");
+        String[] parts = topic.split("/");
         Topic<T> part = child.computeIfAbsent(parts[0], _topic -> mapping.apply(this, _topic));
         for (int i = 1; i < parts.length && part != null; i++) {
             Topic<T> parent = part;
@@ -181,7 +191,7 @@ public final class Topic<T> {
             ArrayDeque<Topic<T>> cache = new ArrayDeque<>();
             cache.add(topicPart);
 
-            String[] topicParts = topic.split("[/]");
+            String[] topicParts = topic.split("/");
             String nextPart = null;
             while (!cache.isEmpty() && !sink.isCancelled()) {
                 Topic<T> part = cache.poll();

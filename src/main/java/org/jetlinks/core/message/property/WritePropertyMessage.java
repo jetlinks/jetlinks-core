@@ -10,6 +10,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
+ * 修改属性指令,方向: 平台->设备
+ * <p>
+ * 用于修改设备属性,下发指令后,设备需要回复{@link WritePropertyMessageReply}
+ *
  * @author zhouhao
  * @since 1.0.0
  */
@@ -17,6 +21,9 @@ import java.util.Map;
 @Setter
 public class WritePropertyMessage extends CommonDeviceMessage implements RepayableDeviceMessage<WritePropertyMessageReply> {
 
+    /**
+     * 要修改的属性，key 为物模型中对应的属性ID,value为属性值
+     */
     private Map<String, Object> properties = new LinkedHashMap<>();
 
     public void addProperty(String key, Object value) {

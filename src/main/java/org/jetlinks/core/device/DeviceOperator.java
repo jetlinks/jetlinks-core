@@ -161,5 +161,8 @@ public interface DeviceOperator extends Configurable {
      */
     Mono<Boolean> updateMetadata(String metadata);
 
+    /**
+     * @return 获取设备对应的产品操作接口
+     */
     Mono<DeviceProductOperator> getProduct();
 }
