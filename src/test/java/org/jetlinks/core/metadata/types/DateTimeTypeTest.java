@@ -40,6 +40,14 @@ public class DateTimeTypeTest {
 
     }
 
+
+    @Test
+    public void testString(){
+
+        DateTimeType.GLOBAL.convert("1600262329000");
+
+    }
+
     @Test
     public void testTimestamp() {
 
