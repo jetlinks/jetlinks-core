@@ -109,8 +109,11 @@ public enum MessageType {
     UPGRADE_FIRMWARE_PROGRESS(UpgradeFirmwareProgressMessage::new),
 
     //透传消息
-    DIRECT(DirectDeviceMessage::new)
-    ;
+    DIRECT(DirectDeviceMessage::new),
+
+    //更新标签
+    //sice 1.1.2
+    UPDATE_TAG(UpdateTagMessage::new);
 
     Supplier<? extends Message> newInstance;
 
@@ -145,13 +148,16 @@ public enum MessageType {
             return Optional.of(EVENT);
         }
 
-        if (map.containsKey("function")) {
+        if (map.containsKey("functionId")) {
             return map.containsKey("inputs") ? Optional.of(INVOKE_FUNCTION) : Optional.of(INVOKE_FUNCTION_REPLY);
         }
 
         if (map.containsKey("properties")) {
             Object properties = map.get("properties");
             return properties instanceof Collection ? Optional.of(READ_PROPERTY) : Optional.of(READ_PROPERTY_REPLY);
+        }
+        if (map.containsKey("tags")) {
+            return Optional.of(UPDATE_TAG);
         }
         return Optional.empty();
     }
