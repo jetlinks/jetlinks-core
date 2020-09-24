@@ -33,6 +33,17 @@ public class CoapExchangeMessage implements CoapMessage {
 
     static byte[] empty = new byte[0];
 
+    public void response(CoAP.ResponseCode code) {
+        Response response = new Response(code);
+        exchange.advanced().sendResponse(response);
+    }
+
+    public void response(CoAP.ResponseCode code,byte[] body) {
+        Response response = new Response(code);
+        response.setBytes(body);
+        exchange.advanced().sendResponse(response);
+    }
+
     public void response(CoapResponseMessage message) {
         Response response = new Response(message.getCode());
 
