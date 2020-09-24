@@ -33,4 +33,12 @@ public interface ToDeviceMessageContext extends MessageEncodeContext {
      */
     @Nonnull
     DeviceSession getSession();
+
+    /**
+     * 获取指定设备的会话
+     *
+     * @param deviceId 设备ID
+     * @return mono
+     */
+    Mono<DeviceSession> getSession(String deviceId);
 }
