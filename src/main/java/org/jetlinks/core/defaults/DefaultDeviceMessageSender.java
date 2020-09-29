@@ -28,9 +28,11 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
 
     private final DeviceRegistry registry;
 
+    private static final long DEFAULT_TIMEOUT = TimeUnit.SECONDS.toMillis(Integer.getInteger("jetlinks.device.message.default-timeout", 10));
+
     @Setter
     @Getter
-    private long defaultTimeout = TimeUnit.SECONDS.toMillis(10);
+    private long defaultTimeout = DEFAULT_TIMEOUT;
 
     private final DeviceMessageSenderInterceptor globalInterceptor;
 
