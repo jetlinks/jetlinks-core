@@ -58,4 +58,7 @@ public interface Headers {
     HeaderKey<String> sendFrom = HeaderKey.of("send-from", null);
     HeaderKey<String> replyFrom = HeaderKey.of("reply-from", null);
 
+    //是否使用时间戳作为数据ID
+    HeaderKey<Boolean> useTimestampAsId = HeaderKey.of("useTimestampId", false);
+
 }
