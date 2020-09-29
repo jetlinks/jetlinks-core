@@ -124,6 +124,16 @@ public interface ProtocolSupport extends Disposable {
     }
 
     /**
+     * 获取协议初始化所需要的配置定义
+     *
+     * @return 配置定义
+     * @since 1.1.2
+     */
+    default Mono<ConfigMetadata> getInitConfigMetadata() {
+        return Mono.empty();
+    }
+
+    /**
      * 初始化协议
      *
      * @param configuration 配置信息

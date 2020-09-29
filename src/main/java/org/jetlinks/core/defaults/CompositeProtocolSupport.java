@@ -54,6 +54,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     private Disposable.Composite composite = Disposables.composite();
 
+    private Mono<ConfigMetadata> initConfigMetadata = Mono.empty();
+
     private List<Consumer<Map<String, Object>>> doOnInit = new CopyOnWriteArrayList<>();
 
     @Override
@@ -63,6 +65,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         }
         disposed = true;
         composite.dispose();
+    }
+
+    public void setInitConfigMetadata(ConfigMetadata metadata) {
+        initConfigMetadata = Mono.just(metadata);
     }
 
     @Override
@@ -173,6 +179,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Override
     public Mono<ConfigMetadata> getConfigMetadata(Transport transport) {
         return configMetadata.getOrDefault(transport.getId(), Mono::empty).get();
+    }
+
+    public Mono<ConfigMetadata> getInitConfigMetadata() {
+        return initConfigMetadata;
     }
 
     @Nonnull
