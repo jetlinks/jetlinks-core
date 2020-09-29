@@ -58,6 +58,11 @@ public interface FunctionInvokeMessageSender {
      */
     Flux<FunctionInvokeMessageReply> send();
 
+    /**
+     * 异步发送,并忽略返回结果
+     *
+     * @return void
+     */
     default Mono<Void> sendAndForget() {
         return header(Headers.sendAndForget, true)
                 .async()
