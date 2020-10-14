@@ -21,7 +21,7 @@ import java.util.Map;
 public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> implements DeviceMessageReply {
     private static final long serialVersionUID = -6849794470754667710L;
 
-    private boolean success;
+    private boolean success = true;
 
     private String code;
 
@@ -126,8 +126,8 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
 
     @Override
     public JSONObject toJson() {
-        JSONObject json = FastBeanCopier.copy(this,JSONObject::new);
-        json.put("messageType",getMessageType().name());
+        JSONObject json = FastBeanCopier.copy(this, JSONObject::new);
+        json.put("messageType", getMessageType().name());
         return json;
     }
 
