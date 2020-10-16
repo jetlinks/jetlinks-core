@@ -27,11 +27,7 @@ public class ReportPropertyMessage extends CommonDeviceMessage {
     private Map<String, Object> properties;
 
     public static ReportPropertyMessage create() {
-        ReportPropertyMessage reply = new ReportPropertyMessage();
-
-        reply.setTimestamp(System.currentTimeMillis());
-
-        return reply;
+        return new ReportPropertyMessage();
     }
 
     public ReportPropertyMessage success(Map<String, Object> properties) {

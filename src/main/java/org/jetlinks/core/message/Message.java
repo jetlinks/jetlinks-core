@@ -63,7 +63,7 @@ public interface Message extends Jsonable, Serializable {
      * @return this
      * @see Headers
      */
-    DeviceMessage addHeader(String header, Object value);
+    Message addHeader(String header, Object value);
 
     /**
      * 添加header,如果header已存在则放弃
@@ -72,7 +72,7 @@ public interface Message extends Jsonable, Serializable {
      * @param value  header 值
      * @return this
      */
-    DeviceMessage addHeaderIfAbsent(String header, Object value);
+    Message addHeaderIfAbsent(String header, Object value);
 
 
     /**
@@ -82,13 +82,13 @@ public interface Message extends Jsonable, Serializable {
      * @return this
      * @see Headers
      */
-    DeviceMessage removeHeader(String header);
+    Message removeHeader(String header);
 
     /**
      * @see Headers
      * @see this#addHeader(String, Object)
      */
-    default <T> DeviceMessage addHeader(HeaderKey<T> header, T value) {
+    default <T> Message addHeader(HeaderKey<T> header, T value) {
         return addHeader(header.getKey(), value);
     }
 
@@ -96,7 +96,7 @@ public interface Message extends Jsonable, Serializable {
      * @see Headers
      * @see this#addHeaderIfAbsent(String, Object)
      */
-    default <T> DeviceMessage addHeaderIfAbsent(HeaderKey<T> header, T value) {
+    default <T> Message addHeaderIfAbsent(HeaderKey<T> header, T value) {
         return addHeaderIfAbsent(header.getKey(), value);
     }
 

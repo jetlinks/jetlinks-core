@@ -12,4 +12,21 @@ public interface DeviceMessage extends Message, Jsonable {
 
     long getTimestamp();
 
+    @Override
+    default <T> DeviceMessage addHeader(HeaderKey<T> header, T value) {
+        Message.super.addHeader(header, value);
+        return this;
+    }
+
+    @Override
+    DeviceMessage addHeader(String header, Object value);
+
+    @Override
+    default <T> DeviceMessage addHeaderIfAbsent(HeaderKey<T> header, T value) {
+        Message.super.addHeaderIfAbsent(header, value);
+        return this;
+    }
+
+    @Override
+    DeviceMessage addHeaderIfAbsent(String header, Object value);
 }
