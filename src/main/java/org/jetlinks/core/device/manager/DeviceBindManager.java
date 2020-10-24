@@ -47,6 +47,19 @@ public interface DeviceBindManager {
                                @Nonnull String key);
 
     /**
+     * 根据deviceId获取设备ID
+     *
+     * @param type     类型
+     * @param deviceId deviceId
+     * @return deviceId
+     */
+    default Mono<BindInfo> getBindInfoByDeviceId(@Nonnull String type,
+                                                 @Nonnull String deviceId) {
+        return Mono.error(new UnsupportedOperationException());
+    }
+
+
+    /**
      * 获取指定key对应的绑定信息
      *
      * @param type 类型
