@@ -11,6 +11,7 @@ public interface Headers {
 
     /**
      * 保持在线,与{@link DeviceOnlineMessage}配合使用.
+     *
      * @see Headers#keepOnlineTimeoutSeconds
      */
     HeaderKey<Boolean> keepOnline = HeaderKey.of("keepOnline", true);
@@ -61,4 +62,6 @@ public interface Headers {
     //是否使用时间戳作为数据ID
     HeaderKey<Boolean> useTimestampAsId = HeaderKey.of("useTimestampId", false);
 
+    //是否属性为部分属性,如果为true,在列式存储策略下,将会把之前上报的属性合并到一起进行存储.
+    HeaderKey<Boolean> partialProperties = HeaderKey.of("partialProperties", false);
 }
