@@ -9,22 +9,47 @@ public class TopicUtils {
 
     private final static PathMatcher pathMatcher = new AntPathMatcher();
 
-    public static boolean match(String topic, String target) {
+    /**
+     * 匹配topic
+     *
+     * <pre>
+     *     match("/test/*","/test/1"); // true
+     *     match("/test/*","/test/1/2"); // false
+     *     match("/test/**","/test/1/2"); // true
+     * </pre>
+     *
+     * @param pattern 匹配模版
+     * @param topic   要匹配的topic
+     * @return 是否匹配
+     */
+    public static boolean match(String pattern, String topic) {
 
-        if (topic.equals(target)) {
+        if (pattern.equals(topic)) {
             return true;
         }
 
-        if (!topic.contains("*")
-                && !topic.contains("#") && !topic.contains("+")
-                && !topic.contains("{")) {
+        if (!pattern.contains("*")
+                && !pattern.contains("#") && !pattern.contains("+")
+                && !pattern.contains("{")) {
             return false;
         }
 
-        return pathMatcher.match(topic.replace("#", "**").replace("+", "*"), target);
+        return pathMatcher.match(pattern.replace("#", "**").replace("+", "*"), topic);
 
     }
 
+    /**
+     * 根据模版从url上提取变量,如果提取出错则返回空Map
+     *
+     * <pre>
+     *   getPathVariables("/device/{productId}","/device/test123");
+     *   => {"productId","test1234"}
+     * </pre>
+     *
+     * @param template 模版
+     * @param topic    要提取的topic
+     * @return 提取结果
+     */
     public static Map<String, String> getPathVariables(String template, String topic) {
         try {
             return pathMatcher.extractUriTemplateVariables(template, topic);
@@ -33,6 +58,23 @@ public class TopicUtils {
         }
     }
 
+    /**
+     * 展开topic
+     * <p>
+     * before:
+     * <pre>
+     *      /device/a,b,v/*
+     *  </pre>
+     * after:
+     * <pre>
+     *     /device/a/*
+     *     /device/b/*
+     *     /device/v/*
+     * </pre>
+     *
+     * @param topic topic
+     * @return 展开的topic集合
+     */
     public static List<String> expand(String topic) {
         if (!topic.contains(",")) {
             return Collections.singletonList(topic);
@@ -51,7 +93,7 @@ public class TopicUtils {
             }
             return expands;
         }
-        
+
         List<String> nextTopics = expand(parts[1]);
 
         for (String split : first.split(",")) {
