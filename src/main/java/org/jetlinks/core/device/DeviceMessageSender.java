@@ -47,6 +47,16 @@ public interface DeviceMessageSender {
     <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping);
 
     /**
+     * 发送消息并获取返回
+     *
+     * @param message 消息
+     * @param <R>     回复类型
+     * @return 异步发送结果
+     * @see this#send(Publisher)
+     */
+    <R extends DeviceMessage> Flux<R> send(DeviceMessage message);
+
+    /**
      * 发送{@link org.jetlinks.core.message.function.FunctionInvokeMessage}消息更便捷的API
      *
      * @param function 要执行的功能
