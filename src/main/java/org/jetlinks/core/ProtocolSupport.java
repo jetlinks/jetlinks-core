@@ -63,17 +63,27 @@ public interface ProtocolSupport extends Disposable {
     }
 
     /**
-     * 获取设备元数据编解码器
+     * 获取默认的设备物模型编解码器
      * <ul>
      * <li>用于将平台统一的设备定义规范转码为协议的规范</li>
      * <li>用于将协议的规范转为平台统一的设备定义规范</li>
      * *
      * </ul>
      *
-     * @return 元数据编解码器
+     * @return 物模型编解码器
      */
     @Nonnull
     DeviceMetadataCodec getMetadataCodec();
+
+    /**
+     * 获取所有支持的物模型编解码器
+     *
+     * @return 物模型
+     * @since 1.1.4
+     */
+    default Flux<DeviceMetadataCodec> getMetadataCodecs() {
+        return Flux.just(getMetadataCodec());
+    }
 
     /**
      * 进行设备认证
