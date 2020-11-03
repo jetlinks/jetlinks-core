@@ -27,6 +27,9 @@ public class GeoPoint implements Serializable {
 
 
     public static GeoPoint of(Object val) {
+        if (val == null) {
+            return null;
+        }
         Object tmp = val;
         if (val instanceof GeoPoint) {
             return ((GeoPoint) val);
@@ -51,7 +54,7 @@ public class GeoPoint implements Serializable {
             Map<Object, Object> mapVal = ((Map<Object, Object>) val);
             Object lon = mapVal.getOrDefault("lon", mapVal.get("x"));
             Object lat = mapVal.getOrDefault("lat", mapVal.get("y"));
-            val = new Object[]{lon,lat};
+            val = new Object[]{lon, lat};
         }
         //  [lon,lat]
         if (val instanceof Collection) {
@@ -61,7 +64,8 @@ public class GeoPoint implements Serializable {
         if (val instanceof Object[]) {
             Object[] arr = ((Object[]) val);
             if (arr.length >= 2) {
-                return new GeoPoint(new BigDecimal(String.valueOf(arr[0])).doubleValue(), new BigDecimal(String.valueOf(arr[1])).doubleValue());
+                return new GeoPoint(new BigDecimal(String.valueOf(arr[0])).doubleValue(), new BigDecimal(String.valueOf(arr[1]))
+                        .doubleValue());
             }
         }
         throw new IllegalArgumentException("unsupported geo format:" + tmp);

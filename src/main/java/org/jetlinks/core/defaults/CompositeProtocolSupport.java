@@ -16,6 +16,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,6 +56,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private Disposable.Composite composite = Disposables.composite();
 
     private Mono<ConfigMetadata> initConfigMetadata = Mono.empty();
+
+    private List<DeviceMetadataCodec> metadataCodecs = new ArrayList<>();
 
     private List<Consumer<Map<String, Object>>> doOnInit = new CopyOnWriteArrayList<>();
 
@@ -107,7 +110,7 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Override
     public Mono<DeviceMessageSenderInterceptor> getSenderInterceptor() {
         return Mono.justOrEmpty(deviceMessageSenderInterceptor)
-                .defaultIfEmpty(DeviceMessageSenderInterceptor.DO_NOTING);
+                   .defaultIfEmpty(DeviceMessageSenderInterceptor.DO_NOTING);
     }
 
     public synchronized void addMessageSenderInterceptor(DeviceMessageSenderInterceptor interceptor) {
@@ -137,9 +140,9 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Override
     public Flux<Transport> getSupportedTransport() {
         return Flux.fromIterable(messageCodecSupports.values())
-                .flatMap(Supplier::get)
-                .map(DeviceMessageCodec::getSupportTransport)
-                .distinct(Transport::getId);
+                   .flatMap(Supplier::get)
+                   .map(DeviceMessageCodec::getSupportTransport)
+                   .distinct(Transport::getId);
     }
 
     @Nonnull
@@ -154,15 +157,23 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         return metadataCodec;
     }
 
+    public Flux<DeviceMetadataCodec> getMetadataCodecs() {
+        return Flux.merge(Flux.just(metadataCodec), Flux.fromIterable(metadataCodecs));
+    }
+
+    public void addDeviceMetadataCodec(DeviceMetadataCodec codec) {
+        metadataCodecs.add(codec);
+    }
+
     @Nonnull
     @Override
     public Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
                                                      @Nonnull DeviceOperator deviceOperation) {
         return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
-                .flatMap(at -> at
-                        .authenticate(request, deviceOperation)
-                        .defaultIfEmpty(AuthenticationResponse.error(400, "unsupported")))
-                .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("unsupported authentication request : " + request)));
+                   .flatMap(at -> at
+                           .authenticate(request, deviceOperation)
+                           .defaultIfEmpty(AuthenticationResponse.error(400, "unsupported")))
+                   .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("unsupported authentication request : " + request)));
     }
 
     @Nonnull
@@ -170,10 +181,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     public Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
                                                      @Nonnull DeviceRegistry registry) {
         return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
-                .flatMap(at -> at
-                        .authenticate(request, registry)
-                        .defaultIfEmpty(AuthenticationResponse.error(400, "unsupported")))
-                .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("unsupported authentication request : " + request)));
+                   .flatMap(at -> at
+                           .authenticate(request, registry)
+                           .defaultIfEmpty(AuthenticationResponse.error(400, "unsupported")))
+                   .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("unsupported authentication request : " + request)));
     }
 
     @Override
