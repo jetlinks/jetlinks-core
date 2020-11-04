@@ -14,13 +14,20 @@ public class DefaultConfigMetadata implements ConfigMetadata {
 
     private String description;
 
-    public DefaultConfigMetadata(){
+    private ConfigScope[] scopes;
+
+    public DefaultConfigMetadata() {
 
     }
 
-    public DefaultConfigMetadata(String name,String description){
-        this.name=name;
-        this.description=description;
+    public DefaultConfigMetadata(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
+
+    @Override
+    public ConfigScope[] getScope() {
+        return this.scopes == null ? ConfigMetadata.super.getScope() : scopes;
     }
 
     private List<ConfigPropertyMetadata> properties = new ArrayList<>();
@@ -30,9 +37,18 @@ public class DefaultConfigMetadata implements ConfigMetadata {
         return properties;
     }
 
+    public DefaultConfigMetadata scope(ConfigScope... scopes) {
+        this.scopes = scopes;
+        return this;
+    }
+
     public DefaultConfigMetadata add(ConfigPropertyMetadata metadata) {
         properties.add(metadata);
         return this;
+    }
+
+    public DefaultConfigMetadata add(String property, String name, DataType type) {
+        return add(property, name, null, type);
     }
 
     public DefaultConfigMetadata add(String property, String name, String description, DataType type) {
