@@ -27,6 +27,21 @@ public interface DeviceBindManager {
                     @Nonnull String deviceId);
 
     /**
+     * 批量绑定设备
+     *
+     * @param type      类型
+     * @param bindInfos 绑定信息
+     * @return void
+     * @since 1.1.4
+     */
+    default Mono<Void> bindBatch(@Nonnull String type, Collection<BindInfo> bindInfos) {
+        return Flux
+                .fromIterable(bindInfos)
+                .flatMap(bindInfo -> bind(type, bindInfo.getKey(), bindInfo.getDeviceId()))
+                .then();
+    }
+
+    /**
      * 解绑设备
      *
      * @param type 类型
