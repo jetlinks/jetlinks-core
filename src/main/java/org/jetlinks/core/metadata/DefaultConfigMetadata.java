@@ -4,6 +4,7 @@ import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -26,8 +27,8 @@ public class DefaultConfigMetadata implements ConfigMetadata {
     }
 
     @Override
-    public ConfigScope[] getScope() {
-        return this.scopes == null ? ConfigMetadata.super.getScope() : scopes;
+    public ConfigScope[] getScopes() {
+        return this.scopes == null ? ConfigMetadata.super.getScopes() : scopes;
     }
 
     private List<ConfigPropertyMetadata> properties = new ArrayList<>();
@@ -49,6 +50,19 @@ public class DefaultConfigMetadata implements ConfigMetadata {
 
     public DefaultConfigMetadata add(String property,
                                      String name,
+                                     DataType type) {
+        return add(property, name, null, type);
+    }
+
+    public DefaultConfigMetadata add(String property,
+                                     String name,
+                                     String description,
+                                     DataType type) {
+        return add(Property.of(property, name, description, type, all));
+    }
+
+    public DefaultConfigMetadata add(String property,
+                                     String name,
                                      DataType type,
                                      ConfigScope... scopes) {
         return add(property, name, null, type, scopes);
@@ -59,7 +73,24 @@ public class DefaultConfigMetadata implements ConfigMetadata {
                                      String description,
                                      DataType type,
                                      ConfigScope... scopes) {
-        return add(Property.of(property, name, description, type, scopes.length == 0 ? all : scopes));
+        return add(Property.of(property, name, description, type, scopes));
+    }
+
+    @Override
+    public ConfigMetadata copy(ConfigScope... scopes) {
+        DefaultConfigMetadata configMetadata = new DefaultConfigMetadata(name, description);
+        configMetadata.scopes = this.scopes;
+        if (scopes == null || scopes.length == 0) {
+            configMetadata.properties = new ArrayList<>(properties);
+        } else {
+            configMetadata.properties =
+                    this.properties
+                            .stream()
+                            .filter(conf -> conf.hasAnyScope(scopes))
+                            .collect(Collectors.toList());
+        }
+
+        return configMetadata;
     }
 
     @Getter
