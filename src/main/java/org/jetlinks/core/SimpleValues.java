@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 class SimpleValues implements Values {
 
     @NonNull
-    private Map<String, Object> values;
+    private final Map<String, Object> values;
 
     @Override
     public Map<String, Object> getAllValues() {
@@ -19,7 +19,8 @@ class SimpleValues implements Values {
 
     @Override
     public Optional<Value> getValue(String key) {
-        return Optional.ofNullable(key)
+        return Optional
+                .ofNullable(key)
                 .map(values::get)
                 .map(Value::simple);
     }

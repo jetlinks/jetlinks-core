@@ -38,7 +38,7 @@ public interface StorageConfigurable extends Configurable {
                         return getParent()
                                 .flatMap(parent -> parent.getConfigs(nonExistent))
                                 .map(parentValues -> parentValues.merge(values))
-                                .switchIfEmpty(Mono.just(values));
+                                .defaultIfEmpty(values);
                     }
                     return Mono.just(values);
                 });

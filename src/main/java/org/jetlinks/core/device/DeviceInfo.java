@@ -1,8 +1,10 @@
 package org.jetlinks.core.device;
 
 import lombok.*;
+import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigKeyValue;
+import org.springframework.util.StringUtils;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -32,11 +34,13 @@ public class DeviceInfo implements Serializable {
 
     /**
      * 消息协议
+     *
+     * @see ProtocolSupport#getId()
      */
     private String protocol;
 
     /**
-     * 元数据
+     * 物模型
      */
     private String metadata;
 
@@ -46,13 +50,21 @@ public class DeviceInfo implements Serializable {
     private Map<String, Object> configuration = new HashMap<>();
 
     public DeviceInfo addConfig(String key, Object value) {
-        if(value==null){
+        if (StringUtils.isEmpty(value)) {
             return this;
         }
         if (configuration == null) {
             configuration = new HashMap<>();
         }
         configuration.put(key, value);
+        return this;
+    }
+
+    public DeviceInfo addConfigs(Map<String, ?> configs) {
+        if (configs == null) {
+            return this;
+        }
+        configs.forEach(this::addConfig);
         return this;
     }
 
