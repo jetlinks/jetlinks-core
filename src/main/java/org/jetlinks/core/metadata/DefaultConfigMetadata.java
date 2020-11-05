@@ -47,12 +47,19 @@ public class DefaultConfigMetadata implements ConfigMetadata {
         return this;
     }
 
-    public DefaultConfigMetadata add(String property, String name, DataType type) {
-        return add(property, name, null, type);
+    public DefaultConfigMetadata add(String property,
+                                     String name,
+                                     DataType type,
+                                     ConfigScope... scopes) {
+        return add(property, name, null, type, scopes);
     }
 
-    public DefaultConfigMetadata add(String property, String name, String description, DataType type) {
-        return add(Property.of(property, name, description, type));
+    public DefaultConfigMetadata add(String property,
+                                     String name,
+                                     String description,
+                                     DataType type,
+                                     ConfigScope... scopes) {
+        return add(Property.of(property, name, description, type, scopes.length == 0 ? all : scopes));
     }
 
     @Getter
@@ -70,6 +77,8 @@ public class DefaultConfigMetadata implements ConfigMetadata {
         private String description;
 
         private DataType type;
+
+        private ConfigScope[] scopes;
 
     }
 

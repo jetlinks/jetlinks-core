@@ -2,7 +2,7 @@ package org.jetlinks.core.metadata;
 
 import java.io.Serializable;
 
-public interface ConfigPropertyMetadata extends Serializable {
+public interface ConfigPropertyMetadata extends ConfigScopeSupport,Serializable {
 
     String getProperty();
 
