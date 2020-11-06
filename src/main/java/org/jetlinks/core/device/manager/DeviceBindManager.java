@@ -17,14 +17,30 @@ public interface DeviceBindManager {
     /**
      * 绑定设备,类型与key组合成唯一键
      *
-     * @param type     类型
+     * @param type     类型 {@link DeviceBindProvider#getId()}
      * @param key      绑定key
      * @param deviceId 平台的设备ID
      * @return void
      */
+    default Mono<Void> bind(@Nonnull String type,
+                            @Nonnull String key,
+                            @Nonnull String deviceId) {
+        return bind(type, key, deviceId, null);
+    }
+
+    /**
+     * 绑定设备,类型与key组合成唯一键
+     *
+     * @param type        类型 {@link DeviceBindProvider#getId()}
+     * @param key         绑定key
+     * @param deviceId    平台的设备ID
+     * @param description 说明
+     * @return void
+     */
     Mono<Void> bind(@Nonnull String type,
                     @Nonnull String key,
-                    @Nonnull String deviceId);
+                    @Nonnull String deviceId,
+                    String description);
 
     /**
      * 批量绑定设备
@@ -37,7 +53,7 @@ public interface DeviceBindManager {
     default Mono<Void> bindBatch(@Nonnull String type, Collection<BindInfo> bindInfos) {
         return Flux
                 .fromIterable(bindInfos)
-                .flatMap(bindInfo -> bind(type, bindInfo.getKey(), bindInfo.getDeviceId()))
+                .flatMap(bindInfo -> bind(type, bindInfo.getKey(), bindInfo.getDeviceId(), bindInfo.getDescription()))
                 .then();
     }
 
@@ -50,6 +66,16 @@ public interface DeviceBindManager {
      */
     Mono<Void> unbind(@Nonnull String type,
                       @Nonnull String key);
+
+    /**
+     * 按设备id解绑
+     *
+     * @param type     类型
+     * @param deviceId 设备ID
+     * @return void
+     */
+    Mono<Void> unbindByDevice(@Nonnull String type,
+                              @Nonnull Collection<String> deviceId);
 
     /**
      * 根据key获取设备ID

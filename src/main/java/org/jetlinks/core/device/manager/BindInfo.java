@@ -12,4 +12,5 @@ import lombok.Setter;
 public class BindInfo {
     private String key;
     private String deviceId;
+    private String description;
 }
