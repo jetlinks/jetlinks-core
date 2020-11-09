@@ -36,6 +36,9 @@ public class DataTypes {
     }
 
     public static Supplier<DataType> lookup(String id) {
+        if (id == null) {
+            return null;
+        }
         return supports.get(id);
     }
 }
