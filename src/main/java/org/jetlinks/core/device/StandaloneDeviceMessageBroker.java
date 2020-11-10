@@ -108,7 +108,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
     }
 
     @Override
-    public Flux<DeviceMessageReply> handleReply(String messageId, Duration timeout) {
+    public Flux<DeviceMessageReply> handleReply(String deviceId,String messageId, Duration timeout) {
 
         return replyProcessor
                 .computeIfAbsent(messageId, ignore -> UnicastProcessor.create())

@@ -28,7 +28,7 @@ public class StandaloneDeviceMessageBrokerTest {
         message.setFunctionId("test");
         message.setMessageId("test");
 
-        Flux<Boolean> successReply = handler.handleReply(message.getMessageId(), Duration.ofSeconds(10))
+        Flux<Boolean> successReply = handler.handleReply("test",message.getMessageId(), Duration.ofSeconds(10))
                 .map(DeviceMessageReply::isSuccess);
 
         handler.send("test", Mono.just(message))
@@ -83,7 +83,7 @@ public class StandaloneDeviceMessageBrokerTest {
         message.setMessageId("test");
 
         Flux<Boolean> successReply = handler
-                .handleReply(message.getMessageId(), Duration.ofSeconds(2))
+                .handleReply("test",message.getMessageId(), Duration.ofSeconds(2))
                 .map(DeviceMessageReply::isSuccess);
 
         handler.send("test", Mono.just(message))

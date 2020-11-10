@@ -17,7 +17,6 @@ import java.util.function.Supplier;
 @AllArgsConstructor
 public enum MessageType {
 
-    UNKNOWN(null),
     //上报设备属性
     REPORT_PROPERTY(ReportPropertyMessage::new),
 
@@ -35,7 +34,7 @@ public enum MessageType {
     EVENT(EventMessage::new),
 
     //广播,暂未支持
-    BROADCAST(null),
+    BROADCAST(DefaultBroadcastMessage::new),
     //设备上线
     ONLINE(DeviceOnlineMessage::new),
     //设备离线
@@ -112,8 +111,14 @@ public enum MessageType {
     DIRECT(DirectDeviceMessage::new),
 
     //更新标签
-    //sice 1.1.2
-    UPDATE_TAG(UpdateTagMessage::new);
+    //since 1.1.2
+    UPDATE_TAG(UpdateTagMessage::new),
+
+    //日志
+    //since 1.1.4
+    LOG(DeviceLogMessage::new),
+
+    UNKNOWN(null);
 
     Supplier<? extends Message> newInstance;
 

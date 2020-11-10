@@ -166,9 +166,9 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                            }
                            //定义处理来自设备的回复.
                            Flux<R> replyStream = handler
-                                   .handleReply(msg.getMessageId(),
-                                                Duration.ofMillis(msg.getHeader(Headers.timeout)
-                                                                     .orElse(defaultTimeout)))
+                                   .handleReply(msg.getDeviceId(),
+                                                msg.getMessageId(),
+                                                Duration.ofMillis(msg.getHeader(Headers.timeout).orElse(defaultTimeout)))
                                    .map(replyMapping)
                                    .onErrorResume(DeviceOperationException.class, error -> {
                                        if (error.getCode() == ErrorCode.CLIENT_OFFLINE) {
