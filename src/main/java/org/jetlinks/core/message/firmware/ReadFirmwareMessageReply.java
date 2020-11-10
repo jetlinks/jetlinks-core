@@ -8,11 +8,11 @@ import org.jetlinks.core.message.MessageType;
 import java.util.Map;
 
 /**
- * 读取固件信息回复
+ * 读取固件信息回复.
  *
+ * @author zhouhao
  * @see ReadFirmwareMessage
  * @since 1.0.3
- * @author zhouhao
  */
 @Getter
 @Setter

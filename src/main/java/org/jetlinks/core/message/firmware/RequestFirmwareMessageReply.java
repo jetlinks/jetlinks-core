@@ -10,8 +10,8 @@ import java.util.Map;
 /**
  * 拉取固件信息响应
  *
- * @since 1.0.3
  * @author zhouhao
+ * @since 1.0.3
  */
 @Getter
 @Setter
@@ -41,6 +41,13 @@ public class RequestFirmwareMessageReply extends CommonDeviceMessageReply<Reques
      * 签名方式,md5,sha256
      */
     private String signMethod;
+
+    /**
+     * 固件ID
+     *
+     * @since 1.1.4
+     */
+    private String firmwareId;
 
     @Override
     public MessageType getMessageType() {

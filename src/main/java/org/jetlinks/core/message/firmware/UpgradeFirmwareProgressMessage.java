@@ -15,20 +15,37 @@ import org.jetlinks.core.message.MessageType;
 @Setter
 public class UpgradeFirmwareProgressMessage extends CommonDeviceMessage {
 
-    //进度0-100
+    /**
+     * 进度0-100
+     */
     private int progress;
 
-    //是否已完成
+    /**
+     * 是否已完成
+     */
     private boolean complete;
 
-    //升级中的固件版本
+    /**
+     * 升级中的固件版本
+     */
     private String version;
 
-    //是否成功
+    /**
+     * 是否成功
+     */
     private boolean success;
 
-    //错误原因
+    /**
+     * 错误原因
+     */
     private String errorReason;
+
+    /**
+     * 固件ID
+     *
+     * @since 1.1.4
+     */
+    private String firmwareId;
 
     @Override
     public MessageType getMessageType() {
