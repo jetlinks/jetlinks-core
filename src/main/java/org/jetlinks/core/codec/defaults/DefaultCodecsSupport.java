@@ -21,6 +21,10 @@ public class DefaultCodecsSupport implements CodecsSupport {
 
     static {
 
+
+        staticCodec.put(byte.class, ByteCodec.INSTANCE);
+        staticCodec.put(Byte.class, ByteCodec.INSTANCE);
+
         staticCodec.put(int.class, IntegerCodec.INSTANCE);
         staticCodec.put(Integer.class, IntegerCodec.INSTANCE);
 
