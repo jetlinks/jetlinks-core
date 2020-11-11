@@ -17,13 +17,27 @@ public class TopicTest {
         root.append("/device/*/*/**").subscribe("1");
 
         root.findTopic("/device/0/message/property/report")
-                .filter(topicPart -> topicPart.getSubscribers().size() > 0)
-                .doOnNext(System.out::println)
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/device/*/*/**")
-                .verifyComplete()
+            .filter(topicPart -> topicPart.getSubscribers().size() > 0)
+            .doOnNext(System.out::println)
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/device/*/*/**")
+            .verifyComplete()
         ;
+    }
+
+    @Test
+    public void testPattern5() {
+        Topic<String> root = Topic.createRoot();
+        root.append("/device/electricity-yd/*/*").subscribe("1");
+
+        root.findTopic("/device/onenetv1/online/")
+            .doOnNext(System.out::println)
+            .map(Topic::getTopic)
+            .count()
+            .as(StepVerifier::create)
+            .expectNext(0L)
+            .verifyComplete();
     }
 
 
@@ -34,12 +48,12 @@ public class TopicTest {
         root.append("/device/0/message/property/report").subscribe("1");
 
         root.findTopic("/device/0/message/property/report")
-                .filter(topicPart -> topicPart.getSubscribers().size() > 0)
-                .doOnNext(System.out::println)
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/device/0/message/property/report")
-                .verifyComplete()
+            .filter(topicPart -> topicPart.getSubscribers().size() > 0)
+            .doOnNext(System.out::println)
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/device/0/message/property/report")
+            .verifyComplete()
         ;
     }
 
@@ -49,11 +63,11 @@ public class TopicTest {
         root.append("/device/*/online");
 
         root.findTopic("/device/0/message/property/report")
-                .doOnNext(System.out::println)
-                .map(Topic<String>::getTopic)
-                .as(StepVerifier::create)
-                .expectComplete()
-                .verify();
+            .doOnNext(System.out::println)
+            .map(Topic<String>::getTopic)
+            .as(StepVerifier::create)
+            .expectComplete()
+            .verify();
     }
 
     @Test
@@ -63,11 +77,11 @@ public class TopicTest {
         root.append("/device/0/message");
 
         root.findTopic("/device/0/message")
-                .doOnNext(System.out::println)
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/device/0/message")
-                .verifyComplete()
+            .doOnNext(System.out::println)
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/device/0/message")
+            .verifyComplete()
         ;
         ///device/**/event/*
     }
@@ -80,11 +94,11 @@ public class TopicTest {
         root.append("/device/0/message/event/**");
 
         root.findTopic("/device/0/message/event/fire_alarm")
-                .doOnNext(System.out::println)
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/device/0/message/event/**")
-                .verifyComplete()
+            .doOnNext(System.out::println)
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/device/0/message/event/**")
+            .verifyComplete()
         ;
         ///device/**/event/*
     }
@@ -96,11 +110,11 @@ public class TopicTest {
         root.append("/device/**/fire_alarm");
 
         root.findTopic("/device/test001/message/event/fire_alarm")
-                .doOnNext(System.out::println)
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/device/**", "/device/**/fire_alarm")
-                .verifyComplete()
+            .doOnNext(System.out::println)
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/device/**", "/device/**/fire_alarm")
+            .verifyComplete()
         ;
         ///device/**/event/*
     }
@@ -112,11 +126,11 @@ public class TopicTest {
         root.append("/device/**/event/*");
 
         root.findTopic("/device/test001/message/event/fire_alarm")
-                .doOnNext(System.out::println)
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/device/**", "/device/**/event/*")
-                .verifyComplete()
+            .doOnNext(System.out::println)
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/device/**", "/device/**/event/*")
+            .verifyComplete()
         ;
         ///device/**/event/*
     }
@@ -128,16 +142,16 @@ public class TopicTest {
         root.append("/1/org/2/dev/4");
 
         root.findTopic("/1/org/**/4")
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/1/org/2/dev/4")
-                .verifyComplete();
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/1/org/2/dev/4")
+            .verifyComplete();
 
         root.findTopic("/1/org/*/*/3")
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/1/org/2/dev/3")
-                .verifyComplete();
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/1/org/2/dev/3")
+            .verifyComplete();
     }
 
     @Test
@@ -156,16 +170,16 @@ public class TopicTest {
         root.append("/1/org/**");
 
         root.findTopic("/1/org/*/dev/*")
-                .doOnNext(System.out::println)
-                .subscribe();
+            .doOnNext(System.out::println)
+            .subscribe();
         System.out.println();
 
         root.findTopic("/1/org/2/dev/3")
-                .doOnNext(System.out::println)
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/**", "/1/org/**", "/1/org/2/dev/3")
-                .verifyComplete();
+            .doOnNext(System.out::println)
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/**", "/1/org/**", "/1/org/2/dev/3")
+            .verifyComplete();
 
         Assert.assertNull(root.getTopic("/1/org/5").orElse(null));
 
@@ -181,10 +195,10 @@ public class TopicTest {
         System.out.println(root);
 
         root.findTopic("/device/1")
-                .map(Topic::getTopic)
-                .as(StepVerifier::create)
-                .expectNext("/device/*")
-                .verifyComplete();
+            .map(Topic::getTopic)
+            .as(StepVerifier::create)
+            .expectNext("/device/*")
+            .verifyComplete();
     }
 
     @Test
@@ -196,10 +210,10 @@ public class TopicTest {
         root.append("/device/2/light/off").subscribe("testId2");
 
         root.findTopic("/device/*/*/on")
-                .count()
-                .as(StepVerifier::create)
-                .expectNext(2L)
-                .verifyComplete();
+            .count()
+            .as(StepVerifier::create)
+            .expectNext(2L)
+            .verifyComplete();
     }
 
 
@@ -226,7 +240,8 @@ public class TopicTest {
         log.debug("topics:{}", root.getTotalTopic());
 
         {
-            Duration duration = root.findTopic("/device/1/2/message/property/read")
+            Duration duration = root
+                    .findTopic("/device/1/2/message/property/read")
                     .map(Topic::getTopic)
                     .count()
                     .as(StepVerifier::create)
@@ -236,7 +251,8 @@ public class TopicTest {
         }
 
         {
-            Duration duration = root.findTopic("/device/1/*/message/property/read")
+            Duration duration = root
+                    .findTopic("/device/1/*/message/property/read")
                     .map(Topic::getTopic)
                     .count()
                     .as(StepVerifier::create)
@@ -246,7 +262,8 @@ public class TopicTest {
         }
 
         {
-            Duration duration = root.findTopic("/device/**")
+            Duration duration = root
+                    .findTopic("/device/**")
                     .map(Topic::getTopic)
                     .count()
                     .as(StepVerifier::create)

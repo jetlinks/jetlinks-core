@@ -51,23 +51,28 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
 
     @Override
     public Mono<DeviceMetadata> getMetadata() {
-        return Mono.justOrEmpty(metadata)
-                .switchIfEmpty(getProtocol()
-                        .flatMap(protocol -> getConfig(DeviceConfigKey.metadata)
-                                .flatMap(protocol.getMetadataCodec()::decode)
-                                .doOnNext(metadata -> metadataUpdater.set(this, metadata))));
+        return Mono
+                .justOrEmpty(metadata)
+                .switchIfEmpty(this.getProtocol()
+                                   .flatMap(protocol -> this
+                                           .getConfig(DeviceConfigKey.metadata)
+                                           .flatMap(protocol.getMetadataCodec()::decode)
+                                           .doOnNext(metadata -> this.metadata = metadata))
+                );
     }
 
     @Override
     public Mono<Boolean> updateMetadata(String metadata) {
-        return setConfig(DeviceConfigKey.metadata.value(metadata))
+        return this
+                .setConfig(DeviceConfigKey.metadata.value(metadata))
                 .doOnSuccess((v) -> metadataUpdater.set(this, null));
     }
 
 
     @Override
     public Mono<ProtocolSupport> getProtocol() {
-        return getConfig(DeviceConfigKey.protocol)
+        return this
+                .getConfig(DeviceConfigKey.protocol)
                 .flatMap(protocolSupports::getProtocol);
     }
 
