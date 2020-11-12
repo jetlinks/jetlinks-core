@@ -20,10 +20,8 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.jetlinks.core.device.DeviceConfigKey.*;
-import static org.jetlinks.core.device.DeviceConfigKey.selfManageState;
 
 @Slf4j
 public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurable {
@@ -39,6 +37,10 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private final ProtocolSupports supports;
 
     private final Mono<ConfigStorage> storageMono;
+
+    private final Mono<ProtocolSupport> protocolSupportMono;
+
+    private final Mono<DeviceMetadata> metadataMono;
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
@@ -61,7 +63,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         this.handler = handler;
         this.messageSender = new DefaultDeviceMessageSender(handler, this, registry, interceptor);
         this.storageMono = storageManager.getStorage("device:" + id);
-
+        this.metadataMono = getParent().flatMap(DeviceProductOperator::getMetadata);
+        this.protocolSupportMono = getProduct().flatMap(DeviceProductOperator::getProtocol);
     }
 
     @Override
@@ -105,13 +108,16 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<Byte> getState() {
-        return getSelfConfigs(Arrays.asList("state", parentGatewayId.getKey(), selfManageState.getKey()))
+        return this
+                .getSelfConfigs(Arrays.asList("state", parentGatewayId.getKey(), selfManageState.getKey()))
                 .flatMap(values -> {
-                    Byte state = values.getValue("state")
+                    Byte state = values
+                            .getValue("state")
                             .map(val -> val.as(Byte.class))
                             .orElse(DeviceState.unknown);
 
-                    boolean isSelfManageState = values.getValue(selfManageState.getKey())
+                    boolean isSelfManageState = values
+                            .getValue(selfManageState.getKey())
                             .map(val -> val.as(Boolean.class))
                             .orElse(false);
                     if (isSelfManageState) {
@@ -148,8 +154,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
                     //设备缓存的状态
                     Byte state = values.getValue("state")
-                            .map(val -> val.as(Byte.class))
-                            .orElse(DeviceState.unknown);
+                                       .map(val -> val.as(Byte.class))
+                                       .orElse(DeviceState.unknown);
 
 
                     //如果缓存中存储有当前设备所在服务信息则尝试发起状态检查
@@ -194,9 +200,12 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         return getProtocol()
                 .flatMap(ProtocolSupport::getStateChecker) //协议自定义了状态检查逻辑
                 .defaultIfEmpty(device -> doCheckState()) //默认的检查
-                .flatMap(deviceStateChecker ->
+                .flatMap(deviceStateChecker -> Mono
                         //检查最新状态 并和当前状态进行对比
-                        Mono.zip(deviceStateChecker.checkState(this).defaultIfEmpty(DeviceState.offline), getState())
+                        .zip(
+                                deviceStateChecker.checkState(this).defaultIfEmpty(DeviceState.offline),
+                                getState()
+                        )
                 )
                 .flatMap(tp2 -> {
                     byte newer = tp2.getT1();
@@ -220,22 +229,24 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<Long> getOnlineTime() {
-        return getSelfConfig("onlineTime")
+        return this
+                .getSelfConfig("onlineTime")
                 .map(val -> val.as(Long.class))
-                .switchIfEmpty(Mono.defer(() ->
-                        this.getSelfConfig(parentGatewayId)
-                                .flatMap(registry::getDevice)
-                                .flatMap(DeviceOperator::getOnlineTime)));
+                .switchIfEmpty(Mono.defer(() -> this
+                        .getSelfConfig(parentGatewayId)
+                        .flatMap(registry::getDevice)
+                        .flatMap(DeviceOperator::getOnlineTime)));
     }
 
     @Override
     public Mono<Long> getOfflineTime() {
-        return getSelfConfig("offlineTime")
+        return this
+                .getSelfConfig("offlineTime")
                 .map(val -> val.as(Long.class))
-                .switchIfEmpty(Mono.defer(() ->
-                        this.getSelfConfig(parentGatewayId)
-                                .flatMap(registry::getDevice)
-                                .flatMap(DeviceOperator::getOfflineTime)));
+                .switchIfEmpty(Mono.defer(() -> this
+                        .getSelfConfig(parentGatewayId)
+                        .flatMap(registry::getDevice)
+                        .flatMap(DeviceOperator::getOfflineTime)));
     }
 
     @Override
@@ -293,11 +304,9 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 .flatMap(protocolSupport -> protocolSupport.authenticate(request, this));
     }
 
-    private AtomicReference<DeviceMetadata> metadataCache = new AtomicReference<>();
-
     @Override
     public Mono<DeviceMetadata> getMetadata() {
-        return getParent().flatMap(DeviceProductOperator::getMetadata);
+        return metadataMono;
 //        return Mono.justOrEmpty(metadataCache.get())
 //                .switchIfEmpty(getProtocol()
 //                        .flatMap(protocol -> getConfig(DeviceConfigKey.metadata)
@@ -317,9 +326,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<ProtocolSupport> getProtocol() {
-        return getConfig(protocol)
-                .flatMap(supports::getProtocol)
-                .switchIfEmpty(getParent().flatMap(DeviceProductOperator::getProtocol));
+        return protocolSupportMono;
     }
 
     @Override

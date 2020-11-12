@@ -43,6 +43,16 @@ public interface Headers {
      */
     HeaderKey<Long> timeout = HeaderKey.of("timeout", TimeUnit.SECONDS.toMillis(10));
 
+    /**
+     * 是否合并历史属性数据,设置此消息头后,将会把历史最新的消息合并到消息体里
+     *
+     * @see org.jetlinks.core.message.property.ReportPropertyMessage
+     * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
+     * @see org.jetlinks.core.message.property.WritePropertyMessageReply
+     * @since 1.1.4
+     */
+    HeaderKey<Boolean> mergeLatest = HeaderKey.of("mergeLatest", false);
+
     //******** 分片消息,一个请求,设备将结果分片返回,通常用于处理大消息. **********
     //分片消息ID(为平台下发消息时的消息ID)
     HeaderKey<String> fragmentBodyMessageId = HeaderKey.of("frag_msg_id", null);

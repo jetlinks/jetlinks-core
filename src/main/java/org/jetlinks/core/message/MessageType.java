@@ -8,10 +8,7 @@ import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.property.*;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Supplier;
 
 @AllArgsConstructor
@@ -62,7 +59,7 @@ public enum MessageType {
             ChildDeviceMessage children = super.convert(map);
             if (message instanceof Map) {
                 this.convertMessage(((Map<String, Object>) message))
-                        .ifPresent(children::setChildDeviceMessage);
+                    .ifPresent(children::setChildDeviceMessage);
             }
 
             return (T) children;
@@ -77,7 +74,7 @@ public enum MessageType {
             ChildDeviceMessageReply children = super.convert(map);
             if (message instanceof Map) {
                 this.convertMessage(((Map<String, Object>) message))
-                        .ifPresent(children::setChildDeviceMessage);
+                    .ifPresent(children::setChildDeviceMessage);
             }
 
             return (T) children;
@@ -122,6 +119,16 @@ public enum MessageType {
 
     Supplier<? extends Message> newInstance;
 
+    private static final Map<String, MessageType> mapping;
+
+    static {
+        mapping = new HashMap<>();
+        for (MessageType value : values()) {
+            mapping.put(value.name().toLowerCase(), value);
+            mapping.put(value.name().toUpperCase(), value);
+        }
+    }
+
     @SuppressWarnings("all")
     public <T extends Message> T convert(Map<String, Object> map) {
         if (newInstance != null) {
@@ -136,9 +143,7 @@ public enum MessageType {
     }
 
     public static Optional<MessageType> of(String name) {
-        return Arrays.stream(MessageType.values())
-                .filter(messageType -> messageType.name().equalsIgnoreCase(name))
-                .findFirst();
+        return Optional.ofNullable(mapping.get(name));
     }
 
     public static Optional<MessageType> of(Map<String, Object> map) {

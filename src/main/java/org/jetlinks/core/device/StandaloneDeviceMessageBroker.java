@@ -11,6 +11,7 @@ import org.jetlinks.core.message.Message;
 import org.jetlinks.core.server.MessageHandler;
 import org.reactivestreams.Publisher;
 import org.springframework.util.StringUtils;
+import reactor.core.Disposable;
 import reactor.core.publisher.*;
 
 import java.time.Duration;
@@ -54,8 +55,9 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
     }
 
     @Override
-    public void handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper) {
+    public Disposable handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper) {
         stateHandler.put(serverId, stateMapper);
+        return ()->stateHandler.remove(serverId);
     }
 
     @Override

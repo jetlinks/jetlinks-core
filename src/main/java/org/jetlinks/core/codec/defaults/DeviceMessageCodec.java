@@ -33,6 +33,6 @@ public class DeviceMessageCodec implements Codec<Message> {
 
     @Override
     public Payload encode(Message body) {
-        return Payload.of(Unpooled.wrappedBuffer(body.toJson().toJSONString().getBytes()));
+        return Payload.of(Unpooled.wrappedBuffer(JSON.toJSONBytes(body.toJson())));
     }
 }

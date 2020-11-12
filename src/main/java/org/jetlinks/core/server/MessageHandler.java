@@ -5,6 +5,7 @@ import org.jetlinks.core.device.DeviceStateInfo;
 import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.Message;
 import org.reactivestreams.Publisher;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -32,7 +33,7 @@ public interface MessageHandler {
      * @param serverId    服务ID,在集群时,不同的节点serverId不同
      * @param stateMapper 状态检查器
      */
-    void handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper);
+    Disposable handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper);
 
     /**
      * 回复平台下发的指令
