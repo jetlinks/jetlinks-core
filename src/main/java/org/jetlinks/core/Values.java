@@ -32,7 +32,7 @@ public interface Values {
                 .map(val -> (val.as(key.getType())));
     }
 
-    static Values of(Map<String, Object> values) {
-        return SimpleValues.of(values);
+    static Values of(Map<String, ?> values) {
+        return SimpleValues.of((Map)values);
     }
 }
