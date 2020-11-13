@@ -170,10 +170,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     public Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
                                                      @Nonnull DeviceOperator deviceOperation) {
         return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
-                   .flatMap(at -> at
-                           .authenticate(request, deviceOperation)
-                           .defaultIfEmpty(AuthenticationResponse.error(400, "unsupported")))
-                   .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("unsupported authentication request : " + request)));
+                .flatMap(at -> at
+                        .authenticate(request, deviceOperation)
+                        .defaultIfEmpty(AuthenticationResponse.error(400, "无法获取认证结果")))
+                .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("不支持的认证请求:" + request)));
     }
 
     @Nonnull
@@ -183,8 +183,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
                    .flatMap(at -> at
                            .authenticate(request, registry)
-                           .defaultIfEmpty(AuthenticationResponse.error(400, "unsupported")))
-                   .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("unsupported authentication request : " + request)));
+                           .defaultIfEmpty(AuthenticationResponse.error(400, "无法获取认证结果")))
+                   .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("不支持的认证请求:" + request)));
     }
 
     @Override
