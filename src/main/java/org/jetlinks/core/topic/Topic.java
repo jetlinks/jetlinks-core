@@ -188,7 +188,7 @@ public final class Topic<T> {
 
     public static <T> Flux<Topic<T>> find(String topic, Topic<T> topicPart) {
         return Flux.create(sink -> {
-            ArrayDeque<Topic<T>> cache = new ArrayDeque<>();
+            ArrayDeque<Topic<T>> cache = new ArrayDeque<>(128);
             cache.add(topicPart);
 
             String[] topicParts = topic.split("/");

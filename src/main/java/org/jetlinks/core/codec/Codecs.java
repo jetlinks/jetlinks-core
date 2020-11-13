@@ -1,19 +1,19 @@
 package org.jetlinks.core.codec;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jetlinks.core.cache.Caches;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 
 import javax.annotation.Nonnull;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @SuppressWarnings("all")
 @Slf4j
 public final class Codecs {
 
-    private static Map<ResolvableType, Codec<?>> mapping = new ConcurrentHashMap<>();
+    private static Map<ResolvableType, Codec<?>> mapping = Caches.newCache();
 
     private static List<CodecsSupport> allCodec = new CopyOnWriteArrayList<>();
 

@@ -3,6 +3,7 @@ package org.jetlinks.core.topic;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Assert;
 import org.junit.Test;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
@@ -260,7 +261,18 @@ public class TopicTest {
                     .verifyComplete();
             log.debug("find device use time:{}ms", duration.toMillis());
         }
-
+        {
+            Duration duration =
+                    Flux.range(0, 100000)
+                        .flatMap(ignore -> root
+                                .findTopic("/device/1/2/message/property/read"))
+                        .map(Topic::getTopic)
+                        .count()
+                        .as(StepVerifier::create)
+                        .expectNext(100000L)
+                        .verifyComplete();
+            log.debug("find 100000 time:{}ms", duration.toMillis());
+        }
         {
             Duration duration = root
                     .findTopic("/device/**")
