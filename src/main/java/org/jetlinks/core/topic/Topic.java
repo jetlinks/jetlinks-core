@@ -4,12 +4,12 @@ import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.cache.Caches;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
@@ -30,11 +30,11 @@ public final class Topic<T> {
 
     private final int depth;
 
-    private final ConcurrentMap<String, Topic<T>> child = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Topic<T>> child = Caches.newCache();
 
-    private final ConcurrentMap<T, AtomicInteger> subscribers = new ConcurrentHashMap<>();
+    private final ConcurrentMap<T, AtomicInteger> subscribers = Caches.newCache();
 
-    private static final AntPathMatcher matcher = new AntPathMatcher(){
+    private static final AntPathMatcher matcher = new AntPathMatcher() {
         @Override
         protected String[] tokenizePath(String path) {
             return path.split("/");
