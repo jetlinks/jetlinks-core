@@ -22,7 +22,7 @@ public class IntegerCodec implements Codec<Integer> {
 
     @Override
     public Integer decode(@Nonnull Payload payload) {
-        return BytesUtils.beToInt(payload.getBytes());
+        return BytesUtils.beToInt(payload.getBytes(true));
     }
 
     @Override

@@ -31,7 +31,7 @@ public class ErrorCodec implements Codec<Throwable> {
 
     @Override
     public Throwable decode(@Nonnull Payload payload) {
-        return mapping.apply(payload.bodyToString());
+        return mapping.apply(payload.bodyToString(true));
     }
 
     @Override

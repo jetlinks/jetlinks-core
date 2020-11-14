@@ -21,7 +21,7 @@ public class ByteCodec implements Codec<Byte> {
 
     @Override
     public Byte decode(@Nonnull Payload payload) {
-        return payload.getBytes()[0];
+        return payload.getBytes(true)[0];
     }
 
     @Override

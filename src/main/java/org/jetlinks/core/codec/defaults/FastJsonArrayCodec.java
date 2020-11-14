@@ -19,7 +19,7 @@ public class FastJsonArrayCodec implements Codec<JSONArray> {
 
     @Override
     public JSONArray decode(@Nonnull Payload payload) {
-        return JSON.parseArray(payload.bodyToString());
+        return JSON.parseArray(payload.bodyToString(true));
     }
 
     @Override

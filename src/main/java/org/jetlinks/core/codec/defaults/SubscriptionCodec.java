@@ -24,28 +24,27 @@ public class SubscriptionCodec implements Codec<Subscription> {
     @Nullable
     @Override
     public Subscription decode(@Nonnull Payload payload) {
+            ByteBuf body = payload.getBody();
 
-        ByteBuf body = payload.getBody();
+            byte[] subscriberLenArr = new byte[4];
+            body.getBytes(0, subscriberLenArr);
+            int subscriberLen = BytesUtils.beToInt(subscriberLenArr);
 
-        byte[] subscriberLenArr = new byte[4];
-        body.getBytes(0, subscriberLenArr);
-        int subscriberLen = BytesUtils.beToInt(subscriberLenArr);
+            byte[] subscriber = new byte[subscriberLen];
+            body.getBytes(4, subscriber);
+            String subscriberStr = new String(subscriber);
 
-        byte[] subscriber = new byte[subscriberLen];
-        body.getBytes(4, subscriber);
-        String subscriberStr = new String(subscriber);
+            byte[] featureBytes = new byte[8];
+            body.getBytes(4 + subscriberLen, featureBytes);
+            Subscription.Feature[] features = EnumDict
+                    .getByMask(Subscription.Feature.class, BytesUtils.beToLong(featureBytes))
+                    .toArray(new Subscription.Feature[0]);
 
-        byte[] featureBytes = new byte[8];
-        body.getBytes(4 + subscriberLen, featureBytes);
-        Subscription.Feature[] features = EnumDict
-                .getByMask(Subscription.Feature.class, BytesUtils.beToLong(featureBytes))
-                .toArray(new Subscription.Feature[0]);
-
-        int headerLen = 12 + subscriberLen;
-        body.resetReaderIndex();
-        return Subscription.of(subscriberStr, body.slice(headerLen, body.readableBytes() - headerLen)
-                .toString(StandardCharsets.UTF_8)
-                .split("[\t]"), features);
+            int headerLen = 12 + subscriberLen;
+            body.resetReaderIndex();
+            return Subscription.of(subscriberStr, body.slice(headerLen, body.readableBytes() - headerLen)
+                                                      .toString(StandardCharsets.UTF_8)
+                                                      .split("[\t]"), features);
     }
 
     @Override

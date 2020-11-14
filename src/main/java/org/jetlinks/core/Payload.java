@@ -41,11 +41,11 @@ public interface Payload {
     }
 
     default <T> T decode(Decoder<T> decoder) {
-        return decode(decoder, false);
+        return decode(decoder, true);
     }
 
     default <T> T decode(Class<T> decoder) {
-        return decode(decoder, false);
+        return decode(decoder, true);
     }
 
     default <T> T decode(Class<T> decoder, boolean release) {
@@ -53,22 +53,28 @@ public interface Payload {
     }
 
     default Object decode(boolean release) {
-        byte[] payload = getBytes(release);
+        byte[] payload = getBytes(false);
         //maybe json
         if (/* { }*/(payload[0] == 123 && payload[payload.length - 1] == 125)
                 || /* [ ] */(payload[0] == 91 && payload[payload.length - 1] == 93)
         ) {
-            return JSON.parse(new String(payload));
+            try {
+                return JSON.parse(new String(payload));
+            } finally {
+                if (release) {
+                    release();
+                }
+            }
         }
         return decode(Object.class, release);
     }
 
     default Object decode() {
-        return decode(false);
+        return decode(true);
     }
 
     default <T> T convert(Function<ByteBuf, T> mapper) {
-        return convert(mapper, false);
+        return convert(mapper, true);
     }
 
     default <T> T convert(Function<ByteBuf, T> mapper, boolean release) {
@@ -91,7 +97,9 @@ public interface Payload {
     }
 
     default void release(int dec) {
-        ReferenceCountUtil.safeRelease(getBody(), dec);
+        if (ReferenceCountUtil.refCnt(getBody()) >= dec) {
+            ReferenceCountUtil.safeRelease(getBody(), dec);
+        }
     }
 
     default void release() {
@@ -99,7 +107,7 @@ public interface Payload {
     }
 
     default byte[] getBytes() {
-        return getBytes(false);
+        return getBytes(true);
     }
 
     default byte[] getBytes(boolean release) {
@@ -111,7 +119,7 @@ public interface Payload {
     }
 
     default String bodyToString() {
-        return bodyToString(false);
+        return bodyToString(true);
     }
 
     default String bodyToString(boolean release) {
@@ -129,11 +137,11 @@ public interface Payload {
     }
 
     default JSONObject bodyToJson() {
-        return bodyToJson(false);
+        return bodyToJson(true);
     }
 
     default JSONArray bodyToJsonArray() {
-        return bodyToJsonArray(false);
+        return bodyToJsonArray(true);
     }
 
     default JSONArray bodyToJsonArray(boolean release) {
