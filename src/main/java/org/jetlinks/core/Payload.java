@@ -6,8 +6,10 @@ import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
 import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.codec.Decoder;
+import org.jetlinks.core.codec.Encoder;
 
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +26,10 @@ public interface Payload {
     @Nonnull
     ByteBuf getBody();
 
+    default Payload slice() {
+        return Payload.of(getBody().slice());
+    }
+
     default <T> T decode(Decoder<T> decoder, boolean release) {
         try {
             return decoder.decode(this);
@@ -39,18 +45,26 @@ public interface Payload {
     }
 
     default <T> T decode(Class<T> decoder) {
-        return decode(Codecs.lookup(decoder), false);
+        return decode(decoder, false);
     }
 
-    default Object decode() {
-        byte[] payload = getBytes();
+    default <T> T decode(Class<T> decoder, boolean release) {
+        return decode(Codecs.lookup(decoder), release);
+    }
+
+    default Object decode(boolean release) {
+        byte[] payload = getBytes(release);
         //maybe json
         if (/* { }*/(payload[0] == 123 && payload[payload.length - 1] == 125)
                 || /* [ ] */(payload[0] == 91 && payload[payload.length - 1] == 93)
         ) {
             return JSON.parse(new String(payload));
         }
-        return decode(Object.class);
+        return decode(Object.class, release);
+    }
+
+    default Object decode() {
+        return decode(false);
     }
 
     default <T> T convert(Function<ByteBuf, T> mapper) {
@@ -69,7 +83,7 @@ public interface Payload {
     }
 
     default void retain() {
-        getBody().retain();
+        retain(1);
     }
 
     default void retain(int inc) {
@@ -77,11 +91,11 @@ public interface Payload {
     }
 
     default void release(int dec) {
-        getBody().release(dec);
+        ReferenceCountUtil.safeRelease(getBody(), dec);
     }
 
     default void release() {
-        getBody().release();
+        release(1);
     }
 
     default byte[] getBytes() {
@@ -97,14 +111,32 @@ public interface Payload {
     }
 
     default String bodyToString() {
-        return getBody().toString(StandardCharsets.UTF_8);
+        return bodyToString(false);
     }
 
-    default JSONObject bodyToJson() {
+    default String bodyToString(boolean release) {
+        try {
+            return getBody().toString(StandardCharsets.UTF_8);
+        } finally {
+            if (release) {
+                release();
+            }
+        }
+    }
+
+    default JSONObject bodyToJson(boolean release) {
         return decode(JSONObject.class);
     }
 
+    default JSONObject bodyToJson() {
+        return bodyToJson(false);
+    }
+
     default JSONArray bodyToJsonArray() {
+        return bodyToJsonArray(false);
+    }
+
+    default JSONArray bodyToJsonArray(boolean release) {
         return decode(JSONArray.class);
     }
 
@@ -122,4 +154,7 @@ public interface Payload {
         return of(body.getBytes());
     }
 
+    static <T> Payload of(T body, Encoder<T> encoder) {
+        return NativePayload.of(body, encoder);
+    }
 }

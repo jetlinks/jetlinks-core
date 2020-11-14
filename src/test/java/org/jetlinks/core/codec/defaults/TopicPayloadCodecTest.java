@@ -30,7 +30,7 @@ public class TopicPayloadCodecTest {
     @Test
     public void testNative() {
 
-        TopicPayload topicPayload = TopicPayload.of("/test", NativePayload.of("hello",StringCodec.UTF8::encode));
+        TopicPayload topicPayload = TopicPayload.of("/test", NativePayload.of("hello",StringCodec.UTF8));
 
         Payload payload = TopicPayloadCodec.INSTANCE.encode(topicPayload);
 

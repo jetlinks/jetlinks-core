@@ -3,17 +3,22 @@ package org.jetlinks.core;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.util.ReferenceCountUtil;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.SneakyThrows;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.codec.Decoder;
+import org.jetlinks.core.codec.Encoder;
 import org.jetlinks.core.metadata.Jsonable;
 
 import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -22,20 +27,32 @@ import java.util.function.Supplier;
 @NoArgsConstructor
 public class NativePayload<T> implements Payload {
 
+    private static final AtomicIntegerFieldUpdater<NativePayload> retainUpdater =
+            AtomicIntegerFieldUpdater.newUpdater(NativePayload.class, "retainCount");
+
+    private static final AtomicIntegerFieldUpdater<NativePayload> releaseUpdater =
+            AtomicIntegerFieldUpdater.newUpdater(NativePayload.class, "releaseCount");
+
+
     private T nativeObject;
 
-    private Function<T, Payload> bodySupplier;
+    private Encoder<T> encoder;
 
-    private volatile ByteBuf ref;
+    private volatile Payload ref;
 
-    private AtomicInteger retainCount = new AtomicInteger();
-    private AtomicInteger releaseCount = new AtomicInteger();
+    private volatile int retainCount = 0;
+    private volatile int releaseCount = 0;
 
-    public static <T> NativePayload<T> of(T nativeObject, Function<T, Payload> bodySupplier) {
+    @Override
+    public Payload slice() {
+        return ref != null ? ref.slice() : this;
+    }
+
+    public static <T> NativePayload<T> of(T nativeObject, Encoder<T> encoder) {
         NativePayload<T> payload = new NativePayload<>();
 
         payload.nativeObject = nativeObject;
-        payload.bodySupplier = bodySupplier;
+        payload.encoder = encoder;
         return payload;
     }
 
@@ -65,66 +82,64 @@ public class NativePayload<T> implements Payload {
         return nativeObject;
     }
 
+    @Override
+    public Object decode(boolean release) {
+        return nativeObject;
+    }
+
     @Nonnull
     @Override
     public ByteBuf getBody() {
         if (ref == null) {
             synchronized (this) {
                 if (ref != null) {
-                    return ref;
+                    return ref.getBody();
                 }
-                ByteBuf buf = bodySupplier.apply(nativeObject).getBody();
-                if (retainCount.get() > 0) {
-                    buf.retain(retainCount.get());
+                Payload buf = encoder.encode(nativeObject);
+                if (retainCount > 0) {
+                    buf.retain(retainCount);
+                    retainUpdater.set(this, 0);
                 }
-                if (releaseCount.get() > 0) {
-                    buf.release(releaseCount.get());
+                if (releaseCount > 0) {
+                    buf.release(releaseCount);
+                    releaseUpdater.set(this, 0);
                 }
                 ref = buf;
             }
         }
-        return ref;
-    }
-
-    @Override
-    public void release() {
-        if (ref != null) {
-            ref.release();
-        } else {
-            releaseCount.incrementAndGet();
-        }
-    }
-
-    @Override
-    public void retain() {
-        if (ref != null) {
-            ref.retain();
-        } else {
-            retainCount.incrementAndGet();
-        }
+        return ref.getBody();
     }
 
     @Override
     public void release(int dec) {
-        if (ref != null) {
-            ref.release(dec);
-        } else {
-            releaseCount.addAndGet(dec);
-        }
+        //synchronized (this) {
+            if (ref != null) {
+                ref.release(releaseUpdater.getAndSet(this, 0) + dec);
+            } else {
+                releaseUpdater.addAndGet(this, dec);
+            }
+       // }
     }
 
     @Override
     public void retain(int inc) {
-        if (ref != null) {
-            ref.retain(inc);
-        } else {
-            retainCount.addAndGet(inc);
-        }
+      //  synchronized (this) {
+            if (ref != null) {
+                ref.retain(releaseUpdater.getAndSet(this, 0) + inc);
+            } else {
+                retainUpdater.addAndGet(this, inc);
+            }
+       // }
+    }
+
+    @Override
+    public String bodyToString(boolean release) {
+        return nativeObject.toString();
     }
 
     @Override
     @SuppressWarnings("all")
-    public JSONArray bodyToJsonArray() {
+    public JSONArray bodyToJsonArray(boolean release) {
         if (nativeObject == null) {
             return new JSONArray();
         }
@@ -145,7 +160,7 @@ public class NativePayload<T> implements Payload {
     }
 
     @Override
-    public JSONObject bodyToJson() {
+    public JSONObject bodyToJson(boolean release) {
         if (nativeObject == null) {
             return new JSONObject();
         }

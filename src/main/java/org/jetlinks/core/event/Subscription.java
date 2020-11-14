@@ -2,10 +2,13 @@ package org.jetlinks.core.event;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 import org.hswebframework.web.dict.Dict;
 import org.hswebframework.web.dict.EnumDict;
+import org.springframework.util.Assert;
 
 import java.io.Serializable;
+import java.util.*;
 
 @AllArgsConstructor
 @Getter
@@ -68,5 +71,78 @@ public class Subscription implements Serializable {
         public String getValue() {
             return name();
         }
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        //订阅者标识
+        private String subscriber;
+
+        //订阅主题,主题以/分割,如: /device/TS-01/09012/message 支持通配符 /device/**
+        private final Set<String> topics = new HashSet<>();
+
+        //订阅特性
+        private final Set<Feature> features = new HashSet<>();
+
+        private Runnable doOnSubscribe;
+
+        public Builder randomSubscriberId() {
+            return subscriberId(UUID.randomUUID().toString());
+        }
+
+        public Builder subscriberId(String id) {
+            this.subscriber = id;
+            return this;
+        }
+
+        public Builder topics(String... topics) {
+            this.topics.addAll(Arrays.asList(topics));
+            return this;
+        }
+
+        public Builder features(Feature... features) {
+            this.features.addAll(Arrays.asList(features));
+            return this;
+        }
+
+        public Builder doOnSubscribe(Runnable runnable) {
+            this.doOnSubscribe = runnable;
+            return this;
+        }
+
+        public Builder justLocal() {
+            this.features.clear();
+            return features(Feature.local);
+        }
+
+        public Builder justBroker() {
+            this.features.clear();
+            return features(Feature.broker);
+        }
+
+        public Builder local() {
+            return features(Feature.local);
+        }
+
+        public Builder broker() {
+            return features(Feature.broker);
+        }
+
+        public Builder shared() {
+            return features(Feature.shared);
+        }
+
+        public Subscription build() {
+            if (features.isEmpty()) {
+                local();
+            }
+            Assert.notEmpty(topics, "topic cannot be empty");
+            Assert.hasText(subscriber, "subscriber cannot be empty");
+            return new Subscription(subscriber, topics.toArray(new String[0]), features.toArray(new Feature[0]), doOnSubscribe);
+        }
+
     }
 }

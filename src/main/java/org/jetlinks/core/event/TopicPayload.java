@@ -29,13 +29,18 @@ public class TopicPayload implements Payload {
     }
 
     @Override
+    public TopicPayload slice() {
+        return TopicPayload.of(topic, payload.slice());
+    }
+
+    @Override
     public void release() {
         payload.release();
     }
 
     @Override
     public void release(int dec) {
-        payload.release();
+        payload.release(dec);
     }
 
     @Override
@@ -57,13 +62,13 @@ public class TopicPayload implements Payload {
     }
 
     @Override
-    public JSONObject bodyToJson() {
-        return payload.bodyToJson();
+    public JSONObject bodyToJson(boolean release) {
+        return payload.bodyToJson(release);
     }
 
     @Override
-    public JSONArray bodyToJsonArray() {
-        return payload.bodyToJsonArray();
+    public JSONArray bodyToJsonArray(boolean release) {
+        return payload.bodyToJsonArray(release);
     }
 
     @Override
@@ -72,13 +77,28 @@ public class TopicPayload implements Payload {
     }
 
     @Override
+    public String bodyToString(boolean release) {
+        return payload.bodyToString(release);
+    }
+
+    @Override
     public Object decode() {
         return payload.decode();
     }
 
     @Override
+    public Object decode(boolean release) {
+        return payload.decode(release);
+    }
+
+    @Override
     public <T> T decode(Class<T> decoder) {
         return payload.decode(decoder);
+    }
+
+    @Override
+    public <T> T decode(Class<T> decoder, boolean release) {
+        return payload.decode(decoder, release);
     }
 
     @Override
