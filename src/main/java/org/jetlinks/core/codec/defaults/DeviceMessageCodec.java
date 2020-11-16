@@ -25,7 +25,7 @@ public class DeviceMessageCodec implements Codec<Message> {
     @Nullable
     @Override
     public Message decode(@Nonnull Payload payload) {
-        JSONObject json = JSON.parseObject(payload.bodyToString(true));
+        JSONObject json = JSON.parseObject(payload.bodyToString(false));
         return MessageType
                 .convertMessage(json)
                 .orElseThrow(() -> new UnsupportedOperationException("unsupported message : " + json));

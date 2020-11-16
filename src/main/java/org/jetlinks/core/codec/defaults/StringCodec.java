@@ -33,11 +33,7 @@ public class StringCodec implements Codec<String> {
 
     @Override
     public String decode(@Nonnull Payload payload) {
-        try {
-            return payload.getBody().toString(charset);
-        }finally {
-            payload.release();
-        }
+        return payload.getBody().toString(charset);
     }
 
     @Override

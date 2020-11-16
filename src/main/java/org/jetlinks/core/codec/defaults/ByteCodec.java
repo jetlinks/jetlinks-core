@@ -1,5 +1,6 @@
 package org.jetlinks.core.codec.defaults;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
@@ -21,7 +22,10 @@ public class ByteCodec implements Codec<Byte> {
 
     @Override
     public Byte decode(@Nonnull Payload payload) {
-        return payload.getBytes(true)[0];
+        ByteBuf buf = payload.getBody();
+        byte val = buf.getByte(0);
+        buf.resetReaderIndex();
+        return val;
     }
 
     @Override

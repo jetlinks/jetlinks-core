@@ -22,7 +22,7 @@ public class DoubleCodec implements Codec<Double> {
 
     @Override
     public Double decode(@Nonnull Payload payload) {
-        return BytesUtils.beToDouble(payload.getBytes(true));
+        return BytesUtils.beToDouble(payload.getBytes(false));
     }
 
     @Override

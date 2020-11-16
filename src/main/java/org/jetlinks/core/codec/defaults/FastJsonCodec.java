@@ -19,7 +19,7 @@ public class FastJsonCodec implements Codec<JSONObject> {
 
     @Override
     public JSONObject decode(@Nonnull Payload payload) {
-        return JSON.parseObject(payload.bodyToString(true));
+        return JSON.parseObject(payload.bodyToString(false));
     }
 
     @Override
