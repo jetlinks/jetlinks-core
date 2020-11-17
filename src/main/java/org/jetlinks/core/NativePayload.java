@@ -4,7 +4,11 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
+import io.netty.util.AbstractReferenceCounted;
+import io.netty.util.Recycler;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
+import io.netty.util.internal.ObjectPool;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,15 +28,7 @@ import java.util.function.Supplier;
 
 @Getter
 @Setter
-@NoArgsConstructor
-public class NativePayload<T> implements Payload {
-
-    private static final AtomicIntegerFieldUpdater<NativePayload> retainUpdater =
-            AtomicIntegerFieldUpdater.newUpdater(NativePayload.class, "retainCount");
-
-    private static final AtomicIntegerFieldUpdater<NativePayload> releaseUpdater =
-            AtomicIntegerFieldUpdater.newUpdater(NativePayload.class, "releaseCount");
-
+public class NativePayload<T> extends AbstractReferenceCounted implements Payload {
 
     private T nativeObject;
 
@@ -40,8 +36,17 @@ public class NativePayload<T> implements Payload {
 
     private volatile Payload ref;
 
-    private volatile int retainCount = 0;
-    private volatile int releaseCount = 0;
+    private static Recycler<NativePayload> POOL = new Recycler<NativePayload>() {
+        protected NativePayload newObject(io.netty.util.Recycler.Handle<NativePayload> handle) {
+            return new NativePayload(handle);
+        }
+    };
+
+    private final io.netty.util.Recycler.Handle<NativePayload> handle;
+
+    private NativePayload(io.netty.util.Recycler.Handle<NativePayload> handle) {
+        this.handle = handle;
+    }
 
     @Override
     public Payload slice() {
@@ -49,8 +54,8 @@ public class NativePayload<T> implements Payload {
     }
 
     public static <T> NativePayload<T> of(T nativeObject, Encoder<T> encoder) {
-        NativePayload<T> payload = new NativePayload<>();
-
+        NativePayload<T> payload = POOL.get();
+        payload.setRefCnt(1);
         payload.nativeObject = nativeObject;
         payload.encoder = encoder;
         return payload;
@@ -95,41 +100,76 @@ public class NativePayload<T> implements Payload {
                 if (ref != null) {
                     return ref.getBody();
                 }
-                Payload buf = encoder.encode(nativeObject);
-                if (retainCount > 0) {
-                    buf.retain(retainCount);
-                    retainUpdater.set(this, 0);
+                int refCnt = refCnt();
+                if (refCnt == 0) {
+                    throw new IllegalStateException("refCnt 0");
                 }
-                if (releaseCount > 0) {
-                    buf.release(releaseCount);
-                    releaseUpdater.set(this, 0);
+                ref = encoder.encode(nativeObject);
+                if (refCnt > 1) {
+                    ref.retain(refCnt - 1);
                 }
-                ref = buf;
             }
         }
         return ref.getBody();
     }
 
     @Override
-    public void release(int dec) {
-        //synchronized (this) {
+    public int refCnt() {
+        return super.refCnt();
+    }
+
+
+    @Override
+    protected void deallocate() {
+        try {
             if (ref != null) {
-                ref.release(releaseUpdater.getAndSet(this, 0) + dec);
-            } else {
-                releaseUpdater.addAndGet(this, dec);
+                ref.release();
             }
-       // }
+            this.ref = null;
+            this.nativeObject = null;
+            this.encoder = null;
+        } finally {
+            handle.recycle(this);
+        }
     }
 
     @Override
-    public void retain(int inc) {
-      //  synchronized (this) {
-            if (ref != null) {
-                ref.retain(releaseUpdater.getAndSet(this, 0) + inc);
-            } else {
-                retainUpdater.addAndGet(this, inc);
-            }
-       // }
+    public NativePayload<T> touch(Object o) {
+
+        return this;
+    }
+
+    @Override
+    public NativePayload<T> touch() {
+        super.touch();
+        return this;
+    }
+
+    @Override
+    public NativePayload<T> retain() {
+        return retain(1);
+    }
+
+    @Override
+    public NativePayload<T> retain(int inc) {
+        if (ref != null) {
+            ref.retain(inc);
+        }
+        super.retain(inc);
+        return this;
+    }
+
+    @Override
+    public boolean release() {
+        return this.release(1);
+    }
+
+    @Override
+    public boolean release(int decrement) {
+        if (ref != null) {
+            ref.release(decrement);
+        }
+        return super.release(decrement);
     }
 
     @Override

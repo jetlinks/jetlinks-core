@@ -3,6 +3,9 @@ package org.jetlinks.core.event;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
+import io.netty.util.AbstractReferenceCounted;
+import io.netty.util.Recycler;
+import io.netty.util.ReferenceCounted;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,13 +17,33 @@ import javax.annotation.Nonnull;
 import java.util.Map;
 
 @Getter
-@NoArgsConstructor
 @AllArgsConstructor(staticName = "of")
 public class TopicPayload implements Payload {
+
+    public static Recycler<TopicPayload> RECYCLER = new Recycler<TopicPayload>() {
+        @Override
+        protected TopicPayload newObject(Handle<TopicPayload> handle) {
+            return new TopicPayload(handle);
+        }
+    };
 
     private String topic;
 
     private Payload payload;
+
+    private final Recycler.Handle<TopicPayload> handle;
+
+    private TopicPayload(Recycler.Handle<TopicPayload> handle) {
+        this.handle = handle;
+    }
+
+    public static TopicPayload of(String topic, Payload payload) {
+        TopicPayload topicPayload = RECYCLER.get();
+        topicPayload.topic = topic;
+        topicPayload.payload = payload;
+        return topicPayload;
+    }
+
 
     @Nonnull
     @Override
@@ -34,24 +57,52 @@ public class TopicPayload implements Payload {
     }
 
     @Override
-    public void release() {
-        payload.release();
+    public boolean release() {
+        return handleRelease(payload.release());
     }
 
     @Override
-    public void release(int dec) {
-        payload.release(dec);
+    public boolean release(int dec) {
+        return handleRelease(payload.release(dec));
+    }
+
+    protected boolean handleRelease(boolean success) {
+        if (success) {
+            deallocate();
+        }
+        return success;
+    }
+
+    protected void deallocate() {
+        payload = null;
+        topic = null;
+        handle.recycle(this);
     }
 
     @Override
-    public void retain() {
+    public TopicPayload retain() {
         payload.retain();
+        return this;
     }
 
     @Override
-    public void retain(int inc) {
+    public TopicPayload retain(int inc) {
         payload.retain(inc);
+        return this;
     }
+
+    @Override
+    public TopicPayload touch(Object o) {
+        payload.touch(o);
+        return this;
+    }
+
+    @Override
+    public TopicPayload touch() {
+        payload.touch();
+        return this;
+    }
+
 
     @Override
     public String toString() {

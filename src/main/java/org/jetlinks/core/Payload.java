@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.codec.Encoder;
@@ -21,7 +22,7 @@ import java.util.function.Function;
  * @author zhouhao
  * @since 1.1
  */
-public interface Payload {
+public interface Payload extends ReferenceCounted {
 
     @Nonnull
     ByteBuf getBody();
@@ -88,22 +89,24 @@ public interface Payload {
         }
     }
 
-    default void retain() {
-        retain(1);
+    default Payload retain() {
+        return retain(1);
     }
 
-    default void retain(int inc) {
+    default Payload retain(int inc) {
         getBody().retain(inc);
+        return this;
     }
 
-    default void release(int dec) {
-        if (ReferenceCountUtil.refCnt(getBody()) >= dec) {
-            ReferenceCountUtil.safeRelease(getBody(), dec);
+    default boolean release(int dec) {
+        if (refCnt() >= dec) {
+            return ReferenceCountUtil.release(getBody(), dec);
         }
+        return true;
     }
 
-    default void release() {
-        release(1);
+    default boolean release() {
+        return release(1);
     }
 
     default byte[] getBytes() {
@@ -146,6 +149,23 @@ public interface Payload {
 
     default JSONArray bodyToJsonArray(boolean release) {
         return decode(JSONArray.class);
+    }
+
+    @Override
+    default int refCnt() {
+        return getBody().refCnt();
+    }
+
+    @Override
+    default Payload touch() {
+        getBody().touch();
+        return this;
+    }
+
+    @Override
+    default Payload touch(Object o) {
+        getBody().touch(o);
+        return this;
     }
 
     Payload voidPayload = () -> Unpooled.EMPTY_BUFFER;
