@@ -59,6 +59,131 @@ public class TopicUtils {
     }
 
     /**
+     * 分隔topic
+     *
+     * @param topic topic
+     * @return 分隔结果
+     */
+    public static String[] split(String topic) {
+        return topic.split("/");
+    }
+
+    private static boolean matchStrings(String str, String pattern) {
+
+        return pattern.equals("*")
+                || str.equals("*")
+                || str.equals(pattern);
+    }
+
+    public static boolean match(String[] pattern, String[] topicParts) {
+        int pattIdxStart = 0;
+        int pattIdxEnd = pattern.length - 1;
+        int pathIdxStart = 0;
+        int pathIdxEnd = topicParts.length - 1;
+        while (pattIdxStart <= pattIdxEnd && pathIdxStart <= pathIdxEnd) {
+            String pattDir = pattern[pattIdxStart];
+            //匹配多层
+            if ("**".equals(pattDir)) {
+                break;
+            }
+            if (!matchStrings(pattDir, topicParts[pathIdxStart])) {
+                return false;
+            }
+            pattIdxStart++;
+            pathIdxStart++;
+        }
+        if (pathIdxStart > pathIdxEnd) {
+            if (pattIdxStart > pattIdxEnd) {
+                return (pattern[pattern.length - 1].equals("/") == topicParts[topicParts.length - 1].equals("/"));
+            }
+
+            if (pattIdxStart == pattIdxEnd && pattern[pattIdxStart].equals("*") && topicParts[topicParts.length - 1].equals("/")) {
+                return true;
+            }
+            for (int i = pattIdxStart; i <= pattIdxEnd; i++) {
+                if (!pattern[i].equals("**")) {
+                    return false;
+                }
+            }
+            return true;
+        } else if (pattIdxStart > pattIdxEnd) {
+            // String not exhausted, but pattern is. Failure.
+            return false;
+        } else if ("**".equals(topicParts[pattIdxStart])) {
+            // Path start definitely matches due to "**" part in pattern.
+            return true;
+        }
+        // up to last '**'
+        while (pattIdxStart <= pattIdxEnd && pathIdxStart <= pathIdxEnd) {
+            String pattDir = pattern[pattIdxEnd];
+            if (pattDir.equals("**")) {
+                break;
+            }
+            if (!matchStrings(pattDir, topicParts[pathIdxEnd])) {
+                return false;
+            }
+            pattIdxEnd--;
+            pathIdxEnd--;
+        }
+        if (pathIdxStart > pathIdxEnd) {
+            // String is exhausted
+            for (int i = pattIdxStart; i <= pattIdxEnd; i++) {
+                if (!pattern[i].equals("**")) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        while (pattIdxStart != pattIdxEnd && pathIdxStart <= pathIdxEnd) {
+            int patIdxTmp = -1;
+            for (int i = pattIdxStart + 1; i <= pattIdxEnd; i++) {
+                if (pattern[i].equals("**")) {
+                    patIdxTmp = i;
+                    break;
+                }
+            }
+            if (patIdxTmp == pattIdxStart + 1) {
+                // '**/**' situation, so skip one
+                pattIdxStart++;
+                continue;
+            }
+            // Find the pattern between padIdxStart & padIdxTmp in str between
+            // strIdxStart & strIdxEnd
+            int patLength = (patIdxTmp - pattIdxStart - 1);
+            int strLength = (pathIdxEnd - pathIdxStart + 1);
+            int foundIdx = -1;
+
+            strLoop:
+            for (int i = 0; i <= strLength - patLength; i++) {
+                for (int j = 0; j < patLength; j++) {
+                    String subPat = pattern[pattIdxStart + j + 1];
+                    String subStr = topicParts[pathIdxStart + i + j];
+                    if (!matchStrings(subPat, subStr)) {
+                        continue strLoop;
+                    }
+                }
+                foundIdx = pathIdxStart + i;
+                break;
+            }
+
+            if (foundIdx == -1) {
+                return false;
+            }
+
+            pattIdxStart = patIdxTmp;
+            pathIdxStart = foundIdx + patLength;
+        }
+
+        for (int i = pattIdxStart; i <= pattIdxEnd; i++) {
+            if (!pattern[i].equals("**")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * 展开topic
      * <p>
      * before:

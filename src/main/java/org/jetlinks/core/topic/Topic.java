@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.cache.Caches;
+import org.jetlinks.core.utils.TopicUtils;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
@@ -28,6 +29,9 @@ public final class Topic<T> {
     @Setter(AccessLevel.PRIVATE)
     private volatile String topic;
 
+    @Setter(AccessLevel.PRIVATE)
+    private volatile String[] topics;
+
     private final int depth;
 
     private final ConcurrentMap<String, Topic<T>> child = Caches.newCache();
@@ -37,7 +41,7 @@ public final class Topic<T> {
     private static final AntPathMatcher matcher = new AntPathMatcher() {
         @Override
         protected String[] tokenizePath(String path) {
-            return path.split("/");
+            return TopicUtils.split(path);
         }
     };
 
@@ -71,6 +75,13 @@ public final class Topic<T> {
         } else {
             this.depth = 0;
         }
+    }
+
+    public String[] getTopics() {
+        if (topics != null) {
+            return topics;
+        }
+        return topics = TopicUtils.split(getTopic());
     }
 
     public String getTopic() {
@@ -186,23 +197,31 @@ public final class Topic<T> {
         return "topic: " + getTopic() + ", subscribers: " + subscribers.size() + ", children: " + child.size();
     }
 
+    protected boolean match(String[] pars) {
+        return TopicUtils.match(getTopics(),pars)
+                ||TopicUtils.match(pars,getTopics());
+    }
+
     public static <T> Flux<Topic<T>> find(String topic, Topic<T> topicPart) {
         return Flux.create(sink -> {
             ArrayDeque<Topic<T>> cache = new ArrayDeque<>(128);
             cache.add(topicPart);
 
-            String[] topicParts = topic.split("/");
+            String[] topicParts = TopicUtils.split(topic);
             String nextPart = null;
             while (!cache.isEmpty() && !sink.isCancelled()) {
                 Topic<T> part = cache.poll();
                 if (part == null) {
                     break;
                 }
-                if (part.part.equals("**")
-                        || matcher.match(part.getTopic(), topic)
-                        || (matcher.match(topic, part.getTopic()))) {
+                if (part.match(topicParts)) {
                     sink.next(part);
                 }
+//                if (part.part.equals("**")
+//                        || matcher.match(part.getTopic(), topic)
+//                        || (matcher.match(topic, part.getTopic()))) {
+//                    sink.next(part);
+//                }
 
                 //订阅了如 /device/**/event/*
                 if (part.part.equals("**")) {

@@ -2,13 +2,14 @@ package org.jetlinks.core.event;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 import org.hswebframework.web.dict.Dict;
 import org.hswebframework.web.dict.EnumDict;
+import org.jetlinks.core.utils.TopicUtils;
 import org.springframework.util.Assert;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Getter
@@ -29,15 +30,32 @@ public class Subscription implements Serializable {
     private Runnable doOnSubscribe;
 
     public static Subscription of(String subscriber, String... topic) {
-        return new Subscription(subscriber, topic, DEFAULT_FEATURES, null);
+
+        return Subscription
+                .builder()
+                .subscriberId(subscriber)
+                .topics(topic)
+                .build();
+//        return new Subscription(subscriber, topic, DEFAULT_FEATURES, null);
     }
 
     public static Subscription of(String subscriber, String[] topic, Feature... features) {
-        return new Subscription(subscriber, topic, features, null);
+        return Subscription
+                .builder()
+                .subscriberId(subscriber)
+                .topics(topic)
+                .features(features)
+                .build();
     }
 
     public static Subscription of(String subscriber, String topic, Feature... features) {
-        return new Subscription(subscriber, new String[]{topic}, features, null);
+        return Subscription
+                .builder()
+                .subscriberId(subscriber)
+                .topics(topic)
+                .features(features)
+                .build();
+        //return new Subscription(subscriber, new String[]{topic}, features, null);
     }
 
     public Subscription copy(Feature... newFeatures) {
@@ -99,7 +117,13 @@ public class Subscription implements Serializable {
         }
 
         public Builder topics(String... topics) {
-            this.topics.addAll(Arrays.asList(topics));
+            return topics(Arrays.asList(topics));
+        }
+
+        public Builder topics(Collection<String> topics) {
+            this.topics.addAll(topics.stream()
+                                     .flatMap(topic -> TopicUtils.expand(topic).stream())
+                                     .collect(Collectors.toSet()));
             return this;
         }
 
