@@ -69,10 +69,9 @@ public class TopicUtils {
     }
 
     private static boolean matchStrings(String str, String pattern) {
-
-        return pattern.equals("*")
-                || str.equals("*")
-                || str.equals(pattern);
+        return str.equals(pattern)
+                || "*".equals(pattern)
+                || "*".equals(str);
     }
 
     public static boolean match(String[] pattern, String[] topicParts) {
