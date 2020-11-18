@@ -10,6 +10,7 @@ import io.netty.util.ReferenceCountUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.codec.Encoder;
@@ -21,6 +22,7 @@ import java.util.function.Supplier;
 
 @Getter
 @Setter
+@Slf4j
 public class NativePayload<T> extends AbstractReferenceCounted implements Payload {
 
     private T nativeObject;
@@ -222,5 +224,13 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
     @Override
     public String toString() {
         return nativeObject == null ? "null" : nativeObject.toString();
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        if (refCnt() != 0) {
+            log.warn("payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", refCnt());
+        }
+        super.finalize();
     }
 }

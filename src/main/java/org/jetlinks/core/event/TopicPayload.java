@@ -6,6 +6,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.util.Recycler;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.utils.TopicUtils;
@@ -15,6 +16,7 @@ import java.util.Map;
 
 @Getter
 @AllArgsConstructor(staticName = "of")
+@Slf4j
 public class TopicPayload implements Payload {
 
     public static Recycler<TopicPayload> RECYCLER = new Recycler<TopicPayload>() {
@@ -61,6 +63,14 @@ public class TopicPayload implements Payload {
     @Override
     public boolean release(int dec) {
         return handleRelease(payload.release(dec));
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        if (refCnt() != 0) {
+            log.warn("payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", refCnt());
+        }
+        super.finalize();
     }
 
     protected boolean handleRelease(boolean success) {
