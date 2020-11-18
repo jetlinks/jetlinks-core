@@ -19,7 +19,9 @@ import reactor.core.publisher.Mono;
 public interface EventBus {
 
     /**
-     * 从事件总线中订阅事件,处理数据后需要手动调用释放，如:{@link TopicPayload#release()}
+     * 从事件总线中订阅事件
+     *
+     * 特别注意!!!: 处理数据后需要手动调用释放，如:{@link TopicPayload#release()}
      *
      * @param subscription 订阅信息
      * @return 事件流

@@ -3,14 +3,11 @@ package org.jetlinks.core;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
 import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.Recycler;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.ReferenceCounted;
-import io.netty.util.internal.ObjectPool;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.SneakyThrows;
 import org.hswebframework.web.bean.FastBeanCopier;
@@ -20,10 +17,6 @@ import org.jetlinks.core.metadata.Jsonable;
 
 import javax.annotation.Nonnull;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Getter
@@ -35,6 +28,8 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
     private Encoder<T> encoder;
 
     private volatile Payload ref;
+
+    private ByteBuf buf;
 
     private static Recycler<NativePayload> POOL = new Recycler<NativePayload>() {
         protected NativePayload newObject(io.netty.util.Recycler.Handle<NativePayload> handle) {
@@ -69,27 +64,39 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
     @SuppressWarnings("all")
     @SneakyThrows
     public <T> T decode(Decoder<T> decoder, boolean release) {
-        if (decoder.isDecodeFrom(nativeObject)) {
-            return (T) nativeObject;
+        try {
+            if (decoder.isDecodeFrom(nativeObject)) {
+                return (T) nativeObject;
+            }
+        } finally {
+            if (release) {
+                release();
+            }
         }
         Class<T> type = decoder.forType();
         if (type == JSONObject.class || type == Map.class) {
-            return (T) bodyToJson();
+            return (T) bodyToJson(release);
         }
         if (Map.class.isAssignableFrom(decoder.forType())) {
-            return bodyToJson().toJavaObject(decoder.forType());
+            return bodyToJson(release).toJavaObject(decoder.forType());
         }
         return Payload.super.decode(decoder, release);
     }
 
     @Override
     public Object decode() {
-        return nativeObject;
+        return decode(true);
     }
 
     @Override
     public Object decode(boolean release) {
-        return nativeObject;
+        try {
+            return nativeObject;
+        } finally {
+            if (release) {
+                release();
+            }
+        }
     }
 
     @Nonnull
@@ -100,14 +107,8 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
                 if (ref != null) {
                     return ref.getBody();
                 }
-                int refCnt = refCnt();
-                if (refCnt == 0) {
-                    throw new IllegalStateException("refCnt 0");
-                }
-                ref = encoder.encode(nativeObject);
-                if (refCnt > 1) {
-                    ref.retain(refCnt - 1);
-                }
+                ByteBuf buf = Unpooled.unreleasableBuffer(this.buf = encoder.encode(nativeObject).getBody());
+                ref = Payload.of(buf);
             }
         }
         return ref.getBody();
@@ -118,24 +119,20 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
         return super.refCnt();
     }
 
-
     @Override
     protected void deallocate() {
-        try {
-            if (ref != null) {
-                ref.release();
-            }
-            this.ref = null;
-            this.nativeObject = null;
-            this.encoder = null;
-        } finally {
-            handle.recycle(this);
+        this.ref = null;
+        this.nativeObject = null;
+        this.encoder = null;
+        if (this.buf != null) {
+            ReferenceCountUtil.safeRelease(this.buf);
+            this.buf = null;
         }
+        handle.recycle(this);
     }
 
     @Override
     public NativePayload<T> touch(Object o) {
-
         return this;
     }
 
@@ -152,9 +149,6 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
 
     @Override
     public NativePayload<T> retain(int inc) {
-        if (ref != null) {
-            ref.retain(inc);
-        }
         super.retain(inc);
         return this;
     }
@@ -166,48 +160,63 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
 
     @Override
     public boolean release(int decrement) {
-        if (ref != null) {
-            ref.release(decrement);
-        }
         return super.release(decrement);
     }
 
     @Override
     public String bodyToString(boolean release) {
-        return nativeObject.toString();
+        try {
+            return nativeObject.toString();
+        } finally {
+            if (release) {
+                release();
+            }
+        }
     }
 
     @Override
     @SuppressWarnings("all")
     public JSONArray bodyToJsonArray(boolean release) {
-        if (nativeObject == null) {
-            return new JSONArray();
+        try {
+            if (nativeObject == null) {
+                return new JSONArray();
+            }
+            if (nativeObject instanceof JSONArray) {
+                return ((JSONArray) nativeObject);
+            }
+            List<Object> collection;
+            if (nativeObject instanceof List) {
+                collection = ((List<Object>) nativeObject);
+            } else if (nativeObject instanceof Collection) {
+                collection = new ArrayList<>(((Collection<Object>) nativeObject));
+            } else if (nativeObject instanceof Object[]) {
+                collection = Arrays.asList(((Object[]) nativeObject));
+            } else {
+                throw new UnsupportedOperationException("body is not arry");
+            }
+            return new JSONArray(collection);
+        } finally {
+            if (release) {
+                release();
+            }
         }
-        if (nativeObject instanceof JSONArray) {
-            return ((JSONArray) nativeObject);
-        }
-        List<Object> collection;
-        if (nativeObject instanceof List) {
-            collection = ((List<Object>) nativeObject);
-        } else if (nativeObject instanceof Collection) {
-            collection = new ArrayList<>(((Collection<Object>) nativeObject));
-        } else if (nativeObject instanceof Object[]) {
-            collection = Arrays.asList(((Object[]) nativeObject));
-        } else {
-            throw new UnsupportedOperationException("body is not arry");
-        }
-        return new JSONArray(collection);
     }
 
     @Override
     public JSONObject bodyToJson(boolean release) {
-        if (nativeObject == null) {
-            return new JSONObject();
+        try {
+            if (nativeObject == null) {
+                return new JSONObject();
+            }
+            if (nativeObject instanceof Jsonable) {
+                return ((Jsonable) nativeObject).toJson();
+            }
+            return FastBeanCopier.copy(nativeObject, JSONObject::new);
+        } finally {
+            if (release) {
+                release();
+            }
         }
-        if (nativeObject instanceof Jsonable) {
-            return ((Jsonable) nativeObject).toJson();
-        }
-        return FastBeanCopier.copy(nativeObject, JSONObject::new);
     }
 
     @Override

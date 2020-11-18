@@ -44,4 +44,15 @@ public class TopicPayloadCodecTest {
         Assert.assertEquals(decode.getTopic(),topicPayload.getTopic());
         Assert.assertEquals(decode.getBody().toString(StandardCharsets.UTF_8),"hello");
     }
+
+    @Test
+    public void testRelease(){
+        TopicPayload topicPayload = TopicPayload.of("/test", NativePayload.of("hello",StringCodec.UTF8));
+        Assert.assertEquals(topicPayload.refCnt(),1);
+
+        topicPayload.release();
+        Assert.assertEquals(topicPayload.refCnt(),0);
+        Assert.assertNull(topicPayload.getPayload());
+
+    }
 }

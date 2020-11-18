@@ -3,12 +3,9 @@ package org.jetlinks.core.event;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.Recycler;
-import io.netty.util.ReferenceCounted;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.utils.TopicUtils;
@@ -103,6 +100,10 @@ public class TopicPayload implements Payload {
         return this;
     }
 
+    @Override
+    public int refCnt() {
+        return payload == null ? 0 : payload.refCnt();
+    }
 
     @Override
     public String toString() {
