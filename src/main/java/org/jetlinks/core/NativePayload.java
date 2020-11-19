@@ -96,7 +96,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
             return nativeObject;
         } finally {
             if (release) {
-                release();
+                ReferenceCountUtil.safeRelease(this);
             }
         }
     }
@@ -171,7 +171,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
             return nativeObject.toString();
         } finally {
             if (release) {
-                release();
+                ReferenceCountUtil.safeRelease(this);
             }
         }
     }
@@ -199,7 +199,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
             return new JSONArray(collection);
         } finally {
             if (release) {
-                release();
+                ReferenceCountUtil.safeRelease(this);
             }
         }
     }
@@ -216,7 +216,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
             return FastBeanCopier.copy(nativeObject, JSONObject::new);
         } finally {
             if (release) {
-                release();
+                ReferenceCountUtil.safeRelease(this);
             }
         }
     }
@@ -229,7 +229,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
     @Override
     protected void finalize() throws Throwable {
         if (refCnt() != 0) {
-            log.warn("payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", refCnt());
+            log.warn("payload {} was not release properly, release() was not called before it's garbage-collected. refCnt={}", nativeObject, refCnt());
         }
         super.finalize();
     }

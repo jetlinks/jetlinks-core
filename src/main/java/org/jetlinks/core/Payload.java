@@ -63,7 +63,7 @@ public interface Payload extends ReferenceCounted {
                 return JSON.parse(new String(payload));
             } finally {
                 if (release) {
-                    release();
+                    ReferenceCountUtil.safeRelease(this);
                 }
             }
         }
@@ -84,7 +84,7 @@ public interface Payload extends ReferenceCounted {
             return mapper.apply(body);
         } finally {
             if (release) {
-                release();
+                ReferenceCountUtil.safeRelease(this);
             }
         }
     }
@@ -130,7 +130,7 @@ public interface Payload extends ReferenceCounted {
             return getBody().toString(StandardCharsets.UTF_8);
         } finally {
             if (release) {
-                release();
+                ReferenceCountUtil.safeRelease(this);
             }
         }
     }
