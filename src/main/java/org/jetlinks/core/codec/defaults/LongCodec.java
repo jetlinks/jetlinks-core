@@ -1,9 +1,8 @@
 package org.jetlinks.core.codec.defaults;
 
-import io.netty.buffer.Unpooled;
-import org.jetlinks.core.utils.BytesUtils;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
+import org.jetlinks.core.utils.BytesUtils;
 
 import javax.annotation.Nonnull;
 
@@ -27,7 +26,7 @@ public class LongCodec implements Codec<Long> {
 
     @Override
     public Payload encode(Long body) {
-        return () -> Unpooled.wrappedBuffer(BytesUtils.longToBe(body));
+        return Payload.of(BytesUtils.longToBe(body));
     }
 
 

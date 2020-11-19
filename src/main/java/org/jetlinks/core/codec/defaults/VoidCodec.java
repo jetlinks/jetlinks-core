@@ -1,7 +1,6 @@
 package org.jetlinks.core.codec.defaults;
 
 
-import io.netty.buffer.Unpooled;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
 
@@ -24,7 +23,7 @@ public class VoidCodec implements Codec<Void> {
     @Override
     public Payload encode(Void body) {
 
-        return () -> Unpooled.wrappedBuffer(new byte[0]);
+        return Payload.of(new byte[0]);
     }
 
     @Override

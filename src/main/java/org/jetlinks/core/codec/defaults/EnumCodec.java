@@ -1,9 +1,8 @@
 package org.jetlinks.core.codec.defaults;
 
-import io.netty.buffer.Unpooled;
 import lombok.AllArgsConstructor;
-import org.jetlinks.core.codec.Codec;
 import org.jetlinks.core.Payload;
+import org.jetlinks.core.codec.Codec;
 
 import javax.annotation.Nonnull;
 import java.util.Arrays;
@@ -31,7 +30,7 @@ public class EnumCodec<T extends Enum<?>> implements Codec<T> {
 
     @Override
     public Payload encode(T body) {
-        return () -> Unpooled.wrappedBuffer(new byte[]{(byte) body.ordinal()});
+        return  Payload.of(new byte[]{(byte) body.ordinal()});
     }
 
 

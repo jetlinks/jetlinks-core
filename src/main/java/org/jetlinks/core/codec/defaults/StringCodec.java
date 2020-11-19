@@ -1,6 +1,5 @@
 package org.jetlinks.core.codec.defaults;
 
-import io.netty.buffer.Unpooled;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
 
@@ -38,7 +37,7 @@ public class StringCodec implements Codec<String> {
 
     @Override
     public Payload encode(String body) {
-        return () -> Unpooled.wrappedBuffer(body.getBytes(charset));
+        return Payload.of(body.getBytes(charset));
     }
 
 

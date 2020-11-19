@@ -2,7 +2,6 @@ package org.jetlinks.core.codec.defaults;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import io.netty.buffer.Unpooled;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.jetlinks.core.Payload;
@@ -33,6 +32,6 @@ public class DeviceMessageCodec implements Codec<Message> {
 
     @Override
     public Payload encode(Message body) {
-        return Payload.of(Unpooled.wrappedBuffer(JSON.toJSONBytes(body.toJson())));
+        return Payload.of(JSON.toJSONBytes(body.toJson()));
     }
 }

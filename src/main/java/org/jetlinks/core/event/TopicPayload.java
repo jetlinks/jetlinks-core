@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.Recycler;
-import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -69,7 +68,7 @@ public class TopicPayload implements Payload {
     protected void finalize() throws Throwable {
         int refCnt = refCnt();
         if (refCnt != 0) {
-            log.warn("topic [{}] payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", topic, refCnt);
+            log.debug("topic [{}] payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", toString(), refCnt);
         }
         super.finalize();
     }

@@ -168,10 +168,10 @@ public interface Payload extends ReferenceCounted {
         return this;
     }
 
-    Payload voidPayload = () -> Unpooled.EMPTY_BUFFER;
+    Payload voidPayload = Payload.of(Unpooled.EMPTY_BUFFER);
 
     static Payload of(ByteBuf body) {
-        return () -> body;
+        return ByteBufPayload.of(body);
     }
 
     static Payload of(byte[] body) {
@@ -183,6 +183,9 @@ public interface Payload extends ReferenceCounted {
     }
 
     static <T> Payload of(T body, Encoder<T> encoder) {
+        if (body instanceof Payload) {
+            return encoder.encode(body);
+        }
         return NativePayload.of(body, encoder);
     }
 }

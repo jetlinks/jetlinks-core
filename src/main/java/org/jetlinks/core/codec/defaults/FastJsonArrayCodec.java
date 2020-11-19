@@ -2,7 +2,6 @@ package org.jetlinks.core.codec.defaults;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
-import io.netty.buffer.Unpooled;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
 
@@ -24,7 +23,7 @@ public class FastJsonArrayCodec implements Codec<JSONArray> {
 
     @Override
     public Payload encode(JSONArray body) {
-        return () -> Unpooled.wrappedBuffer(JSON.toJSONBytes(body));
+        return Payload.of(JSON.toJSONBytes(body));
     }
 
 }

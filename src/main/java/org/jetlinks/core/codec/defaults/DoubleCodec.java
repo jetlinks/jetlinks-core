@@ -1,6 +1,5 @@
 package org.jetlinks.core.codec.defaults;
 
-import io.netty.buffer.Unpooled;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
 import org.jetlinks.core.utils.BytesUtils;
@@ -27,7 +26,7 @@ public class DoubleCodec implements Codec<Double> {
 
     @Override
     public Payload encode(Double body) {
-        return () -> Unpooled.wrappedBuffer(BytesUtils.doubleToBe(body));
+        return Payload.of(BytesUtils.doubleToBe(body));
     }
 
 

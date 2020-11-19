@@ -1,6 +1,5 @@
 package org.jetlinks.core.codec.defaults;
 
-import io.netty.buffer.Unpooled;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.Payload;
@@ -37,6 +36,6 @@ public class ErrorCodec implements Codec<Throwable> {
     @Override
     public Payload encode(Throwable body) {
         String message = body.getMessage() == null ? body.getClass().getSimpleName() : body.getMessage();
-        return () -> Unpooled.wrappedBuffer(message.getBytes());
+        return Payload.of(message);
     }
 }

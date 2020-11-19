@@ -1,6 +1,5 @@
 package org.jetlinks.core.codec.defaults;
 
-import io.netty.buffer.Unpooled;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
 
@@ -28,7 +27,7 @@ public class BooleanCodec implements Codec<Boolean> {
 
     @Override
     public Payload encode(Boolean body) {
-        return () -> Unpooled.wrappedBuffer(new byte[]{body ? (byte) 1 : 0});
+        return Payload.of(new byte[]{body ? (byte) 1 : 0});
     }
 
 }

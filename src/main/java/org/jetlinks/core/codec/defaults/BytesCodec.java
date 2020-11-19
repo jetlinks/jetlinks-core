@@ -1,6 +1,5 @@
 package org.jetlinks.core.codec.defaults;
 
-import io.netty.buffer.Unpooled;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
 
@@ -26,7 +25,7 @@ public class BytesCodec implements Codec<byte[]> {
 
     @Override
     public Payload encode(byte[] body) {
-        return () -> Unpooled.wrappedBuffer(body);
+        return Payload.of(body);
     }
 
 
