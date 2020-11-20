@@ -26,7 +26,12 @@ class ByteBufPayload implements Payload {
     private ByteBuf body;
 
     public static Payload of(ByteBuf body) {
-        ByteBufPayload payload = RECYCLER.get();
+        ByteBufPayload payload;
+        try {
+            payload = RECYCLER.get();
+        } catch (Exception e) {
+            payload = new ByteBufPayload(null);
+        }
         payload.body = body;
         return payload;
     }
@@ -60,7 +65,7 @@ class ByteBufPayload implements Payload {
     }
 
     protected boolean handleRelease(boolean release) {
-        if (release) {
+        if (release && handle != null) {
             body = null;
             handle.recycle(this);
         }

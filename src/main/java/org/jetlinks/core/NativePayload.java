@@ -51,7 +51,12 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
     }
 
     public static <T> NativePayload<T> of(T nativeObject, Encoder<T> encoder) {
-        NativePayload<T> payload = POOL.get();
+        NativePayload<T> payload;
+        try {
+            payload = POOL.get();
+        } catch (Exception e) {
+            payload = new NativePayload<>(null);
+        }
         payload.setRefCnt(1);
         payload.nativeObject = nativeObject;
         payload.encoder = encoder;
@@ -130,7 +135,9 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
             ReferenceCountUtil.safeRelease(this.buf);
             this.buf = null;
         }
-        handle.recycle(this);
+        if (handle != null) {
+            handle.recycle(this);
+        }
     }
 
     @Override

@@ -38,10 +38,14 @@ public class TopicPayload implements Payload {
     }
 
     public static TopicPayload of(String topic, Payload payload) {
-        TopicPayload topicPayload = RECYCLER.get();
-        topicPayload.topic = topic;
-        topicPayload.payload = payload;
-        return topicPayload;
+        try {
+            TopicPayload topicPayload = RECYCLER.get();
+            topicPayload.topic = topic;
+            topicPayload.payload = payload;
+            return topicPayload;
+        } catch (Exception e) {
+            return TopicPayload.of(topic, payload, null);
+        }
     }
 
     @Nonnull
@@ -62,7 +66,7 @@ public class TopicPayload implements Payload {
 
     @Override
     public boolean release(int dec) {
-        return handleRelease(ReferenceCountUtil.release(payload,dec));
+        return handleRelease(ReferenceCountUtil.release(payload, dec));
     }
 
     @Override
@@ -84,7 +88,9 @@ public class TopicPayload implements Payload {
     protected void deallocate() {
         payload = null;
         topic = null;
-        handle.recycle(this);
+        if (handle != null) {
+            handle.recycle(this);
+        }
     }
 
     @Override
