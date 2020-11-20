@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.Recycler;
+import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -56,12 +57,12 @@ public class TopicPayload implements Payload {
 
     @Override
     public boolean release() {
-        return handleRelease(payload.release());
+        return handleRelease(ReferenceCountUtil.release(payload));
     }
 
     @Override
     public boolean release(int dec) {
-        return handleRelease(payload.release(dec));
+        return handleRelease(ReferenceCountUtil.release(payload,dec));
     }
 
     @Override
