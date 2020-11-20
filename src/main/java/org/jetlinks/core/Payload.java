@@ -36,7 +36,7 @@ public interface Payload extends ReferenceCounted {
             return decoder.decode(this);
         } finally {
             if (release) {
-                release();
+                ReferenceCountUtil.safeRelease(this);
             }
         }
     }

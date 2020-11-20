@@ -72,7 +72,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
             }
         } finally {
             if (release) {
-                release();
+                ReferenceCountUtil.safeRelease(this);
             }
         }
         Class<T> type = decoder.forType();
