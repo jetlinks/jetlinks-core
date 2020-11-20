@@ -228,7 +228,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
 
     @Override
     protected void finalize() throws Throwable {
-        if (refCnt() != 0) {
+        if (refCnt() > 0) {
             log.warn("payload {} was not release properly, release() was not called before it's garbage-collected. refCnt={}", nativeObject, refCnt());
         }
         super.finalize();

@@ -70,7 +70,7 @@ class ByteBufPayload implements Payload {
     @Override
     protected void finalize() throws Throwable {
         int refCnt = ReferenceCountUtil.refCnt(body);
-        if (refCnt != 0) {
+        if (refCnt > 0) {
             log.debug("payload {} was not release properly, release() was not called before it's garbage-collected. refCnt={}", body, refCnt);
         }
         super.finalize();
