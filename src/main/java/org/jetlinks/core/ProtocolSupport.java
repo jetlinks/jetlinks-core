@@ -4,8 +4,7 @@ import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
-import org.jetlinks.core.metadata.ConfigMetadata;
-import org.jetlinks.core.metadata.DeviceMetadataCodec;
+import org.jetlinks.core.metadata.*;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -159,4 +158,31 @@ public interface ProtocolSupport extends Disposable {
     default void dispose() {
     }
 
+    /**
+     * 获取默认物模型
+     *
+     * @param transport 传输协议
+     * @return 物模型信息
+     * @since 1.1.4
+     */
+    default Mono<DeviceMetadata> getDefaultMetadata(Transport transport) {
+        return Mono.empty();
+    }
+
+    /**
+     * 获取物模型拓展配置定义
+     *
+     * @param transport    传输协议类型
+     * @param metadataType 物模型类型
+     * @param dataTypeId   数据类型ID {@link DataType#getId()}
+     * @param metadataId   物模型标识
+     * @return 配置定义
+     * @since 1.1.4
+     */
+    default Flux<ConfigMetadata> getMetadataExpandsConfig(Transport transport,
+                                                          DeviceMetadataType metadataType,
+                                                          String metadataId,
+                                                          String dataTypeId) {
+        return Flux.empty();
+    }
 }

@@ -9,7 +9,9 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.ConfigMetadata;
+import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
+import org.jetlinks.core.metadata.DeviceMetadataType;
 import reactor.core.Disposable;
 import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
@@ -19,6 +21,7 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -40,7 +43,14 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private final Map<String, Supplier<Mono<ConfigMetadata>>> configMetadata = new ConcurrentHashMap<>();
 
     @Getter(AccessLevel.PRIVATE)
+    private final Map<String, Supplier<Mono<DeviceMetadata>>> defaultDeviceMetadata = new ConcurrentHashMap<>();
+
+    @Getter(AccessLevel.PRIVATE)
     private final Map<String, Supplier<Mono<DeviceMessageCodec>>> messageCodecSupports = new ConcurrentHashMap<>();
+
+    @Getter(AccessLevel.PRIVATE)
+    private Map<String, ExpandsConfigMetadataSupplier> expandsConfigSupplier = new ConcurrentHashMap<>();
+
 
     @Getter(AccessLevel.PRIVATE)
     @Setter(AccessLevel.PRIVATE)
@@ -68,6 +78,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         }
         disposed = true;
         composite.dispose();
+        configMetadata.clear();
+        defaultDeviceMetadata.clear();
+        messageCodecSupports.clear();
+        expandsConfigSupplier.clear();
     }
 
     public void setInitConfigMetadata(ConfigMetadata metadata) {
@@ -107,6 +121,14 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         authenticators.put(transport.getId(), authenticator);
     }
 
+    public void addDefaultMetadata(Transport transport, Mono<DeviceMetadata> metadata) {
+        defaultDeviceMetadata.put(transport.getId(), () -> metadata);
+    }
+
+    public void addDefaultMetadata(Transport transport, DeviceMetadata metadata) {
+        defaultDeviceMetadata.put(transport.getId(), () -> Mono.just(metadata));
+    }
+
     @Override
     public Mono<DeviceMessageSenderInterceptor> getSenderInterceptor() {
         return Mono.justOrEmpty(deviceMessageSenderInterceptor)
@@ -129,12 +151,39 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         }
     }
 
-    public void addConfigMetadata(Transport transport, Supplier<Mono<ConfigMetadata>> authenticator) {
-        configMetadata.put(transport.getId(), authenticator);
+    public void addConfigMetadata(Transport transport, Supplier<Mono<ConfigMetadata>> metadata) {
+        configMetadata.put(transport.getId(), metadata);
     }
 
-    public void addConfigMetadata(Transport transport, ConfigMetadata authenticator) {
-        configMetadata.put(transport.getId(), () -> Mono.just(authenticator));
+    public void addConfigMetadata(Transport transport, ConfigMetadata metadata) {
+        configMetadata.put(transport.getId(), () -> Mono.just(metadata));
+    }
+
+
+    public void setExpandsConfigMetadata(Transport transport,
+                                         ExpandsConfigMetadataSupplier supplier) {
+        expandsConfigSupplier.put(transport.getId(), supplier);
+    }
+
+
+    @Override
+    public Flux<ConfigMetadata> getMetadataExpandsConfig(Transport transport,
+                                                         DeviceMetadataType metadataType,
+                                                         String metadataId,
+                                                         String dataTypeId) {
+
+        return Optional
+                .ofNullable(expandsConfigSupplier.get(transport.getId()))
+                .map(supplier -> supplier.getConfigMetadata(metadataType, metadataId, dataTypeId))
+                .orElse(Flux.empty());
+    }
+
+    @Override
+    public Mono<DeviceMetadata> getDefaultMetadata(Transport transport) {
+        return Optional
+                .ofNullable(defaultDeviceMetadata.get(transport.getId()))
+                .map(Supplier::get)
+                .orElse(Mono.empty());
     }
 
     @Override
@@ -170,10 +219,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     public Mono<AuthenticationResponse> authenticate(@Nonnull AuthenticationRequest request,
                                                      @Nonnull DeviceOperator deviceOperation) {
         return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
-                .flatMap(at -> at
-                        .authenticate(request, deviceOperation)
-                        .defaultIfEmpty(AuthenticationResponse.error(400, "无法获取认证结果")))
-                .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("不支持的认证请求:" + request)));
+                   .flatMap(at -> at
+                           .authenticate(request, deviceOperation)
+                           .defaultIfEmpty(AuthenticationResponse.error(400, "无法获取认证结果")))
+                   .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("不支持的认证请求:" + request)));
     }
 
     @Nonnull

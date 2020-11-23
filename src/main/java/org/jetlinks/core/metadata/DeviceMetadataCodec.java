@@ -2,9 +2,6 @@ package org.jetlinks.core.metadata;
 
 import reactor.core.publisher.Mono;
 
-import java.util.Collections;
-import java.util.List;
-
 /**
  * 物模型编解码器,用于将物模型与字符串进行互相转换
  *
@@ -43,17 +40,5 @@ public interface DeviceMetadataCodec {
      */
     Mono<String> encode(DeviceMetadata metadata);
 
-    /**
-     * 获取拓展配置元数据定义
-     *
-     * @param metadataType 物模型类型
-     * @param dataTypeId   类型ID {@link DataType#getId()}
-     * @return 配置定义
-     * @since 1.1.4
-     */
-    default List<ConfigPropertyMetadata> getExpandsConfigMetadata(DeviceMetadataType metadataType,
-                                                                  String dataTypeId) {
-        return Collections.emptyList();
-    }
 
 }
