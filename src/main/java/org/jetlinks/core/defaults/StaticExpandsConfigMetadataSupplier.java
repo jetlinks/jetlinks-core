@@ -30,6 +30,21 @@ public class StaticExpandsConfigMetadataSupplier implements ExpandsConfigMetadat
     }
 
     /**
+     * 添加通用配置,根据类型来指定配置
+     *
+     * @param typeId         类型ID
+     * @param configMetadata 配置
+     * @return this
+     */
+    public StaticExpandsConfigMetadataSupplier addConfigMetadata(String typeId,
+                                                                 ConfigMetadata configMetadata) {
+
+        getOrCreateConfigs(String.join(":", "any", typeId)).add(configMetadata);
+
+        return this;
+    }
+
+    /**
      * 添加通用配置,指定都物模型都使用指定都配置
      *
      * @param metadataType   物模型类型
@@ -37,7 +52,7 @@ public class StaticExpandsConfigMetadataSupplier implements ExpandsConfigMetadat
      * @return this
      */
     public StaticExpandsConfigMetadataSupplier addConfigMetadata(DeviceMetadataType metadataType,
-                                                           ConfigMetadata configMetadata) {
+                                                                 ConfigMetadata configMetadata) {
 
         return addConfigMetadata(metadataType, "any", configMetadata);
     }
@@ -50,8 +65,8 @@ public class StaticExpandsConfigMetadataSupplier implements ExpandsConfigMetadat
      * @return this
      */
     public StaticExpandsConfigMetadataSupplier addConfigMetadata(DeviceMetadataType metadataType,
-                                                           String typeId,
-                                                           ConfigMetadata configMetadata) {
+                                                                 String typeId,
+                                                                 ConfigMetadata configMetadata) {
         getOrCreateConfigs(String.join(":", metadataType.name(), typeId)).add(configMetadata);
         return this;
     }
@@ -62,6 +77,7 @@ public class StaticExpandsConfigMetadataSupplier implements ExpandsConfigMetadat
                                                   String dataTypeId) {
         return Flux.merge(
                 Flux.fromIterable(metadata.getOrDefault("any:any", Collections.emptyList())),
+                Flux.fromIterable(metadata.getOrDefault(String.join(":", "any", dataTypeId), Collections.emptyList())),
                 Flux.fromIterable(metadata.getOrDefault(String.join(":", metadataType.name(), "any"), Collections.emptyList())),
                 Flux.fromIterable(metadata.getOrDefault(String.join(":", metadataType.name(), dataTypeId), Collections.emptyList()))
         );
