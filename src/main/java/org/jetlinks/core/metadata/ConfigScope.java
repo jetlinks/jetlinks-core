@@ -11,6 +11,11 @@ public interface ConfigScope {
 
     String getId();
 
-    String getName();
+    default String getName() {
+        return getId();
+    }
 
+    static ConfigScope of(String id) {
+        return () -> id;
+    }
 }
