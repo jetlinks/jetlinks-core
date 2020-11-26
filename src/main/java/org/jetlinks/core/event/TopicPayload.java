@@ -61,12 +61,12 @@ public class TopicPayload implements Payload {
 
     @Override
     public boolean release() {
-        return handleRelease(ReferenceCountUtil.release(payload));
+        return topic == null || handleRelease(ReferenceCountUtil.release(payload));
     }
 
     @Override
     public boolean release(int dec) {
-        return handleRelease(ReferenceCountUtil.release(payload, dec));
+        return topic == null || handleRelease(ReferenceCountUtil.release(payload, dec));
     }
 
     @Override

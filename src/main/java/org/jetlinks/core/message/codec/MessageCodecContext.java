@@ -5,9 +5,13 @@ import org.jetlinks.core.device.DeviceOperator;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nullable;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * 消息编解码上下文
+ *
  * @author zhouhao
  * @since 1.0.0
  */
@@ -42,5 +46,15 @@ public interface MessageCodecContext {
      */
     default Mono<DeviceOperator> getDevice(String deviceId) {
         return Mono.empty();
+    }
+
+    default Map<String, Object> getConfiguration() {
+        return Collections.emptyMap();
+    }
+
+    default Optional<Object> getConfig(String key) {
+        return Optional
+                .ofNullable(getConfiguration())
+                .map(conf -> conf.get(key));
     }
 }

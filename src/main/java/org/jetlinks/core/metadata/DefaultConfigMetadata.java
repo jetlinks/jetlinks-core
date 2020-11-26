@@ -77,7 +77,7 @@ public class DefaultConfigMetadata implements ConfigMetadata {
     }
 
     @Override
-    public ConfigMetadata copy(ConfigScope... scopes) {
+    public DefaultConfigMetadata copy(ConfigScope... scopes) {
         DefaultConfigMetadata configMetadata = new DefaultConfigMetadata(name, description);
         configMetadata.scopes = this.scopes;
         if (scopes == null || scopes.length == 0) {

@@ -18,6 +18,10 @@ public interface DeviceMessageCodec extends DeviceMessageEncoder, DeviceMessageD
      */
     Transport getSupportTransport();
 
+    /**
+     * 获取协议描述
+     * @return 协议描述
+     */
     default Mono<? extends MessageCodecDescription> getDescription() {
         return Mono.empty();
     }

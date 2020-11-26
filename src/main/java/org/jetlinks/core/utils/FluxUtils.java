@@ -15,16 +15,38 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiPredicate;
 
 public class FluxUtils {
 
-    public static <T> Flux<List<T>> bufferRate(Flux<T> flux, int rate, Duration maxTimeout) {
+    public static <T> Flux<List<T>> bufferRate(Flux<T> flux,
+                                               int rate,
+                                               Duration maxTimeout) {
         return bufferRate(flux, rate, 100, maxTimeout);
     }
 
-    public static <T> Flux<List<T>> bufferRate(Flux<T> flux, int rate, int maxSize, Duration maxTimeout) {
+    public static <T> Flux<List<T>> bufferRate(Flux<T> flux,
+                                               int rate,
+                                               int maxSize,
+                                               Duration maxTimeout) {
         return Flux.create(sink -> {
-            BufferRateSubscriber<T> subscriber = new BufferRateSubscriber<>(sink, maxSize, rate, maxTimeout);
+            BufferRateSubscriber<T> subscriber = new BufferRateSubscriber<>(sink, maxSize, rate, maxTimeout, (e, arr) -> arr
+                    .size() >= maxSize);
+
+            flux.elapsed().subscribe(subscriber);
+
+            sink.onDispose(subscriber);
+        });
+
+    }
+
+    public static <T> Flux<List<T>> bufferRate(Flux<T> flux,
+                                               int rate,
+                                               int maxSize,
+                                               Duration maxTimeout,
+                                               BiPredicate<T, List<T>> flushCondition) {
+        return Flux.create(sink -> {
+            BufferRateSubscriber<T> subscriber = new BufferRateSubscriber<>(sink, maxSize, rate, maxTimeout, (e, arr) -> flushCondition.test(e, arr) || arr.size() >= maxSize);
 
             flux.elapsed().subscribe(subscriber);
 
@@ -37,18 +59,25 @@ public class FluxUtils {
         int bufferSize;
         int rate;
 
-        List<T> bufferArray;
+        volatile List<T> bufferArray;
         FluxSink<List<T>> sink;
 
         Duration timeout;
         Scheduler timer = Schedulers.parallel();
         Disposable timerDispose;
 
-        BufferRateSubscriber(FluxSink<List<T>> sink, int bufferSize, int rate, Duration timeout) {
+        private final BiPredicate<T, List<T>> flushCondition;
+
+        BufferRateSubscriber(FluxSink<List<T>> sink,
+                             int bufferSize,
+                             int rate,
+                             Duration timeout,
+                             BiPredicate<T, List<T>> flushCondition) {
             this.sink = sink;
             this.bufferSize = bufferSize;
             this.rate = rate;
             this.timeout = timeout;
+            this.flushCondition = flushCondition;
             newBuffer();
         }
 
@@ -60,9 +89,7 @@ public class FluxUtils {
 
         @Override
         protected void hookFinally(@Nonnull SignalType type) {
-            if (null != timerDispose) {
-                timerDispose.dispose();
-            }
+            doFlush();
         }
 
         void doFlush() {
@@ -86,7 +113,7 @@ public class FluxUtils {
             if (value.getT1() > rate) {
                 doFlush();
             } else {
-                if (bufferArray.size() >= bufferSize) {
+                if (flushCondition.test(value.getT2(), bufferArray)) {
                     doFlush();
                 } else {
                     if (timerDispose == null || timerDispose.isDisposed()) {
