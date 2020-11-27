@@ -184,26 +184,25 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                            return handler
                                    .send(server, Mono.just(msg))
                                    .defaultIfEmpty(-1)
-                                   .flatMap(len -> {
+                                   .flatMapMany(len -> {
                                        //设备未连接到服务器
                                        if (len == 0) {
                                            //尝试发起状态检查,同步设备的真实状态
                                            return operator
                                                    .checkState()
-                                                   .flatMap(state -> {
+                                                   .flatMapMany(state -> {
                                                        if (DeviceState.online != state) {
-                                                           return Mono.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE));
+                                                           return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                                        }
-                                                       return Mono.just(true);
+                                                       return interceptor.afterSent(operator, msg, replyStream);
                                                    });
                                        } else if (len == -1) {
-                                           return Mono.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE));
+                                           return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                        }
                                        log.debug("send device[{}] message complete", operator.getDeviceId());
-                                       return Mono.just(true);
+
+                                       return interceptor.afterSent(operator, msg, replyStream);
                                    })
-                                   .thenMany(replyStream)
-                                   .as(result -> interceptor.afterSent(operator, msg, result))
                                    ;
                        });
         });
