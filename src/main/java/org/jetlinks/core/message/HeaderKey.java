@@ -6,7 +6,9 @@ public interface HeaderKey<T> {
 
     T getDefaultValue();
 
-    Class<T> getType();
+   default Class<T> getType(){
+       return getDefaultValue() == null ? (Class<T>) Object.class : (Class<T>) getDefaultValue().getClass();
+   }
 
     static <T> HeaderKey<T> of(String key, T defaultValue, Class<T> type) {
         return new HeaderKey<T>() {
