@@ -1,5 +1,7 @@
 package org.jetlinks.core.message;
 
+import com.alibaba.fastjson.parser.ParserConfig;
+import com.alibaba.fastjson.util.TypeUtils;
 import org.jetlinks.core.metadata.Jsonable;
 
 import javax.annotation.Nullable;
@@ -32,10 +34,11 @@ public interface Message extends Jsonable, Serializable {
 
     /**
      * 消息的唯一标识,用于在请求响应模式下对请求和响应进行关联.
-     *
+     * <p>
      * 注意: 此消息ID为全系统唯一. 但是在很多情况下,设备可能不支持此类型的消息ID,
      * 此时需要在协议包中做好映射关系,比如使用:{@link java.util.concurrent.ConcurrentHashMap}进行消息绑定.
      * 还可以使用工具类:{@link org.jetlinks.core.message.codec.context.CodecContext}来进行此操作.
+     *
      * @return 消息ID
      */
     String getMessageId();
@@ -103,7 +106,7 @@ public interface Message extends Jsonable, Serializable {
     @SuppressWarnings("all")
     default <T> Optional<T> getHeader(HeaderKey<T> key) {
         return getHeader(key.getKey())
-                .map(v -> (T) v);
+                .map(v -> TypeUtils.cast(v, key.getType(), ParserConfig.global));
     }
 
     default <T> T getHeaderOrDefault(HeaderKey<T> key) {
@@ -112,6 +115,6 @@ public interface Message extends Jsonable, Serializable {
 
     default Optional<Object> getHeader(String header) {
         return Optional.ofNullable(getHeaders())
-                .map(headers -> headers.get(header));
+                       .map(headers -> headers.get(header));
     }
 }
