@@ -22,7 +22,7 @@ public class SymbolValueUnit implements ValueUnit {
 
     @Override
     public String getId() {
-        return "custom_" + symbol;
+        return symbol;
     }
 
     @Override
