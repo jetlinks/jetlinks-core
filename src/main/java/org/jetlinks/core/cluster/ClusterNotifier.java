@@ -11,7 +11,9 @@ import java.util.function.Function;
  *
  * @author zhouhao
  * @since 1.0
+ * @see org.jetlinks.core.event.EventBus
  */
+@Deprecated
 public interface ClusterNotifier {
 
     /**
