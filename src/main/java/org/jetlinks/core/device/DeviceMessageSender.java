@@ -3,6 +3,7 @@ package org.jetlinks.core.device;
 import org.jetlinks.core.message.*;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.function.Function;
 
@@ -55,6 +56,20 @@ public interface DeviceMessageSender {
      * @see this#send(Publisher)
      */
     <R extends DeviceMessage> Flux<R> send(DeviceMessage message);
+
+    /**
+     * 发送消息后返回结果,不等待回复
+     *
+     * @param message 消息
+     * @return void
+     * @since 1.1.5
+     */
+    default Mono<Void> sendAndForget(DeviceMessage message) {
+        return this
+                .send(message.addHeader(Headers.async, true)
+                             .addHeader(Headers.sendAndForget, true))
+                .then();
+    }
 
     /**
      * 发送{@link org.jetlinks.core.message.function.FunctionInvokeMessage}消息更便捷的API
