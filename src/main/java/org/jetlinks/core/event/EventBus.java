@@ -8,6 +8,7 @@ import org.jetlinks.core.codec.defaults.DirectCodec;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
 /**
  * 基于订阅发布的事件总线,可用于事件传递,消息转发等.
@@ -20,7 +21,7 @@ public interface EventBus {
 
     /**
      * 从事件总线中订阅事件
-     *
+     * <p>
      * 特别注意!!!: 处理数据后需要手动调用释放，如:{@link TopicPayload#release()}
      *
      * @param subscription 订阅信息
@@ -61,6 +62,21 @@ public interface EventBus {
     <T> Mono<Long> publish(String topic, Encoder<T> encoder, Publisher<? extends T> eventStream);
 
     /**
+     * 推送消息流，并指定编码器用于进行事件序列化
+     *
+     * @param topic       topic
+     * @param encoder     编码器
+     * @param eventStream 事件流
+     * @param scheduler   调度器
+     * @param <T>         void
+     * @return 订阅者数量
+     */
+    <T> Mono<Long> publish(String topic,
+                           Encoder<T> encoder,
+                           Publisher<? extends T> eventStream,
+                           Scheduler scheduler);
+
+    /**
      * 订阅主题并将事件数据转换为指定的类型
      *
      * @param subscription 订阅信息
@@ -85,6 +101,10 @@ public interface EventBus {
         return publish(topic, encoder, Mono.just(event));
     }
 
+    default <T> Mono<Long> publish(String topic, Encoder<T> encoder, T event, Scheduler scheduler) {
+        return publish(topic, encoder, Mono.just(event), scheduler);
+    }
+
     /**
      * 推送单个数据到事件流中,默认自动根据事件类型进行序列化
      *
@@ -101,9 +121,20 @@ public interface EventBus {
         return publish(topic, Codecs.lookup(event.getClass()), event);
     }
 
+    default <T> Mono<Long> publish(String topic, T event, Scheduler scheduler) {
+        if (event instanceof Payload) {
+            return publish(topic, ((Payload) event), scheduler);
+        }
+        return publish(topic, Codecs.lookup(event.getClass()), event, scheduler);
+    }
+
 
     default Mono<Long> publish(String topic, Payload event) {
         return publish(topic, DirectCodec.INSTANCE, event);
+    }
+
+    default Mono<Long> publish(String topic, Payload event, Scheduler scheduler) {
+        return publish(topic, DirectCodec.INSTANCE, event, scheduler);
     }
 
 }

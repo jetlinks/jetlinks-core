@@ -10,6 +10,10 @@ public class DirectCodec implements Codec<Payload> {
 
     public static final DirectCodec INSTANCE = new DirectCodec();
 
+    public static <T extends Payload> Codec<T> instance() {
+        return (Codec<T>)INSTANCE;
+    }
+
     @Override
     public Class<Payload> forType() {
         return Payload.class;

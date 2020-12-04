@@ -3,6 +3,7 @@ package org.jetlinks.core.codec.defaults;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
 import org.jetlinks.core.event.TopicPayload;
@@ -11,6 +12,7 @@ import org.jetlinks.core.utils.BytesUtils;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+@Slf4j
 public class TopicPayloadCodec implements Codec<TopicPayload> {
 
     public static final TopicPayloadCodec INSTANCE = new TopicPayloadCodec();
@@ -47,13 +49,17 @@ public class TopicPayloadCodec implements Codec<TopicPayload> {
 
         byte[] topic = body.getTopic().getBytes();
         byte[] topicLen = BytesUtils.intToBe(topic.length);
-
-        ByteBuf buf = body.getBody();
-        return Payload.of(ByteBufAllocator.DEFAULT
-                                  .compositeBuffer(3)
-                                  .addComponent(true, Unpooled.wrappedBuffer(topicLen))
-                                  .addComponent(true, Unpooled.wrappedBuffer(topic))
-                                  .addComponent(true, buf));
+        try {
+            ByteBuf buf = body.getBody();
+            return Payload.of(ByteBufAllocator.DEFAULT
+                                      .compositeBuffer(3)
+                                      .addComponent(true, Unpooled.wrappedBuffer(topicLen))
+                                      .addComponent(true, Unpooled.wrappedBuffer(topic))
+                                      .addComponent(true, buf));
+        } catch (Throwable e) {
+            log.error("encode topic [{}] payload error", body.getTopic());
+            throw e;
+        }
 
 //        return Payload.of(Unpooled.buffer()
 //                .writeBytes(topicLen)

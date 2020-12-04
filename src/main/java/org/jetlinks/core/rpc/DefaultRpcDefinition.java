@@ -24,4 +24,9 @@ public class DefaultRpcDefinition<REQ, RES> implements RpcDefinition<REQ, RES> {
     public Codec<RES> responseCodec() {
         return responseCodec;
     }
+
+    @Override
+    public String toString() {
+        return id+"(" + address  + ")";
+    }
 }
