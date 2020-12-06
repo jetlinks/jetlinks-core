@@ -10,8 +10,10 @@ import java.util.function.Function;
  * Rpc Service 底层接口,监听rcp请求,发起rpc请求.
  *
  * @author zhouhao
+ * @see org.jetlinks.core.ipc.IpcService
  * @since 1.1
  */
+@Deprecated
 public interface RpcService {
 
     /**

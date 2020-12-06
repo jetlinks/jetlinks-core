@@ -1,4 +1,4 @@
-package org.jetlinks.core.rpc;
+package org.jetlinks.core.ipc;
 
 
 import org.jetlinks.core.codec.Codec;
@@ -6,18 +6,15 @@ import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.codec.defaults.ErrorCodec;
 
 /**
- * Rpc定义信息
+ * IPC定义信息
  *
  * @param <REQ> 请求类型
  * @param <RES> 响应类型
  */
-@Deprecated
-public interface RpcDefinition<REQ, RES> {
-
-    String getId();
+public interface IpcDefinition<REQ, RES> {
 
     /**
-     * 服务地址
+     * 通信地址
      *
      * @return 地址
      */
@@ -40,22 +37,20 @@ public interface RpcDefinition<REQ, RES> {
         return ErrorCodec.DEFAULT;
     }
 
-    static <REQ, RES> RpcDefinition<REQ, RES> of(String id,
-                                                 String address,
+    static <REQ, RES> IpcDefinition<REQ, RES> of(String address,
                                                  Codec<REQ> requestCodec,
                                                  Codec<RES> responseCodec) {
-        return new DefaultRpcDefinition<>(id, address, requestCodec, responseCodec);
+        return new DefaultIpcDefinition<>(address, requestCodec, responseCodec);
     }
 
-    static RpcDefinition<Void, Void> of(String address) {
-        return new DefaultRpcDefinition<>(address, address, Codecs.lookup(Void.class), Codecs.lookup(Void.class));
+    static IpcDefinition<Void, Void> of(String address) {
+        return new DefaultIpcDefinition<>(address, Codecs.lookup(Void.class), Codecs.lookup(Void.class));
     }
 
-    static <REQ, RES> RpcDefinition<REQ, RES> of(String id,
-                                                 String address,
+    static <REQ, RES> IpcDefinition<REQ, RES> of(String address,
                                                  Class<REQ> requestType,
                                                  Class<RES> responseType) {
-        return new DefaultRpcDefinition<>(id,address, Codecs.lookup(requestType), Codecs.lookup(responseType));
+        return new DefaultIpcDefinition<>(address, Codecs.lookup(requestType), Codecs.lookup(responseType));
     }
 
 }

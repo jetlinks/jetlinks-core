@@ -1,15 +1,14 @@
-package org.jetlinks.core.rpc;
+package org.jetlinks.core.ipc;
 
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.jetlinks.core.codec.Codec;
+import org.jetlinks.core.rpc.RpcDefinition;
 
 @AllArgsConstructor
 @Getter
-@Deprecated
-public class DefaultRpcDefinition<REQ, RES> implements RpcDefinition<REQ, RES> {
-    private final String id;
+class DefaultIpcDefinition<REQ, RES> implements IpcDefinition<REQ, RES> {
     private final String address;
 
     private final Codec<REQ> requestCodec;
@@ -28,6 +27,6 @@ public class DefaultRpcDefinition<REQ, RES> implements RpcDefinition<REQ, RES> {
 
     @Override
     public String toString() {
-        return id+"(" + address  + ")";
+        return "IPC:" + address  + "";
     }
 }

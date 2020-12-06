@@ -50,12 +50,12 @@ public class TopicPayloadCodec implements Codec<TopicPayload> {
         byte[] topic = body.getTopic().getBytes();
         byte[] topicLen = BytesUtils.intToBe(topic.length);
         try {
-            ByteBuf buf = body.getBody();
+            ByteBuf bodyBuf = body.getBody();
             return Payload.of(ByteBufAllocator.DEFAULT
-                                      .compositeBuffer(3)
-                                      .addComponent(true, Unpooled.wrappedBuffer(topicLen))
-                                      .addComponent(true, Unpooled.wrappedBuffer(topic))
-                                      .addComponent(true, buf));
+                                      .buffer(topicLen.length + topic.length + bodyBuf.capacity())
+                                      .writeBytes(topicLen)
+                                      .writeBytes(topic)
+                                      .writeBytes(bodyBuf, 0, bodyBuf.capacity()));
         } catch (Throwable e) {
             log.error("encode topic [{}] payload error", body.getTopic());
             throw e;

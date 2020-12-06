@@ -136,5 +136,4 @@ public interface EventBus {
     default Mono<Long> publish(String topic, Payload event, Scheduler scheduler) {
         return publish(topic, DirectCodec.INSTANCE, event, scheduler);
     }
-
 }

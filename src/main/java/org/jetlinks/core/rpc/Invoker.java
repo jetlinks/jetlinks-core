@@ -5,6 +5,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@Deprecated
 public interface Invoker<REQ, RES> extends Disposable {
 
     Flux<RES> invoke(Publisher<? extends REQ> payload);
