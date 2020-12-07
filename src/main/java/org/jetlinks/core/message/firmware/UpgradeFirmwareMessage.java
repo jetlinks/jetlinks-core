@@ -50,6 +50,13 @@ public class UpgradeFirmwareMessage extends CommonDeviceMessage implements Repay
      */
     private String firmwareId;
 
+    /**
+     * 固件大小
+     *
+     * @since 1.1.5
+     */
+    private long size;
+
     @Override
     public UpgradeFirmwareMessageReply newReply() {
         return new UpgradeFirmwareMessageReply().from(this);

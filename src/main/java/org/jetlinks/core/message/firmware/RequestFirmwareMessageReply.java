@@ -49,6 +49,13 @@ public class RequestFirmwareMessageReply extends CommonDeviceMessageReply<Reques
      */
     private String firmwareId;
 
+    /**
+     * 固件大小
+     *
+     * @since 1.1.5
+     */
+    private long size;
+
     @Override
     public MessageType getMessageType() {
         return MessageType.REQUEST_FIRMWARE_REPLY;
