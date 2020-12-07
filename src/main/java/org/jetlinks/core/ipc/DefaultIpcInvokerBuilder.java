@@ -5,6 +5,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -25,6 +26,14 @@ public class DefaultIpcInvokerBuilder<REQ, RES> implements IpcInvokerBuilder<REQ
 
 
     private Disposable disposable;
+
+    private Duration timeout;
+
+    @Override
+    public IpcInvokerBuilder<REQ, RES> timeout(Duration timeout) {
+        this.timeout = timeout;
+        return this;
+    }
 
     @Override
     public IpcInvokerBuilder<REQ, RES> doOnDispose(Disposable disposable) {
@@ -82,7 +91,7 @@ public class DefaultIpcInvokerBuilder<REQ, RES> implements IpcInvokerBuilder<REQ
 
     @Override
     public IpcInvoker<REQ, RES> build() {
-        return new DefaultIpcInvoker<>(
+        IpcInvoker<REQ, RES> invoker = new DefaultIpcInvoker<>(
                 name,
                 channelRequester,
                 noArgStreamRequester,
@@ -93,5 +102,9 @@ public class DefaultIpcInvokerBuilder<REQ, RES> implements IpcInvokerBuilder<REQ
                 fireAndForgetRequester,
                 disposable
         );
+        if (timeout != null) {
+            invoker = new TimeoutIpcInvoker<>(timeout, invoker);
+        }
+        return invoker;
     }
 }

@@ -2,7 +2,6 @@ package org.jetlinks.core.codec.defaults;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Codec;
@@ -22,11 +21,8 @@ public class TopicPayloadCodec implements Codec<TopicPayload> {
         return TopicPayload.class;
     }
 
-    @Nullable
-    @Override
-    public TopicPayload decode(@Nonnull Payload payload) {
-        ByteBuf byteBuf = payload.getBody();
 
+    public static TopicPayload doDecode(ByteBuf byteBuf){
         byte[] topicLen = new byte[4];
 
         byteBuf.getBytes(0, topicLen);
@@ -39,9 +35,31 @@ public class TopicPayloadCodec implements Codec<TopicPayload> {
 
         int idx = 4 + bytes;
 
-        ByteBuf body = byteBuf.slice(idx, byteBuf.readableBytes() - idx);
+        ByteBuf body = byteBuf.slice(idx, byteBuf.writerIndex() - idx);
         byteBuf.resetReaderIndex();
         return TopicPayload.of(topic, Payload.of(body));
+    }
+
+    public static ByteBuf doEncode(TopicPayload body){
+        byte[] topic = body.getTopic().getBytes();
+        byte[] topicLen = BytesUtils.intToBe(topic.length);
+        try {
+            ByteBuf bodyBuf = body.getBody();
+            return ByteBufAllocator.DEFAULT
+                    .buffer(topicLen.length + topic.length + bodyBuf.writerIndex())
+                    .writeBytes(topicLen)
+                    .writeBytes(topic)
+                    .writeBytes(bodyBuf, 0, bodyBuf.writerIndex());
+        } catch (Throwable e) {
+            log.error("encode topic [{}] payload error", body.getTopic());
+            throw e;
+        }
+    }
+
+    @Nullable
+    @Override
+    public TopicPayload decode(@Nonnull Payload payload) {
+        return doDecode(payload.getBody());
     }
 
     @Override
@@ -52,10 +70,10 @@ public class TopicPayloadCodec implements Codec<TopicPayload> {
         try {
             ByteBuf bodyBuf = body.getBody();
             return Payload.of(ByteBufAllocator.DEFAULT
-                                      .buffer(topicLen.length + topic.length + bodyBuf.capacity())
+                                      .buffer(topicLen.length + topic.length + bodyBuf.writerIndex())
                                       .writeBytes(topicLen)
                                       .writeBytes(topic)
-                                      .writeBytes(bodyBuf, 0, bodyBuf.capacity()));
+                                      .writeBytes(bodyBuf, 0, bodyBuf.writerIndex()));
         } catch (Throwable e) {
             log.error("encode topic [{}] payload error", body.getTopic());
             throw e;

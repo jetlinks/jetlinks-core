@@ -5,8 +5,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author zhouhao
@@ -28,18 +28,18 @@ public class CommonDeviceMessage implements DeviceMessage {
     private long timestamp = System.currentTimeMillis();
 
     @Override
-    public DeviceMessage addHeader(String header, Object value) {
+    public synchronized DeviceMessage addHeader(String header, Object value) {
         if (headers == null) {
-            this.headers = new LinkedHashMap<>();
+            this.headers = new ConcurrentHashMap<>();
         }
         this.headers.put(header, value);
         return this;
     }
 
     @Override
-    public DeviceMessage addHeaderIfAbsent(String header, Object value) {
+    public synchronized DeviceMessage addHeaderIfAbsent(String header, Object value) {
         if (headers == null) {
-            this.headers = new LinkedHashMap<>();
+            this.headers = new ConcurrentHashMap<>();
         }
         this.headers.putIfAbsent(header, value);
         return this;

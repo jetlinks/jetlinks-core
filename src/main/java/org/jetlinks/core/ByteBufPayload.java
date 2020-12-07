@@ -25,7 +25,15 @@ class ByteBufPayload implements Payload {
 
     private ByteBuf body;
 
-    public static Payload of(ByteBuf body) {
+    private String caller;
+
+    static Payload unPool(ByteBuf body) {
+        ByteBufPayload payload = new ByteBufPayload(null);
+        payload.body = body;
+        return payload;
+    }
+
+    static Payload of(ByteBuf body) {
         ByteBufPayload payload;
         try {
             payload = RECYCLER.get();
@@ -33,8 +41,20 @@ class ByteBufPayload implements Payload {
             payload = new ByteBufPayload(null);
         }
         payload.body = body;
+        if (log.isDebugEnabled()) {
+            for (StackTraceElement element : (new Exception()).getStackTrace()) {
+                if (!"org.jetlinks.core.Payload".equals(element.getClassName()) &&
+                        !"org.jetlinks.core.ByteBufPayload".equals(element.getClassName()) &&
+                        !element.getClassName().startsWith("org.jetlinks.core.codec")
+                ) {
+                    payload.caller = element.toString();
+                    break;
+                }
+            }
+        }
         return payload;
     }
+
 
     @Override
     public boolean release() {
@@ -67,6 +87,7 @@ class ByteBufPayload implements Payload {
     protected boolean handleRelease(boolean release) {
         if (release && handle != null) {
             body = null;
+            caller = null;
             handle.recycle(this);
         }
         return release;
@@ -76,7 +97,7 @@ class ByteBufPayload implements Payload {
     protected void finalize() throws Throwable {
         int refCnt = ReferenceCountUtil.refCnt(body);
         if (refCnt > 0) {
-            log.debug("payload {} was not release properly, release() was not called before it's garbage-collected. refCnt={}", body, refCnt);
+            log.debug("payload {} was not release properly, release() was not called before it's garbage-collected. refCnt={}. caller: {}", body, refCnt, caller);
         }
         super.finalize();
     }

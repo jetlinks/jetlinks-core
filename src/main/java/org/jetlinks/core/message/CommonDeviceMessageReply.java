@@ -5,8 +5,8 @@ import lombok.*;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.enums.ErrorCode;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author zhouhao
@@ -36,18 +36,18 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     private Map<String, Object> headers;
 
     @Override
-    public ME addHeaderIfAbsent(String header, Object value) {
+    public synchronized ME addHeaderIfAbsent(String header, Object value) {
         if (headers == null) {
-            this.headers = new LinkedHashMap<>();
+            this.headers = new ConcurrentHashMap<>();
         }
         this.headers.putIfAbsent(header, value);
         return (ME) this;
     }
 
     @Override
-    public ME addHeader(String header, Object value) {
+    public synchronized ME addHeader(String header, Object value) {
         if (headers == null) {
-            this.headers = new LinkedHashMap<>();
+            this.headers = new ConcurrentHashMap<>();
         }
         this.headers.put(header, value);
         return (ME) this;

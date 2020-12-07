@@ -4,5 +4,6 @@ public enum IpcCode {
 
     ipcServiceUnavailable,
     unsupported,
+    timeout,
     error;
 }

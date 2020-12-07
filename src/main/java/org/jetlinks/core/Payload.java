@@ -174,6 +174,10 @@ public interface Payload extends ReferenceCounted {
         return ByteBufPayload.of(body);
     }
 
+    static Payload unPool(ByteBuf body) {
+        return ByteBufPayload.unPool(body);
+    }
+
     static Payload of(byte[] body) {
         return of(Unpooled.wrappedBuffer(body));
     }
