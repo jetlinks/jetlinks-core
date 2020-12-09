@@ -47,6 +47,7 @@ public class TopicPayloadCodecTest {
 
     @Test
     public void testRelease(){
+        TopicPayload.POOL_ENABLED=true;
         TopicPayload topicPayload = TopicPayload.of("/test", NativePayload.of("hello",StringCodec.UTF8));
         Assert.assertEquals(topicPayload.refCnt(),1);
 
