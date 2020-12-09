@@ -19,6 +19,7 @@ import java.util.Map;
 @AllArgsConstructor(staticName = "of")
 @Slf4j
 public class TopicPayload implements Payload {
+    public static boolean POOL_ENABLED = Boolean.getBoolean("jetlinks.eventbus.payload.pool.enabled");
 
     public static Recycler<TopicPayload> RECYCLER = new Recycler<TopicPayload>() {
         @Override
@@ -38,14 +39,17 @@ public class TopicPayload implements Payload {
     }
 
     public static TopicPayload of(String topic, Payload payload) {
-        try {
-            TopicPayload topicPayload = RECYCLER.get();
-            topicPayload.topic = topic;
-            topicPayload.payload = payload;
-            return topicPayload;
-        } catch (Exception e) {
-            return TopicPayload.of(topic, payload, null);
+        if (POOL_ENABLED) {
+            try {
+                TopicPayload topicPayload = RECYCLER.get();
+                topicPayload.topic = topic;
+                topicPayload.payload = payload;
+                return topicPayload;
+            } catch (Exception e) {
+                return TopicPayload.of(topic, payload, null);
+            }
         }
+        return TopicPayload.of(topic, payload, null);
     }
 
     @Nonnull
@@ -71,9 +75,8 @@ public class TopicPayload implements Payload {
 
     @Override
     protected void finalize() throws Throwable {
-        int refCnt = refCnt();
-        if (refCnt != 0) {
-            log.debug("topic [{}] payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", toString(), refCnt);
+        if (handle != null && refCnt() != 0) {
+            log.debug("topic [{}] payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", toString(), refCnt());
         }
         super.finalize();
     }
@@ -86,9 +89,9 @@ public class TopicPayload implements Payload {
     }
 
     protected void deallocate() {
-        payload = null;
-        topic = null;
         if (handle != null) {
+            payload = null;
+            topic = null;
             handle.recycle(this);
         }
     }

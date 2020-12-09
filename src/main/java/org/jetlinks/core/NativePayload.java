@@ -109,16 +109,16 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
     @Nonnull
     @Override
     public ByteBuf getBody() {
-        if (ref == null) {
+        if (buf == null) {
             synchronized (this) {
-                if (ref != null) {
-                    return ref.getBody();
+                if (buf != null) {
+                    return buf;
                 }
-                ByteBuf buf = Unpooled.unreleasableBuffer(this.buf = encoder.encode(nativeObject).getBody());
-                ref = Payload.of(buf);
+                ref = encoder.encode(nativeObject);
+                buf = Unpooled.unreleasableBuffer(ref.getBody());
             }
         }
-        return ref.getBody();
+        return buf;
     }
 
     @Override
@@ -128,12 +128,12 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
 
     @Override
     protected void deallocate() {
-        this.ref = null;
+        this.buf = null;
         this.nativeObject = null;
         this.encoder = null;
-        if (this.buf != null) {
-            ReferenceCountUtil.safeRelease(this.buf);
-            this.buf = null;
+        if (this.ref != null) {
+            ReferenceCountUtil.safeRelease(this.ref);
+            this.ref = null;
         }
         if (handle != null) {
             handle.recycle(this);

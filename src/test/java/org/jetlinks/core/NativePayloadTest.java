@@ -16,6 +16,7 @@ public class NativePayloadTest {
         assertEquals(payload.refCnt(), 2);
         payload.release();
 
+        assertNotNull(payload.getBody());
         assertEquals(payload.refCnt(), 1);
         assertTrue(payload.release());
         assertNull(payload.getNativeObject());

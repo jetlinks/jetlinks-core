@@ -136,7 +136,7 @@ public interface Payload extends ReferenceCounted {
     }
 
     default JSONObject bodyToJson(boolean release) {
-        return decode(JSONObject.class);
+        return decode(JSONObject.class,release);
     }
 
     default JSONObject bodyToJson() {
@@ -172,10 +172,6 @@ public interface Payload extends ReferenceCounted {
 
     static Payload of(ByteBuf body) {
         return ByteBufPayload.of(body);
-    }
-
-    static Payload unPool(ByteBuf body) {
-        return ByteBufPayload.unPool(body);
     }
 
     static Payload of(byte[] body) {

@@ -10,6 +10,8 @@ import javax.annotation.Nonnull;
 @Slf4j
 class ByteBufPayload implements Payload {
 
+    public static boolean POOL_ENABLED = Boolean.getBoolean("jetlinks.eventbus.payload.pool.enabled");
+
     private static final Recycler<ByteBufPayload> RECYCLER = new Recycler<ByteBufPayload>() {
         @Override
         protected ByteBufPayload newObject(Handle<ByteBufPayload> handle) {
@@ -27,21 +29,19 @@ class ByteBufPayload implements Payload {
 
     private String caller;
 
-    static Payload unPool(ByteBuf body) {
-        ByteBufPayload payload = new ByteBufPayload(null);
-        payload.body = body;
-        return payload;
-    }
-
     static Payload of(ByteBuf body) {
         ByteBufPayload payload;
-        try {
-            payload = RECYCLER.get();
-        } catch (Exception e) {
+        if (POOL_ENABLED) {
+            try {
+                payload = RECYCLER.get();
+
+            } catch (Exception e) {
+                payload = new ByteBufPayload(null);
+            }
+        } else {
             payload = new ByteBufPayload(null);
         }
-        payload.body = body;
-        if (log.isDebugEnabled()) {
+        if (log.isTraceEnabled()) {
             for (StackTraceElement element : (new Exception()).getStackTrace()) {
                 if (!"org.jetlinks.core.Payload".equals(element.getClassName()) &&
                         !"org.jetlinks.core.ByteBufPayload".equals(element.getClassName()) &&
@@ -52,6 +52,7 @@ class ByteBufPayload implements Payload {
                 }
             }
         }
+        payload.body = body;
         return payload;
     }
 
@@ -96,8 +97,8 @@ class ByteBufPayload implements Payload {
     @Override
     protected void finalize() throws Throwable {
         int refCnt = ReferenceCountUtil.refCnt(body);
-        if (refCnt > 0) {
-            log.debug("payload {} was not release properly, release() was not called before it's garbage-collected. refCnt={}. caller: {}", body, refCnt, caller);
+        if (refCnt > 0 ) {
+            log.trace("payload {} was not release properly, release() was not called before it's garbage-collected. refCnt={}. caller: {}", body, refCnt, caller);
         }
         super.finalize();
     }
