@@ -48,7 +48,7 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
         }
         ValueUnit unit = getUnit();
         if (unit == null) {
-            return String.valueOf(value);
+            return value;
         }
         return unit.format(value);
     }

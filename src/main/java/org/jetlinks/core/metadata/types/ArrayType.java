@@ -75,6 +75,9 @@ public class ArrayType extends AbstractType<ArrayType> implements DataType, Conv
                         return val;
                     }).collect(Collectors.toList());
         }
+        if(value instanceof String){
+            return JSON.parseArray(String.valueOf(value));
+        }
         return Collections.singletonList(value);
     }
 }
