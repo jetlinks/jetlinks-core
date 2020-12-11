@@ -36,10 +36,4 @@ public class CompositeDeviceMessageSenderInterceptor implements DeviceMessageSen
         return flux;
 
     }
-
-    @Override
-    public DeviceMessageSenderInterceptor andThen(DeviceMessageSenderInterceptor interceptor) {
-        interceptors.add(interceptor);
-        return this;
-    }
 }
