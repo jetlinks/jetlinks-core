@@ -172,8 +172,11 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                 if (StringUtils.isEmpty(server)) {
                                     return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                 }
+                                boolean forget = msg.getHeader(Headers.sendAndForget).orElse(false);
                                 //定义处理来自设备的回复.
-                                Flux<R> replyStream = handler
+                                Flux<R> replyStream = forget
+                                        ? Flux.empty()
+                                        : handler
                                         .handleReply(msg.getDeviceId(),
                                                      msg.getMessageId(),
                                                      Duration.ofMillis(msg.getHeader(Headers.timeout).orElse(defaultTimeout)))
