@@ -116,18 +116,22 @@ public enum MessageType {
     //since 1.1.4
     LOG(DeviceLogMessage::new),
 
-    UNKNOWN(null){
+    //应答指令
+    ACKNOWLEDGE(AcknowledgeDeviceMessage::new),
+
+    //未知消息
+    UNKNOWN(null) {
         @Override
         @SuppressWarnings("all")
         public <T extends Message> T convert(Map<String, Object> map) {
-            if(map.containsKey("success")){
-                CommonDeviceMessageReply<?> reply=new ChildDeviceMessageReply();
+            if (map.containsKey("success")) {
+                CommonDeviceMessageReply<?> reply = new ChildDeviceMessageReply();
                 reply.fromJson(new JSONObject(map));
-                return (T)reply;
+                return (T) reply;
             }
-            CommonDeviceMessage reply=new CommonDeviceMessage();
+            CommonDeviceMessage reply = new CommonDeviceMessage();
             reply.fromJson(new JSONObject(map));
-            return (T)reply;
+            return (T) reply;
 
         }
     };
@@ -181,13 +185,15 @@ public enum MessageType {
         if (map.containsKey("functionId")) {
             return map.containsKey("inputs") ? Optional.of(INVOKE_FUNCTION) : Optional.of(INVOKE_FUNCTION_REPLY);
         }
-
         if (map.containsKey("properties")) {
             Object properties = map.get("properties");
             return properties instanceof Collection ? Optional.of(READ_PROPERTY) : Optional.of(READ_PROPERTY_REPLY);
         }
         if (map.containsKey("tags")) {
             return Optional.of(UPDATE_TAG);
+        }
+        if (map.containsKey("success")) {
+            return Optional.of(ACKNOWLEDGE);
         }
         return Optional.of(UNKNOWN);
     }
