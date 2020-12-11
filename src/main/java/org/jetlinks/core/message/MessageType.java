@@ -1,5 +1,6 @@
 package org.jetlinks.core.message;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.AllArgsConstructor;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.message.event.EventMessage;
@@ -115,7 +116,21 @@ public enum MessageType {
     //since 1.1.4
     LOG(DeviceLogMessage::new),
 
-    UNKNOWN(null);
+    UNKNOWN(null){
+        @Override
+        @SuppressWarnings("all")
+        public <T extends Message> T convert(Map<String, Object> map) {
+            if(map.containsKey("success")){
+                CommonDeviceMessageReply<?> reply=new ChildDeviceMessageReply();
+                reply.fromJson(new JSONObject(map));
+                return (T)reply;
+            }
+            CommonDeviceMessage reply=new CommonDeviceMessage();
+            reply.fromJson(new JSONObject(map));
+            return (T)reply;
+
+        }
+    };
 
     Supplier<? extends Message> newInstance;
 
@@ -132,7 +147,12 @@ public enum MessageType {
     @SuppressWarnings("all")
     public <T extends Message> T convert(Map<String, Object> map) {
         if (newInstance != null) {
-            return (T) FastBeanCopier.copy(map, newInstance);
+            try {
+                return (T) FastBeanCopier.copy(map, newInstance);
+            } catch (Throwable e) {
+                //fallback jsonobject
+                return (T) new JSONObject(map).toJavaObject(newInstance.get().getClass());
+            }
         }
         return null;
     }
@@ -169,7 +189,7 @@ public enum MessageType {
         if (map.containsKey("tags")) {
             return Optional.of(UPDATE_TAG);
         }
-        return Optional.empty();
+        return Optional.of(UNKNOWN);
     }
 
 }
