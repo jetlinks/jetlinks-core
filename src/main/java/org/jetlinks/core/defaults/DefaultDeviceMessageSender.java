@@ -9,12 +9,14 @@ import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
+import org.jetlinks.core.utils.DeviceMessageTracer;
 import org.reactivestreams.Publisher;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -77,8 +79,9 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         return convertReply(reply);
     }
 
-
-    protected <T extends DeviceMessageReply> T convertReply(Object obj) {
+    @SuppressWarnings("all")
+    protected <T extends DeviceMessage> T convertReply(Object obj) {
+        DeviceMessage result = null;
         if (obj instanceof DeviceMessageReply) {
             DeviceMessageReply reply = ((DeviceMessageReply) obj);
             if (!reply.isSuccess()) {
@@ -89,9 +92,16 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                              throw err;
                          });
             }
-            return (T) reply;
+            result = reply;
+        } else if (obj instanceof DeviceMessage) {
+            result = (DeviceMessage) obj;
+        } else if (obj instanceof Map) {
+            result = (DeviceMessage) MessageType.convertMessage(((Map) obj)).orElse(null);
         }
-        throw new DeviceOperationException(ErrorCode.SYSTEM_ERROR, new ClassCastException("can not cast " + obj.getClass() + " to DeviceMessageReply"));
+        if (result == null) {
+            throw new DeviceOperationException(ErrorCode.SYSTEM_ERROR, new ClassCastException("can not cast " + obj + " to DeviceMessageReply"));
+        }
+        return (T) result;
     }
 
     private <R extends DeviceMessage> Flux<R> logReply(DeviceMessage msg, Flux<R> flux) {
@@ -169,6 +179,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                             .from(message)
                             .flatMap(msg -> interceptor.preSend(operator, msg))
                             .concatMap(msg -> {
+                                DeviceMessageTracer.trace(msg,"send.before");
                                 if (StringUtils.isEmpty(server)) {
                                     return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                 }
@@ -190,8 +201,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                             return Mono.error(error);
                                         })
                                         .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
-                                        .as(flux -> this.logReply(msg, flux))
-                                        .cache();//cache reply
+                                        .as(flux -> this.logReply(msg, flux));
                                 //发送消息到设备连接的服务器
                                 return handler
                                         .send(server, Mono.just(msg))
@@ -215,6 +225,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
 
                                             return interceptor.afterSent(operator, msg, replyStream);
                                         })
+                                        .doOnNext(r-> DeviceMessageTracer.trace(r, "send.reply"))
                                         ;
                             });
                 });

@@ -74,4 +74,6 @@ public interface Headers {
 
     //是否属性为部分属性,如果为true,在列式存储策略下,将会把之前上报的属性合并到一起进行存储.
     HeaderKey<Boolean> partialProperties = HeaderKey.of("partialProperties", false, Boolean.class);
+
+    HeaderKey<Boolean> enableTrace = HeaderKey.of("_trace", Boolean.getBoolean("device.message.trace.enabled"), Boolean.class);
 }
