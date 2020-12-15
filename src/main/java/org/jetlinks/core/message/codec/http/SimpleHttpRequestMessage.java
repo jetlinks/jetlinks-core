@@ -2,9 +2,7 @@ package org.jetlinks.core.message.codec.http;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.SneakyThrows;
+import lombok.*;
 import org.jetlinks.core.message.codec.MessagePayloadType;
 import org.jetlinks.core.message.codec.TextMessageParser;
 import org.springframework.http.HttpHeaders;
@@ -18,6 +16,9 @@ import java.util.stream.Stream;
 
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class SimpleHttpRequestMessage implements HttpRequestMessage {
 
     //消息体
@@ -54,9 +55,9 @@ public class SimpleHttpRequestMessage implements HttpRequestMessage {
                         url = url.substring(0, url.indexOf("?"));
                         request.setQueryParameters(
                                 Stream.of(parameters.split("[&]"))
-                                        .map(str -> str.split("[=]", 2))
-                                        .filter(arr -> arr.length > 1)
-                                        .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1], (a, b) -> String.join(",", a, b)))
+                                      .map(str -> str.split("[=]", 2))
+                                      .filter(arr -> arr.length > 1)
+                                      .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1], (a, b) -> String.join(",", a, b)))
                         );
                     }
                     request.setMethod(HttpMethod.resolve(method));
@@ -86,9 +87,9 @@ public class SimpleHttpRequestMessage implements HttpRequestMessage {
         ).parse(httpString);
 
         request.setHeaders(httpHeaders.entrySet()
-                .stream()
-                .map(e -> new Header(e.getKey(), e.getValue().toArray(new String[0])))
-                .collect(Collectors.toList()));
+                                      .stream()
+                                      .map(e -> new Header(e.getKey(), e.getValue().toArray(new String[0])))
+                                      .collect(Collectors.toList()));
 
         return request;
     }
