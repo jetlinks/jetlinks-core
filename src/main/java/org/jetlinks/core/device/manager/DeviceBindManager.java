@@ -88,7 +88,7 @@ public interface DeviceBindManager {
                                @Nonnull String key);
 
     /**
-     * 根据deviceId获取设备ID
+     * 根据deviceId获取绑定信息
      *
      * @param type     类型
      * @param deviceId deviceId
@@ -97,6 +97,18 @@ public interface DeviceBindManager {
     default Mono<BindInfo> getBindInfoByDeviceId(@Nonnull String type,
                                                  @Nonnull String deviceId) {
         return Mono.error(new UnsupportedOperationException());
+    }
+
+    /**
+     * 根据deviceId获取绑定信息
+     *
+     * @param type     类型
+     * @param deviceId deviceId
+     * @return deviceId
+     */
+    default Flux<BindInfo> getBindInfoByDeviceId(@Nonnull String type,
+                                                 @Nonnull Collection<String> deviceId) {
+        return Flux.error(new UnsupportedOperationException());
     }
 
 
