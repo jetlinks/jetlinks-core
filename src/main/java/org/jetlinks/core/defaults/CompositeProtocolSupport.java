@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Getter
@@ -70,6 +71,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private List<DeviceMetadataCodec> metadataCodecs = new ArrayList<>();
 
     private List<Consumer<Map<String, Object>>> doOnInit = new CopyOnWriteArrayList<>();
+
+    private Function<DeviceOperator, Mono<Void>> onDeviceRegister;
+    private Function<DeviceOperator, Mono<Void>> onDeviceUnRegister;
+    private Function<DeviceProductOperator, Mono<Void>> onProductRegister;
+    private Function<DeviceProductOperator, Mono<Void>> onProductUnRegister;
 
     @Override
     public void dispose() {
@@ -249,5 +255,45 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Override
     public Mono<DeviceStateChecker> getStateChecker() {
         return Mono.justOrEmpty(deviceStateChecker);
+    }
+
+    public CompositeProtocolSupport doOnDeviceRegister(Function<DeviceOperator, Mono<Void>> executor) {
+        this.onDeviceRegister = executor;
+        return this;
+    }
+
+    public CompositeProtocolSupport doOnDeviceUnRegister(Function<DeviceOperator, Mono<Void>> executor) {
+        this.onDeviceUnRegister = executor;
+        return this;
+    }
+
+    public CompositeProtocolSupport doOnProductRegister(Function<DeviceProductOperator, Mono<Void>> executor) {
+        this.onProductRegister = executor;
+        return this;
+    }
+
+    public CompositeProtocolSupport doOnProductUnRegister(Function<DeviceProductOperator, Mono<Void>> executor) {
+        this.onProductUnRegister = executor;
+        return this;
+    }
+
+    @Override
+    public Mono<Void> onDeviceRegister(DeviceOperator operator) {
+        return onDeviceRegister != null ? onDeviceRegister.apply(operator) : Mono.empty();
+    }
+
+    @Override
+    public Mono<Void> onDeviceUnRegister(DeviceOperator operator) {
+        return onDeviceUnRegister != null ? onDeviceUnRegister.apply(operator) : Mono.empty();
+    }
+
+    @Override
+    public Mono<Void> onProductRegister(DeviceProductOperator operator) {
+        return onProductRegister != null ? onProductRegister.apply(operator) : Mono.empty();
+    }
+
+    @Override
+    public Mono<Void> onProductUnRegister(DeviceProductOperator operator) {
+        return onProductUnRegister != null ? onProductUnRegister.apply(operator) : Mono.empty();
     }
 }

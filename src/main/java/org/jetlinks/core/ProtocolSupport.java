@@ -185,4 +185,48 @@ public interface ProtocolSupport extends Disposable {
                                                           String dataTypeId) {
         return Flux.empty();
     }
+
+    /**
+     * 当设备注册生效后调用
+     *
+     * @param operator 设备操作接口
+     * @return void
+     * @since 1.1.5
+     */
+    default Mono<Void> onDeviceRegister(DeviceOperator operator) {
+        return Mono.empty();
+    }
+
+    /**
+     * 当设备注销前调用
+     *
+     * @param operator 设备操作接口
+     * @return void
+     * @since 1.1.5
+     */
+    default Mono<Void> onDeviceUnRegister(DeviceOperator operator) {
+        return Mono.empty();
+    }
+
+    /**
+     * 当产品注册后调用
+     *
+     * @param operator 产品操作接口
+     * @return void
+     * @since 1.1.5
+     */
+    default Mono<Void> onProductRegister(DeviceProductOperator operator) {
+        return Mono.empty();
+    }
+
+    /**
+     * 当产品注销前调用
+     *
+     * @param operator 产品操作接口
+     * @return void
+     * @since 1.1.5
+     */
+    default Mono<Void> onProductUnRegister(DeviceProductOperator operator) {
+        return Mono.empty();
+    }
 }
