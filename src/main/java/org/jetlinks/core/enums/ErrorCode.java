@@ -25,6 +25,7 @@ public enum ErrorCode {
     FUNCTION_UNDEFINED("功能未定义"),
     PROPERTY_UNDEFINED("属性未定义"),
     UNKNOWN_PARENT_DEVICE("未知的父设备"),
+    CYCLIC_DEPENDENCE("循环依赖"),
     UNKNOWN("未知错误");
 
     private final String text;

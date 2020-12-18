@@ -3,6 +3,11 @@ package org.jetlinks.core.message;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.exception.DeviceOperationException;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * 发往子设备的消息,通常是通过网关设备接入平台的设备.
@@ -40,5 +45,21 @@ public class ChildDeviceMessage extends CommonDeviceMessage implements Repayable
 
     public MessageType getMessageType() {
         return MessageType.CHILD;
+    }
+
+    @Override
+    public void validate() {
+        if (childDeviceMessage instanceof ChildDeviceMessage) {
+            Set<String> deviceId = new HashSet<>();
+            Message msg = childDeviceMessage;
+            do {
+                String childId = ((ChildDeviceMessage) msg).getChildDeviceId();
+                msg = ((ChildDeviceMessage) msg).getChildDeviceMessage();
+                if (deviceId.contains(childId)) {
+                    throw new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "子设备消息存在循环引用");
+                }
+                deviceId.add(childId);
+            } while (msg instanceof ChildDeviceMessage);
+        }
     }
 }

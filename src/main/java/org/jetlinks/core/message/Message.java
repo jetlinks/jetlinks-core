@@ -117,4 +117,8 @@ public interface Message extends Jsonable, Serializable {
         return Optional.ofNullable(getHeaders())
                        .map(headers -> headers.get(header));
     }
+
+    default void validate(){
+
+    }
 }

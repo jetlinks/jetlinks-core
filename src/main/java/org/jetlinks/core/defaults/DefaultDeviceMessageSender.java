@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -155,6 +156,12 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                 .from(message)
                                 .flatMap(msg -> interceptor.preSend(operator, msg))
                                 .flatMap(msg -> {
+                                    if (parentGatewayId.equals(operator.getDeviceId())) {
+                                        return Mono
+                                                .error(
+                                                        new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "子设备与父设备不能为相同的设备")
+                                                );
+                                    }
                                     ChildDeviceMessage children = new ChildDeviceMessage();
                                     children.setDeviceId(parentGatewayId);
                                     children.setMessageId(msg.getMessageId());
@@ -163,8 +170,8 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                     children.setChildDeviceMessage(msg);
 
                                     // https://github.com/jetlinks/jetlinks-pro/issues/19
-                                    children.setHeaders(msg.getHeaders());
-
+                                    children.setHeaders(new ConcurrentHashMap<>(msg.getHeaders()));
+                                    children.validate();
                                     return registry
                                             .getDevice(parentGatewayId)
                                             .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.UNKNOWN_PARENT_DEVICE, "未知的父设备:" + parentGatewayId)))
@@ -179,7 +186,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                             .from(message)
                             .flatMap(msg -> interceptor.preSend(operator, msg))
                             .concatMap(msg -> {
-                                DeviceMessageTracer.trace(msg,"send.before");
+                                DeviceMessageTracer.trace(msg, "send.before");
                                 if (StringUtils.isEmpty(server)) {
                                     return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                 }
@@ -190,7 +197,9 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                         : handler
                                         .handleReply(msg.getDeviceId(),
                                                      msg.getMessageId(),
-                                                     Duration.ofMillis(msg.getHeader(Headers.timeout).orElse(defaultTimeout)))
+                                                     Duration.ofMillis(msg
+                                                                               .getHeader(Headers.timeout)
+                                                                               .orElse(defaultTimeout)))
                                         .map(replyMapping)
                                         .onErrorResume(DeviceOperationException.class, error -> {
                                             if (error.getCode() == ErrorCode.CLIENT_OFFLINE) {
@@ -225,7 +234,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
 
                                             return interceptor.afterSent(operator, msg, replyStream);
                                         })
-                                        .doOnNext(r-> DeviceMessageTracer.trace(r, "send.reply"))
+                                        .doOnNext(r -> DeviceMessageTracer.trace(r, "send.reply"))
                                         ;
                             });
                 });
