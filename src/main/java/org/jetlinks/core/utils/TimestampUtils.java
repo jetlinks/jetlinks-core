@@ -7,7 +7,7 @@ public class TimestampUtils {
     }
 
     public static long toNanos(long timestamp) {
-        return NumberUtils.fixLength(timestamp, 14);
+        return NumberUtils.fixLength(timestamp, 15);
     }
 
 
