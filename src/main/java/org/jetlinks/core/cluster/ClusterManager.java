@@ -20,7 +20,9 @@ public interface ClusterManager {
 
     /**
      * @return 集群通知器
+     * @see org.jetlinks.core.event.EventBus
      */
+    @Deprecated
     ClusterNotifier getNotifier();
 
     /**
