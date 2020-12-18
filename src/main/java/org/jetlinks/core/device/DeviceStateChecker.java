@@ -21,4 +21,13 @@ public interface DeviceStateChecker {
     @NotNull
     Mono<Byte> checkState(@NotNull DeviceOperator device);
 
+    /**
+     * 排序需要，值越小优先级越高
+     *
+     * @return 序号
+     * @since 1.1.5
+     */
+    default long order() {
+        return Long.MAX_VALUE;
+    }
 }

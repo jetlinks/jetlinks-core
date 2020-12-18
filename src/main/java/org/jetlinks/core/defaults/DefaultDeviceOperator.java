@@ -20,6 +20,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.function.Function;
 
 import static org.jetlinks.core.device.DeviceConfigKey.*;
 
@@ -34,13 +35,15 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     private final DeviceMessageSender messageSender;
 
-    private final ProtocolSupports supports;
-
     private final Mono<ConfigStorage> storageMono;
 
     private final Mono<ProtocolSupport> protocolSupportMono;
 
     private final Mono<DeviceMetadata> metadataMono;
+
+    private final DeviceStateChecker stateChecker;
+
+    public static final DeviceStateChecker DEFAULT_STATE_CHECKER = device -> checkState0(((DefaultDeviceOperator) device));
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
@@ -57,14 +60,24 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                  DeviceOperationBroker handler,
                                  DeviceRegistry registry,
                                  DeviceMessageSenderInterceptor interceptor) {
+        this(id, supports, storageManager, handler, registry, interceptor, DEFAULT_STATE_CHECKER);
+    }
+
+    public DefaultDeviceOperator(String id,
+                                 ProtocolSupports supports,
+                                 ConfigStorageManager storageManager,
+                                 DeviceOperationBroker handler,
+                                 DeviceRegistry registry,
+                                 DeviceMessageSenderInterceptor interceptor,
+                                 DeviceStateChecker deviceStateChecker) {
         this.id = id;
-        this.supports = supports;
         this.registry = registry;
         this.handler = handler;
         this.messageSender = new DefaultDeviceMessageSender(handler, this, registry, interceptor);
         this.storageMono = storageManager.getStorage("device:" + id);
         this.metadataMono = getParent().flatMap(DeviceProductOperator::getMetadata);
         this.protocolSupportMono = getProduct().flatMap(DeviceProductOperator::getProtocol);
+        this.stateChecker = deviceStateChecker;
     }
 
     @Override
@@ -138,81 +151,76 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 .defaultIfEmpty(DeviceState.unknown);
     }
 
-
     private Mono<Byte> doCheckState() {
-        return getSelfConfigs(Arrays.asList(
-                connectionServerId.getKey(),
-                parentGatewayId.getKey(),
-                selfManageState.getKey(),
-                "state"))
-                .flatMap(values -> {
+        return Mono
+                .defer(() -> this
+                        .getSelfConfigs(Arrays.asList(
+                                connectionServerId.getKey(),
+                                parentGatewayId.getKey(),
+                                selfManageState.getKey(),
+                                "state"))
+                        .flatMap(values -> {
 
-                    //当前设备连接到的服务器
-                    String server = values
-                            .getValue(connectionServerId)
-                            .orElse(null);
+                            //当前设备连接到的服务器
+                            String server = values
+                                    .getValue(connectionServerId)
+                                    .orElse(null);
 
-                    //设备缓存的状态
-                    Byte state = values.getValue("state")
-                                       .map(val -> val.as(Byte.class))
-                                       .orElse(DeviceState.unknown);
+                            //设备缓存的状态
+                            Byte state = values.getValue("state")
+                                               .map(val -> val.as(Byte.class))
+                                               .orElse(DeviceState.unknown);
 
 
-                    //如果缓存中存储有当前设备所在服务信息则尝试发起状态检查
-                    if (StringUtils.hasText(server)) {
-                        return handler
-                                .getDeviceState(server, Collections.singletonList(id))
-                                .map(DeviceStateInfo::getState)
-                                .singleOrEmpty()
-                                .timeout(Duration.ofSeconds(1), Mono.just(state))
-                                .defaultIfEmpty(state);
-                    }
+                            //如果缓存中存储有当前设备所在服务信息则尝试发起状态检查
+                            if (StringUtils.hasText(server)) {
+                                return handler
+                                        .getDeviceState(server, Collections.singletonList(id))
+                                        .map(DeviceStateInfo::getState)
+                                        .singleOrEmpty()
+                                        .timeout(Duration.ofSeconds(1), Mono.just(state))
+                                        .defaultIfEmpty(state);
+                            }
 
-                    //子设备是否自己管理状态
-                    if (values.getValue(selfManageState).orElse(false)) {
-                        return Mono.just(state);
-                    }
+                            //子设备是否自己管理状态
+                            if (values.getValue(selfManageState).orElse(false)) {
+                                return Mono.just(state);
+                            }
 
-                    //网关设备ID
-                    String parentGatewayId = values
-                            .getValue(DeviceConfigKey.parentGatewayId)
-                            .orElse(null);
+                            //网关设备ID
+                            String parentGatewayId = values
+                                    .getValue(DeviceConfigKey.parentGatewayId)
+                                    .orElse(null);
 
-                    //如果关联了上级网关设备则获取父设备状态
-                    if (StringUtils.hasText(parentGatewayId)) {
-                        return registry
-                                .getDevice(parentGatewayId)
-                                .flatMap(DeviceOperator::checkState);
-                    }
+                            //如果关联了上级网关设备则获取父设备状态
+                            if (StringUtils.hasText(parentGatewayId)) {
+                                return registry
+                                        .getDevice(parentGatewayId)
+                                        .flatMap(DeviceOperator::checkState);
+                            }
 
-                    //如果是在线状态,则改为离线,否则保持状态不变
-                    if (state.equals(DeviceState.online)) {
-                        return Mono.just(DeviceState.offline);
-                    } else {
-                        return Mono.just(state);
-                    }
-                });
+                            //如果是在线状态,则改为离线,否则保持状态不变
+                            if (state.equals(DeviceState.online)) {
+                                return Mono.just(DeviceState.offline);
+                            } else {
+                                return Mono.just(state);
+                            }
+                        }));
     }
 
     @Override
     public Mono<Byte> checkState() {
-
-        return getProtocol()
-                .flatMap(ProtocolSupport::getStateChecker) //协议自定义了状态检查逻辑
-                .defaultIfEmpty(device -> doCheckState()) //默认的检查
-                .flatMap(deviceStateChecker -> Mono
-                        //检查最新状态 并和当前状态进行对比
-                        .zip(
-                                deviceStateChecker.checkState(this).defaultIfEmpty(DeviceState.offline),
-                                getState()
-                        )
+        return Mono
+                .zip(
+                        stateChecker.checkState(this).defaultIfEmpty(DeviceState.online),
+                        this.getState()
                 )
                 .flatMap(tp2 -> {
                     byte newer = tp2.getT1();
                     byte old = tp2.getT2();
                     //状态不一致?
                     if (newer != old) {
-                        log.info("device[{}] state changed from {} to {}", getDeviceId(), old, newer);
+                        log.info("device[{}] state changed from {} to {}", this.getDeviceId(), old, newer);
                         Map<String, Object> configs = new HashMap<>();
                         configs.put("state", newer);
                         if (newer == DeviceState.online) {
@@ -220,7 +228,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                         } else if (newer == DeviceState.offline) {
                             configs.put("offlineTime", System.currentTimeMillis());
                         }
-                        return setConfigs(configs)
+                        return this
+                                .setConfigs(configs)
                                 .thenReturn(newer);
                     }
                     return Mono.just(newer);
@@ -342,5 +351,15 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<Boolean> updateMetadata(String metadata) {
         return setConfig(DeviceConfigKey.metadata.value(metadata));
+    }
+
+    private static Mono<Byte> checkState0(DefaultDeviceOperator operator) {
+        return operator
+                .getProtocol()
+                .flatMap(ProtocolSupport::getStateChecker) //协议自定义了状态检查逻辑
+                .map(deviceStateChecker -> deviceStateChecker.checkState(operator))
+                .defaultIfEmpty(operator.doCheckState()) //默认的检查
+                .flatMap(Function.identity())
+                ;
     }
 }
