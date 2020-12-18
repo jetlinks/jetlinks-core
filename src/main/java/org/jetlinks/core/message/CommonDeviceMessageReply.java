@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.*;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.exception.DeviceOperationException;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,7 +88,12 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
 
     public ME error(Throwable e) {
         success = false;
-        error(ErrorCode.SYSTEM_ERROR);
+        if (e instanceof DeviceOperationException) {
+            error(((DeviceOperationException) e).getCode());
+        } else {
+            error(ErrorCode.SYSTEM_ERROR);
+        }
+        setMessage(e.getMessage());
         addHeader("errorType", e.getClass().getName());
         addHeader("errorMessage", e.getMessage());
 
