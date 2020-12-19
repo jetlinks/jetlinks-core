@@ -170,7 +170,9 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                     children.setChildDeviceMessage(msg);
 
                                     // https://github.com/jetlinks/jetlinks-pro/issues/19
-                                    children.setHeaders(new ConcurrentHashMap<>(msg.getHeaders()));
+                                    if (null != msg.getHeaders()) {
+                                        children.setHeaders(new ConcurrentHashMap<>(msg.getHeaders()));
+                                    }
                                     children.validate();
                                     return registry
                                             .getDevice(parentGatewayId)
