@@ -55,6 +55,9 @@ public final class Topic<T> {
     }
 
     public Topic<T> append(String topic) {
+        if (topic.equals("/") || topic.equals("")) {
+            return this;
+        }
         return getOrDefault(topic, Topic::new);
     }
 
@@ -198,8 +201,8 @@ public final class Topic<T> {
     }
 
     protected boolean match(String[] pars) {
-        return TopicUtils.match(getTopics(),pars)
-                ||TopicUtils.match(pars,getTopics());
+        return TopicUtils.match(getTopics(), pars)
+                || TopicUtils.match(pars, getTopics());
     }
 
     public static <T> Flux<Topic<T>> find(String topic, Topic<T> topicPart) {

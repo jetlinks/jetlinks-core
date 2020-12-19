@@ -75,6 +75,9 @@ public class TopicUtils {
     }
 
     public static boolean match(String[] pattern, String[] topicParts) {
+        if (pattern.length == 0 && topicParts.length == 0) {
+            return true;
+        }
         int pattIdxStart = 0;
         int pattIdxEnd = pattern.length - 1;
         int pathIdxStart = 0;

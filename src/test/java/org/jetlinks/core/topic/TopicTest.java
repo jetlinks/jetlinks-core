@@ -11,6 +11,19 @@ import java.time.Duration;
 @Slf4j
 public class TopicTest {
 
+    @Test
+    public void testRoot() {
+        Topic<String> root = Topic.createRoot();
+
+        root.append("/").subscribe("1");
+
+        root.findTopic("/")
+            .flatMapIterable(Topic::getSubscribers)
+            .as(StepVerifier::create)
+            .expectNext("1")
+            .verifyComplete();
+    }
+
 
     @Test
     public void testPattern4() {
