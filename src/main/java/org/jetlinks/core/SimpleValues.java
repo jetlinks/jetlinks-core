@@ -2,8 +2,11 @@ package org.jetlinks.core;
 
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
+import org.apache.commons.collections.MapUtils;
+import org.hswebframework.web.bean.FastBeanCopier;
 
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor(staticName = "of")
@@ -44,5 +47,34 @@ class SimpleValues implements Values {
                 .stream()
                 .filter(has -> !values.containsKey(has))
                 .collect(Collectors.toSet());
+    }
+
+    @Override
+    public String getString(String key, Supplier<String> defaultValue) {
+        if (MapUtils.isEmpty(values)) {
+            return defaultValue.get();
+        }
+        Object val = values.get(key);
+        if (val == null) {
+            return defaultValue.get();
+        }
+        return String.valueOf(val);
+    }
+
+    @Override
+    public Number getNumber(String key, Supplier<Number> defaultValue) {
+        if (MapUtils.isEmpty(values)) {
+            return defaultValue.get();
+        }
+        Object val = values.get(key);
+        if (val == null) {
+            return defaultValue.get();
+        }
+        if(val instanceof Number){
+            return ((Number) val);
+        }
+        return FastBeanCopier.DEFAULT_CONVERT.convert(
+                val, Number.class, FastBeanCopier.EMPTY_CLASS_ARRAY
+        );
     }
 }
