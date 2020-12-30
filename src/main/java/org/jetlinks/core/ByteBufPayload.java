@@ -102,4 +102,12 @@ class ByteBufPayload implements Payload {
         }
         super.finalize();
     }
+
+    @Override
+    public String toString() {
+        return "ByteBufPayload{" +
+                "body=" + body +
+                ", caller='" + caller + '\'' +
+                '}';
+    }
 }
