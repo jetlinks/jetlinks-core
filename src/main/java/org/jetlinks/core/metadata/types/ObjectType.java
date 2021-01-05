@@ -59,7 +59,7 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
     public ValidateResult validate(Object value) {
 
         if (properties == null || properties.isEmpty()) {
-            return ValidateResult.success();
+            return ValidateResult.success(value);
         }
         Map<String, Object> mapValue = convert(value);
 
