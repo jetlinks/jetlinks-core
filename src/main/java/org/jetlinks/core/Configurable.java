@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public interface Configurable {
 
     /**
-     * 获取配置
+     * 获取配置,如果值不存在则返回{@link Mono#empty()}
      *
      * @param key key
      * @return 结果包装器, 不会为null
@@ -26,6 +26,12 @@ public interface Configurable {
      */
     Mono<Value> getConfig(String key);
 
+    /**
+     * 获取多个配置信息
+     *
+     * @param keys 配置key集合
+     * @return 配置信息
+     */
     Mono<Values> getConfigs(Collection<String> keys);
 
     /**
@@ -46,8 +52,8 @@ public interface Configurable {
 
     default Mono<Boolean> setConfigs(ConfigKeyValue<?>... keyValues) {
         return setConfigs(Arrays.stream(keyValues)
-                .filter(ConfigKeyValue::isNotNull)
-                .collect(Collectors.toMap(ConfigKeyValue::getKey, ConfigKeyValue::getValue)));
+                                .filter(ConfigKeyValue::isNotNull)
+                                .collect(Collectors.toMap(ConfigKeyValue::getKey, ConfigKeyValue::getValue)));
     }
 
     default <V> Mono<V> getConfig(ConfigKey<V> key) {
@@ -57,8 +63,8 @@ public interface Configurable {
 
     default Mono<Values> getConfigs(ConfigKey<?>... key) {
         return getConfigs(Arrays.stream(key)
-                .map(ConfigKey::getKey)
-                .collect(Collectors.toSet()));
+                                .map(ConfigKey::getKey)
+                                .collect(Collectors.toSet()));
     }
 
     /**
@@ -86,6 +92,7 @@ public interface Configurable {
 
     /**
      * 获取并删除配置
+     *
      * @param key key
      * @return 被删除的配置
      * @since 1.1.1
@@ -100,6 +107,25 @@ public interface Configurable {
      */
     Mono<Boolean> removeConfigs(Collection<String> key);
 
+    /**
+     * 刷新配置信息
+     *
+     * @return key
+     */
+    Mono<Void> refreshConfig(Collection<String> keys);
+
+    /**
+     * 刷新全部配置信息
+     * @return key
+     */
+    Mono<Void> refreshAllConfig();
+
+    /**
+     * 删除多个配置信息
+     *
+     * @param key key
+     * @return 删除结果
+     */
     default Mono<Boolean> removeConfigs(ConfigKey<?>... key) {
         return removeConfigs(Arrays.stream(key).map(ConfigKey::getKey).collect(Collectors.toSet()));
     }

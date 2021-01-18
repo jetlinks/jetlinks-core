@@ -143,6 +143,7 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
 
     @Override
     public void fromJson(JSONObject jsonObject) {
+        DeviceMessageReply.super.fromJson(jsonObject);
         success = jsonObject.getBooleanValue("success");
 
         timestamp = jsonObject.getLongValue("timestamp");

@@ -60,6 +60,7 @@ public interface ClusterCache<K, V> {
 
     /**
      * 获取值然后删除
+     *
      * @param key key
      * @return value
      */
@@ -119,4 +120,24 @@ public interface ClusterCache<K, V> {
      * @return 清空结果
      */
     Mono<Void> clear();
+
+    /**
+     * 刷新缓存信息
+     *
+     * @return void
+     * @since 1.1.6
+     */
+    default Mono<Void> refresh(Collection<? extends K> keys) {
+        return Mono.empty();
+    }
+
+    /**
+     * 刷新全部缓存信息
+     *
+     * @return void
+     * @since 1.1.6
+     */
+    default Mono<Void> refresh() {
+        return Mono.empty();
+    }
 }
