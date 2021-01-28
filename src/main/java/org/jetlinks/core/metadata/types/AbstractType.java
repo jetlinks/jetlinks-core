@@ -5,6 +5,7 @@ import lombok.Setter;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigKeyValue;
 import org.jetlinks.core.metadata.DataType;
+import org.springframework.util.CollectionUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,9 +20,13 @@ public abstract class AbstractType<R> implements DataType {
     private String description;
 
     public R expands(Map<String, Object> expands) {
+        if(CollectionUtils.isEmpty(expands)){
+            return (R) this;
+        }
         if (this.expands == null) {
             this.expands = new HashMap<>();
         }
+        this.expands.putAll(expands);
         return (R) this;
     }
 
