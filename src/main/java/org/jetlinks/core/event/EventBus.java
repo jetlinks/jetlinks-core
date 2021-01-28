@@ -14,7 +14,7 @@ import reactor.core.scheduler.Scheduler;
  * 基于订阅发布的事件总线,可用于事件传递,消息转发等.
  *
  * @author zhouhao
- * @see 1.1
+ * @since 1.1
  * @see org.jetlinks.core.topic.Topic
  */
 public interface EventBus {
