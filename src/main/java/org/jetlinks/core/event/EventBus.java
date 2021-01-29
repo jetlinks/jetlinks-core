@@ -14,15 +14,22 @@ import reactor.core.scheduler.Scheduler;
  * 基于订阅发布的事件总线,可用于事件传递,消息转发等.
  *
  * @author zhouhao
- * @since 1.1
  * @see org.jetlinks.core.topic.Topic
+ * @since 1.1
  */
 public interface EventBus {
 
     /**
      * 从事件总线中订阅事件
      * <p>
-     * 特别注意!!!: 处理数据后需要手动调用释放，如:{@link TopicPayload#release()}
+     * 特别注意!!!
+     * <p>
+     * 如果没有调用
+     * {@link TopicPayload#bodyToString()},
+     * {@link TopicPayload#bodyToJson()},
+     * {@link TopicPayload#bodyToJsonArray()},
+     * {@link TopicPayload#getBytes()}
+     * 使用TopicPayload后需要手动调用{@link TopicPayload#release()}释放.
      *
      * @param subscription 订阅信息
      * @return 事件流
