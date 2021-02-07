@@ -25,7 +25,22 @@ public enum MessageType {
     READ_PROPERTY_REPLY(ReadPropertyMessageReply::new),
     WRITE_PROPERTY_REPLY(WritePropertyMessageReply::new),
     //下行调用功能
-    INVOKE_FUNCTION(FunctionInvokeMessage::new),
+    INVOKE_FUNCTION(FunctionInvokeMessage::new) {
+        @Override
+        public <T extends Message> T convert(Map<String, Object> map) {
+            Object inputs = map.get("inputs");
+            //处理以Map形式传入参数的场景
+            if (inputs instanceof Map) {
+                Map<String,Object> newMap = new HashMap<>(map);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> inputMap = (Map<String, Object>) newMap.remove("inputs");
+                FunctionInvokeMessage message = super.convert(newMap);
+                inputMap.forEach(message::addInput);
+                return (T) message;
+            }
+            return super.convert(map);
+        }
+    },
     //上行调用功能回复
     INVOKE_FUNCTION_REPLY(FunctionInvokeMessageReply::new),
     //事件消息

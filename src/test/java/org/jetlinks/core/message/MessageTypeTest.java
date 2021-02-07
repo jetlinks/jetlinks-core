@@ -1,8 +1,10 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSON;
+import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,7 +22,7 @@ public class MessageTypeTest {
 
         assertTrue(message instanceof CommonDeviceMessage);
 
-        assertEquals(message.getMessageId(),val.get("messageId"));
+        assertEquals(message.getMessageId(), val.get("messageId"));
     }
 
     @Test
@@ -33,7 +35,7 @@ public class MessageTypeTest {
 
         assertTrue(message instanceof CommonDeviceMessageReply);
 
-        assertEquals(message.getMessageId(),val.get("messageId"));
+        assertEquals(message.getMessageId(), val.get("messageId"));
         assertTrue(((CommonDeviceMessageReply<?>) message).isSuccess());
     }
 
@@ -42,10 +44,24 @@ public class MessageTypeTest {
         DirectDeviceMessage msg = new DirectDeviceMessage();
         msg.setPayload("hello".getBytes());
 
-        Message message = MessageType.convertMessage(JSON.parseObject(msg.toString())).orElseThrow(IllegalArgumentException::new);
+        Message message = MessageType
+                .convertMessage(JSON.parseObject(msg.toString()))
+                .orElseThrow(IllegalArgumentException::new);
 
         assertTrue(message instanceof DirectDeviceMessage);
-        assertArrayEquals(((DirectDeviceMessage) message).getPayload(),msg.getPayload());
+        assertArrayEquals(((DirectDeviceMessage) message).getPayload(), msg.getPayload());
+
+    }
+
+    @Test
+    public void testFunctionInvokeMapInputs() {
+        Map<String, Object> inputs = new HashMap<>();
+        inputs.put("name", "name1");
+        inputs.put("value", 1);
+
+        FunctionInvokeMessage message = MessageType.INVOKE_FUNCTION.convert(Collections.singletonMap("inputs", inputs));
+
+        assertEquals(message.inputsToMap(),inputs);
 
     }
 }
