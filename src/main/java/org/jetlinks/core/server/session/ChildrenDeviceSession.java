@@ -7,6 +7,8 @@ import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
 
+import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -85,6 +87,16 @@ public class ChildrenDeviceSession implements DeviceSession {
     @Override
     public boolean isWrapFrom(Class<?> type) {
         return type == ChildrenDeviceSession.class || parent.isWrapFrom(type);
+    }
+
+    @Override
+    public Optional<InetSocketAddress> getClientAddress() {
+        return parent.getClientAddress();
+    }
+
+    @Override
+    public void setKeepAliveTimeout(Duration timeout) {
+        parent.setKeepAliveTimeout(timeout);
     }
 
     @Override
