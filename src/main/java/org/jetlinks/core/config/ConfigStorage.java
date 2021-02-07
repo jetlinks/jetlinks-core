@@ -8,6 +8,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 
+/**
+ * 配置存储
+ */
 public interface ConfigStorage {
 
     Mono<Value> getConfig(String key);
@@ -30,4 +33,11 @@ public interface ConfigStorage {
 
     Mono<Boolean> clear();
 
+    default Mono<Void> refresh(Collection<String> keys){
+        return Mono.empty();
+    }
+
+    default Mono<Void> refresh(){
+        return Mono.empty();
+    }
 }

@@ -25,7 +25,8 @@ public interface StorageConfigurable extends Configurable {
     default Mono<Value> getConfig(String key, boolean fallbackParent) {
         return getReactiveStorage()
                 .flatMap(store -> store.getConfig(key))
-                .switchIfEmpty(Mono.defer(() -> fallbackParent ? getParent().flatMap(parent -> parent.getConfig(key)) : Mono.empty()));
+                .switchIfEmpty(Mono.defer(() -> fallbackParent ? getParent().flatMap(parent -> parent.getConfig(key)) : Mono
+                        .empty()));
     }
 
     default Mono<Values> getConfigs(Collection<String> keys, boolean fallbackParent) {
@@ -68,7 +69,7 @@ public interface StorageConfigurable extends Configurable {
     }
 
     @Override
-   default Mono<Value> getAndRemoveConfig(String key){
+    default Mono<Value> getAndRemoveConfig(String key) {
         return getReactiveStorage()
                 .flatMap(storage -> storage.getAndRemove(key));
     }
@@ -77,5 +78,17 @@ public interface StorageConfigurable extends Configurable {
     default Mono<Boolean> removeConfigs(Collection<String> key) {
         return getReactiveStorage()
                 .flatMap(storage -> storage.remove(key));
+    }
+
+    @Override
+    default Mono<Void> refreshConfig(Collection<String> keys) {
+        return getReactiveStorage()
+                .flatMap(storage -> storage.refresh(keys));
+    }
+
+    @Override
+    default Mono<Void> refreshAllConfig(){
+        return getReactiveStorage()
+                .flatMap(ConfigStorage::refresh);
     }
 }

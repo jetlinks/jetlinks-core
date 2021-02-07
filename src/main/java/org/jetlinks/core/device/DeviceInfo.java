@@ -4,7 +4,6 @@ import lombok.*;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigKeyValue;
-import org.springframework.util.StringUtils;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -50,9 +49,9 @@ public class DeviceInfo implements Serializable {
     private Map<String, Object> configuration = new HashMap<>();
 
     public DeviceInfo addConfig(String key, Object value) {
-        if (StringUtils.isEmpty(value)) {
-            return this;
-        }
+//        if (value == null) {
+//            return this;
+//        }
         if (configuration == null) {
             configuration = new HashMap<>();
         }

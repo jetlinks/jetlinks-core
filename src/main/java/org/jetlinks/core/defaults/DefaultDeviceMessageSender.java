@@ -16,11 +16,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+
+import static org.jetlinks.core.device.DeviceConfigKey.connectionServerId;
 
 @Slf4j
 public class DefaultDeviceMessageSender implements DeviceMessageSender {
@@ -131,11 +134,20 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         return send(Mono.just(message), this::convertReply);
     }
 
+    private Mono<String> refreshAndGetConnectionServerId() {
+        return Mono
+                .defer(() -> operator
+                        .refreshConfig(Collections.singleton(connectionServerId.getKey()))
+                        .then(operator.getConnectionServerId()));
+    }
+
     public <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping) {
         return Mono
                 .zip(
-                        ////当前设备连接的服务器ID
-                        operator.getConnectionServerId().defaultIfEmpty(""),
+                        //当前设备连接的服务器ID
+                        operator.getConnectionServerId()
+                                .switchIfEmpty(refreshAndGetConnectionServerId())
+                                .defaultIfEmpty(""),
                         //拦截器
                         operator.getProtocol()
                                 .flatMap(ProtocolSupport::getSenderInterceptor)

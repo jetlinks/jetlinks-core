@@ -20,12 +20,12 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.function.Function;
 
 import static org.jetlinks.core.device.DeviceConfigKey.*;
 
 @Slf4j
 public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurable {
+    public static final DeviceStateChecker DEFAULT_STATE_CHECKER = device -> checkState0(((DefaultDeviceOperator) device));
 
     private final String id;
 
@@ -42,8 +42,6 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private final Mono<DeviceMetadata> metadataMono;
 
     private final DeviceStateChecker stateChecker;
-
-    public static final DeviceStateChecker DEFAULT_STATE_CHECKER = device -> checkState0(((DefaultDeviceOperator) device));
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
@@ -212,7 +210,10 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     public Mono<Byte> checkState() {
         return Mono
                 .zip(
-                        stateChecker.checkState(this).defaultIfEmpty(DeviceState.online),
+                        stateChecker
+                                .checkState(this)
+                                .switchIfEmpty(Mono.defer(() -> DEFAULT_STATE_CHECKER.checkState(this)))
+                                .defaultIfEmpty(DeviceState.online),
                         this.getState()
                 )
                 .flatMap(tp2 -> {
@@ -357,9 +358,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         return operator
                 .getProtocol()
                 .flatMap(ProtocolSupport::getStateChecker) //协议自定义了状态检查逻辑
-                .map(deviceStateChecker -> deviceStateChecker.checkState(operator))
-                .defaultIfEmpty(operator.doCheckState()) //默认的检查
-                .flatMap(Function.identity())
+                .flatMap(deviceStateChecker -> deviceStateChecker.checkState(operator))
+                .switchIfEmpty(operator.doCheckState()) //默认的检查
                 ;
     }
 }

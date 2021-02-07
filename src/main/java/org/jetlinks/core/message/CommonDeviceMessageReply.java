@@ -41,7 +41,9 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         if (headers == null) {
             this.headers = new ConcurrentHashMap<>();
         }
-        this.headers.putIfAbsent(header, value);
+        if (header != null && value != null) {
+            this.headers.putIfAbsent(header, value);
+        }
         return (ME) this;
     }
 
@@ -50,7 +52,9 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         if (headers == null) {
             this.headers = new ConcurrentHashMap<>();
         }
-        this.headers.put(header, value);
+        if (header != null && value != null) {
+            this.headers.put(header, value);
+        }
         return (ME) this;
     }
 
@@ -139,6 +143,7 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
 
     @Override
     public void fromJson(JSONObject jsonObject) {
+        DeviceMessageReply.super.fromJson(jsonObject);
         success = jsonObject.getBooleanValue("success");
 
         timestamp = jsonObject.getLongValue("timestamp");

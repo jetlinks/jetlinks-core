@@ -32,7 +32,9 @@ public class CommonDeviceMessage implements DeviceMessage {
         if (headers == null) {
             this.headers = new ConcurrentHashMap<>();
         }
-        this.headers.put(header, value);
+        if (header != null && value != null) {
+            this.headers.put(header, value);
+        }
         return this;
     }
 
@@ -41,7 +43,9 @@ public class CommonDeviceMessage implements DeviceMessage {
         if (headers == null) {
             this.headers = new ConcurrentHashMap<>();
         }
-        this.headers.putIfAbsent(header, value);
+        if (header != null && value != null) {
+            this.headers.putIfAbsent(header, value);
+        }
         return this;
     }
 
@@ -62,10 +66,7 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     @Override
     public void fromJson(JSONObject jsonObject) {
-        this.deviceId = jsonObject.getString("deviceId");
-        this.messageId = jsonObject.getString("messageId");
-        this.code = jsonObject.getString("code");
-        this.headers = jsonObject.getJSONObject("headers");
+        DeviceMessage.super.fromJson(jsonObject);
     }
 
     @Override

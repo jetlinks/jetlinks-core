@@ -1,5 +1,7 @@
 package org.jetlinks.core;
 
+import java.util.Date;
+
 public interface Value {
     default String asString() {
         return String.valueOf(get());
@@ -20,6 +22,10 @@ public interface Value {
 
     default Number asNumber() {
         return as(Number.class);
+    }
+
+    default Date asDate() {
+        return as(Date.class);
     }
 
     Object get();
