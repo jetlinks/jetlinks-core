@@ -20,12 +20,21 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import static org.jetlinks.core.device.DeviceConfigKey.*;
 
 @Slf4j
 public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurable {
     public static final DeviceStateChecker DEFAULT_STATE_CHECKER = device -> checkState0(((DefaultDeviceOperator) device));
+
+    private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time");
+
+    private static final AtomicReferenceFieldUpdater<DefaultDeviceOperator, DeviceMetadata> METADATA_UPDATER =
+            AtomicReferenceFieldUpdater.newUpdater(DefaultDeviceOperator.class, DeviceMetadata.class, "metadataCache");
+    private static final AtomicLongFieldUpdater<DefaultDeviceOperator> METADATA_TIME_UPDATER =
+            AtomicLongFieldUpdater.newUpdater(DefaultDeviceOperator.class, "lastMetadataTime");
 
     private final String id;
 
@@ -42,6 +51,10 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private final Mono<DeviceMetadata> metadataMono;
 
     private final DeviceStateChecker stateChecker;
+
+    private volatile long lastMetadataTime = -1;
+
+    private volatile DeviceMetadata metadataCache;
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
@@ -73,9 +86,35 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         this.handler = handler;
         this.messageSender = new DefaultDeviceMessageSender(handler, this, registry, interceptor);
         this.storageMono = storageManager.getStorage("device:" + id);
-        this.metadataMono = getParent().flatMap(DeviceProductOperator::getMetadata);
+
+//        this.metadataMono = getParent().flatMap(DeviceProductOperator::getMetadata);
         this.protocolSupportMono = getProduct().flatMap(DeviceProductOperator::getProtocol);
         this.stateChecker = deviceStateChecker;
+        this.metadataMono = this
+                //获取最后更新物模型的时间
+                .getSelfConfig(lastMetadataTimeKey)
+                .flatMap(i -> {
+                    //如果有时间,则表示设备有独立的物模型.
+                    //如果时间一致,则直接返回物模型缓存.
+                    if (i.equals(lastMetadataTime) && metadataCache != null) {
+                        return Mono.just(metadataCache);
+                    }
+                    METADATA_TIME_UPDATER.set(this, i);
+                    //加载真实的物模型
+                    return Mono
+                            .zip(getSelfConfig(metadata),
+                                 protocolSupportMono)
+                            .flatMap(tp2 -> tp2
+                                    .getT2()
+                                    .getMetadataCodec()
+                                    .decode(tp2.getT1())
+                                    .doOnNext(metadata -> METADATA_UPDATER.set(this, metadata)));
+
+                })
+                //如果上游为空,则使用产品的物模型
+                .switchIfEmpty(this.getParent()
+                                   .flatMap(DeviceProductOperator::getMetadata));
+
     }
 
     @Override
@@ -351,7 +390,18 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<Boolean> updateMetadata(String metadata) {
-        return setConfig(DeviceConfigKey.metadata.value(metadata));
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(DeviceConfigKey.metadata.getKey(), metadata);
+        return setConfigs(configs);
+    }
+
+    @Override
+    public Mono<Boolean> setConfigs(Map<String, Object> conf) {
+        Map<String, Object> configs = new HashMap<>(conf);
+        if (conf.containsKey(metadata.getKey())) {
+            configs.put(lastMetadataTimeKey.getKey(), lastMetadataTime = System.currentTimeMillis());
+        }
+        return StorageConfigurable.super.setConfigs(configs);
     }
 
     private static Mono<Byte> checkState0(DefaultDeviceOperator operator) {

@@ -155,9 +155,9 @@ public interface DeviceOperator extends Configurable {
     DeviceMessageSender messageSender();
 
     /**
-     * 更新元数据
+     * 更新物模型
      *
-     * @param metadata 元数据
+     * @param metadata 物模型
      */
     Mono<Boolean> updateMetadata(String metadata);
 

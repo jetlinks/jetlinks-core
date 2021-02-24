@@ -17,7 +17,7 @@ public interface DeviceProductOperator extends Configurable {
     String getId();
 
     /**
-     * @return 设备产品型号元数据信息
+     * @return 设备产品物模型
      */
     Mono<DeviceMetadata> getMetadata();
 

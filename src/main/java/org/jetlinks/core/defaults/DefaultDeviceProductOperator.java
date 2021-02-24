@@ -77,13 +77,10 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
                             this.metadata = decode;
                             this.lstMetadataChangeTime = tp3.getT3();
                         }));
-        this.metadataMono = Mono
-                .zip(
-                        inLocalMetadata,
-                        getConfig(lastMetadataTimeKey)
-                )
-                .flatMap(tp2 -> {
-                    if (tp2.getT2().equals(lstMetadataChangeTime)) {
+        this.metadataMono = this
+                .getConfig(lastMetadataTimeKey)
+                .flatMap(time -> {
+                    if (time.equals(lstMetadataChangeTime)) {
                         return inLocalMetadata;
                     }
                     return Mono.empty();

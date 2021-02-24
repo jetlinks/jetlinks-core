@@ -9,7 +9,7 @@ import org.jetlinks.core.config.ConfigKey;
 public enum DeviceConfigKey implements ConfigKey<String> {
     id("ID"),
 
-    metadata("元数据"),
+    metadata("物模型"),
 
     productId("产品ID"),
 
