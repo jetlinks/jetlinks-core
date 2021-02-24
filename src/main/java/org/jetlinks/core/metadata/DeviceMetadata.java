@@ -63,4 +63,13 @@ public interface DeviceMetadata extends Metadata, Jsonable {
     }
 
     PropertyMetadata getTagOrNull(String id);
+
+    /**
+     * 合并物模型，合并后返回新的物模型对象
+     *
+     * @param metadata 要合并的物模型
+     * @since 1.8
+     */
+    DeviceMetadata merge(DeviceMetadata metadata);
+
 }
