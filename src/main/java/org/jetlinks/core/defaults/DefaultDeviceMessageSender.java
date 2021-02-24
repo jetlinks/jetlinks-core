@@ -91,7 +91,12 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
             if (!reply.isSuccess()) {
                 //如果是可识别的错误则直接抛出异常
                 ErrorCode.of(reply.getCode())
-                         .map(DeviceOperationException::new)
+                         .map(code -> {
+                             String msg = reply.getHeader("errorMessage")
+                                               .map(String::valueOf)
+                                               .orElse(code.getText());
+                             return new DeviceOperationException(code, msg);
+                         })
                          .ifPresent(err -> {
                              throw err;
                          });
