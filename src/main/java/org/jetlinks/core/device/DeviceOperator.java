@@ -155,11 +155,19 @@ public interface DeviceOperator extends Configurable {
     DeviceMessageSender messageSender();
 
     /**
-     * 更新物模型
+     * 设置当前设备的独立物模型,如果没有设置,这使用产品的物模型配置
      *
      * @param metadata 物模型
      */
     Mono<Boolean> updateMetadata(String metadata);
+
+    /**
+     * 重置当前设备的独立物模型
+     *
+     * @return void
+     * @since 1.1.6
+     */
+    Mono<Void> resetMetadata();
 
     /**
      * @return 获取设备对应的产品操作接口

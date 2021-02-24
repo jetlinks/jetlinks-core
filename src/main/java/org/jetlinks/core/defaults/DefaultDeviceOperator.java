@@ -356,12 +356,6 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<DeviceMetadata> getMetadata() {
         return metadataMono;
-//        return Mono.justOrEmpty(metadataCache.get())
-//                .switchIfEmpty(getProtocol()
-//                        .flatMap(protocol -> getConfig(DeviceConfigKey.metadata)
-//                                .flatMap(protocol.getMetadataCodec()::decode)))
-//                .switchIfEmpty(getParent().flatMap(DeviceProductOperator::getMetadata))
-//                .doOnNext(metadataCache::set);
     }
 
 
@@ -393,6 +387,14 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         Map<String, Object> configs = new HashMap<>();
         configs.put(DeviceConfigKey.metadata.getKey(), metadata);
         return setConfigs(configs);
+    }
+
+    @Override
+    public Mono<Void> resetMetadata() {
+        METADATA_UPDATER.set(this, null);
+        METADATA_TIME_UPDATER.set(this, -1);
+        return removeConfigs(metadata, lastMetadataTimeKey)
+                .then();
     }
 
     @Override
