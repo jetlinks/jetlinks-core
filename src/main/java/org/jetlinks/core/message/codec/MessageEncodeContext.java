@@ -1,5 +1,6 @@
 package org.jetlinks.core.message.codec;
 
+import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.Message;
 import org.reactivestreams.Publisher;
@@ -7,7 +8,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * 消息编码上下文,用于平台向设备发送指令并使用协议包进行编码时,可以从上下文中获取一些参数。
@@ -69,5 +73,61 @@ public interface MessageEncodeContext extends MessageCodecContext {
     @Nonnull
     default Mono<Void> reply(@Nonnull DeviceMessage... messages) {
         return reply(Flux.fromArray(messages));
+    }
+
+    /**
+     * 使用新的消息和设备，转换为新上下文
+     *
+     * @param anotherMessage 设备消息
+     * @param device         设备操作接口
+     * @return 上下文
+     */
+    default MessageEncodeContext mutate(Message anotherMessage, DeviceOperator device) {
+        return new MessageEncodeContext() {
+            @Override
+            public Map<String, Object> getConfiguration() {
+                return MessageEncodeContext.this.getConfiguration();
+            }
+
+            @Override
+            public Optional<Object> getConfig(String key) {
+                return MessageEncodeContext.this.getConfig(key);
+            }
+
+            @Nonnull
+            @Override
+            public Message getMessage() {
+                return anotherMessage;
+            }
+
+            @Override
+            public Mono<DeviceOperator> getDevice(String deviceId) {
+                return MessageEncodeContext.this.getDevice(deviceId);
+            }
+
+            @Nullable
+            @Override
+            public DeviceOperator getDevice() {
+                return device;
+            }
+
+            @Nonnull
+            @Override
+            public Mono<Void> reply(@Nonnull DeviceMessage... messages) {
+                return MessageEncodeContext.this.reply(messages);
+            }
+
+            @Nonnull
+            @Override
+            public Mono<Void> reply(@Nonnull Collection<? extends DeviceMessage> messages) {
+                return MessageEncodeContext.this.reply(messages);
+            }
+
+            @Nonnull
+            @Override
+            public Mono<Void> reply(@Nonnull Publisher<? extends DeviceMessage> replyMessage) {
+                return MessageEncodeContext.this.reply(replyMessage);
+            }
+        };
     }
 }

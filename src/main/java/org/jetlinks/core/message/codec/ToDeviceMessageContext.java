@@ -1,9 +1,17 @@
 package org.jetlinks.core.message.codec;
 
+import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.message.DeviceMessage;
+import org.jetlinks.core.message.Message;
 import org.jetlinks.core.server.session.DeviceSession;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * 发送给设备的上下文,在设备已经在平台中建立会话后,平台下发的指令都会使用此上下文接口
@@ -41,4 +49,75 @@ public interface ToDeviceMessageContext extends MessageEncodeContext {
      * @return mono
      */
     Mono<DeviceSession> getSession(String deviceId);
+
+    @Override
+    default ToDeviceMessageContext mutate(Message anotherMessage, DeviceOperator device) {
+        return new ToDeviceMessageContext() {
+            @Override
+            public Mono<Boolean> sendToDevice(@Nonnull EncodedMessage message) {
+                return ToDeviceMessageContext.this.sendToDevice(message);
+            }
+
+            @Override
+            public Mono<Void> disconnect() {
+                return ToDeviceMessageContext.this.disconnect();
+            }
+
+            @Nonnull
+            @Override
+            public DeviceSession getSession() {
+                return ToDeviceMessageContext.this.getSession();
+            }
+
+            @Override
+            public Mono<DeviceSession> getSession(String deviceId) {
+                return ToDeviceMessageContext.this.getSession(deviceId);
+            }
+
+            @Override
+            public Map<String, Object> getConfiguration() {
+                return ToDeviceMessageContext.this.getConfiguration();
+            }
+
+            @Override
+            public Optional<Object> getConfig(String key) {
+                return ToDeviceMessageContext.this.getConfig(key);
+            }
+
+            @Nonnull
+            @Override
+            public Message getMessage() {
+                return anotherMessage;
+            }
+
+            @Override
+            public Mono<DeviceOperator> getDevice(String deviceId) {
+                return ToDeviceMessageContext.this.getDevice(deviceId);
+            }
+
+            @Nullable
+            @Override
+            public DeviceOperator getDevice() {
+                return device;
+            }
+
+            @Nonnull
+            @Override
+            public Mono<Void> reply(@Nonnull DeviceMessage... messages) {
+                return ToDeviceMessageContext.this.reply(messages);
+            }
+
+            @Nonnull
+            @Override
+            public Mono<Void> reply(@Nonnull Collection<? extends DeviceMessage> messages) {
+                return ToDeviceMessageContext.this.reply(messages);
+            }
+
+            @Nonnull
+            @Override
+            public Mono<Void> reply(@Nonnull Publisher<? extends DeviceMessage> replyMessage) {
+                return ToDeviceMessageContext.this.reply(replyMessage);
+            }
+        };
+    }
 }
