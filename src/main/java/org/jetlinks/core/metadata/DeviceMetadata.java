@@ -70,6 +70,8 @@ public interface DeviceMetadata extends Metadata, Jsonable {
      * @param metadata 要合并的物模型
      * @since 1.8
      */
-    DeviceMetadata merge(DeviceMetadata metadata);
+    default DeviceMetadata merge(DeviceMetadata metadata){
+        throw new UnsupportedOperationException("unsupported merge metadata");
+    }
 
 }
