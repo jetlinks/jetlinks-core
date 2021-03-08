@@ -7,11 +7,9 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.metadata.*;
+import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiFunction;
 
 @Getter
@@ -70,7 +68,7 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
                 return result;
             }
         }
-        return  ValidateResult.success(mapValue);
+        return ValidateResult.success(mapValue);
     }
 
     @Override
@@ -113,5 +111,15 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
             }
             return data;
         });
+    }
+
+    public Optional<PropertyMetadata> getProperty(String key) {
+        if (CollectionUtils.isEmpty(properties)) {
+            return Optional.empty();
+        }
+        return properties
+                .stream()
+                .filter(prop -> prop.getId().equals(key))
+                .findAny();
     }
 }
