@@ -41,6 +41,13 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
         return this;
     }
 
+    public List<PropertyMetadata> getProperties() {
+        if (properties == null) {
+            return Collections.emptyList();
+        }
+        return properties;
+    }
+
     public ObjectType addProperty(String property, DataType type) {
         return this.addProperty(property, property, type);
     }

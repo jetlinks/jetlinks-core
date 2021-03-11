@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata;
 
+import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import java.util.List;
 
@@ -16,9 +17,9 @@ public interface FunctionMetadata extends Metadata, Jsonable {
     List<PropertyMetadata> getInputs();
 
     /**
-     * @return 输出类型
+     * @return 输出类型，为null表示无输出
      */
-    @NotNull
+    @Nullable
     DataType getOutput();
 
     /**
