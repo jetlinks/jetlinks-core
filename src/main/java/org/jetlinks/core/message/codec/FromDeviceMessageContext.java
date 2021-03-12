@@ -9,6 +9,8 @@ import reactor.core.publisher.Mono;
 import javax.annotation.Nonnull;
 
 /**
+ * 来自设备的消息上下文，可以通过此上下文获取设备会话
+ *
  * @author zhouhao
  * @since 1.0.0
  */

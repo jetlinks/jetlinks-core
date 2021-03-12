@@ -17,11 +17,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
  **/
 public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
 
-    private DeviceMessageCodec messageCodec;
+    private final DeviceMessageCodec messageCodec;
 
-    private List<DeviceMessageDecodeInterceptor> decodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
+    private final List<DeviceMessageDecodeInterceptor> decodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
 
-    private List<DeviceMessageEncodeInterceptor> encodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
+    private final List<DeviceMessageEncodeInterceptor> encodeDeviceMessageInterceptors = new CopyOnWriteArrayList<>();
 
     public InterceptorDeviceMessageCodec(DeviceMessageCodec codec) {
         this.messageCodec = codec;
