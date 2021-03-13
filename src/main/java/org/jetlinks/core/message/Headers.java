@@ -53,6 +53,13 @@ public interface Headers {
      */
     HeaderKey<Boolean> mergeLatest = HeaderKey.of("mergeLatest", false, Boolean.class);
 
+    /**
+     * 是否为转发到父设备的消息
+     *
+     * @since 1.1.6
+     */
+    HeaderKey<Boolean> dispatchToParent = HeaderKey.of("dispatchToParent", false, Boolean.class);
+
     //******** 分片消息,一个请求,设备将结果分片返回,通常用于处理大消息. **********
     //分片消息ID(为平台下发消息时的消息ID)
     HeaderKey<String> fragmentBodyMessageId = HeaderKey.of("frag_msg_id", null, String.class);

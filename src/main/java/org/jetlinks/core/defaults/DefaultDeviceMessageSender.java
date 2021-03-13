@@ -146,6 +146,37 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                         .then(operator.getConnectionServerId()));
     }
 
+    private Flux<DeviceMessage> sendToParentDevice(String parentId,
+                                                   DeviceMessage message) {
+        if (parentId.equals(operator.getDeviceId())) {
+            return Flux
+                    .error(
+                            new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "子设备与父设备不能为相同的设备")
+                    );
+        }
+
+        ChildDeviceMessage children = new ChildDeviceMessage();
+        children.setDeviceId(parentId);
+        children.setMessageId(message.getMessageId());
+        children.setTimestamp(message.getTimestamp());
+        children.setChildDeviceId(operator.getDeviceId());
+        children.setChildDeviceMessage(message);
+
+        // https://github.com/jetlinks/jetlinks-pro/issues/19
+        if (null != message.getHeaders()) {
+            children.setHeaders(new ConcurrentHashMap<>(message.getHeaders()));
+        }
+        message.addHeader(Headers.dispatchToParent, true);
+        children.validate();
+        return registry
+                .getDevice(parentId)
+                .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.UNKNOWN_PARENT_DEVICE, "未知的父设备:" + parentId)))
+                .flatMapMany(parent -> parent
+                        .messageSender()
+                        .send(Mono.just(children), resp -> this.convertReply(message, resp)))
+                ;
+    }
+
     public <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping) {
         return Mono
                 .zip(
@@ -172,34 +203,10 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                         return Flux
                                 .from(message)
                                 .flatMap(msg -> interceptor.preSend(operator, msg))
-                                .flatMap(msg -> {
-                                    if (parentGatewayId.equals(operator.getDeviceId())) {
-                                        return Mono
-                                                .error(
-                                                        new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "子设备与父设备不能为相同的设备")
-                                                );
-                                    }
-                                    ChildDeviceMessage children = new ChildDeviceMessage();
-                                    children.setDeviceId(parentGatewayId);
-                                    children.setMessageId(msg.getMessageId());
-                                    children.setTimestamp(msg.getTimestamp());
-                                    children.setChildDeviceId(operator.getDeviceId());
-                                    children.setChildDeviceMessage(msg);
-
-                                    // https://github.com/jetlinks/jetlinks-pro/issues/19
-                                    if (null != msg.getHeaders()) {
-                                        children.setHeaders(new ConcurrentHashMap<>(msg.getHeaders()));
-                                    }
-                                    children.validate();
-                                    return registry
-                                            .getDevice(parentGatewayId)
-                                            .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.UNKNOWN_PARENT_DEVICE, "未知的父设备:" + parentGatewayId)))
-                                            .flatMapMany(parent -> parent
-                                                    .messageSender()
-                                                    .send(Mono.just(children), resp -> this.convertReply(msg, resp)))
-                                            .map(r -> (R) r)
-                                            .as(flux -> interceptor.afterSent(operator, msg, flux));
-                                });
+                                .flatMap(msg -> this
+                                        .sendToParentDevice(parentGatewayId, msg)
+                                        .as(flux -> interceptor.afterSent(operator, msg, flux)))
+                                .map(r -> (R) r);
                     }
                     return Flux
                             .from(message)
@@ -216,12 +223,12 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                         : handler
                                         .handleReply(msg.getDeviceId(),
                                                      msg.getMessageId(),
-                                                     Duration.ofMillis(msg
-                                                                               .getHeader(Headers.timeout)
-                                                                               .orElse(defaultTimeout)))
+                                                     Duration.ofMillis(msg.getHeader(Headers.timeout)
+                                                                          .orElse(defaultTimeout)))
                                         .map(replyMapping)
                                         .onErrorResume(DeviceOperationException.class, error -> {
                                             if (error.getCode() == ErrorCode.CLIENT_OFFLINE) {
+                                                //返回离线错误,重新检查状态,以矫正设备缓存的状态
                                                 return operator
                                                         .checkState()
                                                         .then(Mono.error(error));
@@ -230,6 +237,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                         })
                                         .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
                                         .as(flux -> this.logReply(msg, flux));
+
                                 //发送消息到设备连接的服务器
                                 return handler
                                         .send(server, Mono.just(msg))
@@ -244,13 +252,32 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                             if (DeviceState.online != state) {
                                                                 return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                                             }
-                                                            return interceptor.afterSent(operator, msg, replyStream);
+                                                            /*
+                                                              设备在线,但是serverId对应的服务没有监听处理消息
+                                                                 1. 服务挂了
+                                                                 2. 设备缓存的serverId不对
+                                                             */
+                                                            //尝试发送给父设备
+                                                            if (StringUtils.hasText(parentGatewayId)) {
+                                                                log.debug("Device [{}] Cached Server [{}] Not Available,Dispatch To Parent [{}]",
+                                                                          operator.getDeviceId(),
+                                                                          server,
+                                                                          parentGatewayId);
+
+                                                                return interceptor
+                                                                        .afterSent(operator, msg, sendToParentDevice(parentGatewayId, msg))
+                                                                        .map(r -> (R) r);
+                                                            }
+                                                            log.warn("Device [{}] Cached Server [{}] Not Available",
+                                                                     operator.getDeviceId(),
+                                                                     server);
+                                                            
+                                                            return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.SERVER_NOT_AVAILABLE)));
                                                         });
                                             } else if (len == -1) {
                                                 return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                             }
                                             log.debug("send device[{}] message complete", operator.getDeviceId());
-
                                             return interceptor.afterSent(operator, msg, replyStream);
                                         })
                                         .doOnNext(r -> DeviceMessageTracer.trace(r, "send.reply"))
