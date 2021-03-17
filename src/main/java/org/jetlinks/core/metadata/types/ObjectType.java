@@ -70,6 +70,9 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
 
         for (PropertyMetadata property : properties) {
             Object data = mapValue.get(property.getId());
+            if (data == null) {
+                continue;
+            }
             ValidateResult result = property.getValueType().validate(data);
             if (!result.isSuccess()) {
                 return result;
