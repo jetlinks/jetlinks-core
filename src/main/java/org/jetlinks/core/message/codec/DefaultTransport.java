@@ -3,6 +3,8 @@ package org.jetlinks.core.message.codec;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.Arrays;
+
 /**
  * @author zhouhao
  * @since 1.0.0
@@ -22,8 +24,12 @@ public enum DefaultTransport implements Transport {
     WebSocket("WebSocket"),
     WebSockets("WebSocket TLS");
 
+    static {
+        Transports.register(Arrays.asList(DefaultTransport.values()));
+    }
+
     @Getter
-    private String name;
+    private final String name;
 
     @Override
     public String getId() {
