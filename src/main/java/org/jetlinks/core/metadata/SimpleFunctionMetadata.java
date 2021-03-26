@@ -37,4 +37,8 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
         return inputs;
     }
 
+    @Override
+    public FunctionMetadata merge(FunctionMetadata another, MergeOption... option) {
+        return another;
+    }
 }

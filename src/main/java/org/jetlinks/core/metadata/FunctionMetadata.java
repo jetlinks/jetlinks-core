@@ -27,4 +27,7 @@ public interface FunctionMetadata extends Metadata, Jsonable {
      */
     boolean isAsync();
 
+    default FunctionMetadata merge(FunctionMetadata another, MergeOption... option){
+        throw new UnsupportedOperationException("不支持功能物模型合并");
+    }
 }

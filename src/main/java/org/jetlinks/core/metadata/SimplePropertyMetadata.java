@@ -5,7 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.apache.commons.collections.MapUtils;
+import org.hswebframework.web.bean.FastBeanCopier;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Getter
@@ -37,5 +40,15 @@ public class SimplePropertyMetadata implements PropertyMetadata {
         throw new UnsupportedOperationException();
     }
 
-
+    @Override
+    public PropertyMetadata merge(PropertyMetadata another, MergeOption... option) {
+        SimplePropertyMetadata metadata = FastBeanCopier.copy(this, SimplePropertyMetadata::new);
+        if (metadata.expands == null) {
+            metadata.expands = new HashMap<>();
+        }
+        if (MapUtils.isNotEmpty(another.getExpands())) {
+            another.getExpands().forEach(metadata.expands::putIfAbsent);
+        }
+        return metadata;
+    }
 }
