@@ -1,5 +1,6 @@
 package org.jetlinks.core.message.codec;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 
@@ -57,7 +58,7 @@ public interface Transport {
      * @return Transport
      */
     static Transport of(String id) {
-        return () -> id;
+        return lookup(id).orElseGet(() -> (Transport & Serializable) () -> id);
     }
 
     /**
