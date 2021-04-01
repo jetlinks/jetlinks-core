@@ -402,6 +402,12 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         Map<String, Object> configs = new HashMap<>(conf);
         if (conf.containsKey(metadata.getKey())) {
             configs.put(lastMetadataTimeKey.getKey(), lastMetadataTime = System.currentTimeMillis());
+
+            return StorageConfigurable.super
+                    .setConfigs(configs)
+                    .doOnNext(suc -> {
+                        this.metadataCache = null;
+                    });
         }
         return StorageConfigurable.super.setConfigs(configs);
     }
