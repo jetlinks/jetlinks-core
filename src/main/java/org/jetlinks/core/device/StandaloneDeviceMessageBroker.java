@@ -34,7 +34,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
     private final Map<String, AtomicInteger> partCache = new ConcurrentHashMap<>();
 
     @Setter
-    private ReplyFailureHandler replyFailureHandler = (error, message) -> log.warn("unhandled reply message:{}", message, error);
+    private ReplyFailureHandler replyFailureHandler = (error, message) -> StandaloneDeviceMessageBroker.log.warn("unhandled reply message:{}", message, error);
 
     private final Map<String, Function<Publisher<String>, Flux<DeviceStateInfo>>> stateHandler = new ConcurrentHashMap<>();
 
