@@ -394,7 +394,9 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         METADATA_UPDATER.set(this, null);
         METADATA_TIME_UPDATER.set(this, -1);
         return removeConfigs(metadata, lastMetadataTimeKey)
-                .then();
+                .then(this.getProtocol()
+                          .flatMap(support -> support.onDeviceMetadataChanged(this))
+                );
     }
 
     @Override
@@ -407,7 +409,11 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                     .setConfigs(configs)
                     .doOnNext(suc -> {
                         this.metadataCache = null;
-                    });
+                    })
+                    .then(this.getProtocol()
+                              .flatMap(support -> support.onDeviceMetadataChanged(this))
+                    )
+                    .thenReturn(true);
         }
         return StorageConfigurable.super.setConfigs(configs);
     }

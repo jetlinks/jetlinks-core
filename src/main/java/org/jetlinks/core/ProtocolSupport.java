@@ -229,4 +229,28 @@ public interface ProtocolSupport extends Disposable {
     default Mono<Void> onProductUnRegister(DeviceProductOperator operator) {
         return Mono.empty();
     }
+
+    /**
+     * 当产品物模型变更时调用
+     *
+     * @param operator 产品操作接口
+     * @return void
+     * @since 1.1.6
+     */
+    default Mono<Void> onProductMetadataChanged(DeviceProductOperator operator) {
+        return Mono.empty();
+    }
+
+    /**
+     * 当设备物模型变更时调用
+     *
+     * @param operator 设备操作接口
+     * @return void
+     * @since 1.1.6
+     */
+    default Mono<Void> onDeviceMetadataChanged(DeviceOperator operator) {
+        return Mono.empty();
+    }
+
+
 }

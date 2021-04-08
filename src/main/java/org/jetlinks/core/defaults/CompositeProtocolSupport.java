@@ -74,8 +74,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     private Function<DeviceOperator, Mono<Void>> onDeviceRegister;
     private Function<DeviceOperator, Mono<Void>> onDeviceUnRegister;
+    private Function<DeviceOperator, Mono<Void>> onDeviceMetadataChanged;
+
     private Function<DeviceProductOperator, Mono<Void>> onProductRegister;
     private Function<DeviceProductOperator, Mono<Void>> onProductUnRegister;
+    private Function<DeviceProductOperator, Mono<Void>> onProductMetadataChanged;
 
     @Override
     public void dispose() {
@@ -277,6 +280,16 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         return this;
     }
 
+    public CompositeProtocolSupport doOnProductMetadataChanged(Function<DeviceProductOperator, Mono<Void>> executor) {
+        this.onProductMetadataChanged = executor;
+        return this;
+    }
+
+    public CompositeProtocolSupport doOnDeviceMetadataChanged(Function<DeviceOperator, Mono<Void>> executor) {
+        this.onDeviceMetadataChanged = executor;
+        return this;
+    }
+
     @Override
     public Mono<Void> onDeviceRegister(DeviceOperator operator) {
         return onDeviceRegister != null ? onDeviceRegister.apply(operator) : Mono.empty();
@@ -295,5 +308,15 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Override
     public Mono<Void> onProductUnRegister(DeviceProductOperator operator) {
         return onProductUnRegister != null ? onProductUnRegister.apply(operator) : Mono.empty();
+    }
+
+    @Override
+    public Mono<Void> onDeviceMetadataChanged(DeviceOperator operator) {
+        return onDeviceMetadataChanged != null ? onDeviceMetadataChanged.apply(operator) : Mono.empty();
+    }
+
+    @Override
+    public Mono<Void> onProductMetadataChanged(DeviceProductOperator operator) {
+        return onProductMetadataChanged != null ? onProductMetadataChanged.apply(operator) : Mono.empty();
     }
 }

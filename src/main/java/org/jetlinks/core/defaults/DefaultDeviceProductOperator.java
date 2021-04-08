@@ -14,6 +14,7 @@ import org.jetlinks.core.metadata.DeviceMetadata;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -99,15 +100,24 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
     public Mono<Boolean> setConfigs(Map<String, Object> conf) {
         if (conf.containsKey(DeviceConfigKey.metadata.getKey())) {
             conf.put(lastMetadataTimeKey.getKey(), System.currentTimeMillis());
+            return StorageConfigurable.super
+                    .setConfigs(conf)
+                    .doOnNext(s -> {
+                        metadata = null;
+                    })
+                    .then(this.getProtocol()
+                              .flatMap(support -> support.onProductMetadataChanged(this))
+                    )
+                    .thenReturn(true);
         }
         return StorageConfigurable.super.setConfigs(conf);
     }
 
     @Override
     public Mono<Boolean> updateMetadata(String metadata) {
-        return this
-                .setConfigs(DeviceConfigKey.metadata.value(metadata), lastMetadataTimeKey.value(System.currentTimeMillis()))
-                .doOnSuccess((v) -> this.metadata = null);
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(DeviceConfigKey.metadata.getKey(), metadata);
+        return this.setConfigs(configs);
     }
 
     @Override
