@@ -104,5 +104,8 @@ public interface Headers {
      */
     HeaderKey<Boolean> ignoreLog = HeaderKey.of("ignoreLog", false, Boolean.class);
 
-
+    /**
+     * 产品ID
+     */
+    HeaderKey<String> productId = HeaderKey.of("productId", null, String.class);
 }
