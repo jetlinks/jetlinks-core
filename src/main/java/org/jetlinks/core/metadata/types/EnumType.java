@@ -44,10 +44,20 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
         }
         return elements
                 .stream()
-                .filter(ele -> ele.value.equals(String.valueOf(value))||ele.text.equals(String.valueOf(value)))
+                .filter(ele -> match(value, ele))
                 .findFirst()
                 .map(e -> ValidateResult.success(e.value))
                 .orElseGet(() -> ValidateResult.fail("值[" + value + "]不在枚举中"));
+    }
+
+    private boolean match(Object value, Element ele) {
+        if (value instanceof Map) {
+            //适配map情况下的枚举信息
+            @SuppressWarnings("all")
+            Map<Object, Object> mapVal = ((Map<Object, Object>) value);
+            return match(mapVal.getOrDefault("value", mapVal.get("id")), ele);
+        }
+        return ele.value.equals(String.valueOf(value)) || ele.text.equals(String.valueOf(value));
     }
 
     @Override
