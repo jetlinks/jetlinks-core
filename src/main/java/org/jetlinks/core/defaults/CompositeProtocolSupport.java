@@ -12,6 +12,8 @@ import org.jetlinks.core.metadata.ConfigMetadata;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.metadata.DeviceMetadataCodec;
 import org.jetlinks.core.metadata.DeviceMetadataType;
+import org.jetlinks.core.server.ClientConnection;
+import org.jetlinks.core.server.DeviceGatewayContext;
 import reactor.core.Disposable;
 import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
@@ -24,6 +26,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -79,6 +82,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private Function<DeviceProductOperator, Mono<Void>> onProductRegister;
     private Function<DeviceProductOperator, Mono<Void>> onProductUnRegister;
     private Function<DeviceProductOperator, Mono<Void>> onProductMetadataChanged;
+
+    private Map<String, BiFunction<ClientConnection, DeviceGatewayContext, Mono<Void>>> connectionHandlers = new ConcurrentHashMap<>();
 
     @Override
     public void dispose() {
@@ -290,6 +295,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         return this;
     }
 
+    public void doOnClientConnect(Transport transport,
+                                  BiFunction<ClientConnection, DeviceGatewayContext, Mono<Void>> handler) {
+        connectionHandlers.put(transport.getId(), handler);
+    }
+
     @Override
     public Mono<Void> onDeviceRegister(DeviceOperator operator) {
         return onDeviceRegister != null ? onDeviceRegister.apply(operator) : Mono.empty();
@@ -318,5 +328,16 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Override
     public Mono<Void> onProductMetadataChanged(DeviceProductOperator operator) {
         return onProductMetadataChanged != null ? onProductMetadataChanged.apply(operator) : Mono.empty();
+    }
+
+    @Override
+    public Mono<Void> onClientConnect(Transport transport,
+                                      ClientConnection connection,
+                                      DeviceGatewayContext context) {
+        BiFunction<ClientConnection, DeviceGatewayContext, Mono<Void>> function = connectionHandlers.get(transport.getId());
+        if (function == null) {
+            return Mono.empty();
+        }
+        return function.apply(connection, context);
     }
 }

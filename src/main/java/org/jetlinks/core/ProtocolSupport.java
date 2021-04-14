@@ -5,6 +5,8 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.*;
+import org.jetlinks.core.server.ClientConnection;
+import org.jetlinks.core.server.DeviceGatewayContext;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -66,7 +68,7 @@ public interface ProtocolSupport extends Disposable {
      * <ul>
      * <li>用于将平台统一的设备定义规范转码为协议的规范</li>
      * <li>用于将协议的规范转为平台统一的设备定义规范</li>
-     * *
+     *
      * </ul>
      *
      * @return 物模型编解码器
@@ -252,5 +254,18 @@ public interface ProtocolSupport extends Disposable {
         return Mono.empty();
     }
 
+    /**
+     * 客户端创建连接时调用,返回设备ID,表示此设备上线.
+     *
+     * @param transport  传输协议
+     * @param connection 客户端连接
+     * @return void
+     * @since 1.1.6
+     */
+    default Mono<Void> onClientConnect(Transport transport,
+                                       ClientConnection connection,
+                                       DeviceGatewayContext context) {
+        return Mono.empty();
+    }
 
 }

@@ -11,30 +11,37 @@ import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 
 /**
+ * 已编码的消息,通常为来自设备或者发向设备的原始报文.
+ *
  * @author zhouhao
- * @since 1.0.0
  * @see MqttMessage
  * @see CoapMessage
  * @see org.jetlinks.core.message.codec.http.HttpExchangeMessage
+ * @since 1.0.0
  */
 public interface EncodedMessage {
 
+    /**
+     * 获取原始报文
+     *
+     * @return ByteBuf
+     */
     @Nonnull
     ByteBuf getPayload();
 
-    default String payloadAsString(){
+    default String payloadAsString() {
         return getPayload().toString(StandardCharsets.UTF_8);
     }
 
-    default JSONObject payloadAsJson(){
-        return (JSONObject)JSON.parse(payloadAsBytes());
+    default JSONObject payloadAsJson() {
+        return (JSONObject) JSON.parse(payloadAsBytes());
     }
 
-    default JSONArray payloadAsJsonArray(){
-        return (JSONArray)JSON.parse(payloadAsBytes());
+    default JSONArray payloadAsJsonArray() {
+        return (JSONArray) JSON.parse(payloadAsBytes());
     }
 
-    default byte[] payloadAsBytes(){
+    default byte[] payloadAsBytes() {
         return ByteBufUtil.getBytes(getPayload());
     }
 
