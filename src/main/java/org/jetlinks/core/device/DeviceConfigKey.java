@@ -33,6 +33,8 @@ public enum DeviceConfigKey implements ConfigKey<String> {
     //通常用于子设备状态
     public static ConfigKey<Boolean> selfManageState = ConfigKey.of("selfManageState", "状态自管理");
 
+    public static ConfigKey<Long> firstPropertyTime = ConfigKey.of("firstProperty", "首次上报属性的时间");
+
     @Override
     public String getKey() {
         return name();
