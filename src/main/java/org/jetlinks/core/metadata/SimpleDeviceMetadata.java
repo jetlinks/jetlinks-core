@@ -160,6 +160,13 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
         deviceMetadata.setDescription(metadata.getDescription());
         deviceMetadata.setExpands(metadata.getExpands());
 
+
+        if (MergeOption.has(MergeOption.overwriteProperty, options)) {
+            deviceMetadata.properties.clear();
+        } else {
+            deviceMetadata.properties.putAll(this.properties);
+        }
+
         for (PropertyMetadata property : metadata.getProperties()) {
             doMerge(deviceMetadata.properties, property, PropertyMetadata::merge, options);
         }

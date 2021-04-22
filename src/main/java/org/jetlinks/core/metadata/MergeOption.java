@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
  */
 public interface MergeOption {
     MergeOption ignoreExists = DefaultMergeOption.ignoreExists;
+    MergeOption overwriteProperty = DefaultMergeOption.overwriteProperty;
 
     MergeOption[] DEFAULT_OPTIONS = new MergeOption[0];
 
@@ -23,7 +24,8 @@ public interface MergeOption {
 
     enum DefaultMergeOption implements MergeOption {
         ignoreExists,
-        mergeExpands;
+        mergeExpands,
+        overwriteProperty;
 
         @Override
         public String getId() {
