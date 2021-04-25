@@ -25,6 +25,15 @@ public class ChildDeviceMessage extends CommonDeviceMessage implements Repayable
 
     private Message childDeviceMessage;
 
+    public static ChildDeviceMessage create(String deviceId, DeviceMessage message) {
+        ChildDeviceMessage msg = new ChildDeviceMessage();
+        msg.setDeviceId(deviceId);
+        msg.setMessageId(message.getMessageId());
+        msg.setChildDeviceId(message.getDeviceId());
+        msg.setChildDeviceMessage(message);
+        return msg;
+    }
+
     @Override
     public ChildDeviceMessageReply newReply() {
         ChildDeviceMessageReply reply = new ChildDeviceMessageReply();

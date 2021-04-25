@@ -10,9 +10,13 @@ import org.jetlinks.core.config.ConfigStorage;
 import org.jetlinks.core.config.ConfigStorageManager;
 import org.jetlinks.core.config.StorageConfigurable;
 import org.jetlinks.core.device.*;
+import org.jetlinks.core.message.ChildDeviceMessage;
+import org.jetlinks.core.message.ChildDeviceMessageReply;
 import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.DisconnectDeviceMessage;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
+import org.jetlinks.core.message.state.DeviceStateCheckMessage;
+import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.utils.IdUtils;
 import org.springframework.util.StringUtils;
@@ -233,7 +237,24 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                             if (StringUtils.hasText(parentGatewayId)) {
                                 return registry
                                         .getDevice(parentGatewayId)
-                                        .flatMap(DeviceOperator::checkState);
+                                        .flatMap(device -> device
+                                                .messageSender()
+                                                //发送设备状态检查指令给网关设备
+                                                .<ChildDeviceMessageReply>
+                                                        send(ChildDeviceMessage.create(parentGatewayId, DeviceStateCheckMessage.create(getDeviceId())))
+                                                .singleOrEmpty()
+                                                .map(msg -> {
+                                                    if (msg.getChildDeviceMessage() instanceof DeviceStateCheckMessageReply) {
+                                                        return ((DeviceStateCheckMessageReply) msg.getChildDeviceMessage())
+                                                                .getState();
+                                                    }
+                                                    log.warn("子设备状态检查返回消息错误{}", msg);
+                                                    return DeviceState.online;
+                                                })
+                                                .onErrorResume(err -> device.checkState()));
+//                                return registry
+//                                        .getDevice(parentGatewayId)
+//                                        .flatMap(DeviceOperator::checkState);
                             }
 
                             //如果是在线状态,则改为离线,否则保持状态不变
@@ -302,7 +323,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     public Mono<Boolean> offline() {
         return this
                 .setConfigs(
-                        selfManageState.value(true),
+                        //selfManageState.value(true),
                         connectionServerId.value(""),
                         sessionId.value(""),
                         ConfigKey.of("offlineTime").value(System.currentTimeMillis()),
@@ -315,7 +336,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     public Mono<Boolean> online(String serverId, String sessionId, String address) {
         return this
                 .setConfigs(
-                        selfManageState.value(true),
+                      //  selfManageState.value(true),
                         connectionServerId.value(serverId),
                         DeviceConfigKey.sessionId.value(sessionId),
                         ConfigKey.of("address").value(address),

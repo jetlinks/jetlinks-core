@@ -27,7 +27,7 @@ public interface DeviceOperator extends Configurable {
     String getDeviceId();
 
     /**
-     * @return 当前设备连接所在服务器ID，如果设备未上线{@link DeviceState#online}，则返回{@link null}
+     * @return 当前设备连接所在服务器ID，如果设备未上线 {@link DeviceState#online}，则返回<code>null</code>
      */
     Mono<String> getConnectionServerId();
 

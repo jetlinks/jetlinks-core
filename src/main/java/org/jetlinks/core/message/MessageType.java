@@ -8,8 +8,13 @@ import org.jetlinks.core.message.firmware.*;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.property.*;
+import org.jetlinks.core.message.state.DeviceStateCheckMessage;
+import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 @AllArgsConstructor
@@ -133,6 +138,10 @@ public enum MessageType {
 
     //应答指令
     ACKNOWLEDGE(AcknowledgeDeviceMessage::new),
+
+    //状态检查
+    STATE_CHECK(DeviceStateCheckMessage::new),
+    STATE_CHECK_REPLY(DeviceStateCheckMessageReply::new),
 
     //未知消息
     UNKNOWN(null) {

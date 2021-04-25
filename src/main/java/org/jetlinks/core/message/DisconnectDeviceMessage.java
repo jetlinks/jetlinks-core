@@ -4,7 +4,7 @@ public class DisconnectDeviceMessage extends CommonDeviceMessage implements Repa
 
     @Override
     public DisconnectDeviceMessageReply newReply() {
-        return new DisconnectDeviceMessageReply();
+        return new DisconnectDeviceMessageReply().from(this);
     }
 
     public MessageType getMessageType() {

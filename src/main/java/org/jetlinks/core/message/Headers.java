@@ -105,6 +105,11 @@ public interface Headers {
     HeaderKey<Boolean> ignoreLog = HeaderKey.of("ignoreLog", false, Boolean.class);
 
     /**
+     * 忽略某些操作,具体由不同的消息决定
+     */
+    HeaderKey<Boolean> ignore = HeaderKey.of("ignore", false, Boolean.class);
+
+    /**
      * 产品ID
      */
     HeaderKey<String> productId = HeaderKey.of("productId", null, String.class);

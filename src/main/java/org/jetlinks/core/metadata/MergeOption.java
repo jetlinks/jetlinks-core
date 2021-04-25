@@ -6,6 +6,7 @@ import org.apache.commons.collections.MapUtils;
 
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -20,6 +21,10 @@ public interface MergeOption {
 
     MergeOption[] DEFAULT_OPTIONS = new MergeOption[0];
 
+    static PropertyFilter propertyFilter(PropertyFilter filter) {
+        return filter;
+    }
+
     String getId();
 
     enum DefaultMergeOption implements MergeOption {
@@ -32,6 +37,41 @@ public interface MergeOption {
             return name();
         }
 
+    }
+
+    interface PropertyFilter extends MergeOption, Predicate<PropertyMetadata> {
+        @Override
+        default String getId() {
+            return "PropertyFilter";
+        }
+
+        /**
+         * 属性过滤校验。返回true表示合并此属性。false表示不合并
+         *
+         * @param metadata 属性物模型
+         * @return 是否合并
+         */
+        boolean test(PropertyMetadata metadata);
+
+        static boolean doFilter(PropertyMetadata metadata, MergeOption... option) {
+            for (MergeOption mergeOption : option) {
+                if (mergeOption instanceof PropertyFilter) {
+                    if (!((PropertyFilter) mergeOption).test(metadata)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        static boolean has(MergeOption[] options) {
+            for (MergeOption option : options) {
+                if (option instanceof PropertyFilter) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
