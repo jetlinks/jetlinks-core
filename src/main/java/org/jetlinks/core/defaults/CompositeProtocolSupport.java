@@ -8,10 +8,7 @@ import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
-import org.jetlinks.core.metadata.ConfigMetadata;
-import org.jetlinks.core.metadata.DeviceMetadata;
-import org.jetlinks.core.metadata.DeviceMetadataCodec;
-import org.jetlinks.core.metadata.DeviceMetadataType;
+import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.DeviceGatewayContext;
 import reactor.core.Disposable;
@@ -84,6 +81,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private Function<DeviceProductOperator, Mono<Void>> onProductMetadataChanged;
 
     private Map<String, BiFunction<ClientConnection, DeviceGatewayContext, Mono<Void>>> connectionHandlers = new ConcurrentHashMap<>();
+
+    private Map<String, Flux<Feature>> features = new ConcurrentHashMap<>();
 
     @Override
     public void dispose() {
@@ -339,5 +338,22 @@ public class CompositeProtocolSupport implements ProtocolSupport {
             return Mono.empty();
         }
         return function.apply(connection, context);
+    }
+
+    public void addFeature(Transport transport, Feature... features) {
+        addFeature(transport, Flux.just(features));
+    }
+
+    public void addFeature(Transport transport, Iterable<Feature> features) {
+        addFeature(transport, Flux.fromIterable(features));
+    }
+
+    public void addFeature(Transport transport, Flux<Feature> features) {
+        this.features.put(transport.getId(), features);
+    }
+
+    @Override
+    public Flux<Feature> getFeatures(Transport transport) {
+        return features.getOrDefault(transport.getId(), Flux.empty());
     }
 }

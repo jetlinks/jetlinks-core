@@ -268,4 +268,13 @@ public interface ProtocolSupport extends Disposable {
         return Mono.empty();
     }
 
+    /**
+     * 获取协议支持的某些自定义特性
+     *
+     * @return 特性集
+     * @since 1.1.6
+     */
+    default Flux<Feature> getFeatures(Transport transport) {
+        return Flux.empty();
+    }
 }
