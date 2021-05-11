@@ -31,7 +31,8 @@ public interface DeviceSession {
     String getDeviceId();
 
     /**
-     * 获取设备操作对象,返回值可能为<code>null</code>
+     * 获取设备操作对象,在类似TCP首次请求的场景下,返回值可能为<code>null</code>.
+     * 可以通过判断此返回值是否为<code>null</code>,来处理首次连接的情况。
      *
      * @return void
      */
