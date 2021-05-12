@@ -22,25 +22,26 @@ public class BooleanType extends AbstractType<BooleanType> implements DataType, 
 
     private String falseValue = "false";
 
-    public BooleanType trueText(String trueText){
-        this.trueText=trueText;
+    public BooleanType trueText(String trueText) {
+        this.trueText = trueText;
         return this;
     }
 
-    public BooleanType falseText(String falseText){
-        this.falseText=falseText;
+    public BooleanType falseText(String falseText) {
+        this.falseText = falseText;
         return this;
     }
 
-    public BooleanType trueValue(String trueValue){
-        this.trueValue=trueValue;
+    public BooleanType trueValue(String trueValue) {
+        this.trueValue = trueValue;
         return this;
     }
 
-    public BooleanType falseValue(String falseValue){
-        this.falseText=falseValue;
+    public BooleanType falseValue(String falseValue) {
+        this.falseText = falseValue;
         return this;
     }
+
     @Override
     public String getId() {
         return ID;
@@ -64,7 +65,10 @@ public class BooleanType extends AbstractType<BooleanType> implements DataType, 
         if (stringVal.equals(falseValue) || stringVal.equals(falseText)) {
             return false;
         }
-
+        //数字类型
+        if (value instanceof Number) {
+            return ((Number) value).intValue() > 0;
+        }
         return null;
     }
 
