@@ -3,8 +3,6 @@ package org.jetlinks.core.metadata.types;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
-
 public class BooleanTypeTest {
 
     @Test
@@ -23,8 +21,8 @@ public class BooleanTypeTest {
         Assert.assertTrue(booleanType.validate("是").isSuccess());
         Assert.assertTrue(booleanType.validate("否").isSuccess());
 
-        Assert.assertFalse(booleanType.validate("1").isSuccess());
-        Assert.assertFalse(booleanType.validate("2").isSuccess());
+        Assert.assertTrue(booleanType.convert("1"));
+        Assert.assertFalse(booleanType.convert("2"));
 
     }
 }
