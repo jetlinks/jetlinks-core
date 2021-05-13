@@ -13,29 +13,38 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@Getter
+
 @Slf4j
 public class ChildrenDeviceSession implements DeviceSession {
+    @Getter
     private final String id;
 
+    @Getter
     private final String deviceId;
 
     private final DeviceSession parent;
 
+    @Getter
     private final DeviceOperator operator;
 
     private List<Runnable> closeListener;
+
+    private long lastKeepAliveTime;
+
+    private long keepAliveTimeOutMs = -1;
 
     public ChildrenDeviceSession(String deviceId, DeviceSession parent, DeviceOperator operator) {
         this.id = deviceId;
         this.parent = parent;
         this.operator = operator;
         this.deviceId = deviceId;
+        this.lastKeepAliveTime = parent.lastPingTime();
+
     }
 
     @Override
     public long lastPingTime() {
-        return parent.lastPingTime();
+        return lastKeepAliveTime;
     }
 
     @Override
@@ -64,11 +73,16 @@ public class ChildrenDeviceSession implements DeviceSession {
     @Override
     public void ping() {
         parent.ping();
+        this.lastKeepAliveTime = System.currentTimeMillis();
     }
 
     @Override
     public boolean isAlive() {
-        return parent.isAlive();
+        if (keepAliveTimeOutMs <= 0) {
+            return parent.isAlive();
+        }
+        return System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs
+                && parent.isAlive();
     }
 
     @Override
@@ -96,7 +110,7 @@ public class ChildrenDeviceSession implements DeviceSession {
 
     @Override
     public void setKeepAliveTimeout(Duration timeout) {
-        parent.setKeepAliveTimeout(timeout);
+        keepAliveTimeOutMs = timeout.toMillis();
     }
 
     @Override
@@ -106,6 +120,6 @@ public class ChildrenDeviceSession implements DeviceSession {
 
     @Override
     public String toString() {
-        return "children device[" + deviceId + "] in " + getParent();
+        return "children device[" + deviceId + "] in " + parent;
     }
 }
