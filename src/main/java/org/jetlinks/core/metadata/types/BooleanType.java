@@ -65,11 +65,13 @@ public class BooleanType extends AbstractType<BooleanType> implements DataType, 
         if (stringVal.equals(falseValue) || stringVal.equals(falseText)) {
             return false;
         }
-        //数字类型
-        if (value instanceof Number) {
-            return ((Number) value).intValue() > 0;
-        }
-        return null;
+        return stringVal.equals("1")
+                || stringVal.equals("true")
+                || stringVal.equals("y")
+                || stringVal.equals("yes")
+                || stringVal.equals("ok")
+                || stringVal.equals("是")
+                || stringVal.equals("正常");
     }
 
     @Override
