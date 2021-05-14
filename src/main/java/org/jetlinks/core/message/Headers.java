@@ -110,6 +110,11 @@ public interface Headers {
     HeaderKey<Boolean> ignore = HeaderKey.of("ignore", false, Boolean.class);
 
     /**
+     * 忽略会话创建,如果设备未在线,默认为创建会话,设置此header为true后则不会自动创建会话.
+     */
+    HeaderKey<Boolean> ignoreSession = HeaderKey.of("ignoreSession", false, Boolean.class);
+
+    /**
      * 产品ID
      */
     HeaderKey<String> productId = HeaderKey.of("productId", null, String.class);
