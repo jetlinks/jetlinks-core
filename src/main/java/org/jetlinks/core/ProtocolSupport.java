@@ -269,6 +269,30 @@ public interface ProtocolSupport extends Disposable {
     }
 
     /**
+     * 触发手动绑定子设备到网关设备
+     *
+     * @param gateway 网关
+     * @param child   子设备流
+     * @return void
+     * @since 1.1.6
+     */
+    default Mono<Void> onChildBind(DeviceOperator gateway, Flux<DeviceOperator> child) {
+        return Mono.empty();
+    }
+
+    /**
+     * 触发手动接触绑定子设备到网关设备
+     *
+     * @param gateway 网关
+     * @param child   子设备流
+     * @return void
+     * @since 1.1.6
+     */
+    default Mono<Void> onChildUnbind(DeviceOperator gateway, Flux<DeviceOperator> child) {
+        return Mono.empty();
+    }
+
+    /**
      * 获取协议支持的某些自定义特性
      *
      * @return 特性集
