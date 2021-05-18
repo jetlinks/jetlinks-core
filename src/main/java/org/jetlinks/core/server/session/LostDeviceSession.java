@@ -3,6 +3,8 @@ package org.jetlinks.core.server.session;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
@@ -34,7 +36,7 @@ public class LostDeviceSession implements DeviceSession{
 
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
-        return Mono.just(false);
+        return Mono.error(new DeviceOperationException(ErrorCode.CONNECTION_LOST));
     }
 
     @Override

@@ -8,6 +8,10 @@ public class DeviceSessionProviders {
 
     public static final Map<String, DeviceSessionProvider> providers = new ConcurrentHashMap<>();
 
+    static {
+        KeepOnlineDeviceSessionProvider.load();
+    }
+
     public static void register(DeviceSessionProvider provider) {
         providers.put(provider.getId(), provider);
     }

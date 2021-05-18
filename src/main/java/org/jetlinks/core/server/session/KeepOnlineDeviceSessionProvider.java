@@ -18,8 +18,8 @@ class KeepOnlineDeviceSessionProvider implements DeviceSessionProvider {
         DeviceSessionProviders.register(INSTANCE);
     }
 
-    public static KeepOnlineDeviceSessionProvider getInstance() {
-        return INSTANCE;
+    public static void load() {
+
     }
 
     @Override

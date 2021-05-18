@@ -14,7 +14,7 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Optional;
 
-public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSession,PersistentSession {
+public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSession, PersistentSession {
 
     DeviceSession parent;
 
@@ -58,12 +58,13 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
-        return Mono.defer(() -> {
-            if (parent.isAlive()) {
-                return parent.send(encodedMessage);
-            }
-            return Mono.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE));
-        });
+        return Mono
+                .defer(() -> {
+                    if (parent.isAlive()) {
+                        return parent.send(encodedMessage);
+                    }
+                    return Mono.error(new DeviceOperationException(ErrorCode.CONNECTION_LOST));
+                });
     }
 
     @Override

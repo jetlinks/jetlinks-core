@@ -16,6 +16,7 @@ public enum ErrorCode {
     /* 设备消息相关*/
     REQUEST_HANDLING("请求处理中"),
     CLIENT_OFFLINE("设备未在线"),
+    CONNECTION_LOST("设备连接已丢失"),
     NO_REPLY("设备未回复"),
     TIME_OUT("超时"),
     SYSTEM_ERROR("系统错误"),
