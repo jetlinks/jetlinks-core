@@ -114,6 +114,11 @@ public class ChildrenDeviceSession implements DeviceSession {
     }
 
     @Override
+    public Duration getKeepAliveTimeout() {
+        return Duration.ofMillis(keepAliveTimeOutMs);
+    }
+
+    @Override
     public <T extends DeviceSession> T unwrap(Class<T> type) {
         return type == ChildrenDeviceSession.class ? type.cast(this) : parent.unwrap(type);
     }

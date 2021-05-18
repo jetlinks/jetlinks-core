@@ -48,10 +48,21 @@ public interface MessageCodecContext {
         return Mono.empty();
     }
 
+    /**
+     * 预留功能,获取配置信息
+     *
+     * @return 配置信息
+     */
     default Map<String, Object> getConfiguration() {
         return Collections.emptyMap();
     }
 
+    /**
+     * 预留功能,获取配置信息
+     *
+     * @param key KEY
+     * @return 配置信息
+     */
     default Optional<Object> getConfig(String key) {
         return Optional
                 .ofNullable(getConfiguration())

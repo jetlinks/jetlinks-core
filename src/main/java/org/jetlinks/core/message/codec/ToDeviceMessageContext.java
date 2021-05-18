@@ -50,6 +50,14 @@ public interface ToDeviceMessageContext extends MessageEncodeContext {
      */
     Mono<DeviceSession> getSession(String deviceId);
 
+    /**
+     * 使用新的消息和设备，转换为新上下文.
+     * 通常用于在网关设备协议中,调用子设备协议时.通过此方法将上下为变换为对子设备对操作上下文.
+     *
+     * @param anotherMessage 设备消息
+     * @param device         设备操作接口
+     * @return 上下文
+     */
     @Override
     default ToDeviceMessageContext mutate(Message anotherMessage, DeviceOperator device) {
         return new ToDeviceMessageContext() {

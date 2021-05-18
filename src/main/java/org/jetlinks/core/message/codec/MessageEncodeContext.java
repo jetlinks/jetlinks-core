@@ -52,7 +52,7 @@ public interface MessageEncodeContext extends MessageCodecContext {
     }
 
     /**
-     * {@link this#reply(Publisher)}
+     * {@link MessageEncodeContext#reply(Publisher)}
      *
      * @param messages 消息
      * @return void
@@ -64,7 +64,7 @@ public interface MessageEncodeContext extends MessageCodecContext {
     }
 
     /**
-     * {@link this#reply(Publisher)}
+     * {@link MessageEncodeContext#reply(Publisher)}
      *
      * @param messages 消息
      * @return void

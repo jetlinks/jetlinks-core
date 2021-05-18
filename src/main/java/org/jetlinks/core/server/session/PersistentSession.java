@@ -13,11 +13,5 @@ public interface PersistentSession extends DeviceSession {
      */
     String getProvider();
 
-    /**
-     * 序列化会话数据
-     *
-     * @return 会话数据
-     */
-    byte[] serialize();
 
 }

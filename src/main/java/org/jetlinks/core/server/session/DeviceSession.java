@@ -116,6 +116,10 @@ public interface DeviceSession {
 
     }
 
+    default Duration getKeepAliveTimeout(){
+        return Duration.ZERO;
+    }
+
     /**
      * 判断会话是否包装自指定的类型,在某些场景下,可能会对会话进行包装
      *
