@@ -6,6 +6,7 @@ import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
 import org.jetlinks.core.message.MessageType;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -18,6 +19,15 @@ import java.util.Optional;
 public class WritePropertyMessageReply extends CommonDeviceMessageReply<WritePropertyMessageReply> {
 
     private Map<String, Object> properties;
+
+    public synchronized WritePropertyMessageReply addProperty(String key, Object value) {
+        if (properties == null) {
+            properties = new LinkedHashMap<>();
+        }
+        properties.put(key, value);
+        return this;
+    }
+
 
     public static WritePropertyMessageReply create() {
         WritePropertyMessageReply reply = new WritePropertyMessageReply();
