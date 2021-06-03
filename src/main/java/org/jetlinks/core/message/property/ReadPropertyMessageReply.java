@@ -57,6 +57,13 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
         return Optional.ofNullable(propertySourceTimes.get(property));
     }
 
+    public Optional<String> getPropertyState(String property) {
+        if (propertySourceTimes == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(propertyStates.get(property));
+    }
+
     public ReadPropertyMessageReply success(Map<String, Object> properties) {
 
         this.properties = properties;

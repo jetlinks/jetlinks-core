@@ -62,6 +62,13 @@ public class ReportPropertyMessage extends CommonDeviceMessage {
         return Optional.ofNullable(propertySourceTimes.get(property));
     }
 
+    public Optional<String> getPropertyState(String property) {
+        if (propertySourceTimes == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(propertyStates.get(property));
+    }
+
     @Override
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
