@@ -7,6 +7,7 @@ import org.jetlinks.core.message.CommonDeviceMessageReply;
 import org.jetlinks.core.message.MessageType;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 读取设备属性消息回复, 方向: 设备->平台
@@ -27,12 +28,26 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
      */
     private Map<String, Object> properties;
 
+    /**
+     * 属性源的时间戳,表示不同属性值产生的时间戳,单位毫秒
+     *
+     * @since 1.1.7
+     */
+    private Map<String, Long> propertySourceTimes;
+
     public static ReadPropertyMessageReply create() {
         ReadPropertyMessageReply reply = new ReadPropertyMessageReply();
 
         reply.setTimestamp(System.currentTimeMillis());
 
         return reply;
+    }
+
+    public Optional<Long> getPropertySourceTime(String property) {
+        if (propertySourceTimes == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(propertySourceTimes.get(property));
     }
 
     public ReadPropertyMessageReply success(Map<String, Object> properties) {

@@ -20,11 +20,18 @@ import java.util.Optional;
 public class ReportPropertyMessage extends CommonDeviceMessage {
 
     /**
-     * 属性,key为物模型中的属性ID,value为物模型对应的类型值.
+     * 属性值信息,key为物模型中的属性ID,value为物模型对应的类型值.
      * <p>
      * 注意: value如果是结构体(对象类型),请勿传入在协议包中自定义的对象,应该转为{@link Map}传入.
      */
     private Map<String, Object> properties;
+
+    /**
+     * 属性源的时间戳,表示不同属性值产生的时间戳,单位毫秒
+     *
+     * @since 1.1.7
+     */
+    private Map<String, Long> propertySourceTimes;
 
     public static ReportPropertyMessage create() {
         return new ReportPropertyMessage();
@@ -41,10 +48,18 @@ public class ReportPropertyMessage extends CommonDeviceMessage {
                 .map(map -> map.get(property));
     }
 
+    public Optional<Long> getPropertySourceTime(String property) {
+        if (propertySourceTimes == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(propertySourceTimes.get(property));
+    }
+
     @Override
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
         this.properties = jsonObject.getJSONObject("properties");
+        this.propertySourceTimes = (Map) jsonObject.getJSONObject("propertySourceTimes");
     }
 
     public MessageType getMessageType() {
