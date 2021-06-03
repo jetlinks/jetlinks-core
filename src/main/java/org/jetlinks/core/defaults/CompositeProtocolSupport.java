@@ -297,6 +297,21 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         return this;
     }
 
+    /**
+     * 监听客户端连接,只有部分协议支持此操作,如:
+     * <pre>
+     *     support.doOnClientConnect((connection,context)->{
+     *       //客户端创建连接时,发送消息给客户端
+     *       return connection
+     *       .sendMessage(createHelloMessage())
+     *       .then();
+     *     })
+     * </pre>
+     *
+     * @param transport 通信协议,如: {@link org.jetlinks.core.message.codec.DefaultTransport#TCP}
+     * @param handler   处理器
+     * @since 1.1.6
+     */
     public void doOnClientConnect(Transport transport,
                                   BiFunction<ClientConnection, DeviceGatewayContext, Mono<Void>> handler) {
         connectionHandlers.put(transport.getId(), handler);
@@ -332,11 +347,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         return onProductMetadataChanged != null ? onProductMetadataChanged.apply(operator) : Mono.empty();
     }
 
-    public void doOnChildBind(BiFunction<DeviceOperator, Flux<DeviceOperator>, Mono<Void>> onChildBind){
+    public void doOnChildBind(BiFunction<DeviceOperator, Flux<DeviceOperator>, Mono<Void>> onChildBind) {
         this.onChildBind = onChildBind;
     }
 
-    public void doOnChildUnbind(BiFunction<DeviceOperator, Flux<DeviceOperator>, Mono<Void>> onChildUnbind){
+    public void doOnChildUnbind(BiFunction<DeviceOperator, Flux<DeviceOperator>, Mono<Void>> onChildUnbind) {
         this.onChildUnbind = onChildUnbind;
     }
 
