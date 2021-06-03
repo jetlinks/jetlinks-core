@@ -35,6 +35,13 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
      */
     private Map<String, Long> propertySourceTimes;
 
+    /**
+     * 属性状态信息
+     *
+     * @since 1.1.7
+     */
+    private Map<String,String> propertyStates;
+
     public static ReadPropertyMessageReply create() {
         ReadPropertyMessageReply reply = new ReadPropertyMessageReply();
 

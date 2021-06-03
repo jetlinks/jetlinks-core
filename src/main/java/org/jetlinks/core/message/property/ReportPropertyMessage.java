@@ -33,6 +33,13 @@ public class ReportPropertyMessage extends CommonDeviceMessage {
      */
     private Map<String, Long> propertySourceTimes;
 
+    /**
+     * 属性状态信息
+     *
+     * @since 1.1.7
+     */
+    private Map<String,String> propertyStates;
+
     public static ReportPropertyMessage create() {
         return new ReportPropertyMessage();
     }
