@@ -64,5 +64,10 @@ public interface DeviceDataManager {
 
         //值
         Object getValue();
+
+        //状态
+       default String getState(){
+           return null;
+       }
     }
 }
