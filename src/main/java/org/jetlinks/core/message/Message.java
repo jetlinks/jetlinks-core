@@ -89,7 +89,7 @@ public interface Message extends Jsonable, Serializable {
 
     /**
      * @see Headers
-     * @see this#addHeader(String, Object)
+     * @see Message#addHeader(String, Object)
      */
     default <T> Message addHeader(HeaderKey<T> header, T value) {
         return addHeader(header.getKey(), value);
@@ -97,7 +97,7 @@ public interface Message extends Jsonable, Serializable {
 
     /**
      * @see Headers
-     * @see this#addHeaderIfAbsent(String, Object)
+     * @see Message#addHeaderIfAbsent(String, Object)
      */
     default <T> Message addHeaderIfAbsent(HeaderKey<T> header, T value) {
         return addHeaderIfAbsent(header.getKey(), value);
