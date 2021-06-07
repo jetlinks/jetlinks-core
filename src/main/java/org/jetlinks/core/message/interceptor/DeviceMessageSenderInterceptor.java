@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
  * @see org.jetlinks.core.device.DeviceMessageSender
  * @since 1.0.0
  */
-public interface DeviceMessageSenderInterceptor {
+public interface DeviceMessageSenderInterceptor  {
 
     DeviceMessageSenderInterceptor DO_NOTING = new DeviceMessageSenderInterceptor() {
     };
@@ -52,4 +52,11 @@ public interface DeviceMessageSenderInterceptor {
         return composite;
     }
 
+    /**
+     * 排序序号,值小的在前,大的再后.
+     * @return 序号
+     */
+    default int getOrder(){
+        return Integer.MAX_VALUE;
+    }
 }

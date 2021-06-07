@@ -5,6 +5,7 @@ import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -13,6 +14,8 @@ public class CompositeDeviceMessageSenderInterceptor implements DeviceMessageSen
 
     public void addInterceptor(DeviceMessageSenderInterceptor interceptor) {
         interceptors.add(interceptor);
+        //重新排序
+        interceptors.sort(Comparator.comparingInt(DeviceMessageSenderInterceptor::getOrder));
     }
 
     @Override
