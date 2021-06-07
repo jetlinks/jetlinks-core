@@ -180,7 +180,10 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                     String parentGatewayId = values
                             .getValue(DeviceConfigKey.parentGatewayId)
                             .orElse(null);
-
+                    if(getDeviceId().equals(parentGatewayId)){
+                        log.warn("设备[{}]存在循环依赖",parentGatewayId);
+                        return Mono.just(state);
+                    }
                     //获取父级设备状态
                     if (!state.equals(DeviceState.online) && StringUtils.hasText(parentGatewayId)) {
                         return registry
@@ -233,6 +236,10 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                     .getValue(DeviceConfigKey.parentGatewayId)
                                     .orElse(null);
 
+                            if(getDeviceId().equals(parentGatewayId)){
+                                log.warn("设备[{}]存在循环依赖",parentGatewayId);
+                                return Mono.just(state);
+                            }
                             //如果关联了上级网关设备则获取父设备状态
                             if (StringUtils.hasText(parentGatewayId)) {
                                 return registry
