@@ -43,7 +43,7 @@ public interface DeviceMessageSender {
      * @param replyMapping 消息回复转换器
      * @param <R>          回复类型
      * @return 异步发送结果
-     * @see this#send(Publisher)
+     * @see DeviceMessageSender#send(Publisher)
      */
     <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping);
 
@@ -53,7 +53,7 @@ public interface DeviceMessageSender {
      * @param message 消息
      * @param <R>     回复类型
      * @return 异步发送结果
-     * @see this#send(Publisher)
+     * @see DeviceMessageSender#send(Publisher)
      */
     <R extends DeviceMessage> Flux<R> send(DeviceMessage message);
 
@@ -76,7 +76,7 @@ public interface DeviceMessageSender {
      *
      * @param function 要执行的功能
      * @return FunctionInvokeMessageSender
-     * @see this#send(Publisher)
+     * @see DeviceMessageSender#send(Publisher)
      * @see org.jetlinks.core.message.function.FunctionInvokeMessage
      * @see FunctionInvokeMessageSender
      */
@@ -87,7 +87,7 @@ public interface DeviceMessageSender {
      *
      * @param property 要获取的属性列表
      * @return ReadPropertyMessageSender
-     * @see this#send(Publisher)
+     * @see DeviceMessageSender#send(Publisher)
      * @see org.jetlinks.core.message.property.ReadPropertyMessage
      * @see ReadPropertyMessageSender
      */
@@ -97,7 +97,7 @@ public interface DeviceMessageSender {
      * 发送{@link org.jetlinks.core.message.property.WritePropertyMessage}消息更便捷的API
      *
      * @return WritePropertyMessageSender
-     * @see this#send(Publisher)
+     * @see DeviceMessageSender#send(Publisher)
      * @see org.jetlinks.core.message.property.WritePropertyMessage
      * @see WritePropertyMessageSender
      */
