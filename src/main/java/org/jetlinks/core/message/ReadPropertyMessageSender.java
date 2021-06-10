@@ -73,7 +73,7 @@ public interface ReadPropertyMessageSender {
      *
      * @param async 是否异步
      * @return this
-     * @see this#async(Boolean)
+     * @see ReadPropertyMessageSender#async(Boolean)
      * @see Headers#async
      */
     default ReadPropertyMessageSender async(Boolean async) {
@@ -89,7 +89,7 @@ public interface ReadPropertyMessageSender {
      *
      * @param headers 多个headers
      * @return this
-     * @see this#header(String, Object)
+     * @see ReadPropertyMessageSender#header(String, Object)
      * @see DeviceMessage#addHeader(String, Object)
      * @see Headers
      */

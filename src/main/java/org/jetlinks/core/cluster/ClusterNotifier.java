@@ -27,7 +27,7 @@ public interface ClusterNotifier {
     Mono<Boolean> sendNotify(String serverNodeId, String address, Publisher<?> payload);
 
     /**
-     * 发送通知给指定的服务节点并等待返回,目标服务必须使用{@link this#handleNotify(String, Function)}进行监听
+     * 发送通知给指定的服务节点并等待返回,目标服务必须使用{@link ClusterNotifier#handleNotify(String, Function)}进行监听
      *
      * @param serverNodeId 服务节点
      * @param address      消息地址

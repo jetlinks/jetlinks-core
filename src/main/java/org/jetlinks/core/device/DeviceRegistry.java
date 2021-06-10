@@ -44,7 +44,7 @@ public interface DeviceRegistry {
      *
      * @param deviceInfo 设备基础信息
      * @return 设备操作接口
-     * @see this#getDevice(String)
+     * @see DeviceRegistry#getDevice(String)
      */
     Mono<DeviceOperator> register(DeviceInfo deviceInfo);
 

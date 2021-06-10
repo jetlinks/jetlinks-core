@@ -105,7 +105,7 @@ public interface FunctionInvokeMessageSender {
      *
      * @param async 是否异步
      * @return this
-     * @see this#async(Boolean)
+     * @see FunctionInvokeMessageSender#async(Boolean)
      * @see Headers#async
      */
     default FunctionInvokeMessageSender async(Boolean async) {
@@ -121,7 +121,7 @@ public interface FunctionInvokeMessageSender {
      *
      * @param headers 多个headers
      * @return this
-     * @see this#header(String, Object)
+     * @see FunctionInvokeMessageSender#header(String, Object)
      * @see DeviceMessage#addHeader(String, Object)
      * @see Headers
      */

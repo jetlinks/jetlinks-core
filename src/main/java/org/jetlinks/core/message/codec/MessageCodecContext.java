@@ -27,7 +27,7 @@ public interface MessageCodecContext {
     DeviceOperator getDevice();
 
     /**
-     * 同{@link this#getDevice()},只是返回结果是Mono,不会为null.
+     * 同{@link MessageCodecContext#getDevice()},只是返回结果是Mono,不会为null.
      *
      * @return Mono<DeviceOperator>
      * @since 1.1.2

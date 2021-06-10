@@ -78,7 +78,7 @@ public interface WritePropertyMessageSender {
      *
      * @param async 是否异步
      * @return this
-     * @see this#async(Boolean)
+     * @see ReadPropertyMessageSender#async(Boolean)
      * @see Headers#async
      */
     default WritePropertyMessageSender async(Boolean async) {
@@ -94,7 +94,7 @@ public interface WritePropertyMessageSender {
      *
      * @param headers 多个headers
      * @return this
-     * @see this#header(String, Object)
+     * @see WritePropertyMessageSender#header(String, Object)
      * @see DeviceMessage#addHeader(String, Object)
      * @see Headers
      */

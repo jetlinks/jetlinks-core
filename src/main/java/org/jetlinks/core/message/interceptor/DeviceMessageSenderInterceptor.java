@@ -30,7 +30,7 @@ public interface DeviceMessageSenderInterceptor  {
     }
 
     /**
-     * 在消息发送后触发.
+     * 在消息发送后触发.这里发送后并不是真正的发送，其实只是构造了整个发送的逻辑流{@link Flux}(参数 reply),
      *
      * @param device  设备操作接口
      * @param message 源消息

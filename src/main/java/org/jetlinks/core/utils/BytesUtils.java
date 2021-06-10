@@ -84,7 +84,7 @@ public class BytesUtils {
      * @param offset 偏移量
      * @param len    长度
      * @return 转换结果
-     * @see this#highBytesToInt(byte[], int, int)
+     * @see BytesUtils#highBytesToInt(byte[], int, int)
      * @see Float#intBitsToFloat(int)
      */
     public static float leToFloat(byte[] src, int offset, int len) {
@@ -102,7 +102,7 @@ public class BytesUtils {
      * @param offset 偏移量
      * @param len    长度
      * @return 转换结果
-     * @see this#highBytesToLong(byte[], int, int)
+     * @see BytesUtils#highBytesToLong(byte[], int, int)
      */
     public static double leToDouble(byte[] src, int offset, int len) {
         return Double.longBitsToDouble(leToLong(src, offset, len));
