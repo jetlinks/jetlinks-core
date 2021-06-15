@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Decoder;
+import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.TopicUtils;
 
 import javax.annotation.Nonnull;
@@ -19,14 +20,9 @@ import java.util.Map;
 @AllArgsConstructor(staticName = "of")
 @Slf4j
 public class TopicPayload implements Payload {
-    public static boolean POOL_ENABLED = Boolean.getBoolean("jetlinks.eventbus.payload.pool.enabled");
+    public static boolean POOL_ENABLED = Boolean.parseBoolean(System.getProperty("jetlinks.eventbus.payload.pool.enabled", "true"));
 
-    public static Recycler<TopicPayload> RECYCLER = new Recycler<TopicPayload>() {
-        @Override
-        protected TopicPayload newObject(Handle<TopicPayload> handle) {
-            return new TopicPayload(handle);
-        }
-    };
+    public static Recycler<TopicPayload> RECYCLER = RecyclerUtils.newRecycler(TopicPayload.class, TopicPayload::new, 1);
 
     private String topic;
 

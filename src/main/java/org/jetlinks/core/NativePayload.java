@@ -15,6 +15,7 @@ import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.codec.Encoder;
 import org.jetlinks.core.metadata.Jsonable;
+import org.jetlinks.core.utils.RecyclerUtils;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -33,11 +34,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
 
     private ByteBuf buf;
 
-    private static Recycler<NativePayload> POOL = new Recycler<NativePayload>() {
-        protected NativePayload newObject(io.netty.util.Recycler.Handle<NativePayload> handle) {
-            return new NativePayload(handle);
-        }
-    };
+    private static Recycler<NativePayload> POOL = RecyclerUtils.newRecycler(NativePayload.class, NativePayload::new, 1);
 
     private final io.netty.util.Recycler.Handle<NativePayload> handle;
 

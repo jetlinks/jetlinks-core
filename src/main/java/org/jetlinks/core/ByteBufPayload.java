@@ -4,20 +4,16 @@ import io.netty.buffer.ByteBuf;
 import io.netty.util.Recycler;
 import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.jetlinks.core.utils.RecyclerUtils;
 
 import javax.annotation.Nonnull;
 
 @Slf4j
 class ByteBufPayload implements Payload {
 
-    public static boolean POOL_ENABLED = Boolean.getBoolean("jetlinks.eventbus.payload.pool.enabled");
+    public static boolean POOL_ENABLED = Boolean.parseBoolean(System.getProperty("jetlinks.eventbus.payload.pool.enabled","true"));
 
-    private static final Recycler<ByteBufPayload> RECYCLER = new Recycler<ByteBufPayload>() {
-        @Override
-        protected ByteBufPayload newObject(Handle<ByteBufPayload> handle) {
-            return new ByteBufPayload(handle);
-        }
-    };
+    private static final Recycler<ByteBufPayload> RECYCLER = RecyclerUtils.newRecycler(ByteBufPayload.class,ByteBufPayload::new);
 
     private final Recycler.Handle<ByteBufPayload> handle;
 
