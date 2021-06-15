@@ -199,11 +199,20 @@ public class TopicUtils {
      *     /device/v/*
      * </pre>
      *
+     * before:
+     * <pre>
+     *     /device/{id}
+     * </pre>
+     * after:
+     * <pre>
+     *    /device/*
+     * </pre>
+     *
      * @param topic topic
      * @return 展开的topic集合
      */
     public static List<String> expand(String topic) {
-        if (!topic.contains(",")) {
+        if (!topic.contains(",")&&!topic.contains("{")) {
             return Collections.singletonList(topic);
         }
         if (topic.startsWith("/")) {
@@ -216,6 +225,9 @@ public class TopicUtils {
 
         if (parts.length == 1) {
             for (String split : first.split(",")) {
+                if (split.startsWith("{") && split.endsWith("}")) {
+                    split = "*";
+                }
                 expands.add("/" + split);
             }
             return expands;
@@ -224,7 +236,9 @@ public class TopicUtils {
         List<String> nextTopics = expand(parts[1]);
 
         for (String split : first.split(",")) {
-
+            if (split.startsWith("{") && split.endsWith("}")) {
+                split = "*";
+            }
             for (String nextTopic : nextTopics) {
                 StringJoiner joiner = new StringJoiner("");
                 joiner.add("/");

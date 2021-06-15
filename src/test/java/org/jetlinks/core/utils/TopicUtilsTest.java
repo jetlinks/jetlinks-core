@@ -44,6 +44,16 @@ public class TopicUtilsTest {
     }
 
     @Test
+    public void testPattern() {
+
+        List<String> expands = TopicUtils.expand("/test/{name}/test2,test3");
+
+        assertEquals(expands.get(0),"/test/*/test2");
+        assertEquals(expands.get(1),"/test/*/test3");
+
+    }
+
+    @Test
     public void test3() {
 
         List<String> expands = TopicUtils.expand("/test/1,2/1,2");
