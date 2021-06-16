@@ -226,11 +226,6 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                         .defaultIfEmpty(state);
                             }
 
-                            //子设备是否自己管理状态
-                            if (values.getValue(selfManageState).orElse(false)) {
-                                return Mono.just(state);
-                            }
-
                             //网关设备ID
                             String parentGatewayId = values
                                     .getValue(DeviceConfigKey.parentGatewayId)
@@ -258,7 +253,13 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                                     log.warn("子设备状态检查返回消息错误{}", msg);
                                                     return DeviceState.online;
                                                 })
-                                                .onErrorResume(err -> device.checkState()));
+                                                .onErrorResume(err ->{
+                                                    //子设备是否自己管理状态
+                                                    if (values.getValue(selfManageState).orElse(false)) {
+                                                        return Mono.just(state);
+                                                    }
+                                                    return device.checkState();
+                                                }));
 //                                return registry
 //                                        .getDevice(parentGatewayId)
 //                                        .flatMap(DeviceOperator::checkState);
