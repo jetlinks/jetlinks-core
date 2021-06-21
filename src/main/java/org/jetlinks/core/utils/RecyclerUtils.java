@@ -26,11 +26,11 @@ public class RecyclerUtils {
                 .map(Integer::parseInt)
                 .orElse(defaultRatio);
 
-        if(log.isDebugEnabled()){
-            log.debug("-D{}.pool.maxCapacityPerThread: {}",type.getName(),maxCapacityPerThread);
-            log.debug("-D{}.pool.maxSharedCapacityFactor: {}",type.getName(),maxSharedCapacityFactor);
-            log.debug("-D{}.pool.maxDelayedQueuesPerThread: {}",type.getName(),maxDelayedQueuesPerThread);
-            log.debug("-D{}.pool.ratio: {}",type.getName(),ratio);
+        if (log.isDebugEnabled()) {
+            log.debug("-D{}: {}",getConfigName(type,"maxCapacityPerThread"), maxCapacityPerThread);
+            log.debug("-D{}: {}",getConfigName(type,"maxSharedCapacityFactor"), maxSharedCapacityFactor);
+            log.debug("-D{}: {}", getConfigName(type,"maxDelayedQueuesPerThread"), maxDelayedQueuesPerThread);
+            log.debug("-D{}: {}", getConfigName(type,"ratio"), ratio);
         }
         return new Recycler<T>(maxCapacityPerThread, maxSharedCapacityFactor, ratio, maxDelayedQueuesPerThread) {
             @Override
@@ -41,13 +41,15 @@ public class RecyclerUtils {
     }
 
     public static <T> Recycler<T> newRecycler(Class<T> type, Function<Recycler.Handle<T>, T> objectSupplier) {
-
-
         return newRecycler(type, objectSupplier, 8);
 
     }
 
     private static Optional<String> getPoolConfig(Class<?> type, String key) {
-        return Optional.ofNullable(System.getProperty(type.getName() + ".pool." + key));
+        return Optional.ofNullable(System.getProperty(getConfigName(type, key)));
+    }
+
+    private static String getConfigName(Class<?> type, String key) {
+        return (type.getName() + ".pool." + key).replace("$$", ".").replace("$", ".");
     }
 }
