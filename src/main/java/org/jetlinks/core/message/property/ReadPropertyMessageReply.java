@@ -7,7 +7,6 @@ import org.jetlinks.core.message.CommonDeviceMessageReply;
 import org.jetlinks.core.message.MessageType;
 
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * 读取设备属性消息回复, 方向: 设备->平台
@@ -19,7 +18,7 @@ import java.util.Optional;
  */
 @Getter
 @Setter
-public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPropertyMessageReply> {
+public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPropertyMessageReply> implements PropertyMessage {
 
     /**
      * 回复的属性,key为物模型中的属性ID,value为物模型对应的类型值.
@@ -50,20 +49,6 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
         return reply;
     }
 
-    public Optional<Long> getPropertySourceTime(String property) {
-        if (propertySourceTimes == null) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable(propertySourceTimes.get(property));
-    }
-
-    public Optional<String> getPropertyState(String property) {
-        if (propertySourceTimes == null) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable(propertyStates.get(property));
-    }
-
     public ReadPropertyMessageReply success(Map<String, Object> properties) {
 
         this.properties = properties;
@@ -73,9 +58,12 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
     }
 
     @Override
+    @SuppressWarnings("all")
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
         this.properties = jsonObject.getJSONObject("properties");
+        this.propertySourceTimes = (Map) jsonObject.getJSONObject("propertySourceTimes");
+        this.propertyStates = (Map) jsonObject.getJSONObject("propertyStates");
     }
 
     public MessageType getMessageType() {
