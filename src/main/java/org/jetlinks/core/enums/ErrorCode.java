@@ -14,21 +14,21 @@ import java.util.Optional;
 @AllArgsConstructor
 public enum ErrorCode {
     /* 设备消息相关*/
-    REQUEST_HANDLING("请求处理中"),
-    CLIENT_OFFLINE("设备未在线"),
-    CONNECTION_LOST("设备连接已丢失"),
-    NO_REPLY("设备未回复"),
-    TIME_OUT("超时"),
-    SYSTEM_ERROR("系统错误"),
-    UNSUPPORTED_MESSAGE("不支持的操作"),
-    PARAMETER_ERROR("参数错误"),
-    PARAMETER_UNDEFINED("参数未定义"),
-    FUNCTION_UNDEFINED("功能未定义"),
-    PROPERTY_UNDEFINED("属性未定义"),
-    UNKNOWN_PARENT_DEVICE("未知的父设备"),
-    CYCLIC_DEPENDENCE("循环依赖"),
-    SERVER_NOT_AVAILABLE("服务不可用"),
-    UNKNOWN("未知错误");
+    REQUEST_HANDLING("error.code.request_handling"),
+    CLIENT_OFFLINE("error.code.client_offline"),
+    CONNECTION_LOST("error.code.connection_lost"),
+    NO_REPLY("error.code.no_reply"),
+    TIME_OUT("error.code.time_out"),
+    SYSTEM_ERROR("error.code.system_error"),
+    UNSUPPORTED_MESSAGE("error.code.unsupported_message"),
+    PARAMETER_ERROR("error.code.parameter_error"),
+    PARAMETER_UNDEFINED("error.code.parameter_undefined"),
+    FUNCTION_UNDEFINED("error.code.function_undefined"),
+    PROPERTY_UNDEFINED("error.code.property_undefined"),
+    UNKNOWN_PARENT_DEVICE("error.code.unknown_parent_device"),
+    CYCLIC_DEPENDENCE("error.code.cyclic_dependence"),
+    SERVER_NOT_AVAILABLE("error.code.server_not_available"),
+    UNKNOWN("error.code.unknown");
 
     private final String text;
 

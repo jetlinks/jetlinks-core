@@ -151,7 +151,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         if (parentId.equals(operator.getDeviceId())) {
             return Flux
                     .error(
-                            new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "子设备与父设备不能为相同的设备")
+                            new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "validation.parent_id_and_id_can_not_be_same")
                     );
         }
 
@@ -170,7 +170,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         children.validate();
         return registry
                 .getDevice(parentId)
-                .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.UNKNOWN_PARENT_DEVICE, "未知的父设备:" + parentId)))
+                .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.UNKNOWN_PARENT_DEVICE)))
                 .flatMapMany(parent -> parent
                         .messageSender()
                         .send(Mono.just(children), resp -> this.convertReply(message, resp)))

@@ -68,7 +68,7 @@ public class ChildDeviceMessage extends CommonDeviceMessage implements Repayable
                 String childId = ((ChildDeviceMessage) msg).getChildDeviceId();
                 msg = ((ChildDeviceMessage) msg).getChildDeviceMessage();
                 if (deviceId.contains(childId)) {
-                    throw new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "子设备消息存在循环引用");
+                    throw new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE);
                 }
                 deviceId.add(childId);
             } while (msg instanceof ChildDeviceMessage);

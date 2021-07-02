@@ -1,10 +1,9 @@
 package org.jetlinks.core.exception;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.enums.ErrorCode;
 
-@AllArgsConstructor
 public class DeviceOperationException extends RuntimeException {
 
     @Getter
@@ -22,8 +21,18 @@ public class DeviceOperationException extends RuntimeException {
         this.message = cause.getMessage();
     }
 
+    public DeviceOperationException(ErrorCode code, String message) {
+        this.code = code;
+        this.message = message;
+    }
+
     @Override
     public String getMessage() {
         return message == null ? code.getText() : message;
+    }
+
+    @Override
+    public String getLocalizedMessage() {
+        return LocaleUtils.resolveMessage(getMessage());
     }
 }
