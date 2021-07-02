@@ -14,12 +14,35 @@ public class ParallelIntervalHelperTest {
         ParallelIntervalHelper helper = ParallelIntervalHelper.create(Duration.ofSeconds(1));
 
         for (int i = 0; i < 1000; i++) {
-            Assert.assertEquals(helper.next("test"), i * 1000);
+            long t = helper.next("test");
+
+            Assert.assertTrue(t > t - 10 && t < t + 10);
         }
-        Thread.sleep(1200);
-        for (int i = 0; i < 1000; i++) {
-            Assert.assertEquals(helper.next("test"), i * 1000);
-        }
+
     }
+
+
+    @Test
+    @SneakyThrows
+    public void testReset() {
+        ParallelIntervalHelper helper = ParallelIntervalHelper.create(Duration.ofSeconds(1));
+
+        Assert.assertEquals(helper.next("test"), 0);
+        Assert.assertEquals(helper.next("test"), 1000);
+        Thread.sleep(2000);
+
+        Assert.assertEquals(helper.next("test"), 0);
+        Assert.assertEquals(helper.next("test"), 1000);
+        Assert.assertEquals(helper.next("test"), 2000);
+        Assert.assertEquals(helper.next("test"), 3000);
+        Assert.assertEquals(helper.next("test"), 4000);
+
+        Thread.sleep(2100);
+        long next = helper.next("test");
+        System.out.println(next);
+        Assert.assertTrue(next > 2800 && next < 2900);
+
+    }
+
 
 }
