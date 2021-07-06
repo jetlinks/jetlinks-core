@@ -2,11 +2,14 @@ package org.jetlinks.core.utils;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiFunction;
 
 /**
  * 并行递增工具类,通常用于计算并行操作的延迟。
@@ -79,6 +82,59 @@ public final class ParallelIntervalHelper {
         return info.current(System.currentTimeMillis(), interval);
     }
 
+    /**
+     * 尝试对{@link Flux}进行延迟操作
+     *
+     * @param key    key
+     * @param source Flux
+     * @param <T>    Flux泛型类型
+     * @return 延迟后的FLux
+     */
+    public <T> Flux<T> delay(@Nonnull String key, @Nonnull Flux<T> source) {
+        return delay(key, source, Flux::delayElements);
+    }
+
+    /**
+     * 尝试对{@link Mono}进行延迟操作
+     *
+     * @param key    key
+     * @param source Mono
+     * @param <T>    Mono泛型类型
+     * @return 延迟后的Mono
+     */
+    public <T> Mono<T> delay(@Nonnull String key, @Nonnull Mono<T> source) {
+        return delay(key, source, Mono::delayElement);
+    }
+
+    /**
+     * 根据key返回延迟{@link Mono}
+     *
+     * @param key key
+     * @return 延迟Mono
+     */
+    public Mono<Void> delay(@Nonnull String key) {
+        return this
+                .delay(key, Mono.just(1), Mono::delayElement)
+                .then();
+    }
+
+    /**
+     * 根据key和指定的数据进行延迟转换,如果不存在延迟则直接返回源数据
+     *
+     * @param key    key
+     * @param source 源数据
+     * @param mapper 转换器
+     * @param <S>    数据类型
+     * @return 转换后的类型
+     */
+    public <S> S delay(@Nonnull String key, S source, BiFunction<S, Duration, S> mapper) {
+        long delay = next(key);
+        if (delay > 0) {
+            return mapper.apply(source, Duration.ofMillis(delay));
+        }
+        return source;
+    }
+
     @AllArgsConstructor
     private static class Info {
         private long interval;
@@ -94,13 +150,8 @@ public final class ParallelIntervalHelper {
         public synchronized void next(long now, long interval) {
             long requestInterval = now - lastTime;
 
-            //距离上一次访问已经超过间隔
-            //  if (this.interval > 0 && requestInterval > this.interval) {
-            //   this.interval = 0;
-            //  } else {
             //递增
             this.interval = Math.max(0, (this.interval - requestInterval) + interval);
-            // }
             this.lastTime = now;
         }
     }
