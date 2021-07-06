@@ -1,5 +1,6 @@
 package org.jetlinks.core.message.codec;
 
+import org.jetlinks.core.utils.ParallelIntervalHelper;
 import org.reactivestreams.Publisher;
 
 import javax.annotation.Nonnull;
@@ -39,6 +40,8 @@ public interface DeviceMessageEncoder {
      * }
      *
      * </pre>
+     *
+     * 如果要串行发送数据,可以参考使用{@link ParallelIntervalHelper}工具类
      * @param context 消息上下文
      * @return 编码结果
      * @see MqttMessage
@@ -48,6 +51,7 @@ public interface DeviceMessageEncoder {
      * @see org.jetlinks.core.message.function.FunctionInvokeMessage 调用设备功能
      * @see org.jetlinks.core.message.ChildDeviceMessage 子设备消息
      * @see org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor
+     * @see ParallelIntervalHelper
      */
     @Nonnull
     Publisher<? extends EncodedMessage> encode(@Nonnull MessageEncodeContext context);

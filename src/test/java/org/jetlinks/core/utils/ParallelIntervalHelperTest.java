@@ -15,8 +15,7 @@ public class ParallelIntervalHelperTest {
 
         for (int i = 0; i < 1000; i++) {
             long t = helper.next("test");
-
-            Assert.assertTrue(t > t - 10 && t < t + 10);
+            assertRange(t, t - 10, t + 10);
         }
 
     }
@@ -28,21 +27,24 @@ public class ParallelIntervalHelperTest {
         ParallelIntervalHelper helper = ParallelIntervalHelper.create(Duration.ofSeconds(1));
 
         Assert.assertEquals(helper.next("test"), 0);
-        Assert.assertEquals(helper.next("test"), 1000);
+        assertRange(helper.next("test"), 990, 1000);
         Thread.sleep(2000);
 
         Assert.assertEquals(helper.next("test"), 0);
-        Assert.assertEquals(helper.next("test"), 1000);
-        Assert.assertEquals(helper.next("test"), 2000);
-        Assert.assertEquals(helper.next("test"), 3000);
-        Assert.assertEquals(helper.next("test"), 4000);
+        assertRange(helper.next("test"), 990, 1000);
+        assertRange(helper.next("test"), 1990, 2000);
+        assertRange(helper.next("test"), 2990, 3000);
+        assertRange(helper.next("test"), 3990, 4000);
 
         Thread.sleep(2100);
         long next = helper.next("test");
         System.out.println(next);
-        Assert.assertTrue(next > 2800 && next < 2900);
+        assertRange(next, 2890, 2900);
 
     }
 
+    void assertRange(long value, long gte, long lte) {
+        Assert.assertTrue(lte + " <= expect(" + value + ") >= " + gte, value >= gte && value <= lte);
+    }
 
 }
