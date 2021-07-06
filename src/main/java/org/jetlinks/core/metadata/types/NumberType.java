@@ -64,7 +64,7 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
                 return ValidateResult.fail("超过最大值:" + max);
             }
             if (min != null && numberValue.doubleValue() < min.doubleValue()) {
-                return ValidateResult.fail("超过最大值:" + min);
+                return ValidateResult.fail("小于最小值:" + min);
             }
             return ValidateResult.success(numberValue);
         } catch (NumberFormatException e) {
