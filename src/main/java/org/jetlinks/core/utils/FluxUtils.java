@@ -16,8 +16,40 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 
 public class FluxUtils {
+
+    /**
+     * 安全的转换Flux中的值,当mapper返回<code>null</code>时会忽略而不是报错
+     *
+     * <pre>
+     *
+     *    flux
+     *    .as(FluxUtils.safeMap(this::doConvert))
+     *    ...
+     *
+     * </pre>
+     *
+     * @param mapper 转换器
+     * @param <S>    源类型
+     * @param <T>    目标类型
+     * @return 转换后的流
+     */
+    public static <S, T> Function<Flux<S>, Flux<T>> safeMap(Function<S, T> mapper) {
+        return source -> source
+                .handle((s, sink) -> {
+                    try {
+                        T t = mapper.apply(s);
+                        if (t != null) {
+                            sink.next(t);
+                        }
+                    } catch (Throwable error) {
+                        sink.error(error);
+                    }
+                });
+    }
+
 
     public static <T> Flux<List<T>> bufferRate(Flux<T> flux,
                                                int rate,
@@ -46,7 +78,8 @@ public class FluxUtils {
                                                Duration maxTimeout,
                                                BiPredicate<T, List<T>> flushCondition) {
         return Flux.create(sink -> {
-            BufferRateSubscriber<T> subscriber = new BufferRateSubscriber<>(sink, maxSize, rate, maxTimeout, (e, arr) -> flushCondition.test(e, arr) || arr.size() >= maxSize);
+            BufferRateSubscriber<T> subscriber = new BufferRateSubscriber<>(sink, maxSize, rate, maxTimeout, (e, arr) -> flushCondition
+                    .test(e, arr) || arr.size() >= maxSize);
 
             flux.elapsed().subscribe(subscriber);
 
