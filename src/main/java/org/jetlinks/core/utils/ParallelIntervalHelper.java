@@ -91,7 +91,8 @@ public final class ParallelIntervalHelper {
      * @return 延迟后的FLux
      */
     public <T> Flux<T> delay(@Nonnull String key, @Nonnull Flux<T> source) {
-        return delay(key, source, Flux::delayElements);
+        return source
+                .flatMap(e -> delay(key, Mono.just(e), Mono::delayElement));
     }
 
     /**
