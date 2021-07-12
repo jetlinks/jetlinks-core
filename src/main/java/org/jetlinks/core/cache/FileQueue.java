@@ -34,6 +34,11 @@ public interface FileQueue<T> extends Queue<T> {
     void close();
 
     /**
+     * 立即写出到文件
+     */
+    void flush();
+
+    /**
      * 队列构造器
      *
      * @param <T>
