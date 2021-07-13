@@ -106,12 +106,22 @@ public interface FileQueue<T> extends Queue<T> {
          * 构造一个FluxProcessor,可通过{@link FluxProcessor#onNext(Object)}写入数据
          * 通过{@link FluxProcessor#subscribe()}订阅数据,仅支持一个订阅者.
          *
+         * @param clearWhenDispose 当流结束时,是否清空队列
          * @return FluxProcessor
          * @see FluxProcessor#onNext(Object)
          * @see FluxProcessor#subscribe()
          */
-        default FluxProcessor<T, T> buildFluxProcessor() {
-            FileQueue<T> queue = build();
+        default FluxProcessor<T, T> buildFluxProcessor(boolean clearWhenDispose) {
+            FileQueue<T> queue = !clearWhenDispose
+                    ?
+                    new FileQueueProxy<T>(build()) {
+                        @Override
+                        public void clear() {
+                            super.flush();
+                        }
+                    }
+                    : build();
+
             return UnicastProcessor.create(queue, queue::close);
         }
     }
