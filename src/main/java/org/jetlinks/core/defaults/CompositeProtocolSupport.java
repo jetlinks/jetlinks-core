@@ -17,10 +17,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiFunction;
@@ -86,6 +83,7 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private Map<String, BiFunction<ClientConnection, DeviceGatewayContext, Mono<Void>>> connectionHandlers = new ConcurrentHashMap<>();
 
     private Map<String, Flux<Feature>> features = new ConcurrentHashMap<>();
+    private List<Feature> globalFeatures = new CopyOnWriteArrayList<>();
 
     @Override
     public void dispose() {
@@ -376,20 +374,58 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         return onChildUnbind == null ? Mono.empty() : onChildUnbind.apply(gateway, child);
     }
 
+    /**
+     * 给指定的Transport添加Feature
+     *
+     * @param features Feature
+     */
     public void addFeature(Transport transport, Feature... features) {
         addFeature(transport, Flux.just(features));
     }
 
+    /**
+     * 给指定的Transport添加Feature
+     *
+     * @param features Feature
+     */
     public void addFeature(Transport transport, Iterable<Feature> features) {
         addFeature(transport, Flux.fromIterable(features));
     }
 
+    /**
+     * 给指定的Transport添加Feature
+     *
+     * @param features Feature
+     */
     public void addFeature(Transport transport, Flux<Feature> features) {
         this.features.put(transport.getId(), features);
     }
 
+    /**
+     * 添加全局Feature
+     *
+     * @param features Feature
+     */
+    public void addFeature(Feature... features) {
+        addFeature(Arrays.asList(features));
+    }
+
+    /**
+     * 添加全局Feature
+     *
+     * @param features Feature
+     */
+    public void addFeature(Iterable<Feature> features) {
+        features.forEach(globalFeatures::add);
+    }
+
     @Override
     public Flux<Feature> getFeatures(Transport transport) {
-        return features.getOrDefault(transport.getId(), Flux.empty());
+        return Flux
+                .concat(
+                        Flux.fromIterable(globalFeatures),
+                        features.getOrDefault(transport.getId(), Flux.empty())
+                )
+                .distinct();
     }
 }
