@@ -85,6 +85,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private Map<String, Flux<Feature>> features = new ConcurrentHashMap<>();
     private List<Feature> globalFeatures = new CopyOnWriteArrayList<>();
 
+    private int order = Integer.MAX_VALUE;
+
     @Override
     public void dispose() {
         if (disposed) {

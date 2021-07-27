@@ -7,6 +7,7 @@ import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.DeviceGatewayContext;
+import org.springframework.core.Ordered;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,7 +21,7 @@ import java.util.Map;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface ProtocolSupport extends Disposable {
+public interface ProtocolSupport extends Disposable, Ordered, Comparable<ProtocolSupport> {
     /**
      * @return 协议ID
      */
@@ -300,5 +301,15 @@ public interface ProtocolSupport extends Disposable {
      */
     default Flux<Feature> getFeatures(Transport transport) {
         return Flux.empty();
+    }
+
+    @Override
+    default int getOrder() {
+        return Integer.MAX_VALUE;
+    }
+
+    @Override
+    default int compareTo(ProtocolSupport o) {
+        return Integer.compare(this.getOrder(), o == null ? 0 : o.getOrder());
     }
 }
