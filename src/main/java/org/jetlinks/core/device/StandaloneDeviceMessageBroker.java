@@ -24,12 +24,9 @@ import java.util.function.Function;
 @Slf4j
 public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, MessageHandler {
 
-    private final FluxProcessor<Message, Message> messageEmitterProcessor;
+    private final Sinks.Many<Message> messageEmitterProcessor;
 
-
-    private final FluxSink<Message> sink;
-
-    private final Map<String, FluxProcessor<DeviceMessageReply, DeviceMessageReply>> replyProcessor = new ConcurrentHashMap<>();
+    private final Map<String, Sinks.Many<DeviceMessageReply>> replyProcessor = new ConcurrentHashMap<>();
 
     private final Map<String, AtomicInteger> partCache = new ConcurrentHashMap<>();
 
@@ -39,31 +36,29 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
     private final Map<String, Function<Publisher<String>, Flux<DeviceStateInfo>>> stateHandler = new ConcurrentHashMap<>();
 
     public StandaloneDeviceMessageBroker() {
-        this(EmitterProcessor.create(false));
+        this(Sinks.many().multicast().onBackpressureBuffer());
 
     }
 
-    public StandaloneDeviceMessageBroker(FluxProcessor<Message, Message> processor) {
+    public StandaloneDeviceMessageBroker(Sinks.Many<Message> processor) {
         this.messageEmitterProcessor = processor;
-        this.sink=processor.sink(FluxSink.OverflowStrategy.BUFFER);
     }
 
     @Override
     public Flux<Message> handleSendToDeviceMessage(String serverId) {
-        return messageEmitterProcessor
-                .map(Function.identity());
+        return messageEmitterProcessor.asFlux();
     }
 
     @Override
     public Disposable handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper) {
         stateHandler.put(serverId, stateMapper);
-        return ()->stateHandler.remove(serverId);
+        return () -> stateHandler.remove(serverId);
     }
 
     @Override
     public Flux<DeviceStateInfo> getDeviceState(String serviceId, Collection<String> deviceIdList) {
         return Mono.justOrEmpty(stateHandler.get(serviceId))
-                .flatMapMany(fun -> fun.apply(Flux.fromIterable(deviceIdList)));
+                   .flatMapMany(fun -> fun.apply(Flux.fromIterable(deviceIdList)));
     }
 
     @Override
@@ -78,9 +73,9 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
 
             String partMsgId = message.getHeader(Headers.fragmentBodyMessageId).orElse(null);
             if (partMsgId != null) {
-                FluxProcessor<DeviceMessageReply, DeviceMessageReply> processor = replyProcessor.getOrDefault(partMsgId, replyProcessor.get(messageId));
+                Sinks.Many<DeviceMessageReply> processor = replyProcessor.getOrDefault(partMsgId, replyProcessor.get(messageId));
 
-                if (processor == null || processor.isDisposed()) {
+                if (processor == null || processor.currentSubscriberCount() == 0) {
                     replyFailureHandler.handle(new NullPointerException("no reply handler"), message);
                     replyProcessor.remove(partMsgId);
                     return Mono.just(false);
@@ -88,45 +83,45 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
                 int partTotal = message.getHeader(Headers.fragmentNumber).orElse(1);
                 AtomicInteger counter = partCache.computeIfAbsent(partMsgId, ignore -> new AtomicInteger(partTotal));
 
-                processor.onNext(message);
+                processor.tryEmitNext(message);
                 if (counter.decrementAndGet() <= 0) {
-                    processor.onComplete();
+                    processor.tryEmitComplete();
                     replyProcessor.remove(partMsgId);
                 }
                 return Mono.just(true);
             }
-            FluxProcessor<DeviceMessageReply, DeviceMessageReply> processor = replyProcessor.get(messageId);
+            Sinks.Many<DeviceMessageReply> processor = replyProcessor.get(messageId);
 
-            if (processor != null && !processor.isDisposed()) {
-                processor.onNext(message);
-                processor.onComplete();
-            } else {
+            Sinks.EmitResult result = processor.tryEmitNext(message);
+            if (result.isFailure()) {
                 replyProcessor.remove(messageId);
-                replyFailureHandler.handle(new NullPointerException("no reply handler"), message);
+                replyFailureHandler.handle(new NullPointerException("no reply handler " + result.name()), message);
                 return Mono.just(false);
             }
+            processor.tryEmitComplete();
             return Mono.just(true);
         }).doOnError(err -> replyFailureHandler.handle(err, message));
     }
 
     @Override
-    public Flux<DeviceMessageReply> handleReply(String deviceId,String messageId, Duration timeout) {
+    public Flux<DeviceMessageReply> handleReply(String deviceId, String messageId, Duration timeout) {
 
         return replyProcessor
-                .computeIfAbsent(messageId, ignore -> UnicastProcessor.create())
+                .computeIfAbsent(messageId, ignore -> Sinks.many().multicast().onBackpressureBuffer())
+                .asFlux()
                 .timeout(timeout, Mono.error(() -> new DeviceOperationException(ErrorCode.TIME_OUT)))
                 .doFinally(signal -> replyProcessor.remove(messageId));
     }
 
     @Override
     public Mono<Integer> send(String serverId, Publisher<? extends Message> message) {
-        if (!messageEmitterProcessor.hasDownstreams()) {
+        if (messageEmitterProcessor.currentSubscriberCount() == 0) {
             return Mono.just(0);
         }
 
         return Flux.from(message)
-                .doOnNext(sink::next)
-                .then(Mono.just(Long.valueOf(messageEmitterProcessor.downstreamCount()).intValue()));
+                   .doOnNext(messageEmitterProcessor::tryEmitNext)
+                   .then(Mono.just(Long.valueOf(messageEmitterProcessor.currentSubscriberCount()).intValue()));
     }
 
     @Override
