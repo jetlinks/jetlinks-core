@@ -10,6 +10,8 @@ import org.jetlinks.core.config.ConfigStorage;
 import org.jetlinks.core.config.ConfigStorageManager;
 import org.jetlinks.core.config.StorageConfigurable;
 import org.jetlinks.core.device.*;
+import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.message.state.DeviceStateCheckMessage;
@@ -264,8 +266,10 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                                                  return DeviceState.online;
                                                              })
                                                              .onErrorResume(err -> {
-                                                                 // 返回网关离线怎么处理?
-
+                                                                 // 网关已经离线,则认为设备也离线
+                                                                 if(err instanceof DeviceOperationException&&((DeviceOperationException) err).getCode()== ErrorCode.CLIENT_OFFLINE){
+                                                                     return Mono.just(DeviceState.offline);
+                                                                 }
                                                                  //发送返回错误,但是配置了状态自管理,直接返回原始状态
                                                                  return Mono.just(state);
                                                              });

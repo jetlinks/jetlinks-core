@@ -72,6 +72,7 @@ public interface DeviceMessageDecoder {
      * @see org.jetlinks.core.message.DeviceOnlineMessage
      * @see org.jetlinks.core.message.DeviceOfflineMessage
      * @see org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor
+     * @see org.jetlinks.core.message.DeviceDataManager
      */
     @Nonnull
     Publisher<? extends Message> decode(@Nonnull MessageDecodeContext context);
