@@ -7,6 +7,7 @@ import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.RepayableDeviceMessage;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -28,8 +29,13 @@ public class ReadPropertyMessage extends CommonDeviceMessage implements Repayabl
      */
     private List<String> properties = new ArrayList<>();
 
-    public void addProperties(List<String> properties) {
+    public ReadPropertyMessage addProperties(List<String> properties) {
         this.properties.addAll(properties);
+        return this;
+    }
+
+    public ReadPropertyMessage addProperties(String... properties) {
+       return addProperties(Arrays.asList(properties));
     }
 
     @Override
