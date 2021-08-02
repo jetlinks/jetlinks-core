@@ -9,7 +9,7 @@ import javax.annotation.Nonnull;
  * 透传设备消息
  *
  * @author zhouhao
- * @see 1.0.2
+ * @since 1.0.2
  */
 @Getter
 @Setter
