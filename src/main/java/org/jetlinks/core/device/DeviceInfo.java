@@ -59,6 +59,14 @@ public class DeviceInfo implements Serializable {
         return this;
     }
 
+    public DeviceInfo addConfigIfAbsent(String key, Object value) {
+        if (configuration == null) {
+            configuration = new HashMap<>();
+        }
+        configuration.putIfAbsent(key, value);
+        return this;
+    }
+
     public DeviceInfo addConfigs(Map<String, ?> configs) {
         if (configs == null) {
             return this;

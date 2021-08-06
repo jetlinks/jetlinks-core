@@ -5,6 +5,7 @@ package org.jetlinks.core.metadata;
  *
  * @author zhouhao
  * @see MetadataFeature
+ * @see ManagementFeature
  * @see SimpleFeature
  * @since 1.1.6
  */
