@@ -80,6 +80,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private BiFunction<DeviceOperator, Flux<DeviceOperator>, Mono<Void>> onChildBind;
     private BiFunction<DeviceOperator, Flux<DeviceOperator>, Mono<Void>> onChildUnbind;
 
+    private Map<String, Function<DeviceInfo, Mono<DeviceInfo>>> onBeforeCreate = new ConcurrentHashMap<>();
+
     private Map<String, BiFunction<ClientConnection, DeviceGatewayContext, Mono<Void>>> connectionHandlers = new ConcurrentHashMap<>();
 
     private Map<String, Flux<Feature>> features = new ConcurrentHashMap<>();
@@ -407,6 +409,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
      * 添加全局Feature
      *
      * @param features Feature
+     * @see MetadataFeature
+     * @see ManagementFeature
      */
     public void addFeature(Feature... features) {
         addFeature(Arrays.asList(features));
@@ -421,6 +425,26 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         features.forEach(globalFeatures::add);
     }
 
+    /**
+     * 注册设备添加监听器,用于在创建设备时,进行自定义配置生成等操作.
+     *
+     * @param transport 传输协议
+     * @param listener  监听器
+     * @since 1.1.8
+     */
+    public void onBeforeDeviceCreate(Transport transport, Function<DeviceInfo, Mono<DeviceInfo>> listener) {
+        onBeforeCreate.put(transport.getId(), listener);
+    }
+
+    @Override
+    public Mono<DeviceInfo> doBeforeDeviceCreate(Transport transport, DeviceInfo deviceInfo) {
+        Function<DeviceInfo, Mono<DeviceInfo>> listener = onBeforeCreate.get(transport.getId());
+        if (null != listener) {
+            return listener.apply(deviceInfo);
+        }
+        return ProtocolSupport.super.doBeforeDeviceCreate(transport, deviceInfo);
+    }
+
     @Override
     public Flux<Feature> getFeatures(Transport transport) {
         return Flux
@@ -428,6 +452,6 @@ public class CompositeProtocolSupport implements ProtocolSupport {
                         Flux.fromIterable(globalFeatures),
                         features.getOrDefault(transport.getId(), Flux.empty())
                 )
-                .distinct();
+                .distinct(Feature::getId);
     }
 }

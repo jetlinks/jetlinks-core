@@ -24,7 +24,14 @@ public enum DeviceConfigKey implements ConfigKey<String> {
     shadow("设备影子"),
 
     //遗言，用于缓存消息，等设备上线时发送指令
-    will("遗言");
+    will("遗言"),
+
+    //设备类型
+    // device: 直连设备
+    // childrenDevice: 网关子设备
+    // gateway: 网关设备
+    deviceType("设备类型")
+    ;
 
     String name;
 

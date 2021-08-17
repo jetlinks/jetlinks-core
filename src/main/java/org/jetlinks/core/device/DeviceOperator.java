@@ -90,19 +90,51 @@ public interface DeviceOperator extends Configurable {
 
     Mono<Boolean> online(String serverId, String sessionId, String address);
 
+    /**
+     * 获取设备自身的配置,如果配置不存在则返回{@link Mono#empty()}
+     *
+     * @param key 配置Key
+     * @return 配置值
+     */
     Mono<Value> getSelfConfig(String key);
 
+    /**
+     * 获取设备自身的多个配置,不会返回{@link Mono#empty()},通过从{@link Values}中获取对应的值
+     *
+     * @param keys 配置key列表
+     * @return 配置值
+     */
     Mono<Values> getSelfConfigs(Collection<String> keys);
 
+    /**
+     * 获取设备自身的多个配置
+     *
+     * @param keys 配置key列表
+     * @return 配置值
+     */
     default Mono<Values> getSelfConfigs(String... keys) {
         return getSelfConfigs(Arrays.asList(keys));
     }
 
+    /**
+     * 获取设备自身的配置
+     *
+     * @param key 配置key
+     * @return 配置值
+     * @see DeviceConfigKey
+     */
     default <V> Mono<V> getSelfConfig(ConfigKey<V> key) {
         return getSelfConfig(key.getKey())
                 .map(value -> value.as(key.getType()));
     }
 
+    /**
+     * 获取设备自身的多个配置
+     *
+     * @param keys 配置key
+     * @return 配置值
+     * @see DeviceConfigKey
+     */
     default Mono<Values> getSelfConfigs(ConfigKey<?>... keys) {
         return getSelfConfigs(Arrays.stream(keys).map(ConfigKey::getKey).collect(Collectors.toSet()));
     }

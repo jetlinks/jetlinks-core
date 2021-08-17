@@ -303,13 +303,24 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
         return Flux.empty();
     }
 
+    /**
+     * 在执行设备创建之前,执行指定的操作。通常用于自定义默认配置生成等操作
+     *
+     * @param deviceInfo 设备信息
+     * @return 新等设备信息
+     */
+    default Mono<DeviceInfo> doBeforeDeviceCreate(Transport transport,
+                                                  DeviceInfo deviceInfo) {
+        return Mono.just(deviceInfo);
+    }
+
     @Override
     default int getOrder() {
         return Integer.MAX_VALUE;
     }
 
     @Override
-    default int compareTo(ProtocolSupport o) {
-        return Integer.compare(this.getOrder(), o == null ? 0 : o.getOrder());
+    default int compareTo(@Nonnull ProtocolSupport o) {
+        return Integer.compare(this.getOrder(), o.getOrder());
     }
 }
