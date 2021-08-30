@@ -149,7 +149,7 @@ public interface MergeOption {
             }
 
             if (!merged) {
-                from.forEach(to::put);
+                to.putAll(from);
             }
         }
 
