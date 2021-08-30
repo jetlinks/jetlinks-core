@@ -12,6 +12,7 @@ import org.jetlinks.core.config.StorageConfigurable;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
+import org.jetlinks.core.exception.ProductNotActivatedException;
 import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.message.state.DeviceStateCheckMessage;
@@ -116,8 +117,17 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 })
                 //如果上游为空,则使用产品的物模型
                 .switchIfEmpty(this.getParent()
-                                   .flatMap(DeviceProductOperator::getMetadata));
+                                   .switchIfEmpty(Mono.defer(this::onProductNonexistent))
+                                   .flatMap(DeviceProductOperator::getMetadata)
+                );
 
+    }
+
+    private Mono<DeviceProductOperator> onProductNonexistent() {
+        return getReactiveStorage()
+                .flatMap(store -> store.getConfig(productId.getKey()))
+                .map(Value::asString)
+                .flatMap(productId -> Mono.error(new ProductNotActivatedException(productId)));
     }
 
     @Override
