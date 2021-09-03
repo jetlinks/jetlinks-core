@@ -49,6 +49,22 @@ public class CyclicDependencyCheckerTest {
 
     }
 
+    @Test
+    public void testSelf() {
+        Map<String, TestObj> objs = new HashMap<>();
+
+        TestObj o1 = new TestObj();
+        o1.setId("1");
+        o1.setParentId("1");
+        objs.put(o1.id,o1);
+        CyclicDependencyChecker<TestObj,Void> checker = CyclicDependencyChecker.of(TestObj::getId, TestObj::getParentId, id -> Mono.justOrEmpty(objs.get(id)));
+
+        checker.check(o1)
+               .as(StepVerifier::create)
+               .expectError(CyclicDependencyException.class)
+               .verify();
+    }
+
 
     @Getter
     @Setter
