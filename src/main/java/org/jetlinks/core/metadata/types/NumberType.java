@@ -73,6 +73,10 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
         }
     }
 
+    public final Number convertNumber(Object value) {
+        return convertNumber(value, Function.identity());
+    }
+
     public final <T> T convertNumber(Object value, Function<Number, T> mapper) {
         if (value instanceof Number) {
             return mapper.apply((Number) value);
