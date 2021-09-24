@@ -3,6 +3,8 @@ package org.jetlinks.core.metadata.types;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.RoundingMode;
+
 @Getter
 @Setter
 public class LongType extends NumberType<Long> {
@@ -20,7 +22,12 @@ public class LongType extends NumberType<Long> {
     }
 
     @Override
+    public Number convertScaleNumber(Object value) {
+        return super.convertScaleNumber(value, 0, RoundingMode.HALF_UP, Number::longValue);
+    }
+
+    @Override
     public Long convert(Object value) {
-        return super.convertNumber(value,Number::longValue);
+        return super.convertNumber(value, Number::longValue);
     }
 }

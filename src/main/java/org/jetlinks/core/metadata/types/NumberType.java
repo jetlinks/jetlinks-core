@@ -9,6 +9,7 @@ import org.jetlinks.core.metadata.ValidateResult;
 import org.jetlinks.core.metadata.unit.ValueUnit;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Date;
 import java.util.Optional;
 import java.util.function.Function;
@@ -50,13 +51,13 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
         if (unit == null) {
             return value;
         }
-        return unit.format(value);
+        return unit.format(convertScaleNumber(value));
     }
 
     @Override
     public ValidateResult validate(Object value) {
         try {
-            N numberValue = convert(value);
+            Number numberValue = convertScaleNumber(value);
             if (numberValue == null) {
                 return ValidateResult.fail("数字格式错误:" + value);
             }
@@ -72,27 +73,47 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
         }
     }
 
-    public N convertNumber(Object value, Function<Number, N> mapper) {
-        return Optional.ofNullable(convertNumber(value))
-                .map(mapper)
+    public final <T> T convertNumber(Object value, Function<Number, T> mapper) {
+        if (value instanceof Number) {
+            return mapper.apply((Number) value);
+        }
+        return Optional
+                .ofNullable(convertScaleNumber(value, null, null, mapper))
                 .orElse(null);
     }
 
-    public Number convertNumber(Object value) {
-        if (value instanceof Number) {
-            return ((Number) value);
+    public Number convertScaleNumber(Object value) {
+        return convertNumber(value, Function.identity());
+    }
+
+    public final <T> T convertScaleNumber(Object value, Integer scale, RoundingMode mode, Function<Number, T> mapper) {
+        BigDecimal decimal;
+        if (value instanceof Number && scale == null) {
+            return mapper.apply(((Number) value));
         }
         if (value instanceof String) {
             try {
-                return new BigDecimal(((String) value));
+                value = new BigDecimal(((String) value));
             } catch (NumberFormatException e) {
                 return null;
             }
         }
         if (value instanceof Date) {
-            return ((Date) value).getTime();
+            value = new BigDecimal(((Date) value).getTime());
         }
-        return null;
+        if (!(value instanceof BigDecimal)) {
+            try {
+                decimal = new BigDecimal(String.valueOf(value));
+            } catch (Throwable err) {
+                return null;
+            }
+        } else {
+            decimal = ((BigDecimal) value);
+        }
+        if (scale == null) {
+            return mapper.apply(decimal);
+        }
+        return mapper.apply(decimal.setScale(scale, mode));
     }
 
     public abstract N convert(Object value);
