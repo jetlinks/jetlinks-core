@@ -1,5 +1,7 @@
 package org.jetlinks.core.metadata.unit;
 
+import reactor.core.Disposable;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -25,8 +27,9 @@ public class ValueUnits {
         });
     }
 
-    public static void register(ValueUnitSupplier supplier) {
+    public static Disposable register(ValueUnitSupplier supplier) {
         suppliers.add(supplier);
+        return () -> suppliers.remove(supplier);
     }
 
     public static Optional<ValueUnit> lookup(String id) {
@@ -45,8 +48,8 @@ public class ValueUnits {
 
     public static List<ValueUnit> getAllUnit() {
         return suppliers.stream()
-                .map(ValueUnitSupplier::getAll)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
+                        .map(ValueUnitSupplier::getAll)
+                        .flatMap(Collection::stream)
+                        .collect(Collectors.toList());
     }
 }
