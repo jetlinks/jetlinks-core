@@ -15,6 +15,10 @@ import java.util.Map;
  **/
 public interface ValueUnit extends Metadata, FormatSupport, Serializable {
 
+    /**
+     * 单位符号
+     * @return 符号
+     */
     String getSymbol();
 
     @Override

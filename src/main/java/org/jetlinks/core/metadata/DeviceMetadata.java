@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 物模型定义
+ * 设备物模型定义
  *
  * @author zhouhao
  * @since 1.0.0
