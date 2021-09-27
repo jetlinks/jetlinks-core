@@ -7,6 +7,7 @@ import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.UnitSupported;
 import org.jetlinks.core.metadata.ValidateResult;
 import org.jetlinks.core.metadata.unit.ValueUnit;
+import org.jetlinks.core.utils.NumberUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -18,6 +19,8 @@ import java.util.function.Function;
 @Setter
 public abstract class NumberType<N extends Number> extends AbstractType<NumberType<N>> implements UnitSupported, DataType, Converter<N> {
 
+    static boolean ORIGINAL = Boolean.parseBoolean(System.getProperty("jetlinks.type.number.convert.original", "true"));
+
     //最大值
     private Number max;
 
@@ -26,6 +29,24 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
 
     //单位
     private ValueUnit unit;
+
+    private RoundingMode round = defaultRound();
+
+    private Integer scale;
+
+    public NumberType<N> scale(Integer scale) {
+        this.scale = scale;
+        return this;
+    }
+
+    public NumberType<N> round(RoundingMode round) {
+        this.round = round;
+        return this;
+    }
+
+    public Integer getScale(Integer defaultValue) {
+        return this.scale == null ? defaultValue : this.scale;
+    }
 
     public NumberType<N> unit(ValueUnit unit) {
         this.unit = unit;
@@ -42,16 +63,28 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
         return this;
     }
 
-
     public Object format(Object value) {
         if (value == null) {
             return null;
         }
+        Number val = convertScaleNumber(value,
+                                        this.getScale(defaultScale()),
+                                        getRound(),
+                                        Function.identity());
+        if (val == null) {
+            return String.valueOf(value);
+        }
+        String str;
+        if (val instanceof BigDecimal) {
+            str = ((BigDecimal) val).toPlainString();
+        } else {
+            str = String.valueOf(val);
+        }
         ValueUnit unit = getUnit();
         if (unit == null) {
-            return value;
+            return String.valueOf(str);
         }
-        return unit.format(convertScaleNumber(value));
+        return unit.format(str);
     }
 
     @Override
@@ -73,24 +106,80 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
         }
     }
 
-    public final Number convertNumber(Object value) {
-        return convertNumber(value, Function.identity());
-    }
-
-    public final <T> T convertNumber(Object value, Function<Number, T> mapper) {
-        if (value instanceof Number) {
-            return mapper.apply((Number) value);
+    public final N convertNumber(Object value) {
+        //保持原始值
+        if (ORIGINAL) {
+            return convertOriginalNumber(value);
         }
+        return convertScaleNumber(value);
+    }
+
+    public final N convertOriginalNumber(Object value) {
+        return convertScaleNumber(value, null, null, this::castNumber);
+    }
+
+    public final N convertScaleNumber(Object value,
+                                      Integer scale,
+                                      RoundingMode mode) {
+        return convertScaleNumber(value, scale, mode, this::castNumber);
+    }
+
+    public final N convertScaleNumber(Object value) {
+        return convertScaleNumber(value, this.getScale(defaultScale()), getRound());
+    }
+
+    @Override
+    public final N convert(Object value) {
+        if (value instanceof Number) {
+            Number number = ((Number) value);
+            //如果传入的是整数,或者未设置精度,则直接返回
+            if (NumberUtils.isIntNumber(number)) {
+                return castNumber(number);
+            }
+        }
+        return this.convertNumber(value);
+    }
+
+    public final long getMax(long defaultVal) {
         return Optional
-                .ofNullable(convertScaleNumber(value, null, null, mapper))
-                .orElse(null);
+                .ofNullable(getMax())
+                .map(Number::longValue)
+                .orElse(defaultVal);
     }
 
-    public Number convertScaleNumber(Object value) {
-        return convertNumber(value, Function.identity());
+    public final long getMin(long defaultVal) {
+        return Optional
+                .ofNullable(getMin())
+                .map(Number::longValue)
+                .orElse(defaultVal);
     }
 
-    public final <T> T convertScaleNumber(Object value, Integer scale, RoundingMode mode, Function<Number, T> mapper) {
+    public final double getMax(double defaultVal) {
+        return Optional
+                .ofNullable(getMax())
+                .map(Number::doubleValue)
+                .orElse(defaultVal);
+    }
+
+    public final double getMin(double defaultVal) {
+        return Optional
+                .ofNullable(getMin())
+                .map(Number::doubleValue)
+                .orElse(defaultVal);
+    }
+
+    protected abstract N castNumber(Number number);
+
+    protected abstract int defaultScale();
+
+    protected RoundingMode defaultRound() {
+        return RoundingMode.valueOf(System.getProperty("jetlinks.type." + getType() + ".round", "HALF_UP"));
+    }
+
+    public static <T> T convertScaleNumber(Object value,
+                                           Integer scale,
+                                           RoundingMode mode,
+                                           Function<Number, T> mapper) {
         BigDecimal decimal;
         if (value instanceof Number && scale == null) {
             return mapper.apply(((Number) value));
@@ -102,6 +191,7 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
                 return null;
             }
         }
+
         if (value instanceof Date) {
             value = new BigDecimal(((Date) value).getTime());
         }
@@ -120,33 +210,5 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
         return mapper.apply(decimal.setScale(scale, mode));
     }
 
-    public abstract N convert(Object value);
 
-    public long getMax(long defaultVal) {
-        return Optional
-                .ofNullable(getMax())
-                .map(Number::longValue)
-                .orElse(defaultVal);
-    }
-
-    public long getMin(long defaultVal) {
-        return Optional
-                .ofNullable(getMin())
-                .map(Number::longValue)
-                .orElse(defaultVal);
-    }
-
-    public double getMax(double defaultVal) {
-        return Optional
-                .ofNullable(getMax())
-                .map(Number::doubleValue)
-                .orElse(defaultVal);
-    }
-
-    public double getMin(double defaultVal) {
-        return Optional
-                .ofNullable(getMin())
-                .map(Number::doubleValue)
-                .orElse(defaultVal);
-    }
 }

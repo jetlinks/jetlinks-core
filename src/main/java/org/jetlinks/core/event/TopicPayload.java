@@ -72,7 +72,7 @@ public class TopicPayload implements Payload {
     @Override
     protected void finalize() throws Throwable {
         if (handle != null && refCnt() != 0) {
-            log.debug("topic [{}] payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", toString(), refCnt());
+            log.debug("topic [{}] payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", this, refCnt());
         }
         super.finalize();
     }
