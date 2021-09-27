@@ -1,13 +1,14 @@
 package org.jetlinks.core.metadata.unit;
 
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 单位统一管理工具
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
  * @author zhouhao
  * @since 1.1
  */
+@Slf4j
 public class ValueUnits {
 
     private static final List<ValueUnitSupplier> suppliers = new CopyOnWriteArrayList<>();
@@ -52,9 +54,13 @@ public class ValueUnits {
      */
     public static Optional<ValueUnit> lookup(String id) {
         for (ValueUnitSupplier supplier : suppliers) {
-            Optional<ValueUnit> unit = supplier.getById(id);
-            if (unit.isPresent()) {
-                return unit;
+            try {
+                Optional<ValueUnit> unit = supplier.getById(id);
+                if (unit.isPresent()) {
+                    return unit;
+                }
+            }catch (Error ignore){
+                suppliers.remove(supplier);
             }
         }
         //json ?
@@ -70,9 +76,17 @@ public class ValueUnits {
      * @return 单位列表
      */
     public static List<ValueUnit> getAllUnit() {
-        return suppliers.stream()
-                        .map(ValueUnitSupplier::getAll)
-                        .flatMap(Collection::stream)
-                        .collect(Collectors.toList());
+        return suppliers
+                .stream()
+                .flatMap(supplier -> {
+                    try {
+                        return supplier.getAll().stream();
+                    } catch (Error err) {
+                        //由协议包自定义的单位,当协议被卸载时可能会报错
+                        suppliers.remove(supplier);
+                    }
+                    return Stream.empty();
+                })
+                .collect(Collectors.toList());
     }
 }
