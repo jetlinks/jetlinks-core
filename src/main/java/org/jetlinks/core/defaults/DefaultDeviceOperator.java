@@ -1,6 +1,7 @@
 package org.jetlinks.core.defaults;
 
 import lombok.extern.slf4j.Slf4j;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.ProtocolSupports;
 import org.jetlinks.core.Value;
@@ -188,7 +189,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                             .orElse(null);
 
                     if (getDeviceId().equals(parentGatewayId)) {
-                        log.warn("设备[{}]存在循环依赖", parentGatewayId);
+                        log.warn(LocaleUtils.resolveMessage("validation.parent_id_and_id_can_not_be_same",parentGatewayId));
                         return Mono.just(state);
                     }
                     if (isSelfManageState) {
@@ -242,7 +243,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                     .orElse(null);
 
                             if (getDeviceId().equals(parentGatewayId)) {
-                                log.warn("设备[{}]存在循环依赖", parentGatewayId);
+                                log.warn(LocaleUtils.resolveMessage("validation.parent_id_and_id_can_not_be_same",parentGatewayId));
                                 return Mono.just(state);
                             }
                             boolean isSelfManageState = values.getValue(selfManageState).orElse(false);
@@ -271,7 +272,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                                             return ((DeviceStateCheckMessageReply) msg.getChildDeviceMessage())
                                                                     .getState();
                                                         }
-                                                        log.warn("子设备状态检查返回消息错误{}", msg);
+                                                        log.warn("State check return error {}", msg);
                                                         //网关设备在线,只是返回了错误的消息,所以也认为网关设备在线
                                                         return DeviceState.online;
                                                     })
