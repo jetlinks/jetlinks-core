@@ -118,4 +118,19 @@ public interface Headers {
      * 产品ID
      */
     HeaderKey<String> productId = HeaderKey.of("productId", null, String.class);
+
+
+    /**
+     * 上报属性中是否包含geo信息,如果设置为false,上报属性时则不处理地理位置相关逻辑,可能提高一些性能
+     *
+     * @see org.jetlinks.core.message.property.ReportPropertyMessage
+     */
+    HeaderKey<Boolean> propertyContainsGeo = HeaderKey.of("containsGeo", true);
+
+    /**
+     * 明确定义上报属性中包含的geo属性字段,在设备物模型属性数量较大时有助于提升地理位置信息处理性能
+     *
+     * @see org.jetlinks.core.message.property.ReportPropertyMessage
+     */
+    HeaderKey<String> geoProperty = HeaderKey.of("geoProperty", null, String.class);
 }
