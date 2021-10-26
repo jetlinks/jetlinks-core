@@ -18,23 +18,28 @@ public class CompositeProtocolSupports implements ProtocolSupports {
 
     @Override
     public boolean isSupport(String protocol) {
-        return supports
-                .stream()
-                .anyMatch(supports -> supports.isSupport(protocol));
+        for (ProtocolSupports support : supports) {
+            if (support.isSupport(protocol)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public Mono<ProtocolSupport> getProtocol(String protocol) {
-        return supports.stream()
-                .filter(supports -> supports.isSupport(protocol))
-                .findFirst()
-                .map(supports -> supports.getProtocol(protocol))
-                .orElseGet(() -> Mono.error(new UnsupportedOperationException("不支持的协议:" + protocol)));
+        for (ProtocolSupports support : supports) {
+            if (support.isSupport(protocol)) {
+                return support.getProtocol(protocol);
+            }
+        }
+
+        return Mono.error(new UnsupportedOperationException("不支持的协议:" + protocol));
     }
 
     @Override
     public Flux<ProtocolSupport> getProtocols() {
         return Flux.fromIterable(supports)
-                .flatMap(ProtocolSupports::getProtocols);
+                   .flatMap(ProtocolSupports::getProtocols);
     }
 }

@@ -1,10 +1,10 @@
 package org.jetlinks.core.topic;
 
+import com.google.common.collect.Maps;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
-import org.jetlinks.core.cache.Caches;
 import org.jetlinks.core.utils.TopicUtils;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -34,9 +35,9 @@ public final class Topic<T> {
 
     private final int depth;
 
-    private final ConcurrentMap<String, Topic<T>> child = Caches.newCache();
+    private final ConcurrentMap<String, Topic<T>> child = Maps.newConcurrentMap();
 
-    private final ConcurrentMap<T, AtomicInteger> subscribers = Caches.newCache();
+    private final ConcurrentMap<T, AtomicInteger> subscribers = Maps.newConcurrentMap();
 
     private static final AntPathMatcher matcher = new AntPathMatcher() {
         @Override
@@ -189,10 +190,18 @@ public final class Topic<T> {
     }
 
     public Flux<Topic<T>> findTopic(String topic) {
+        return Flux.create(sink -> {
+            findTopic(topic, sink::next, sink::complete);
+        });
+    }
+
+    public void findTopic(String topic,
+                          Consumer<Topic<T>> sink,
+                          Runnable end) {
         if (!topic.startsWith("/")) {
             topic = "/" + topic;
         }
-        return find(topic, this);
+        find(TopicUtils.split(topic), this, sink, end);
     }
 
     @Override
@@ -205,70 +214,69 @@ public final class Topic<T> {
                 || TopicUtils.match(pars, getTopics());
     }
 
-    public static <T> Flux<Topic<T>> find(String topic, Topic<T> topicPart) {
-        return Flux.create(sink -> {
-            ArrayDeque<Topic<T>> cache = new ArrayDeque<>(128);
-            cache.add(topicPart);
 
-            String[] topicParts = TopicUtils.split(topic);
-            String nextPart = null;
-            while (!cache.isEmpty() && !sink.isCancelled()) {
-                Topic<T> part = cache.poll();
-                if (part == null) {
-                    break;
-                }
-                if (part.match(topicParts)) {
-                    sink.next(part);
-                }
+    public static <T> void find(String[] topicParts,
+                                Topic<T> topicPart,
+                                Consumer<Topic<T>> sink,
+                                Runnable end) {
+        ArrayDeque<Topic<T>> cache = new ArrayDeque<>(128);
+        cache.add(topicPart);
+
+        String nextPart = null;
+        while (!cache.isEmpty()) {
+            Topic<T> part = cache.poll();
+            if (part == null) {
+                break;
+            }
+            if (part.match(topicParts)) {
+                sink.accept(part);
+            }
 //                if (part.part.equals("**")
 //                        || matcher.match(part.getTopic(), topic)
 //                        || (matcher.match(topic, part.getTopic()))) {
 //                    sink.next(part);
 //                }
 
-                //订阅了如 /device/**/event/*
-                if (part.part.equals("**")) {
-                    Topic<T> tmp = null;
-                    for (int i = part.depth; i < topicParts.length; i++) {
-                        tmp = part.child.get(topicParts[i]);
-                        if (tmp != null) {
-                            cache.add(tmp);
-                        }
-                    }
-                    if (null != tmp) {
-                        continue;
+            //订阅了如 /device/**/event/*
+            if (part.part.equals("**")) {
+                Topic<T> tmp = null;
+                for (int i = part.depth; i < topicParts.length; i++) {
+                    tmp = part.child.get(topicParts[i]);
+                    if (tmp != null) {
+                        cache.add(tmp);
                     }
                 }
-                if ("**".equals(nextPart) || "*".equals(nextPart)) {
-                    cache.addAll(part.child.values());
+                if (null != tmp) {
                     continue;
                 }
-                Topic<T> next = part.child.get("**");
-                if (next != null) {
-                    cache.add(next);
-                }
-                next = part.child.get("*");
-                if (next != null) {
-                    cache.add(next);
-                }
-
-                if (part.depth + 1 >= topicParts.length) {
-                    continue;
-                }
-                nextPart = topicParts[part.depth + 1];
-                if (nextPart.equals("*") || nextPart.equals("**")) {
-                    cache.addAll(part.child.values());
-                    continue;
-                }
-                next = part.child.get(nextPart);
-                if (next != null) {
-                    cache.add(next);
-                }
-
             }
-            sink.complete();
-        });
+            if ("**".equals(nextPart) || "*".equals(nextPart)) {
+                cache.addAll(part.child.values());
+                continue;
+            }
+            Topic<T> next = part.child.get("**");
+            if (next != null) {
+                cache.add(next);
+            }
+            next = part.child.get("*");
+            if (next != null) {
+                cache.add(next);
+            }
 
+            if (part.depth + 1 >= topicParts.length) {
+                continue;
+            }
+            nextPart = topicParts[part.depth + 1];
+            if (nextPart.equals("*") || nextPart.equals("**")) {
+                cache.addAll(part.child.values());
+                continue;
+            }
+            next = part.child.get(nextPart);
+            if (next != null) {
+                cache.add(next);
+            }
+        }
+        end.run();
     }
 
     public long getTotalTopic() {

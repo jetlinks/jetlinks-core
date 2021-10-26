@@ -2,12 +2,14 @@ package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.parser.ParserConfig;
 import com.alibaba.fastjson.util.TypeUtils;
+import org.apache.commons.collections.MapUtils;
 import org.jetlinks.core.metadata.Jsonable;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.jetlinks.core.message.MessageType.UNKNOWN;
 
@@ -105,20 +107,39 @@ public interface Message extends Jsonable, Serializable {
 
     @SuppressWarnings("all")
     default <T> Optional<T> getHeader(HeaderKey<T> key) {
-        return getHeader(key.getKey())
-                .map(v -> TypeUtils.cast(v, key.getType(), ParserConfig.global));
+        return Optional.ofNullable(getHeaderOrElse(key, null));
     }
 
     default <T> T getHeaderOrDefault(HeaderKey<T> key) {
-        return getHeader(key).orElseGet(key::getDefaultValue);
+        return getHeaderOrElse(key, key::getDefaultValue);
+    }
+
+    @SuppressWarnings("all")
+    default <T> T getHeaderOrElse(HeaderKey<T> header, @Nullable Supplier<T> orElse) {
+        Object val = getHeaderOrElse(header.getKey(), null);
+        if (null == val) {
+            return orElse == null ? null : orElse.get();
+        }
+        return TypeUtils.cast(val, header.getType(), ParserConfig.global);
+    }
+
+    default Object getHeaderOrElse(String header, @Nullable Supplier<Object> orElse) {
+        Map<String, Object> headers = getHeaders();
+        if (MapUtils.isEmpty(headers) || header == null) {
+            return orElse == null ? null : orElse.get();
+        }
+        Object val = headers.get(header);
+        if (val != null) {
+            return val;
+        }
+        return orElse == null ? null : orElse.get();
     }
 
     default Optional<Object> getHeader(String header) {
-        return Optional.ofNullable(getHeaders())
-                       .map(headers -> headers.get(header));
+        return Optional.ofNullable(getHeaderOrElse(header, null));
     }
 
-    default void validate(){
+    default void validate() {
 
     }
 }

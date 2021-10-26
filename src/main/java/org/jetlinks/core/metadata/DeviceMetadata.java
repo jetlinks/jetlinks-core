@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * 设备物模型定义
@@ -63,6 +64,14 @@ public interface DeviceMetadata extends Metadata, Jsonable {
     }
 
     PropertyMetadata getTagOrNull(String id);
+
+    default PropertyMetadata findProperty(Predicate<PropertyMetadata> predicate) {
+        return getProperties()
+                .stream()
+                .filter(predicate)
+                .findAny()
+                .orElse(null);
+    }
 
     /**
      * 合并物模型，合并后返回新的物模型对象

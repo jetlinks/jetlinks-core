@@ -6,7 +6,7 @@ import org.hswebframework.web.bean.FastBeanCopier;
 @AllArgsConstructor(staticName = "of")
 class SimpleValue implements Value {
 
-    private Object nativeValue;
+    private final Object nativeValue;
 
     @Override
     public Object get() {

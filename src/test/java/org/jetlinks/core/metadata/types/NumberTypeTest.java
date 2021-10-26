@@ -57,6 +57,10 @@ public class NumberTypeTest {
 
         Assert.assertEquals(new Float(99.99F),type.convertScaleNumber(99.991));
 
+
+        Assert.assertEquals(Float.valueOf(Float.MAX_VALUE),type.convert(Float.MAX_VALUE));
+        Assert.assertEquals(Float.valueOf(Float.MIN_VALUE),type.convert(Float.MIN_VALUE));
+
     }
 
 

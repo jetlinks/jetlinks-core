@@ -69,13 +69,13 @@ public class TopicPayload implements Payload {
         return topic == null || handleRelease(ReferenceCountUtil.release(payload, dec));
     }
 
-    @Override
-    protected void finalize() throws Throwable {
-        if (handle != null && refCnt() != 0) {
-            log.debug("topic [{}] payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", this, refCnt());
-        }
-        super.finalize();
-    }
+//    @Override
+//    protected void finalize() throws Throwable {
+//        if (handle != null && refCnt() != 0) {
+//            log.debug("topic [{}] payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", this, refCnt());
+//        }
+//        super.finalize();
+//    }
 
     protected boolean handleRelease(boolean success) {
         if (success) {
