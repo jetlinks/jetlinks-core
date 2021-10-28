@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import io.vavr.Function3;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.things.ThingMetadata;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -153,7 +154,7 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
     }
 
     @Override
-    public DeviceMetadata merge(DeviceMetadata metadata, MergeOption... options) {
+    public <T extends ThingMetadata> DeviceMetadata merge(T metadata, MergeOption... options) {
         SimpleDeviceMetadata deviceMetadata = new SimpleDeviceMetadata();
         deviceMetadata.setId(metadata.getId());
         deviceMetadata.setName(metadata.getName());

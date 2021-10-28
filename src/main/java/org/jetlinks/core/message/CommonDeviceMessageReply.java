@@ -1,6 +1,8 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.enums.ErrorCode;
@@ -35,6 +37,13 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     private long timestamp = System.currentTimeMillis();
 
     private Map<String, Object> headers;
+
+    @Override
+    @JsonIgnore
+    @JSONField(serialize = false)
+    public final String getThingId() {
+        return getDeviceId();
+    }
 
     @Override
     public synchronized ME addHeaderIfAbsent(String header, Object value) {

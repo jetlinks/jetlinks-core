@@ -1,8 +1,6 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.annotation.JSONField;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
@@ -12,32 +10,27 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author zhouhao
- * @since 1.0.0
+ * @since 1.1.9
  */
 @Getter
 @Setter
-public class CommonDeviceMessage implements DeviceMessage {
+public abstract class CommonThingMessage implements ThingMessage {
     private static final long serialVersionUID = -6849794470754667710L;
 
     private String code;
 
     private String messageId;
 
-    private String deviceId;
+    private String thingId;
 
     private Map<String, Object> headers;
 
     private long timestamp = System.currentTimeMillis();
 
-    @Override
-    @JsonIgnore
-    @JSONField(serialize = false)
-    public final String getThingId() {
-        return getDeviceId();
-    }
+    public abstract MessageType getMessageType();
 
     @Override
-    public synchronized DeviceMessage addHeader(String header, Object value) {
+    public synchronized ThingMessage addHeader(String header, Object value) {
         if (headers == null) {
             this.headers = new ConcurrentHashMap<>();
         }
@@ -48,7 +41,7 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     @Override
-    public synchronized DeviceMessage addHeaderIfAbsent(String header, Object value) {
+    public synchronized ThingMessage addHeaderIfAbsent(String header, Object value) {
         if (headers == null) {
             this.headers = new ConcurrentHashMap<>();
         }
@@ -59,7 +52,7 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     @Override
-    public DeviceMessage removeHeader(String header) {
+    public ThingMessage removeHeader(String header) {
         if (this.headers != null) {
             this.headers.remove(header);
         }
@@ -75,7 +68,7 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     @Override
     public void fromJson(JSONObject jsonObject) {
-        DeviceMessage.super.fromJson(jsonObject);
+        ThingMessage.super.fromJson(jsonObject);
     }
 
     @Override

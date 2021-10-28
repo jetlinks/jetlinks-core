@@ -158,7 +158,13 @@ public enum MessageType {
             return (T) reply;
 
         }
-    };
+    },
+
+    //以下是物相关消息
+
+    //物属性消息
+    THING_PROPERTY(ThingPropertyMessage::new)
+    ;
 
     Supplier<? extends Message> newInstance;
 
