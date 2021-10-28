@@ -58,7 +58,13 @@ public interface Configurable {
 
     default <V> Mono<V> getConfig(ConfigKey<V> key) {
         return getConfig(key.getKey())
-                .flatMap(value -> Mono.justOrEmpty(value.as(key.getType())));
+                .handle((value, sink) -> {
+                    V val = value.as(key.getType());
+                    if (null != val) {
+                        sink.next(val);
+                    }
+                    sink.complete();
+                });
     }
 
     default Mono<Values> getConfigs(ConfigKey<?>... key) {
@@ -116,6 +122,7 @@ public interface Configurable {
 
     /**
      * 刷新全部配置信息
+     *
      * @return key
      */
     Mono<Void> refreshAllConfig();
