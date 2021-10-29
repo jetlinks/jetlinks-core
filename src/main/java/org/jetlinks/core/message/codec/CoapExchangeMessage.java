@@ -47,7 +47,7 @@ public class CoapExchangeMessage implements CoapMessage {
     public void response(CoapResponseMessage message) {
         Response response = new Response(message.getCode());
 
-        if (CollectionUtils.isEmpty(message.getOptions())) {
+        if (!CollectionUtils.isEmpty(message.getOptions())) {
             message.getOptions().forEach(response.getOptions()::addOption);
         }
         byte[] payload = message.payloadAsBytes();
