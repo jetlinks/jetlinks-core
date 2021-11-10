@@ -5,8 +5,9 @@ import lombok.Setter;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 @Getter
 @Setter
@@ -30,7 +31,7 @@ public class DefaultBroadcastMessage implements BroadcastMessage {
     }
 
     private Map<String, Object> safeGetHeader() {
-        return headers == null ? headers = new HashMap<>() : headers;
+        return headers == null ? headers = new ConcurrentHashMap<>() : headers;
     }
 
     @Override
@@ -58,5 +59,10 @@ public class DefaultBroadcastMessage implements BroadcastMessage {
         }
         safeGetHeader().remove(header);
         return this;
+    }
+
+    @Override
+    public void computeHeader(String key, BiFunction<String, Object, Object> computer) {
+        safeGetHeader().compute(key,computer);
     }
 }

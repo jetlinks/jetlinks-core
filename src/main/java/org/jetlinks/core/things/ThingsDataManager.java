@@ -18,7 +18,10 @@ public interface ThingsDataManager {
      * @param baseTime 基准时间
      * @return 属性
      */
-    Mono<ThingProperty> getLastProperty(String thingId, String property, long baseTime);
+    Mono<ThingProperty> getLastProperty(ThingType thingType,
+                                        String thingId,
+                                        String property,
+                                        long baseTime);
 
     /**
      * 获取第一次上报的属性
@@ -27,7 +30,9 @@ public interface ThingsDataManager {
      * @param property 属性ID
      * @return 属性
      */
-    Mono<ThingProperty> getFirstProperty(String thingId, String property);
+    Mono<ThingProperty> getFirstProperty(ThingType thingType,
+                                         String thingId,
+                                         String property);
 
     /**
      * 获取最后一次属性变更时间
@@ -35,6 +40,17 @@ public interface ThingsDataManager {
      * @param thingId 物ID
      * @return 时间戳
      */
-    Mono<Long> getLastPropertyTime(String thingId, long baseTime);
+    Mono<Long> getLastPropertyTime(ThingType thingType,
+                                   String thingId,
+                                   long baseTime);
+
+    /**
+     * 获取第一次上报数据的时间
+     *
+     * @param thingId 物ID
+     * @return 时间戳
+     */
+    Mono<Long> getFirstPropertyTime(ThingType thingType,
+                                    String thingId);
 
 }

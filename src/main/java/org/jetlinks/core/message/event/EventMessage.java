@@ -11,7 +11,7 @@ import org.jetlinks.core.message.MessageType;
  */
 @Getter
 @Setter
-public class EventMessage extends CommonDeviceMessage {
+public class EventMessage extends CommonDeviceMessage implements ThingEventMessage {
 
     private String event;
 

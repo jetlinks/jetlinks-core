@@ -1,18 +1,27 @@
 package org.jetlinks.core.things;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
+import reactor.core.Disposables;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
-public abstract class AbstractThingsDataManager implements ThingsDataManager {
-    private final Map<String, ThingPropertyRef> localCache = newCache();
+@AllArgsConstructor
+public class DefaultThingsDataManager implements ThingsDataManager {
+    private final Map<ThingId, ThingPropertyRef> localCache = newCache();
+
+    private final List<ThingsDataManagerSupport> supports = new CopyOnWriteArrayList<>();
+
+    private final ThingsRegistry registry;
 
     static <K, V> Map<K, V> newCache() {
         return Caffeine
@@ -28,37 +37,55 @@ public abstract class AbstractThingsDataManager implements ThingsDataManager {
                 .asMap();
     }
 
+    public void addSupport(ThingsDataManagerSupport support) {
+        supports.add(support);
+    }
+
     @Override
-    public final Mono<ThingProperty> getLastProperty(String thingId,
+    public final Mono<ThingProperty> getLastProperty(ThingType thingType,
+                                                     String thingId,
                                                      String property,
                                                      long baseTime) {
         return localCache
-                .computeIfAbsent(thingId, ThingPropertyRef::new)
+                .computeIfAbsent(ThingId.of(thingType.getId(), thingId), ThingPropertyRef::new)
                 .getLastProperty(property, baseTime);
     }
 
     @Override
-    public final Mono<ThingProperty> getFirstProperty(String thingId,
+    public final Mono<ThingProperty> getFirstProperty(ThingType thingType,
+                                                      String thingId,
                                                       String property) {
         return localCache
-                .computeIfAbsent(thingId, ThingPropertyRef::new)
+                .computeIfAbsent(ThingId.of(thingType.getId(), thingId), ThingPropertyRef::new)
                 .getFirstProperty(property);
     }
 
     @Override
-    public Mono<Long> getLastPropertyTime(String thingId, long baseTime) {
+    public Mono<Long> getLastPropertyTime(ThingType thingType,
+                                          String thingId,
+                                          long baseTime) {
         return localCache
-                .computeIfAbsent(thingId, ThingPropertyRef::new)
+                .computeIfAbsent(ThingId.of(thingType.getId(), thingId), ThingPropertyRef::new)
                 .getLastPropertyTime(baseTime);
     }
 
-    protected abstract Mono<ThingProperty> loadAnyLastProperty(String thingId, long baseTime);
-
-    protected abstract Mono<ThingProperty> loadLastProperty(String thingId, String property, long baseTime);
-
-    protected abstract Mono<ThingProperty> loadFirstProperty(String thingId, String property);
-
-    protected abstract Flux<ThingProperty> subscribeProperty(String thingId);
+    @Override
+    public Mono<Long> getFirstPropertyTime(ThingType thingType, String thingId) {
+        return registry
+                .getThing(thingType, thingId)
+                .flatMap(thing -> thing
+                        .getSelfConfig(ThingsConfigKeys.firstPropertyTime)
+                        .switchIfEmpty(Mono.defer(() -> this
+                                .<Mono<ThingProperty>>computeSupport(thingType,
+                                                                     support -> support.getFirstProperty(thingType, thingId),
+                                                                     Mono::empty)
+                                .map(ThingProperty::getTimestamp)
+                                .flatMap(t -> thing
+                                        .setConfig(ThingsConfigKeys.firstPropertyTime, t)
+                                        .thenReturn(t)
+                                )
+                        )));
+    }
 
     private static final Object NULL = new Object();
 
@@ -131,17 +158,37 @@ public abstract class AbstractThingsDataManager implements ThingsDataManager {
         }
     }
 
+    public <T> T computeSupport(ThingType thingType,
+                                Function<ThingsDataManagerSupport, T> supportTFunction,
+                                Supplier<T> undefined) {
+        for (ThingsDataManagerSupport support : supports) {
+            if (support.isSupported(thingType)) {
+                return supportTFunction.apply(support);
+            }
+        }
+        return undefined.get();
+    }
+
     class ThingPropertyRef implements Disposable {
         Disposable disposable;
         Map<String, PropertyRef> refs = new ConcurrentHashMap<>();
+        ThingType thingType;
         String thingId;
         private long lastPropertyTime;
         private long propertyTime;
 
-        public ThingPropertyRef(String thingId) {
+        public ThingPropertyRef(ThingId cacheKey) {
+            this(ThingType.of(cacheKey.getType()), cacheKey.getId());
+        }
+
+        public ThingPropertyRef(ThingType thingType, String thingId) {
             this.thingId = thingId;
-            disposable = subscribeProperty(thingId)
-                    .subscribe(this::upgrade);
+            this.thingType = thingType;
+            disposable = computeSupport(thingType,
+                                        support -> support
+                                                .subscribeProperty(thingType, thingId)
+                                                .subscribe(this::upgrade),
+                                        Disposables::disposed);
         }
 
         private void upgrade(ThingProperty property) {
@@ -170,8 +217,11 @@ public abstract class AbstractThingsDataManager implements ThingsDataManager {
                 }
                 return Mono.just(ref.first);
             }
-            return AbstractThingsDataManager.this
-                    .loadFirstProperty(thingId, property)
+
+            return DefaultThingsDataManager.this
+                    .<Mono<ThingProperty>>computeSupport(thingType,
+                                                         support -> support.getFirstProperty(thingType, thingId, property),
+                                                         Mono::empty)
                     .<ThingProperty>map(prop -> ref.setFirst(prop.getValue(), prop.getTimestamp()))
                     .switchIfEmpty(Mono.fromRunnable(ref::setFirstNull))
                     ;
@@ -188,7 +238,10 @@ public abstract class AbstractThingsDataManager implements ThingsDataManager {
                 return Mono.just(lastPropertyTime);
             }
             //查询最新属性
-            return loadAnyLastProperty(thingId, baseTime)
+            return DefaultThingsDataManager.this
+                    .<Mono<ThingProperty>>computeSupport(thingType,
+                                                         support -> support.getAnyLastProperty(thingType, thingId, baseTime),
+                                                         Mono::empty)
                     .map(val -> {
                         if (propertyTime <= 0) {
                             updatePropertyTime(val.getTimestamp());
@@ -236,7 +289,10 @@ public abstract class AbstractThingsDataManager implements ThingsDataManager {
                         .switchIfEmpty(Mono.fromRunnable(ref::setNull));
             }
 
-            return loadLastProperty(thingId, key, baseTime)
+            return DefaultThingsDataManager.this
+                    .<Mono<ThingProperty>>computeSupport(thingType,
+                                                         support -> support.getLastProperty(thingType, thingId, key, baseTime),
+                                                         Mono::empty)
                     .as(resultHandler);
         }
 

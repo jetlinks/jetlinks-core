@@ -1,8 +1,8 @@
 package org.jetlinks.core.device;
 
-import org.jetlinks.core.Configurable;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.things.ThingTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface DeviceProductOperator extends Configurable {
+public interface DeviceProductOperator extends ThingTemplate {
 
     String getId();
 

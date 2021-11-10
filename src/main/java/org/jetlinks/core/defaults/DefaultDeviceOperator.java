@@ -1,5 +1,7 @@
 package org.jetlinks.core.defaults;
 
+import com.alibaba.fastjson.JSONObject;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.ProtocolSupport;
@@ -19,6 +21,8 @@ import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.message.state.DeviceStateCheckMessage;
 import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.things.ThingMetadata;
+import org.jetlinks.core.things.ThingRpcSupport;
 import org.jetlinks.core.utils.IdUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
@@ -41,6 +45,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private static final AtomicLongFieldUpdater<DefaultDeviceOperator> METADATA_TIME_UPDATER =
             AtomicLongFieldUpdater.newUpdater(DefaultDeviceOperator.class, "lastMetadataTime");
 
+    @Getter
     private final String id;
 
     private final DeviceOperationBroker handler;
@@ -461,6 +466,17 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     }
 
     @Override
+    public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
+        if (metadata instanceof DeviceMetadata) {
+            return getProtocol()
+                    .flatMap(protocol -> protocol.getMetadataCodec().encode((DeviceMetadata) metadata))
+                    .flatMap(this::updateMetadata);
+        }
+        // FIXME: 2021/11/3
+        return Mono.just(false);
+    }
+
+    @Override
     public Mono<Boolean> setConfigs(Map<String, Object> conf) {
         Map<String, Object> configs = new HashMap<>(conf);
         if (conf.containsKey(metadata.getKey())) {
@@ -486,5 +502,27 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 .flatMap(deviceStateChecker -> deviceStateChecker.checkState(operator))
                 .switchIfEmpty(operator.doCheckState()) //默认的检查
                 ;
+    }
+
+    @Override
+    public ThingRpcSupport rpc() {
+        return (msg) -> messageSender.send(convertToDeviceMessage(msg));
+    }
+
+    private DeviceMessage convertToDeviceMessage(ThingMessage message) {
+        if (message instanceof DeviceMessage) {
+            return ((DeviceMessage) message);
+        }
+        //将非DeviceMessage转为DeviceMessage
+
+        JSONObject msg = message.toJson();
+        msg.remove("thingId");
+        msg.remove("thingType");
+        msg.put("deviceId", message.getThingId());
+        return MessageType
+                .convertMessage(msg)
+                .filter(DeviceMessage.class::isInstance)
+                .map(DeviceMessage.class::cast)
+                .orElseThrow(() -> new UnsupportedOperationException("unsupported message type " + message.getMessageType()));
     }
 }

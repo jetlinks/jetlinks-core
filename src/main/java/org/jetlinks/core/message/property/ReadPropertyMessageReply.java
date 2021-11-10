@@ -5,7 +5,10 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
 import org.jetlinks.core.message.MessageType;
+import org.jetlinks.core.things.ThingProperty;
 
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,7 +21,7 @@ import java.util.Map;
  */
 @Getter
 @Setter
-public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPropertyMessageReply> implements PropertyMessage {
+public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPropertyMessageReply> implements ReadThingPropertyMessageReply {
 
     /**
      * 回复的属性,key为物模型中的属性ID,value为物模型对应的类型值.
@@ -55,6 +58,19 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
         super.setSuccess(true);
         return this;
 
+    }
+
+    @Override
+    public ReadThingPropertyMessageReply success(List<ThingProperty> properties) {
+        this.properties = new LinkedHashMap<>();
+        this.propertySourceTimes = new LinkedHashMap<>();
+        this.propertyStates = new LinkedHashMap<>();
+        for (ThingProperty property : properties) {
+            this.properties.put(property.getProperty(), property.getValue());
+            this.propertySourceTimes.put(property.getProperty(), property.getTimestamp());
+            this.propertyStates.put(property.getProperty(), property.getState());
+        }
+        return this;
     }
 
     @Override

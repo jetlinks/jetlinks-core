@@ -10,6 +10,7 @@ import org.jetlinks.core.exception.DeviceOperationException;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 /**
  * @author zhouhao
@@ -46,23 +47,26 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     }
 
     @Override
+    public final String getThingType() {
+        return DeviceMessageReply.super.getThingType();
+    }
+
+    private Map<String, Object> safeGetHeader() {
+        return headers == null ? headers = new ConcurrentHashMap<>() : headers;
+    }
+
+    @Override
     public synchronized ME addHeaderIfAbsent(String header, Object value) {
-        if (headers == null) {
-            this.headers = new ConcurrentHashMap<>();
-        }
         if (header != null && value != null) {
-            this.headers.putIfAbsent(header, value);
+            safeGetHeader().putIfAbsent(header, value);
         }
         return (ME) this;
     }
 
     @Override
     public synchronized ME addHeader(String header, Object value) {
-        if (headers == null) {
-            this.headers = new ConcurrentHashMap<>();
-        }
         if (header != null && value != null) {
-            this.headers.put(header, value);
+            safeGetHeader().put(header, value);
         }
         return (ME) this;
     }
@@ -164,6 +168,11 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         code = jsonObject.getString("code");
         message = jsonObject.getString("message");
         headers = jsonObject.getJSONObject("headers");
+    }
+
+    @Override
+    public void computeHeader(String key, BiFunction<String, Object, Object> computer) {
+        safeGetHeader().compute(key, computer);
     }
 
     @Override

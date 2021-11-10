@@ -5,8 +5,10 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
 
+import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 /**
  * @author zhouhao
@@ -14,13 +16,17 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Getter
 @Setter
-public abstract class CommonThingMessage implements ThingMessage {
+public abstract class CommonThingMessage<T extends CommonThingMessage<T>> implements ThingMessage {
     private static final long serialVersionUID = -6849794470754667710L;
 
     private String code;
 
     private String messageId;
 
+    @Nonnull
+    private String thingType;
+
+    @Nonnull
     private String thingId;
 
     private Map<String, Object> headers;
@@ -28,6 +34,13 @@ public abstract class CommonThingMessage implements ThingMessage {
     private long timestamp = System.currentTimeMillis();
 
     public abstract MessageType getMessageType();
+
+    @Override
+    public ThingMessage thingId(String thingType, String thingId) {
+        this.setThingType(thingType);
+        this.setThingId(thingId);
+        return this;
+    }
 
     @Override
     public synchronized ThingMessage addHeader(String header, Object value) {
@@ -51,6 +64,20 @@ public abstract class CommonThingMessage implements ThingMessage {
         return this;
     }
 
+    private Map<String, Object> safeGetHeader() {
+        return headers == null ? headers = new ConcurrentHashMap<>() : headers;
+    }
+
+    public T messageId(String messageId){
+        this.setMessageId(messageId);
+        return castSelf();
+    }
+
+    @SuppressWarnings("all")
+    protected T castSelf(){
+        return (T)this;
+    }
+
     @Override
     public ThingMessage removeHeader(String header) {
         if (this.headers != null) {
@@ -64,6 +91,11 @@ public abstract class CommonThingMessage implements ThingMessage {
         JSONObject json = FastBeanCopier.copy(this, new JSONObject());
         json.put("messageType", getMessageType().name());
         return json;
+    }
+
+    @Override
+    public void computeHeader(String key, BiFunction<String, Object, Object> computer) {
+        safeGetHeader().compute(key, computer);
     }
 
     @Override

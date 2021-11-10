@@ -1,12 +1,13 @@
 package org.jetlinks.core.device;
 
 
-import org.jetlinks.core.Configurable;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.Value;
 import org.jetlinks.core.Values;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.things.Thing;
+import org.jetlinks.core.things.ThingType;
 import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
@@ -19,7 +20,12 @@ import java.util.stream.Collectors;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface DeviceOperator extends Configurable {
+public interface DeviceOperator extends Thing {
+
+    @Override
+    default ThingType getType() {
+        return DeviceThingType.device;
+    }
 
     /**
      * @return 设备ID
@@ -205,4 +211,9 @@ public interface DeviceOperator extends Configurable {
      * @return 获取设备对应的产品操作接口
      */
     Mono<DeviceProductOperator> getProduct();
+
+    @Override
+    default Mono<DeviceProductOperator> getTemplate() {
+        return getProduct();
+    }
 }

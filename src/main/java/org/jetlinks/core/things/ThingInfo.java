@@ -15,9 +15,13 @@ import java.util.Map;
 public class ThingInfo {
     private String id;
 
+    private String templateId;
+
     private String name;
 
     private String metadata;
+
+    private Long version;
 
     private Map<String, Object> configuration;
 

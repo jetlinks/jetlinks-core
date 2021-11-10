@@ -21,7 +21,9 @@ import java.util.List;
  */
 @Getter
 @Setter
-public class ReadPropertyMessage extends CommonDeviceMessage implements RepayableDeviceMessage<ReadPropertyMessageReply> {
+public class ReadPropertyMessage extends CommonDeviceMessage implements
+        RepayableDeviceMessage<ReadPropertyMessageReply>,
+        ReadThingPropertyMessage<ReadPropertyMessageReply> {
 
     /**
      * 要读取的属性列表,协议包可根据实际情况处理此参数,
@@ -35,7 +37,7 @@ public class ReadPropertyMessage extends CommonDeviceMessage implements Repayabl
     }
 
     public ReadPropertyMessage addProperties(String... properties) {
-       return addProperties(Arrays.asList(properties));
+        return addProperties(Arrays.asList(properties));
     }
 
     @Override

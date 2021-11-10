@@ -1,5 +1,6 @@
 package org.jetlinks.core.message;
 
+import org.jetlinks.core.device.DeviceThingType;
 import org.jetlinks.core.metadata.Jsonable;
 
 /**
@@ -14,6 +15,10 @@ public interface DeviceMessage extends ThingMessage, Jsonable {
 
     default String getThingId() {
         return getDeviceId();
+    }
+
+    default String getThingType() {
+        return DeviceThingType.device.getId();
     }
 
     @Override

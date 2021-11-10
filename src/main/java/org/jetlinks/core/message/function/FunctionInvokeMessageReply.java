@@ -13,7 +13,7 @@ import org.jetlinks.core.message.MessageType;
  */
 @Getter
 @Setter
-public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<FunctionInvokeMessageReply> {
+public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<FunctionInvokeMessageReply> implements ThingFunctionInvokeMessageReply {
 
     private String functionId;
 

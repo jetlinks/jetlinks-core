@@ -9,6 +9,7 @@ import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import static org.jetlinks.core.message.MessageType.UNKNOWN;
@@ -137,6 +138,13 @@ public interface Message extends Jsonable, Serializable {
 
     default Optional<Object> getHeader(String header) {
         return Optional.ofNullable(getHeaderOrElse(header, null));
+    }
+
+    void computeHeader(String key, BiFunction<String, Object, Object> computer);
+
+    default <T> void computeHeader(HeaderKey<T> key, BiFunction<String, T, T> computer) {
+        computeHeader(key.getKey(),
+                      (str, old) -> computer.apply(str, old == null ? null : TypeUtils.cast(old, key.getType(), ParserConfig.global)));
     }
 
     default void validate() {
