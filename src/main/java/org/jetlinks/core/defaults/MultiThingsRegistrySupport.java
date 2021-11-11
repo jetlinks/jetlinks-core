@@ -20,12 +20,12 @@ public class MultiThingsRegistrySupport implements ThingsRegistrySupport {
         supports.remove(type.getId());
     }
 
-    protected ThingsRegistrySupport supportNotFound(ThingType thingType) {
-        throw new UnsupportedOperationException("unsupported thing type " + thingType.getId());
+    protected ThingsRegistrySupport supportNotFound(String thingType) {
+        throw new UnsupportedOperationException("unsupported thing type " + thingType);
     }
 
-    private <T, ARG> Mono<T> doWith(ThingType thingType, ARG arg, Function3<ThingsRegistrySupport, ThingType, ARG, Mono<T>> executor) {
-        ThingsRegistrySupport support = supports.get(thingType.getId());
+    private <T, ARG> Mono<T> doWith(String thingType, ARG arg, Function3<ThingsRegistrySupport, String, ARG, Mono<T>> executor) {
+        ThingsRegistrySupport support = supports.get(thingType);
         if (support == null) {
             support = supportNotFound(thingType);
         }
@@ -33,43 +33,43 @@ public class MultiThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public final Mono<Thing> getThing(@Nonnull ThingType thingType,
+    public final Mono<Thing> getThing(@Nonnull String thingType,
                                       @Nonnull String thingId) {
         return doWith(thingType, thingId, ThingsRegistrySupport::getThing);
     }
 
     @Override
-    public final Mono<ThingTemplate> getTemplate(@Nonnull ThingType thingType,
+    public final Mono<ThingTemplate> getTemplate(@Nonnull String thingType,
                                                  @Nonnull String templateId) {
         return doWith(thingType, templateId, ThingsRegistrySupport::getTemplate);
     }
 
     @Override
-    public final Mono<Thing> register(@Nonnull ThingType thingType,
+    public final Mono<Thing> register(@Nonnull String thingType,
                                       @Nonnull ThingInfo info) {
         return doWith(thingType, info, ThingsRegistrySupport::register);
     }
 
     @Override
-    public final Mono<Void> unregisterThing(@Nonnull ThingType thingType,
+    public final Mono<Void> unregisterThing(@Nonnull String thingType,
                                             @Nonnull String thingId) {
         return doWith(thingType, thingId, ThingsRegistrySupport::unregisterThing);
     }
 
     @Override
-    public final Mono<ThingTemplate> register(@Nonnull ThingType thingType,
+    public final Mono<ThingTemplate> register(@Nonnull String thingType,
                                               @Nonnull ThingTemplateInfo templateInfo) {
         return doWith(thingType, templateInfo, ThingsRegistrySupport::register);
     }
 
     @Override
-    public final Mono<Void> unregisterTemplate(@Nonnull ThingType thingType,
+    public final Mono<Void> unregisterTemplate(@Nonnull String thingType,
                                                @Nonnull String templateId) {
         return doWith(thingType, templateId, ThingsRegistrySupport::unregisterTemplate);
     }
 
     @Override
-    public final boolean isSupported(ThingType thingType) {
-        return supports.containsKey(thingType.getId());
+    public boolean isSupported(String thingType) {
+        return supports.containsKey(thingType);
     }
 }

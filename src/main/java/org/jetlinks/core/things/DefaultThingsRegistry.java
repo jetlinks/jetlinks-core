@@ -28,9 +28,9 @@ public class DefaultThingsRegistry implements ThingsRegistry {
         return () -> supports.remove(support);
     }
 
-    protected <ARG, R> R findSupport(ThingType thingType,
+    protected <ARG, R> R findSupport(String thingType,
                                      ARG arg,
-                                     Function3<ThingsRegistrySupport, ThingType, ARG, R> computer,
+                                     Function3<ThingsRegistrySupport, String, ARG, R> computer,
                                      Supplier<R> defaultGetter) {
         for (ThingsRegistrySupport support : supports) {
             if (support.isSupported(thingType)) {
@@ -41,32 +41,32 @@ public class DefaultThingsRegistry implements ThingsRegistry {
     }
 
     @Override
-    public Mono<Thing> getThing(@Nonnull ThingType thingType, @Nonnull String thingId) {
+    public Mono<Thing> getThing(@Nonnull String thingType, @Nonnull String thingId) {
         return findSupport(thingType, thingId, ThingsRegistrySupport::getThing, Mono::empty);
     }
 
     @Override
-    public Mono<ThingTemplate> getTemplate(@Nonnull ThingType thingType, @Nonnull String templateId) {
+    public Mono<ThingTemplate> getTemplate(@Nonnull String thingType, @Nonnull String templateId) {
         return findSupport(thingType, templateId, ThingsRegistrySupport::getTemplate, Mono::empty);
     }
 
     @Override
-    public Mono<Thing> register(@Nonnull ThingType thingType, @Nonnull ThingInfo info) {
+    public Mono<Thing> register(@Nonnull String thingType, @Nonnull ThingInfo info) {
         return findSupport(thingType, info, ThingsRegistrySupport::register, Mono::empty);
     }
 
     @Override
-    public Mono<Void> unregisterThing(@Nonnull ThingType thingType, @Nonnull String thingId) {
+    public Mono<Void> unregisterThing(@Nonnull String thingType, @Nonnull String thingId) {
         return findSupport(thingType, thingId, ThingsRegistrySupport::unregisterThing, Mono::empty);
     }
 
     @Override
-    public Mono<ThingTemplate> register(@Nonnull ThingType thingType, @Nonnull ThingTemplateInfo templateInfo) {
+    public Mono<ThingTemplate> register(@Nonnull String thingType, @Nonnull ThingTemplateInfo templateInfo) {
         return findSupport(thingType, templateInfo, ThingsRegistrySupport::register, Mono::empty);
     }
 
     @Override
-    public Mono<Void> unregisterTemplate(@Nonnull ThingType thingType, @Nonnull String thingId) {
+    public Mono<Void> unregisterTemplate(@Nonnull String thingType, @Nonnull String thingId) {
         return findSupport(thingType, thingId, ThingsRegistrySupport::unregisterTemplate, Mono::empty);
     }
 }

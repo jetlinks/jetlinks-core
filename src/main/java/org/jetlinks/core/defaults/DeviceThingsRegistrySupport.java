@@ -15,14 +15,14 @@ public class DeviceThingsRegistrySupport implements ThingsRegistrySupport {
 
     private final DeviceRegistry registry;
 
-    public void checkThingType(ThingType type) {
-        if (!DeviceThingType.device.isSameType(type)) {
-            throw new UnsupportedOperationException("unsupported thing type:" + type.getId());
+    public void checkThingType(String type) {
+        if (!DeviceThingType.device.getId().equals(type)) {
+            throw new UnsupportedOperationException("unsupported thing type:" + type);
         }
     }
 
     @Override
-    public Mono<Thing> getThing(@Nonnull ThingType thingType, @Nonnull String thingId) {
+    public Mono<Thing> getThing(@Nonnull String thingType, @Nonnull String thingId) {
         checkThingType(thingType);
         return registry
                 .getDevice(thingId)
@@ -30,14 +30,14 @@ public class DeviceThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public Mono<ThingTemplate> getTemplate(@Nonnull ThingType thingType, @Nonnull String templateId) {
+    public Mono<ThingTemplate> getTemplate(@Nonnull String thingType, @Nonnull String templateId) {
         return registry
                 .getProduct(templateId)
                 .cast(ThingTemplate.class);
     }
 
     @Override
-    public Mono<Thing> register(@Nonnull ThingType thingType, @Nonnull ThingInfo info) {
+    public Mono<Thing> register(@Nonnull String thingType, @Nonnull ThingInfo info) {
         checkThingType(thingType);
 
         return registry
@@ -51,13 +51,13 @@ public class DeviceThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public Mono<Void> unregisterThing(@Nonnull ThingType thingType, @Nonnull String thingId) {
+    public Mono<Void> unregisterThing(@Nonnull String thingType, @Nonnull String thingId) {
         checkThingType(thingType);
         return registry.unregisterDevice(thingId);
     }
 
     @Override
-    public Mono<ThingTemplate> register(@Nonnull ThingType thingType, @Nonnull ThingTemplateInfo templateInfo) {
+    public Mono<ThingTemplate> register(@Nonnull String thingType, @Nonnull ThingTemplateInfo templateInfo) {
         checkThingType(thingType);
         return registry
                 .register(ProductInfo.builder()
@@ -69,13 +69,13 @@ public class DeviceThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public Mono<Void> unregisterTemplate(@Nonnull ThingType thingType, @Nonnull String templateId) {
+    public Mono<Void> unregisterTemplate(@Nonnull String thingType, @Nonnull String templateId) {
         checkThingType(thingType);
         return registry.unregisterProduct(templateId);
     }
 
     @Override
-    public boolean isSupported(ThingType thingType) {
-        return DeviceThingType.device.isSameType(thingType);
+    public boolean isSupported(String thingType) {
+        return DeviceThingType.device.getId().equals(thingType);
     }
 }

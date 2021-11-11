@@ -45,18 +45,18 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public boolean isSupported(ThingType thingType) {
-        return this.thingType.isSameType(thingType);
+    public boolean isSupported(String thingType) {
+        return this.thingType.getId().equals(thingType);
     }
 
-    public void checkThingType(ThingType thingType) {
+    public void checkThingType(String thingType) {
         if (!isSupported(thingType)) {
-            throw new UnsupportedOperationException("unsupported thing type : " + thingType.getId());
+            throw new UnsupportedOperationException("unsupported thing type : " + thingType);
         }
     }
 
     @Override
-    public Mono<Thing> getThing(@Nonnull ThingType thingType, @Nonnull String thingId) {
+    public Mono<Thing> getThing(@Nonnull String thingType, @Nonnull String thingId) {
         checkThingType(thingType);
         return registryInfo
                 .flatMap(storage -> storage.getConfig(thingId))
@@ -73,7 +73,7 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public Mono<Thing> register(@Nonnull ThingType thingType, @Nonnull ThingInfo info) {
+    public Mono<Thing> register(@Nonnull String thingType, @Nonnull ThingInfo info) {
         checkThingType(thingType);
         DefaultThing thing = createThing(info.getId());
 
@@ -97,7 +97,7 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public Mono<ThingTemplate> getTemplate(@Nonnull ThingType thingType, @Nonnull String templateId) {
+    public Mono<ThingTemplate> getTemplate(@Nonnull String thingType, @Nonnull String templateId) {
         checkThingType(thingType);
         return templateRegistryInfo
                 .flatMap(storage -> storage.getConfig(templateId))
@@ -106,7 +106,7 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public Mono<Void> unregisterThing(@Nonnull ThingType thingType, @Nonnull String thingId) {
+    public Mono<Void> unregisterThing(@Nonnull String thingType, @Nonnull String thingId) {
         checkThingType(thingType);
         return Flux
                 .merge(
@@ -122,7 +122,7 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public Mono<ThingTemplate> register(@Nonnull ThingType thingType, @Nonnull ThingTemplateInfo info) {
+    public Mono<ThingTemplate> register(@Nonnull String thingType, @Nonnull ThingTemplateInfo info) {
         checkThingType(thingType);
         DefaultThingTemplate thing = createTemplate(info.getId());
 
@@ -141,7 +141,7 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
     }
 
     @Override
-    public Mono<Void> unregisterTemplate(@Nonnull ThingType thingType, @Nonnull String thingId) {
+    public Mono<Void> unregisterTemplate(@Nonnull String thingType, @Nonnull String thingId) {
         checkThingType(thingType);
         return Flux
                 .merge(
