@@ -1,6 +1,9 @@
 package org.jetlinks.core.defaults;
 
+import com.alibaba.fastjson.JSONObject;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.ProtocolSupports;
 import org.jetlinks.core.Value;
@@ -12,11 +15,14 @@ import org.jetlinks.core.config.StorageConfigurable;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
+import org.jetlinks.core.exception.ProductNotActivatedException;
 import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.message.state.DeviceStateCheckMessage;
 import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.things.ThingMetadata;
+import org.jetlinks.core.things.ThingRpcSupport;
 import org.jetlinks.core.utils.IdUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
@@ -39,6 +45,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private static final AtomicLongFieldUpdater<DefaultDeviceOperator> METADATA_TIME_UPDATER =
             AtomicLongFieldUpdater.newUpdater(DefaultDeviceOperator.class, "lastMetadataTime");
 
+    @Getter
     private final String id;
 
     private final DeviceOperationBroker handler;
@@ -54,6 +61,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private final Mono<DeviceMetadata> metadataMono;
 
     private final DeviceStateChecker stateChecker;
+
+    private final Mono<DeviceProductOperator> parent;
 
     private volatile long lastMetadataTime = -1;
 
@@ -89,9 +98,12 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         this.handler = handler;
         this.messageSender = new DefaultDeviceMessageSender(handler, this, registry, interceptor);
         this.storageMono = storageManager.getStorage("device:" + id);
-
+        this.parent = getReactiveStorage()
+                .flatMap(store -> store.getConfig(productId.getKey()))
+                .map(Value::asString)
+                .flatMap(registry::getProduct);
 //        this.metadataMono = getParent().flatMap(DeviceProductOperator::getMetadata);
-        this.protocolSupportMono = getProduct().flatMap(DeviceProductOperator::getProtocol);
+        this.protocolSupportMono = this.parent.flatMap(DeviceProductOperator::getProtocol);
         this.stateChecker = deviceStateChecker;
         this.metadataMono = this
                 //获取最后更新物模型的时间
@@ -116,8 +128,17 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 })
                 //如果上游为空,则使用产品的物模型
                 .switchIfEmpty(this.getParent()
-                                   .flatMap(DeviceProductOperator::getMetadata));
+                                   .switchIfEmpty(Mono.defer(this::onProductNonexistent))
+                                   .flatMap(DeviceProductOperator::getMetadata)
+                );
 
+    }
+
+    private Mono<DeviceProductOperator> onProductNonexistent() {
+        return getReactiveStorage()
+                .flatMap(store -> store.getConfig(productId.getKey()))
+                .map(Value::asString)
+                .flatMap(productId -> Mono.error(new ProductNotActivatedException(productId)));
     }
 
     @Override
@@ -178,7 +199,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                             .orElse(null);
 
                     if (getDeviceId().equals(parentGatewayId)) {
-                        log.warn("设备[{}]存在循环依赖", parentGatewayId);
+                        log.warn(LocaleUtils.resolveMessage("validation.parent_id_and_id_can_not_be_same", parentGatewayId));
                         return Mono.just(state);
                     }
                     if (isSelfManageState) {
@@ -232,7 +253,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                     .orElse(null);
 
                             if (getDeviceId().equals(parentGatewayId)) {
-                                log.warn("设备[{}]存在循环依赖", parentGatewayId);
+                                log.warn(LocaleUtils.resolveMessage("validation.parent_id_and_id_can_not_be_same", parentGatewayId));
                                 return Mono.just(state);
                             }
                             boolean isSelfManageState = values.getValue(selfManageState).orElse(false);
@@ -261,7 +282,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                                             return ((DeviceStateCheckMessageReply) msg.getChildDeviceMessage())
                                                                     .getState();
                                                         }
-                                                        log.warn("子设备状态检查返回消息错误{}", msg);
+                                                        log.warn("State check return error {}", msg);
                                                         //网关设备在线,只是返回了错误的消息,所以也认为网关设备在线
                                                         return DeviceState.online;
                                                     })
@@ -409,10 +430,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<DeviceProductOperator> getParent() {
-        return getReactiveStorage()
-                .flatMap(store -> store.getConfig(productId.getKey()))
-                .map(Value::asString)
-                .flatMap(registry::getProduct);
+        return parent;
     }
 
     @Override
@@ -448,6 +466,17 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     }
 
     @Override
+    public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
+        if (metadata instanceof DeviceMetadata) {
+            return getProtocol()
+                    .flatMap(protocol -> protocol.getMetadataCodec().encode((DeviceMetadata) metadata))
+                    .flatMap(this::updateMetadata);
+        }
+        // FIXME: 2021/11/3
+        return Mono.just(false);
+    }
+
+    @Override
     public Mono<Boolean> setConfigs(Map<String, Object> conf) {
         Map<String, Object> configs = new HashMap<>(conf);
         if (conf.containsKey(metadata.getKey())) {
@@ -473,5 +502,27 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 .flatMap(deviceStateChecker -> deviceStateChecker.checkState(operator))
                 .switchIfEmpty(operator.doCheckState()) //默认的检查
                 ;
+    }
+
+    @Override
+    public ThingRpcSupport rpc() {
+        return (msg) -> messageSender.send(convertToDeviceMessage(msg));
+    }
+
+    private DeviceMessage convertToDeviceMessage(ThingMessage message) {
+        if (message instanceof DeviceMessage) {
+            return ((DeviceMessage) message);
+        }
+        //将非DeviceMessage转为DeviceMessage
+
+        JSONObject msg = message.toJson();
+        msg.remove("thingId");
+        msg.remove("thingType");
+        msg.put("deviceId", message.getThingId());
+        return MessageType
+                .convertMessage(msg)
+                .filter(DeviceMessage.class::isInstance)
+                .map(DeviceMessage.class::cast)
+                .orElseThrow(() -> new UnsupportedOperationException("unsupported message type " + message.getMessageType()));
     }
 }

@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.FunctionInvokeMessageSender;
 import org.jetlinks.core.message.Headers;
+import org.jetlinks.core.exception.MetadataUndefinedException;
 import org.jetlinks.core.message.exception.FunctionUndefinedException;
 import org.jetlinks.core.message.exception.IllegalParameterException;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
@@ -73,13 +74,17 @@ public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessage
 
         return operator
                 .getMetadata()
-                .flatMap(metadata -> Mono.justOrEmpty(metadata.getFunction(function)))
-                .switchIfEmpty(Mono.error(() -> new FunctionUndefinedException(function, "功能[" + function + "]未定义")))
+                .switchIfEmpty(Mono.error(() -> new MetadataUndefinedException(operator.getDeviceId())))
+                .flatMap(metadata -> Mono
+                        .justOrEmpty(metadata.getFunction(function))
+                        .switchIfEmpty(Mono.error(() -> new FunctionUndefinedException(function)))
+                )
                 .doOnNext(functionMetadata -> {
                     List<PropertyMetadata> metadataInputs = functionMetadata.getInputs();
                     List<FunctionParameter> inputs = message.getInputs();
 
-                    Map<String, FunctionParameter> properties = inputs.stream()
+                    Map<String, FunctionParameter> properties = inputs
+                            .stream()
                             .collect(Collectors.toMap(FunctionParameter::getName, Function.identity(), (t1, t2) -> t1));
                     for (PropertyMetadata metadata : metadataInputs) {
                         FunctionParameter parameter = properties.get(metadata.getId());

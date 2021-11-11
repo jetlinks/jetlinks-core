@@ -21,36 +21,46 @@ public class InMemoryConfigStorage implements ConfigStorage {
     @Override
     public Mono<Value> getConfig(String key) {
         return Mono.justOrEmpty(Optional.of(key).map(storage::get))
-                .map(Value::simple)
-                .cache();
+                   .map(Value::simple)
+                   .cache();
     }
 
 
     @Override
     public Mono<Values> getConfigs(Collection<String> key) {
         return Flux.fromIterable(key)
-                .filter(storage::containsKey)
-                .map((k) -> Tuples.of(k, storage.get(k)))
-                .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2))
-                .map(Values::of)
+                   .filter(storage::containsKey)
+                   .map((k) -> Tuples.of(k, storage.get(k)))
+                   .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2))
+                   .map(Values::of)
                 ;
     }
 
     @Override
     public Mono<Boolean> setConfigs(Map<String, Object> values) {
-        return Mono.fromRunnable(() -> storage.putAll(values)).thenReturn(true);
+        values.forEach(this::doSetConfig);
+        return Mono.just(true);
+    }
+
+
+    public void doSetConfig(String key, Object value) {
+        if (key == null || value == null) {
+            return;
+        }
+        storage.put(key, value);
     }
 
     @Override
     public Mono<Boolean> setConfig(String key, Object value) {
-        return Mono.fromRunnable(() -> storage.put(key, value)).thenReturn(true);
+        this.doSetConfig(key, value);
+        return Mono.just(true);
     }
 
     @Override
     public Mono<Boolean> remove(String key) {
         return Mono.justOrEmpty(key)
-                .map(storage::remove)
-                .then().thenReturn(true);
+                   .doOnNext(storage::remove)
+                   .thenReturn(true);
     }
 
     @Override
@@ -62,8 +72,9 @@ public class InMemoryConfigStorage implements ConfigStorage {
     @Override
     public Mono<Boolean> remove(Collection<String> key) {
         return Flux.fromIterable(key)
-                .doOnNext(storage::remove)
-                .then().thenReturn(true);
+                   .doOnNext(storage::remove)
+                   .then()
+                   .thenReturn(true);
     }
 
     @Override

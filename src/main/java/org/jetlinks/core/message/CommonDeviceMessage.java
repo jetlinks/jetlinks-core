@@ -1,12 +1,15 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 /**
  * @author zhouhao
@@ -28,23 +31,49 @@ public class CommonDeviceMessage implements DeviceMessage {
     private long timestamp = System.currentTimeMillis();
 
     @Override
+    @JsonIgnore
+    @JSONField(serialize = false)
+    public final String getThingId() {
+        return getDeviceId();
+    }
+
+    @Override
+    @JsonIgnore
+    @JSONField(serialize = false)
+    public final String getThingType() {
+        return DeviceMessage.super.getThingType();
+    }
+
+    @Override
+    public ThingMessage messageId(String messageId) {
+        setMessageId(messageId);
+        return this;
+    }
+
+    @Override
+    public ThingMessage thingId(String thingType, String thingId) {
+        this.setDeviceId(thingId);
+        return this;
+    }
+
+    private Map<String, Object> safeGetHeader() {
+        return headers == null ? headers = new ConcurrentHashMap<>() : headers;
+    }
+
+    @Override
     public synchronized DeviceMessage addHeader(String header, Object value) {
-        if (headers == null) {
-            this.headers = new ConcurrentHashMap<>();
-        }
+
         if (header != null && value != null) {
-            this.headers.put(header, value);
+            safeGetHeader().put(header, value);
         }
         return this;
     }
 
     @Override
     public synchronized DeviceMessage addHeaderIfAbsent(String header, Object value) {
-        if (headers == null) {
-            this.headers = new ConcurrentHashMap<>();
-        }
+
         if (header != null && value != null) {
-            this.headers.putIfAbsent(header, value);
+            safeGetHeader().putIfAbsent(header, value);
         }
         return this;
     }
@@ -55,6 +84,11 @@ public class CommonDeviceMessage implements DeviceMessage {
             this.headers.remove(header);
         }
         return this;
+    }
+
+    @Override
+    public void computeHeader(String key, BiFunction<String, Object, Object> computer) {
+        safeGetHeader().compute(key, computer);
     }
 
     @Override

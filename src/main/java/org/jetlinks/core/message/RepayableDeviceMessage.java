@@ -9,7 +9,7 @@ package org.jetlinks.core.message;
  * @see org.jetlinks.core.message.function.FunctionInvokeMessage
  * @since 1.0.0
  */
-public interface RepayableDeviceMessage<R extends DeviceMessageReply> extends DeviceMessage {
+public interface RepayableDeviceMessage<R extends DeviceMessageReply> extends DeviceMessage, RepayableThingMessage<R> {
 
     /**
      * 新建一个回复对象

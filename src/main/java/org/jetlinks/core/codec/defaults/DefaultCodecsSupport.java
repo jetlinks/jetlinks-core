@@ -10,6 +10,7 @@ import org.jetlinks.core.event.Subscription;
 import org.jetlinks.core.event.TopicPayload;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.Message;
+import org.jetlinks.core.things.ThingProperty;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 
@@ -48,7 +49,7 @@ public class DefaultCodecsSupport implements CodecsSupport {
         staticCodec.put(void.class, VoidCodec.INSTANCE);
 
         staticCodec.put(DeviceMessage.class, DeviceMessageCodec.INSTANCE);
-        staticCodec.put(Message.class, DeviceMessageCodec.INSTANCE);
+        staticCodec.put(Message.class, MessageCodec.INSTANCE);
 
         {
             JsonCodec<Map> codec = JsonCodec.of(Map.class);
@@ -65,6 +66,8 @@ public class DefaultCodecsSupport implements CodecsSupport {
         staticCodec.put(JSONObject.class, FastJsonCodec.INSTANCE);
 
         staticCodec.put(JSONArray.class, FastJsonArrayCodec.INSTANCE);
+
+        staticCodec.put(ThingProperty.class,ThingPropertyCodec.INSTANCE);
 
     }
 
@@ -89,7 +92,7 @@ public class DefaultCodecsSupport implements CodecsSupport {
             } else if (ByteBuf.class.isAssignableFrom(refType)) {
                 codec = (Codec<T>) ByteBufCodec.INSTANCE;
             } else if (Message.class.isAssignableFrom(refType)) {
-                codec = (Codec<T>) DeviceMessageCodec.INSTANCE;
+                codec = (Codec<T>) MessageCodec.INSTANCE;
             }
         }
 

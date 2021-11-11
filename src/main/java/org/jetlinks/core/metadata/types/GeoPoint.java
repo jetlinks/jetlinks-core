@@ -25,6 +25,9 @@ public class GeoPoint implements Serializable {
     //纬度
     private double lat;
 
+    public static GeoPoint of(double lon,double lat){
+        return new GeoPoint(lon,lat);
+    }
 
     public static GeoPoint of(Object val) {
         if (val == null) {

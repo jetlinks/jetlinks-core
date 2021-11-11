@@ -1,5 +1,8 @@
 package org.jetlinks.core.utils;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 public class NumberUtils {
 
     /**
@@ -22,5 +25,40 @@ public class NumberUtils {
             value /= Math.pow(10, Math.abs(digDiff));
         }
         return value;
+    }
+
+    /**
+     * 获取数字的小数位数
+     *
+     * @param number 数字
+     * @return 位数
+     */
+    public static int numberOfPlace(Number number) {
+        if (isIntNumber(number)) {
+            return 0;
+        }
+        BigDecimal decimal;
+        if (number instanceof BigDecimal) {
+            decimal = ((BigDecimal) number);
+        } else {
+            decimal = new BigDecimal(String.valueOf(number));
+        }
+        String str = decimal.stripTrailingZeros().toPlainString();
+        int index = str.indexOf(".");
+        return index < 0 ? 0 : str.length() - index - 1;
+    }
+
+    /**
+     * 判断是否为整型数字
+     *
+     * @param number 数字
+     * @return 是否为整型数字
+     */
+    public static boolean isIntNumber(Number number) {
+        return number instanceof Integer ||
+                number instanceof Long ||
+                number instanceof Byte ||
+                number instanceof Short ||
+                number instanceof BigInteger;
     }
 }

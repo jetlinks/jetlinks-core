@@ -5,7 +5,10 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
+import org.jetlinks.core.things.ThingProperty;
 
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -16,7 +19,7 @@ import java.util.Map;
  */
 @Getter
 @Setter
-public class ReportPropertyMessage extends CommonDeviceMessage implements PropertyMessage {
+public class ReportPropertyMessage extends CommonDeviceMessage implements ThingReportPropertyMessage {
 
     /**
      * 属性值信息,key为物模型中的属性ID,value为物模型对应的类型值.
@@ -47,7 +50,18 @@ public class ReportPropertyMessage extends CommonDeviceMessage implements Proper
         this.properties = properties;
         return this;
     }
-
+    @Override
+    public ReportPropertyMessage success(List<ThingProperty> properties) {
+        this.properties = new LinkedHashMap<>();
+        this.propertySourceTimes = new LinkedHashMap<>();
+        this.propertyStates = new LinkedHashMap<>();
+        for (ThingProperty property : properties) {
+            this.properties.put(property.getProperty(), property.getValue());
+            this.propertySourceTimes.put(property.getProperty(), property.getTimestamp());
+            this.propertyStates.put(property.getProperty(), property.getState());
+        }
+        return this;
+    }
     @Override
     @SuppressWarnings("all")
     public void fromJson(JSONObject jsonObject) {

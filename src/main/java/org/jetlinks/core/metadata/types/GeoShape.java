@@ -1,11 +1,15 @@
 package org.jetlinks.core.metadata.types;
 
 import com.alibaba.fastjson.JSON;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * 地理地形
@@ -15,6 +19,8 @@ import java.util.*;
  */
 @Getter
 @Setter
+@AllArgsConstructor(staticName = "of")
+@NoArgsConstructor
 public class GeoShape implements Serializable {
 
     //类型
@@ -22,6 +28,76 @@ public class GeoShape implements Serializable {
 
     //坐标,类型不同,坐标维度不同
     private List<Object> coordinates;
+
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("type", type.name());
+        if (type == Type.GeometryCollection) {
+            map.put("geometries", coordinates);
+        } else {
+            map.put("coordinates", coordinates);
+        }
+        return map;
+    }
+
+    @Override
+    public String toString() {
+        return JSON.toJSONString(toMap());
+    }
+
+    public static GeoShape point(GeoPoint point) {
+        return GeoShape.of(Type.Point, Arrays.asList(point.getLon(), point.getLat()));
+    }
+
+    public static GeoShape multiPoint(GeoPoint... points) {
+        return GeoShape.of(Type.MultiPoint, toPointList(Arrays.asList(points)));
+    }
+
+    public static GeoShape lineString(GeoPoint... points) {
+        return GeoShape.of(Type.LineString, toPointList(Arrays.asList(points)));
+    }
+
+    @SafeVarargs
+    public static GeoShape multiLineString(List<GeoPoint>... points) {
+        return GeoShape.of(Type.MultiLineString, Arrays
+                .stream(points)
+                .map(GeoShape::toPointList)
+                .collect(Collectors.toList()));
+    }
+
+    @SafeVarargs
+    public static GeoShape polygon(List<GeoPoint>... points) {
+        return GeoShape.of(Type.Polygon, Arrays
+                .stream(points)
+                .map(GeoShape::toPointList)
+                .collect(Collectors.toList()));
+    }
+
+    @SafeVarargs
+    public static GeoShape multiPolygon(List<List<GeoPoint>>... points) {
+        return GeoShape
+                .of(Type.MultiPolygon, Arrays.stream(points)
+                                             .map(list -> list
+                                                     .stream()
+                                                     .map(GeoShape::toPointList)
+                                                     .collect(Collectors.toList())
+                                             )
+                                             .collect(Collectors.toList()));
+    }
+
+    public static GeoShape collection(GeoShape... shapes) {
+        return GeoShape.of(Type.GeometryCollection, Arrays
+                .stream(shapes)
+                .map(GeoShape::toMap)
+                .collect(Collectors.toList()));
+    }
+
+    private static List<Object> toPointList(Iterable<GeoPoint> points) {
+
+        return StreamSupport.stream(points.spliterator(), false)
+                            .map(p -> Arrays.asList(p.getLon(), p.getLat()))
+                            .collect(Collectors.toList());
+    }
 
     public enum Type {
         Point,//点

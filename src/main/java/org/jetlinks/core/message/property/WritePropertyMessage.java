@@ -19,7 +19,9 @@ import java.util.Map;
  */
 @Getter
 @Setter
-public class WritePropertyMessage extends CommonDeviceMessage implements RepayableDeviceMessage<WritePropertyMessageReply> {
+public class WritePropertyMessage extends CommonDeviceMessage
+        implements RepayableDeviceMessage<WritePropertyMessageReply>,
+        WriteThingPropertyMessage<WritePropertyMessageReply> {
 
     /**
      * 要修改的属性，key 为物模型中对应的属性ID,value为属性值

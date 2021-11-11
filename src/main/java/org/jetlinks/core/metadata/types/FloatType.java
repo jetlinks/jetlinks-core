@@ -3,40 +3,23 @@ package org.jetlinks.core.metadata.types;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-
-import static java.math.BigDecimal.ROUND_HALF_UP;
-
 @Getter
 @Setter
 @SuppressWarnings("all")
 public class FloatType extends NumberType<Float> {
     public static final String ID = "float";
-
-    private Integer scale;
     public static final FloatType GLOBAL = new FloatType();
 
-    @Override
-    public Object format(Object value) {
-        Number val = convertNumber(value);
-        if (val == null) {
-            return super.format(value);
-        }
-        int scale = this.scale == null ? 2 : this.scale;
-        String scaled = new BigDecimal(val.toString())
-                .setScale(scale, ROUND_HALF_UP)
-                .toString();
-        return super.format(scaled);
-    }
+    private static final int SCALE = Integer.getInteger("jetlinks.type.float.scale", 2);
 
-    public FloatType scale(Integer scale) {
-        this.scale = scale;
-        return this;
+    @Override
+    protected Float castNumber(Number number) {
+        return number.floatValue();
     }
 
     @Override
-    public Float convert(Object value) {
-        return super.convertNumber(value, Number::floatValue);
+    public int defaultScale() {
+        return SCALE;
     }
 
     @Override

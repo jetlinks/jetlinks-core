@@ -11,6 +11,7 @@ import org.jetlinks.core.device.DeviceConfigKey;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.device.DeviceProductOperator;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.things.ThingMetadata;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -94,6 +95,17 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
     public Mono<DeviceMetadata> getMetadata() {
         return this.metadataMono;
 
+    }
+
+    @Override
+    public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
+        if(metadata instanceof DeviceMetadata) {
+            return getProtocol()
+                    .flatMap(protocol -> protocol.getMetadataCodec().encode((DeviceMetadata)metadata))
+                    .flatMap(this::updateMetadata);
+        }
+        // FIXME: 2021/11/3
+        return Mono.just(false);
     }
 
     @Override

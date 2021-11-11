@@ -25,6 +25,7 @@ import java.util.function.Supplier;
 @Setter
 @Slf4j
 public class NativePayload<T> extends AbstractReferenceCounted implements Payload {
+    public static boolean POOL_ENABLED = Boolean.parseBoolean(System.getProperty("jetlinks.eventbus.payload.pool.enabled", "true"));
 
     private T nativeObject;
 
@@ -34,7 +35,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
 
     private ByteBuf buf;
 
-    private static Recycler<NativePayload> POOL = RecyclerUtils.newRecycler(NativePayload.class, NativePayload::new, 1);
+    private static final Recycler<NativePayload> POOL = RecyclerUtils.newRecycler(NativePayload.class, NativePayload::new, 1);
 
     private final io.netty.util.Recycler.Handle<NativePayload> handle;
 
@@ -50,7 +51,7 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
     public static <T> NativePayload<T> of(T nativeObject, Encoder<T> encoder) {
         NativePayload<T> payload;
         try {
-            payload = POOL.get();
+            payload = POOL_ENABLED ? POOL.get() : new NativePayload<>(null);
         } catch (Exception e) {
             payload = new NativePayload<>(null);
         }
@@ -230,11 +231,11 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
         return nativeObject == null ? "null" : nativeObject.toString();
     }
 
-    @Override
-    protected void finalize() throws Throwable {
-        if (refCnt() > 0) {
-            log.warn("payload {} was not release properly, release() was not called before it's garbage-collected. refCnt={}", nativeObject, refCnt());
-        }
-        super.finalize();
-    }
+//    @Override
+//    protected void finalize() throws Throwable {
+//        if (refCnt() > 0) {
+//            log.warn("payload {} was not release properly, release() was not called before it's garbage-collected. refCnt={}", nativeObject, refCnt());
+//        }
+//        super.finalize();
+//    }
 }

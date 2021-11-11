@@ -43,7 +43,7 @@ public interface DeviceDataManager {
      * @param propertyId 属性ID
      * @return 属性数据
      */
-    Mono<PropertyValue> getFistProperty(@Nonnull String deviceId,
+    Mono<PropertyValue> getFirstProperty(@Nonnull String deviceId,
                                         @Nonnull String propertyId);
 
     /**

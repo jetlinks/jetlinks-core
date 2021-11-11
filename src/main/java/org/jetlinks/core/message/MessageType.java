@@ -1,10 +1,13 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
-import lombok.AllArgsConstructor;
 import org.hswebframework.web.bean.FastBeanCopier;
+import org.jetlinks.core.device.DeviceThingType;
+import org.jetlinks.core.message.event.DefaultEventMessage;
 import org.jetlinks.core.message.event.EventMessage;
 import org.jetlinks.core.message.firmware.*;
+import org.jetlinks.core.message.function.DefaultFunctionInvokeMessage;
+import org.jetlinks.core.message.function.DefaultFunctionInvokeMessageReply;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.property.*;
@@ -17,26 +20,25 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-@AllArgsConstructor
 public enum MessageType {
 
     //上报设备属性
-    REPORT_PROPERTY(ReportPropertyMessage::new),
+    REPORT_PROPERTY(ReportPropertyMessage::new, DefaultReportPropertyMessage::new),
 
     //下行读写属性
-    READ_PROPERTY(ReadPropertyMessage::new),
-    WRITE_PROPERTY(WritePropertyMessage::new),
+    READ_PROPERTY(ReadPropertyMessage::new, DefaultReadPropertyMessage::new),
+    WRITE_PROPERTY(WritePropertyMessage::new, DefaultWritePropertyMessage::new),
     //上行读写属性回复
-    READ_PROPERTY_REPLY(ReadPropertyMessageReply::new),
-    WRITE_PROPERTY_REPLY(WritePropertyMessageReply::new),
+    READ_PROPERTY_REPLY(ReadPropertyMessageReply::new, DefaultReadPropertyMessageReply::new),
+    WRITE_PROPERTY_REPLY(WritePropertyMessageReply::new, DefaultWritePropertyMessageReply::new),
     //下行调用功能
-    INVOKE_FUNCTION(FunctionInvokeMessage::new) {
+    INVOKE_FUNCTION(FunctionInvokeMessage::new, DefaultFunctionInvokeMessage::new) {
         @Override
         public <T extends Message> T convert(Map<String, Object> map) {
             Object inputs = map.get("inputs");
             //处理以Map形式传入参数的场景
             if (inputs instanceof Map) {
-                Map<String,Object> newMap = new HashMap<>(map);
+                Map<String, Object> newMap = new HashMap<>(map);
                 @SuppressWarnings("unchecked")
                 Map<String, Object> inputMap = (Map<String, Object>) newMap.remove("inputs");
                 FunctionInvokeMessage message = super.convert(newMap);
@@ -47,9 +49,9 @@ public enum MessageType {
         }
     },
     //上行调用功能回复
-    INVOKE_FUNCTION_REPLY(FunctionInvokeMessageReply::new),
+    INVOKE_FUNCTION_REPLY(FunctionInvokeMessageReply::new, DefaultFunctionInvokeMessageReply::new),
     //事件消息
-    EVENT(EventMessage::new),
+    EVENT(EventMessage::new, DefaultEventMessage::new),
 
     //广播,暂未支持
     BROADCAST(DefaultBroadcastMessage::new),
@@ -160,7 +162,8 @@ public enum MessageType {
         }
     };
 
-    Supplier<? extends Message> newInstance;
+    final Supplier<? extends Message> defaultInstance;
+    final Supplier<? extends Message> thingInstance;
 
     private static final Map<String, MessageType> mapping;
 
@@ -172,14 +175,34 @@ public enum MessageType {
         }
     }
 
+    MessageType(Supplier<Message> defaultInstance) {
+        this(defaultInstance, null);
+    }
+
+    MessageType(Supplier<? extends Message> defaultInstance, Supplier<? extends ThingMessage> thingInstance) {
+        this.defaultInstance = defaultInstance;
+        this.thingInstance = thingInstance;
+    }
+
     @SuppressWarnings("all")
     public <T extends Message> T convert(Map<String, Object> map) {
-        if (newInstance != null) {
+        Supplier<? extends Message> supplier = defaultInstance;
+
+        if (defaultInstance != null) {
+            if (thingInstance != null) {
+                //不是设备
+                Object type = map.get("thingType");
+                if (type != null) {
+                    if (!DeviceThingType.device.name().equals(type)) {
+                        supplier = thingInstance;
+                    }
+                }
+            }
             try {
-                return (T) FastBeanCopier.copy(map, newInstance);
+                return (T) FastBeanCopier.copy(map, supplier);
             } catch (Throwable e) {
                 //fallback jsonobject
-                return (T) new JSONObject(map).toJavaObject(newInstance.get().getClass());
+                return (T) new JSONObject(map).toJavaObject(supplier.get().getClass());
             }
         }
         return null;
