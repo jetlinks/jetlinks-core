@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class UpdateTagMessage extends CommonDeviceMessage implements UpdateTingTagsMessage{
+public class DefaultUpdateTingTagsMessage extends CommonThingMessage<DefaultUpdateTingTagsMessage> implements UpdateTingTagsMessage {
 
     @Setter
     private Map<String, Object> tags;
@@ -16,7 +16,7 @@ public class UpdateTagMessage extends CommonDeviceMessage implements UpdateTingT
         return tags == null ? Collections.emptyMap() : tags;
     }
 
-    public UpdateTagMessage tag(String tag, Object value) {
+    public DefaultUpdateTingTagsMessage tag(String tag, Object value) {
         if (tags == null) {
             tags = new HashMap<>();
         }
@@ -24,7 +24,7 @@ public class UpdateTagMessage extends CommonDeviceMessage implements UpdateTingT
         return this;
     }
 
-    public UpdateTagMessage tags(Map<String, Object> tags) {
+    public DefaultUpdateTingTagsMessage tags(Map<String, Object> tags) {
         if (this.tags == null) {
             this.tags = tags;
             return this;

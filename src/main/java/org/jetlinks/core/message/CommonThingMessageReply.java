@@ -20,7 +20,7 @@ import java.util.function.BiFunction;
 @AllArgsConstructor
 @NoArgsConstructor
 @SuppressWarnings("all")
-public class CommonThingMessageReply<ME extends CommonThingMessageReply<ME>> implements ThingMessageReply {
+public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>> implements ThingMessageReply {
     private static final long serialVersionUID = -6849794470754667710L;
 
     private boolean success = true;
@@ -52,7 +52,7 @@ public class CommonThingMessageReply<ME extends CommonThingMessageReply<ME>> imp
     }
 
     @Override
-    public synchronized ME addHeaderIfAbsent(String header, Object value) {
+    public synchronized SELF addHeaderIfAbsent(String header, Object value) {
         if (header != null && value != null) {
             safeGetHeader().putIfAbsent(header, value);
         }
@@ -60,7 +60,7 @@ public class CommonThingMessageReply<ME extends CommonThingMessageReply<ME>> imp
     }
 
     @Override
-    public synchronized ME addHeader(String header, Object value) {
+    public synchronized SELF addHeader(String header, Object value) {
         if (header != null && value != null) {
             safeGetHeader().put(header, value);
         }
@@ -68,37 +68,37 @@ public class CommonThingMessageReply<ME extends CommonThingMessageReply<ME>> imp
     }
 
     @Override
-    public ME removeHeader(String header) {
+    public SELF removeHeader(String header) {
         if (headers != null) {
             this.headers.remove(header);
         }
         return castSelf();
     }
 
-    public ME code(String code) {
+    public SELF code(String code) {
         this.code = code;
 
         return castSelf();
     }
 
-    public ME message(String message) {
+    public SELF message(String message) {
         this.message = message;
 
         return castSelf();
     }
 
-    public ME thingId(String thingId) {
+    public SELF thingId(String thingId) {
         this.thingId = thingId;
         return castSelf();
     }
 
     @Override
-    public ME success() {
+    public SELF success() {
         success = true;
         return castSelf();
     }
 
-    public ME error(Throwable e) {
+    public SELF error(Throwable e) {
         success = false;
         if (e instanceof DeviceOperationException) {
             error(((DeviceOperationException) e).getCode());
@@ -113,7 +113,7 @@ public class CommonThingMessageReply<ME extends CommonThingMessageReply<ME>> imp
     }
 
     @Override
-    public ME error(ErrorCode errorCode) {
+    public SELF error(ErrorCode errorCode) {
         success = false;
         code = errorCode.name();
         message = errorCode.getText();
@@ -122,7 +122,7 @@ public class CommonThingMessageReply<ME extends CommonThingMessageReply<ME>> imp
     }
 
     @Override
-    public ME from(Message message) {
+    public SELF from(Message message) {
         this.messageId = message.getMessageId();
         if (message instanceof ThingMessage) {
             this.thingId = ((ThingMessage) message).getThingId();
@@ -132,14 +132,14 @@ public class CommonThingMessageReply<ME extends CommonThingMessageReply<ME>> imp
     }
 
     @Override
-    public ME messageId(String messageId) {
+    public SELF messageId(String messageId) {
         this.messageId = messageId;
         return castSelf();
     }
 
     @Override
-    public <T> ME addHeader(HeaderKey<T> header, T value) {
-        return (ME) ThingMessageReply.super.addHeader(header, value);
+    public <T> SELF addHeader(HeaderKey<T> header, T value) {
+        return (SELF) ThingMessageReply.super.addHeader(header, value);
     }
 
     @Override
@@ -150,8 +150,8 @@ public class CommonThingMessageReply<ME extends CommonThingMessageReply<ME>> imp
     }
 
     @SuppressWarnings("all")
-    protected ME castSelf() {
-        return (ME) this;
+    protected SELF castSelf() {
+        return (SELF) this;
     }
 
     @Override

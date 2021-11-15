@@ -132,7 +132,7 @@ public enum MessageType {
 
     //更新标签
     //since 1.1.2
-    UPDATE_TAG(UpdateTagMessage::new),
+    UPDATE_TAG(UpdateTagMessage::new,DefaultUpdateTingTagsMessage::new),
 
     //日志
     //since 1.1.4
