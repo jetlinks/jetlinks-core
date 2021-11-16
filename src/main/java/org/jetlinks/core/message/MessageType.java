@@ -1,7 +1,6 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
-import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.device.DeviceThingType;
 import org.jetlinks.core.message.event.DefaultEventMessage;
 import org.jetlinks.core.message.event.EventMessage;
@@ -132,7 +131,7 @@ public enum MessageType {
 
     //更新标签
     //since 1.1.2
-    UPDATE_TAG(UpdateTagMessage::new,DefaultUpdateTingTagsMessage::new),
+    UPDATE_TAG(UpdateTagMessage::new, DefaultUpdateTingTagsMessage::new),
 
     //日志
     //since 1.1.4
@@ -198,12 +197,15 @@ public enum MessageType {
                     }
                 }
             }
-            try {
-                return (T) FastBeanCopier.copy(map, supplier);
-            } catch (Throwable e) {
-                //fallback jsonobject
-                return (T) new JSONObject(map).toJavaObject(supplier.get().getClass());
-            }
+            T msg = (T) supplier.get();
+            msg.fromJson(new JSONObject(map));
+            return msg;
+//            try {
+//                return (T) FastBeanCopier.copy(map, supplier);
+//            } catch (Throwable e) {
+//                //fallback jsonobject
+//                return (T) new JSONObject(map).toJavaObject(supplier.get().getClass());
+//            }
         }
         return null;
     }
