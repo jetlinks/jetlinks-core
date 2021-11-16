@@ -16,7 +16,7 @@ import java.util.function.BiFunction;
  */
 @Getter
 @Setter
-public abstract class CommonThingMessage<T extends CommonThingMessage<T>> implements ThingMessage {
+public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> implements ThingMessage {
     private static final long serialVersionUID = -6849794470754667710L;
 
     private String code;
@@ -68,14 +68,14 @@ public abstract class CommonThingMessage<T extends CommonThingMessage<T>> implem
         return headers == null ? headers = new ConcurrentHashMap<>() : headers;
     }
 
-    public T messageId(String messageId){
+    public SELF messageId(String messageId){
         this.setMessageId(messageId);
         return castSelf();
     }
 
     @SuppressWarnings("all")
-    protected T castSelf(){
-        return (T)this;
+    protected SELF castSelf(){
+        return (SELF)this;
     }
 
     @Override
