@@ -7,27 +7,29 @@ import org.hswebframework.web.dict.EnumDict;
 import org.jetlinks.core.utils.TopicUtils;
 import org.springframework.util.Assert;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Getter
-public class Subscription implements Serializable {
+public class Subscription implements Externalizable {
     private static final long serialVersionUID = -6849794470754667710L;
 
     public static final Feature[] DEFAULT_FEATURES = Subscription.Feature.values();
 
     //订阅者标识
-    private final String subscriber;
+    private String subscriber;
 
     //订阅主题,主题以/分割,如: /device/TS-01/09012/message 支持通配符 /device/**
-    private final String[] topics;
+    private String[] topics;
 
     //订阅特性
-    private final Feature[] features;
+    private Feature[] features;
 
-    private Runnable doOnSubscribe;
+    private transient Runnable doOnSubscribe;
+
+    public Subscription(){}
 
     public static Subscription of(String subscriber, String... topic) {
 
@@ -69,6 +71,42 @@ public class Subscription implements Serializable {
 
     public boolean hasFeature(Subscription.Feature feature) {
         return feature.in(this.features);
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        out.writeUTF(subscriber);
+
+        out.writeInt(topics.length);
+        for (String topic : topics) {
+            out.writeUTF(topic);
+        }
+
+        out.writeLong(EnumDict.toMask(features));
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        this.subscriber = in.readUTF();
+
+        int len = in.readInt();
+        topics = new String[len];
+        for (int i = 0; i < len; i++) {
+            topics[i] = in.readUTF();
+        }
+
+        features = EnumDict
+                .getByMask(Feature.class, in.readLong())
+                .toArray(new Feature[0]);
+    }
+
+    @Override
+    public String toString() {
+        return "Subscription{" +
+                "subscriber='" + subscriber + '\'' +
+                ", topics=" + Arrays.toString(topics) +
+                ", features=" + Arrays.toString(features) +
+                '}';
     }
 
     @AllArgsConstructor

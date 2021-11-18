@@ -20,7 +20,7 @@ public interface RpcServiceFactory {
      * @param <T>              接口类型
      * @return 服务
      */
-    <T> DisposableService<T> createProducer(String address, Class<T> serviceInterface);
+    <T> DisposableService<T> createConsumer(String address, Class<T> serviceInterface);
 
     /**
      * 发布服务消费者,发布本地服务,远程可通过相同的地址访问此服务
@@ -31,6 +31,6 @@ public interface RpcServiceFactory {
      * @param <T>              接口类型
      * @return Disposable
      */
-    <T> Disposable createConsumer(String address, Class<T> serviceInterface, T instance);
+    <T> Disposable createProducer(String address, Class<T> serviceInterface, T instance);
 
 }
