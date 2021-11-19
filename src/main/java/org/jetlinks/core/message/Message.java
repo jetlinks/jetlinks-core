@@ -3,6 +3,7 @@ package org.jetlinks.core.message;
 import com.alibaba.fastjson.parser.ParserConfig;
 import com.alibaba.fastjson.util.TypeUtils;
 import org.apache.commons.collections.MapUtils;
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.metadata.Jsonable;
 
 import javax.annotation.Nullable;
@@ -149,5 +150,9 @@ public interface Message extends Jsonable, Serializable {
 
     default void validate() {
 
+    }
+
+    default Message copy() {
+        return FastBeanCopier.copy(this, this.getClass());
     }
 }

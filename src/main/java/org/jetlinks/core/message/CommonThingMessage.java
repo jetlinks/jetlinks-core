@@ -108,4 +108,9 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
         return toJson().toJSONString();
     }
 
+    @Override
+    @SuppressWarnings("all")
+    public SELF copy() {
+        return (SELF)ThingMessage.super.copy();
+    }
 }

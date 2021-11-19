@@ -58,5 +58,8 @@ public interface ThingMessage extends Message {
         return thingId(thingId.getType(), thingId.getId());
     }
 
-
+    @Override
+    default ThingMessage copy() {
+        return (ThingMessage)Message.super.copy();
+    }
 }

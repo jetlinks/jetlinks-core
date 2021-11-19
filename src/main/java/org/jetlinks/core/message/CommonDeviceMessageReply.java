@@ -143,6 +143,12 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     }
 
     @Override
+    public ME timestamp(long timestamp) {
+        this.timestamp = timestamp;
+        return (ME) this;
+    }
+
+    @Override
     public <T> ME addHeader(HeaderKey<T> header, T value) {
         return (ME) DeviceMessageReply.super.addHeader(header, value);
     }
@@ -165,6 +171,9 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         }
         messageId = jsonObject.getString("messageId");
         deviceId = jsonObject.getString("deviceId");
+        if (deviceId == null) {
+            deviceId = jsonObject.getString("thingId");
+        }
         code = jsonObject.getString("code");
         message = jsonObject.getString("message");
         headers = jsonObject.getJSONObject("headers");
@@ -180,4 +189,8 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         return toJson().toJSONString();
     }
 
+    @Override
+    public ME copy() {
+        return (ME) DeviceMessageReply.super.copy();
+    }
 }

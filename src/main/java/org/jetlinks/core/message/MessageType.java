@@ -12,6 +12,7 @@ import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.property.*;
 import org.jetlinks.core.message.state.DeviceStateCheckMessage;
 import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
+import org.jetlinks.core.things.ThingId;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -161,7 +162,7 @@ public enum MessageType {
         }
     };
 
-    final Supplier<? extends Message> defaultInstance;
+    final Supplier<? extends Message> deviceInstance;
     final Supplier<? extends Message> thingInstance;
 
     private static final Map<String, MessageType> mapping;
@@ -174,20 +175,42 @@ public enum MessageType {
         }
     }
 
-    MessageType(Supplier<Message> defaultInstance) {
-        this(defaultInstance, null);
+    MessageType(Supplier<Message> deviceInstance) {
+        this(deviceInstance, null);
     }
 
-    MessageType(Supplier<? extends Message> defaultInstance, Supplier<? extends ThingMessage> thingInstance) {
-        this.defaultInstance = defaultInstance;
+    MessageType(Supplier<? extends Message> deviceInstance, Supplier<? extends ThingMessage> thingInstance) {
+        this.deviceInstance = deviceInstance;
         this.thingInstance = thingInstance;
+    }
+
+    public DeviceMessage forDevice() {
+        return (DeviceMessage) deviceInstance.get();
+    }
+
+    public ThingMessage forThing() {
+        if (null == thingInstance) {
+            throw new UnsupportedOperationException("type " + name() + " unsupported for thing");
+        }
+        return (ThingMessage) thingInstance.get();
+    }
+
+    public ThingMessage forThing(ThingId thingId) {
+        return forThing(thingId.getType(), thingId.getId());
+    }
+
+    public ThingMessage forThing(String type, String id) {
+        if (!DeviceThingType.device.name().equals(type)) {
+            return forThing().thingId(type, id);
+        }
+        return forDevice().thingId(type, id);
     }
 
     @SuppressWarnings("all")
     public <T extends Message> T convert(Map<String, Object> map) {
-        Supplier<? extends Message> supplier = defaultInstance;
+        Supplier<? extends Message> supplier = deviceInstance;
 
-        if (defaultInstance != null) {
+        if (deviceInstance != null) {
             if (thingInstance != null) {
                 //不是设备
                 Object type = map.get("thingType");
