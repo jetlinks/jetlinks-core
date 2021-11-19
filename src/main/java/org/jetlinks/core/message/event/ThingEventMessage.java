@@ -27,9 +27,24 @@ public interface ThingEventMessage extends ThingMessage {
      */
     Object getData();
 
+    /**
+     * 设置事件
+     * @param event event
+     * @return this
+     */
+    ThingEventMessage event(String event);
+
+    /**
+     * 设置事件数据
+     * @param data data
+     * @return this
+     */
+    ThingEventMessage data(Object data);
+
     default MessageType getMessageType() {
         return MessageType.EVENT;
     }
+
 
     static EventMessage forDevice(String deviceId) {
         EventMessage message = new EventMessage();
@@ -37,9 +52,9 @@ public interface ThingEventMessage extends ThingMessage {
         return message;
     }
 
-    static DefaultEventMessage forThing(ThingType thingType, String deviceId) {
+    static DefaultEventMessage forThing(ThingType thingType, String thingId) {
         DefaultEventMessage message = new DefaultEventMessage();
-        message.setThingId(deviceId);
+        message.setThingId(thingId);
         message.setThingType(thingType.getId());
         return message;
     }

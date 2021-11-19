@@ -45,13 +45,13 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     @Override
-    public ThingMessage messageId(String messageId) {
+    public CommonDeviceMessage messageId(String messageId) {
         setMessageId(messageId);
         return this;
     }
 
     @Override
-    public ThingMessage thingId(String thingType, String thingId) {
+    public CommonDeviceMessage thingId(String thingType, String thingId) {
         this.setDeviceId(thingId);
         return this;
     }
@@ -61,7 +61,13 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     @Override
-    public synchronized DeviceMessage addHeader(String header, Object value) {
+    public CommonDeviceMessage timestamp(long timestamp) {
+        this.timestamp = timestamp;
+        return this;
+    }
+
+    @Override
+    public synchronized CommonDeviceMessage addHeader(String header, Object value) {
 
         if (header != null && value != null) {
             safeGetHeader().put(header, value);
@@ -70,7 +76,7 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     @Override
-    public synchronized DeviceMessage addHeaderIfAbsent(String header, Object value) {
+    public synchronized CommonDeviceMessage addHeaderIfAbsent(String header, Object value) {
 
         if (header != null && value != null) {
             safeGetHeader().putIfAbsent(header, value);
@@ -79,7 +85,7 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     @Override
-    public DeviceMessage removeHeader(String header) {
+    public CommonDeviceMessage removeHeader(String header) {
         if (this.headers != null) {
             this.headers.remove(header);
         }
@@ -87,8 +93,8 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     @Override
-    public void computeHeader(String key, BiFunction<String, Object, Object> computer) {
-        safeGetHeader().compute(key, computer);
+    public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
+       return safeGetHeader().compute(key, computer);
     }
 
     @Override

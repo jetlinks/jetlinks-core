@@ -176,8 +176,8 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     }
 
     @Override
-    public void computeHeader(String key, BiFunction<String, Object, Object> computer) {
-        safeGetHeader().compute(key, computer);
+    public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
+        return safeGetHeader().compute(key, computer);
     }
 
     @Override

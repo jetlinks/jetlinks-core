@@ -38,6 +38,14 @@ public interface ThingMessage extends Message {
     ThingMessage thingId(String thingType, String thingId);
 
     /**
+     * 设置物消息时间戳
+     *
+     * @param timestamp 时间戳
+     * @return this
+     */
+    ThingMessage timestamp(long timestamp);
+
+    /**
      * 设置物类型和ID
      *
      * @param thingType 物类型
@@ -60,6 +68,6 @@ public interface ThingMessage extends Message {
 
     @Override
     default ThingMessage copy() {
-        return (ThingMessage)Message.super.copy();
+        return (ThingMessage) Message.super.copy();
     }
 }

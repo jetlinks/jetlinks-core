@@ -184,26 +184,26 @@ public enum MessageType {
         this.thingInstance = thingInstance;
     }
 
-    public DeviceMessage forDevice() {
-        return (DeviceMessage) deviceInstance.get();
+    public <T extends DeviceMessage> T forDevice() {
+        return (T) deviceInstance.get();
     }
 
-    public ThingMessage forThing() {
+    public <T extends ThingMessage> T forThing() {
         if (null == thingInstance) {
             throw new UnsupportedOperationException("type " + name() + " unsupported for thing");
         }
-        return (ThingMessage) thingInstance.get();
+        return (T) thingInstance.get();
     }
 
-    public ThingMessage forThing(ThingId thingId) {
+    public <T extends ThingMessage> T forThing(ThingId thingId) {
         return forThing(thingId.getType(), thingId.getId());
     }
 
-    public ThingMessage forThing(String type, String id) {
+    public <T extends ThingMessage> T forThing(String type, String id) {
         if (!DeviceThingType.device.name().equals(type)) {
-            return forThing().thingId(type, id);
+            return (T) this.forThing().thingId(type, id);
         }
-        return forDevice().thingId(type, id);
+        return (T) this.forDevice().thingId(type, id);
     }
 
     @SuppressWarnings("all")

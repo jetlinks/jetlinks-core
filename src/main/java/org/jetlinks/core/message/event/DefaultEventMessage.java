@@ -17,4 +17,15 @@ public class DefaultEventMessage extends CommonThingMessage<DefaultEventMessage>
         return MessageType.EVENT;
     }
 
+    @Override
+    public DefaultEventMessage event(String event) {
+        this.event = event;
+        return this;
+    }
+
+    @Override
+    public DefaultEventMessage data(Object data) {
+        this.data = data;
+        return this;
+    }
 }

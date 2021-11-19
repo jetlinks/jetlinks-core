@@ -21,4 +21,15 @@ public class EventMessage extends CommonDeviceMessage implements ThingEventMessa
         return MessageType.EVENT;
     }
 
+    @Override
+    public EventMessage event(String event) {
+        this.event = event;
+        return this;
+    }
+
+    @Override
+    public EventMessage data(Object data) {
+        this.data = data;
+        return this;
+    }
 }

@@ -25,4 +25,9 @@ public class ThingId {
         System.arraycopy(idBytes, 0, arr, typeBytes.length, idBytes.length);
         return DigestUtils.md5DigestAsHex(arr);
     }
+
+    @Override
+    public String toString() {
+        return type + ":" + id;
+    }
 }
