@@ -1,10 +1,10 @@
 package org.jetlinks.core.message.codec.context;
 
 import lombok.extern.slf4j.Slf4j;
-import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
+import reactor.util.concurrent.Queues;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -20,9 +20,7 @@ import java.util.function.Consumer;
 class QueueSerialContext<IN, OUT> implements SerialContext<IN, OUT> {
     int maxSize = 256;
 
-    EmitterProcessor<IN> inputProcessor = EmitterProcessor.create(false);
-
-    FluxSink<IN> inputSink = inputProcessor.sink(FluxSink.OverflowStrategy.BUFFER);
+    Sinks.Many<IN> inputSinksMany = Sinks.many().multicast().onBackpressureBuffer(Queues.SMALL_BUFFER_SIZE, false);
 
     Queue<Tuple2<IN, Consumer<OUT>>> inputQueue = new ConcurrentLinkedQueue<>();
 
@@ -56,7 +54,7 @@ class QueueSerialContext<IN, OUT> implements SerialContext<IN, OUT> {
             Tuple2<IN, Consumer<OUT>> input = inputQueue.poll();
             if (input != null) {
                 output.set(input.getT2());
-                inputSink.next(input.getT1());
+                inputSinksMany.tryEmitNext(input.getT1());
             }
         }
     }
@@ -73,6 +71,6 @@ class QueueSerialContext<IN, OUT> implements SerialContext<IN, OUT> {
 
     @Override
     public Flux<IN> listen() {
-        return inputProcessor;
+        return inputSinksMany.asFlux();
     }
 }
