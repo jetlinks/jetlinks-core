@@ -2,8 +2,7 @@ package org.jetlinks.core.cache;
 
 import org.jetlinks.core.codec.Codec;
 import org.jetlinks.core.config.ConfigKey;
-import reactor.core.publisher.FluxProcessor;
-import reactor.core.publisher.UnicastProcessor;
+import reactor.core.publisher.Sinks;
 
 import java.nio.file.Path;
 import java.util.Map;
@@ -103,15 +102,16 @@ public interface FileQueue<T> extends Queue<T> {
         FileQueue<T> build();
 
         /**
-         * 构造一个FluxProcessor,可通过{@link FluxProcessor#onNext(Object)}写入数据
-         * 通过{@link FluxProcessor#subscribe()}订阅数据,仅支持一个订阅者.
+         * 构造一个Sinks.Many,可通过{@link Sinks.Many#tryEmitNext(Object)} 写入数据
+         * 通过{@link reactor.core.publisher.Flux#subscribe()}订阅数据,仅支持一个订阅者.
+         * {@link reactor.core.publisher.Flux} 可通过 {@link Sinks.Many#asFlux()} 获取
          *
          * @param clearWhenDispose 当流结束时,是否清空队列
          * @return FluxProcessor
-         * @see FluxProcessor#onNext(Object)
-         * @see FluxProcessor#subscribe()
+         * @see Sinks.Many#tryEmitNext(Object)
+         * @see reactor.core.publisher.Flux#subscribe()
          */
-        default FluxProcessor<T, T> buildFluxProcessor(boolean clearWhenDispose) {
+        default Sinks.Many<T> buildFluxProcessor(boolean clearWhenDispose) {
             FileQueue<T> queue = !clearWhenDispose
                     ?
                     new FileQueueProxy<T>(build()) {
@@ -122,7 +122,7 @@ public interface FileQueue<T> extends Queue<T> {
                     }
                     : build();
 
-            return UnicastProcessor.create(queue, queue::close);
+            return Sinks.many().unicast().onBackpressureBuffer(queue, queue::close);
         }
     }
 }
