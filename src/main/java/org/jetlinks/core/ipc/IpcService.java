@@ -9,6 +9,7 @@ import reactor.core.Disposable;
  * @author zhouhao
  * @since 1.1.5
  */
+@Deprecated
 public interface IpcService {
 
     /**

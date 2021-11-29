@@ -12,10 +12,12 @@ import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.bean.FastBeanCopier;
+import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.codec.Encoder;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.utils.RecyclerUtils;
+import org.springframework.core.ResolvableType;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -59,6 +61,10 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
         payload.nativeObject = nativeObject;
         payload.encoder = encoder;
         return payload;
+    }
+
+    public static <T> NativePayload<T> of(T nativeObject) {
+        return of(nativeObject,(Encoder<T>) null);
     }
 
     public static <T> NativePayload<T> of(T nativeObject, Supplier<Payload> bodySupplier) {
@@ -111,6 +117,9 @@ public class NativePayload<T> extends AbstractReferenceCounted implements Payloa
             synchronized (this) {
                 if (buf != null) {
                     return buf;
+                }
+                if (encoder == null) {
+                    encoder = Codecs.lookup(ResolvableType.forClass(nativeObject.getClass()));
                 }
                 ref = encoder.encode(nativeObject);
                 buf = Unpooled.unreleasableBuffer(ref.getBody());
