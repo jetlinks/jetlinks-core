@@ -42,6 +42,10 @@ public class ChildrenDeviceSession implements DeviceSession {
 
     }
 
+    public DeviceOperator getParentDevice(){
+        return parent.getOperator();
+    }
+
     @Override
     public long lastPingTime() {
         return lastKeepAliveTime;
