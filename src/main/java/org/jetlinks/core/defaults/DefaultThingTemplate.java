@@ -94,11 +94,6 @@ class DefaultThingTemplate implements ThingTemplate, StorageConfigurable {
     }
 
     @Override
-    public Mono<Long> getVersion() {
-        return getConfig(ThingsConfigKeys.version);
-    }
-
-    @Override
     public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
         return this.metadataCodec
                 .encode(metadata)

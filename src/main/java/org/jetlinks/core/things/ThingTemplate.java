@@ -1,6 +1,7 @@
 package org.jetlinks.core.things;
 
 import org.jetlinks.core.Configurable;
+import org.jetlinks.core.Wrapper;
 import reactor.core.publisher.Mono;
 
 /**
@@ -9,28 +10,31 @@ import reactor.core.publisher.Mono;
  * @author zhouhao
  * @since 1.1.9
  */
-public interface ThingTemplate extends Configurable {
+public interface ThingTemplate extends Configurable, Wrapper {
 
     String getId();
 
+    /**
+     * 获取模版物模型
+     *
+     * @return 物模型
+     */
     Mono<? extends ThingMetadata> getMetadata();
 
+    /**
+     * 更新物模型字符串
+     *
+     * @param metadata 物模型
+     * @return true
+     */
     Mono<Boolean> updateMetadata(String metadata);
 
+    /**
+     * 更新物模型
+     *
+     * @param metadata 物模型
+     * @return true
+     */
     Mono<Boolean> updateMetadata(ThingMetadata metadata);
 
-    default Mono<Long> getVersion() {
-        return getConfig(ThingsConfigKeys.version);
-    }
-
-    /**
-     * 拆包为指定的类型
-     *
-     * @param type 类型
-     * @param <T>  T
-     * @return 指定的类型
-     */
-    default <T extends Thing> T unwrap(Class<T> type) {
-        return type.cast(this);
-    }
 }

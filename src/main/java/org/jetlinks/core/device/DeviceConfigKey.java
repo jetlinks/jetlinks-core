@@ -30,7 +30,13 @@ public enum DeviceConfigKey implements ConfigKey<String> {
     // device: 直连设备
     // childrenDevice: 网关子设备
     // gateway: 网关设备
-    deviceType("设备类型")
+    deviceType("设备类型"),
+
+    /**
+     * @since 1.1.9
+     */
+    productVersion("产品版本"),
+
     ;
 
     String name;

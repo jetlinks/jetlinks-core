@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
  * @see org.jetlinks.core.device.DeviceMessageSender
  * @since 1.0.0
  */
-public interface DeviceMessageSenderInterceptor  {
+public interface DeviceMessageSenderInterceptor {
 
     DeviceMessageSenderInterceptor DO_NOTING = new DeviceMessageSenderInterceptor() {
     };
@@ -27,6 +27,18 @@ public interface DeviceMessageSenderInterceptor  {
      */
     default Mono<DeviceMessage> preSend(DeviceOperator device, DeviceMessage message) {
         return Mono.just(message);
+    }
+
+    /**
+     * 执行发送时触发.
+     *
+     * @param device 设备操作接口
+     * @param source 指令
+     * @param sender 消息发送逻辑
+     * @return 新的发送逻辑
+     */
+    default Flux<DeviceMessage> doSend(DeviceOperator device, DeviceMessage source, Flux<DeviceMessage> sender) {
+        return sender;
     }
 
     /**
@@ -54,9 +66,10 @@ public interface DeviceMessageSenderInterceptor  {
 
     /**
      * 排序序号,值小的在前,大的再后.
+     *
      * @return 序号
      */
-    default int getOrder(){
+    default int getOrder() {
         return Integer.MAX_VALUE;
     }
 }

@@ -205,84 +205,89 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                 .flatMap(msg -> interceptor.preSend(operator, msg))
                                 .flatMap(msg -> this
                                         .sendToParentDevice(parentGatewayId, msg)
-                                        .as(flux -> interceptor.afterSent(operator, msg, flux)))
+                                        .as(flux -> interceptor.afterSent(operator, msg, interceptor.doSend(operator, msg, flux)))
+                                )
                                 .map(r -> (R) r);
                     }
                     return Flux
                             .from(message)
                             .flatMap(msg -> interceptor.preSend(operator, msg))
-                            .concatMap(msg -> {
-                                DeviceMessageTracer.trace(msg, "send.before");
-                                if (StringUtils.isEmpty(server)) {
-                                    return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
-                                }
-                                boolean forget = msg.getHeader(Headers.sendAndForget).orElse(false);
-                                //定义处理来自设备的回复.
-                                Flux<R> replyStream = forget
-                                        ? Flux.empty()
-                                        : handler
-                                        .handleReply(msg.getDeviceId(),
-                                                     msg.getMessageId(),
-                                                     Duration.ofMillis(msg.getHeader(Headers.timeout)
-                                                                          .orElse(defaultTimeout)))
-                                        .map(replyMapping)
-                                        .onErrorResume(DeviceOperationException.class, error -> {
-                                            if (error.getCode() == ErrorCode.CLIENT_OFFLINE) {
-                                                //返回离线错误,重新检查状态,以矫正设备缓存的状态
-                                                return operator
-                                                        .checkState()
-                                                        .then(Mono.error(error));
-                                            }
-                                            return Mono.error(error);
-                                        })
-                                        .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
-                                        .as(flux -> this.logReply(msg, flux));
+                            .concatMap(msg -> Flux
+                                    .defer(() -> {
+                                        DeviceMessageTracer.trace(msg, "send.before");
+                                        if (StringUtils.isEmpty(server)) {
+                                            return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
+                                        }
+                                        boolean forget = msg.getHeader(Headers.sendAndForget).orElse(false);
+                                        //定义处理来自设备的回复.
+                                        Flux<R> replyStream = forget
+                                                ? Flux.empty()
+                                                : handler
+                                                .handleReply(msg.getDeviceId(),
+                                                             msg.getMessageId(),
+                                                             Duration.ofMillis(msg.getHeader(Headers.timeout)
+                                                                                  .orElse(defaultTimeout)))
+                                                .map(replyMapping)
+                                                .onErrorResume(DeviceOperationException.class, error -> {
+                                                    if (error.getCode() == ErrorCode.CLIENT_OFFLINE) {
+                                                        //返回离线错误,重新检查状态,以矫正设备缓存的状态
+                                                        return operator
+                                                                .checkState()
+                                                                .then(Mono.error(error));
+                                                    }
+                                                    return Mono.error(error);
+                                                })
+                                                .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
+                                                .as(flux -> this.logReply(msg, flux));
 
-                                //发送消息到设备连接的服务器
-                                return handler
-                                        .send(server, Mono.just(msg))
-                                        .defaultIfEmpty(-1)
-                                        .flatMapMany(len -> {
-                                            //设备未连接到服务器
-                                            if (len == 0) {
-                                                //尝试发起状态检查,同步设备的真实状态
-                                                return operator
-                                                        .checkState()
-                                                        .flatMapMany(state -> {
-                                                            if (DeviceState.online != state) {
-                                                                return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
-                                                            }
-                                                            /*
-                                                              设备在线,但是serverId对应的服务没有监听处理消息
-                                                                 1. 服务挂了
-                                                                 2. 设备缓存的serverId不对
-                                                             */
-                                                            //尝试发送给父设备
-                                                            if (StringUtils.hasText(parentGatewayId)) {
-                                                                log.debug("Device [{}] Cached Server [{}] Not Available,Dispatch To Parent [{}]",
-                                                                          operator.getDeviceId(),
-                                                                          server,
-                                                                          parentGatewayId);
+                                        //发送消息到设备连接的服务器
+                                        return handler
+                                                .send(server, Mono.just(msg))
+                                                .defaultIfEmpty(-1)
+                                                .flatMapMany(len -> {
+                                                    //设备未连接到服务器
+                                                    if (len == 0) {
+                                                        //尝试发起状态检查,同步设备的真实状态
+                                                        return operator
+                                                                .checkState()
+                                                                .flatMapMany(state -> {
+                                                                    if (DeviceState.online != state) {
+                                                                        return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
+                                                                    }
+                                                        /*
+                                                          设备在线,但是serverId对应的服务没有监听处理消息
+                                                             1. 服务挂了
+                                                             2. 设备缓存的serverId不对
+                                                         */
+                                                                    //尝试发送给父设备
+                                                                    if (StringUtils.hasText(parentGatewayId)) {
+                                                                        log.debug("Device [{}] Cached Server [{}] Not Available,Dispatch To Parent [{}]",
+                                                                                  operator.getDeviceId(),
+                                                                                  server,
+                                                                                  parentGatewayId);
 
-                                                                return interceptor
-                                                                        .afterSent(operator, msg, sendToParentDevice(parentGatewayId, msg))
-                                                                        .map(r -> (R) r);
-                                                            }
-                                                            log.warn("Device [{}] Cached Server [{}] Not Available",
-                                                                     operator.getDeviceId(),
-                                                                     server);
-                                                            
-                                                            return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.SERVER_NOT_AVAILABLE)));
-                                                        });
-                                            } else if (len == -1) {
-                                                return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
-                                            }
-                                            log.debug("send device[{}] message complete", operator.getDeviceId());
-                                            return interceptor.afterSent(operator, msg, replyStream);
-                                        })
-                                        .doOnNext(r -> DeviceMessageTracer.trace(r, "send.reply"))
-                                        ;
-                            });
+                                                                        return interceptor
+                                                                                .afterSent(operator, msg, sendToParentDevice(parentGatewayId, msg))
+                                                                                .map(r -> (R) r);
+                                                                    }
+                                                                    log.warn("Device [{}] Cached Server [{}] Not Available",
+                                                                             operator.getDeviceId(),
+                                                                             server);
+
+                                                                    return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.SERVER_NOT_AVAILABLE)));
+                                                                });
+                                                    } else if (len == -1) {
+                                                        return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
+                                                    }
+                                                    log.debug("send device[{}] message complete", operator.getDeviceId());
+                                                    return interceptor.afterSent(operator, msg, replyStream);
+                                                })
+                                                .doOnNext(r -> DeviceMessageTracer.trace(r, "send.reply"))
+                                                ;
+                                    })
+                                    .as(flux -> interceptor
+                                            .doSend(operator, msg, flux.cast(DeviceMessage.class))
+                                            .map(_resp -> (R) _resp)));
                 });
 
     }

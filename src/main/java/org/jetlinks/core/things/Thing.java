@@ -3,6 +3,7 @@ package org.jetlinks.core.things;
 import org.jetlinks.core.Configurable;
 import org.jetlinks.core.Value;
 import org.jetlinks.core.Values;
+import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.device.DeviceConfigKey;
 import reactor.core.publisher.Flux;
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
  * @author zhouhao
  * @since 1.1.9
  */
-public interface Thing extends Configurable {
+public interface Thing extends Configurable, Wrapper {
 
     /**
      * @return 物ID
@@ -114,26 +115,6 @@ public interface Thing extends Configurable {
      */
     default Mono<Values> getSelfConfigs(ConfigKey<?>... keys) {
         return getSelfConfigs(Arrays.stream(keys).map(ConfigKey::getKey).collect(Collectors.toSet()));
-    }
-
-    /**
-     * 拆包为指定的类型
-     *
-     * @param type 类型
-     * @param <T>  T
-     * @return 指定的类型
-     */
-    default <T extends Thing> T unwrap(Class<T> type) {
-        return type.cast(this);
-    }
-
-    /**
-     * 获取当前注册中心中的版本
-     *
-     * @return 版本号
-     */
-    default Mono<Long> getVersion() {
-        return getSelfConfig(ThingsConfigKeys.version);
     }
 
     /**

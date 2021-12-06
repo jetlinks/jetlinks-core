@@ -40,6 +40,19 @@ public interface DeviceRegistry {
     Mono<DeviceProductOperator> getProduct(String productId);
 
     /**
+     * 获取指定版本的产品
+     *
+     * @param productId 产品ID
+     * @param version   版本号
+     * @return 对应版本的产品
+     * @since 1.1.9
+     */
+    default Mono<DeviceProductOperator> getProduct(String productId, String version) {
+        //默认不支持版本
+        return getProduct(productId);
+    }
+
+    /**
      * 注册设备,并返回设备操作接口,请勿缓存返回值,注册中心已经实现本地缓存.
      *
      * @param deviceInfo 设备基础信息
@@ -65,12 +78,25 @@ public interface DeviceRegistry {
     Mono<Void> unregisterDevice(String deviceId);
 
     /**
-     * 注销产品型号
+     * 注销产品
      *
-     * @param productId 产品型号ID
+     * @param productId 产品ID
      * @return void
      */
     Mono<Void> unregisterProduct(String productId);
+
+    /**
+     * 注销指定版本的产品
+     *
+     * @param productId 产品ID
+     * @param version   版本号
+     * @return void
+     * @since 1.1.9
+     */
+    default Mono<Void> unregisterProduct(String productId, String version) {
+        //默认不支持版本
+        return unregisterProduct(productId);
+    }
 
 
 }

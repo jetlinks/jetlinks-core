@@ -2,6 +2,7 @@ package org.jetlinks.core.defaults;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.ProtocolSupport;
@@ -23,6 +24,7 @@ import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.things.ThingMetadata;
 import org.jetlinks.core.things.ThingRpcSupport;
+import org.jetlinks.core.things.ThingRpcSupportChain;
 import org.jetlinks.core.utils.IdUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
@@ -33,12 +35,15 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import static org.jetlinks.core.device.DeviceConfigKey.*;
+import static org.jetlinks.core.device.DeviceConfigKey.productId;
 
 @Slf4j
 public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurable {
     public static final DeviceStateChecker DEFAULT_STATE_CHECKER = device -> checkState0(((DefaultDeviceOperator) device));
 
     private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time");
+
+    static final List<String> productIdAndVersionKey = Arrays.asList(productId.getKey(),productVersion.getKey());
 
     private static final AtomicReferenceFieldUpdater<DefaultDeviceOperator, DeviceMetadata> METADATA_UPDATER =
             AtomicReferenceFieldUpdater.newUpdater(DefaultDeviceOperator.class, DeviceMetadata.class, "metadataCache");
@@ -67,6 +72,10 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private volatile long lastMetadataTime = -1;
 
     private volatile DeviceMetadata metadataCache;
+
+    @Setter
+    private ThingRpcSupportChain rpcChain;
+
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
@@ -99,11 +108,18 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         this.messageSender = new DefaultDeviceMessageSender(handler, this, registry, interceptor);
         this.storageMono = storageManager.getStorage("device:" + id);
         this.parent = getReactiveStorage()
-                .flatMap(store -> store.getConfig(productId.getKey()))
-                .map(Value::asString)
-                .flatMap(registry::getProduct);
-//        this.metadataMono = getParent().flatMap(DeviceProductOperator::getMetadata);
-        this.protocolSupportMono = this.parent.flatMap(DeviceProductOperator::getProtocol);
+                .flatMap(store -> store.getConfigs(productIdAndVersionKey))
+                .flatMap(productIdAndVersion->{
+                    String _productId = productIdAndVersion.getString(productId.getKey(),(String) null);
+                    String _version = productIdAndVersion.getString(productVersion.getKey(),(String) null);
+                    return registry.getProduct(_productId,_version);
+                });
+        //支持设备自定义协议
+        this.protocolSupportMono = this
+                .getSelfConfig(protocol)
+                .flatMap(supports::getProtocol)
+                .switchIfEmpty(this.parent.flatMap(DeviceProductOperator::getProtocol));
+
         this.stateChecker = deviceStateChecker;
         this.metadataMono = this
                 //获取最后更新物模型的时间
@@ -131,7 +147,6 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                    .switchIfEmpty(Mono.defer(this::onProductNonexistent))
                                    .flatMap(DeviceProductOperator::getMetadata)
                 );
-
     }
 
     private Mono<DeviceProductOperator> onProductNonexistent() {
@@ -506,7 +521,11 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public ThingRpcSupport rpc() {
-        return (msg) -> messageSender.send(convertToDeviceMessage(msg));
+        ThingRpcSupport support = (msg) -> messageSender.send(convertToDeviceMessage(msg));
+        if (rpcChain != null) {
+            return msg -> rpcChain.call(msg, support);
+        }
+        return support;
     }
 
     private DeviceMessage convertToDeviceMessage(ThingMessage message) {
