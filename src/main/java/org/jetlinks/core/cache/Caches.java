@@ -2,6 +2,7 @@ package org.jetlinks.core.cache;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.cache.CacheBuilder;
+import org.jctools.maps.NonBlockingHashMap;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -23,6 +24,18 @@ public class Caches {
         }
     }
 
+    private static boolean jctoolPresent() {
+        if (Boolean.getBoolean("jetlinks.cache.jctool.disabled")) {
+            return false;
+        }
+        try {
+            Class.forName("org.jctools.maps.NonBlockingHashMap");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
     private static boolean guavaPresent() {
         return !Boolean.getBoolean("jetlinks.cache.guava.disabled");
     }
@@ -35,8 +48,11 @@ public class Caches {
         return CacheBuilder.newBuilder().build().asMap();
     }
 
+
     static {
-        if (caffeinePresent()) {
+        if (jctoolPresent()) {
+            cacheSupplier = NonBlockingHashMap::new;
+        } else if (caffeinePresent()) {
             cacheSupplier = Caches::createCaffeine;
         } else if (guavaPresent()) {
             cacheSupplier = Caches::createGuava;
