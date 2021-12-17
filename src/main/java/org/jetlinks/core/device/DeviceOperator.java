@@ -15,7 +15,7 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 
 /**
- * 设备操作接口
+ * 设备操作接口,用于发送指令到设备{@link DeviceOperator#messageSender()}以及获取配置等相关信息
  *
  * @author zhouhao
  * @since 1.0.0
@@ -85,7 +85,7 @@ public interface DeviceOperator extends Thing {
     Mono<Long> getOfflineTime();
 
     /**
-     * 设备上线
+     * 设备上线,通常不需要手动调用
      *
      * @param serverId  设备所在服务ID
      * @param sessionId 会话ID
