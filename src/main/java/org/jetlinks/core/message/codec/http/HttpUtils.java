@@ -68,4 +68,20 @@ public class HttpUtils {
                         )
                 );
     }
+
+    public static String appendUrlParameter(String url, Map<?,?> param) {
+        return appendUrlParameter(url,createEncodedUrlParams(param));
+    }
+
+    public static String appendUrlParameter(String url, String param) {
+        if (StringUtils.isEmpty(url)) {
+            return url;
+        }
+        if (url.contains("?")) {
+           return url + "&" + param;
+        } else {
+          return url + "?" + param;
+        }
+    }
+
 }
