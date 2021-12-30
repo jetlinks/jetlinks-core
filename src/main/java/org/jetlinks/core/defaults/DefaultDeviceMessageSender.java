@@ -223,6 +223,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                         Flux<R> replyStream = forget
                                                 ? Flux.empty()
                                                 : handler
+                                                //监听来自其他服务的回复
                                                 .handleReply(msg.getDeviceId(),
                                                              msg.getMessageId(),
                                                              Duration.ofMillis(msg.getHeader(Headers.timeout)

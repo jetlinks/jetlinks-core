@@ -64,13 +64,21 @@ public interface DeviceOperator extends Thing {
     Mono<Boolean> putState(byte state);
 
     /**
+     * 获取设备当前缓存的状态,此状态可能与实际的状态不一致.
      * @return 获取当前状态
      * @see DeviceState
      */
     Mono<Byte> getState();
 
     /**
-     * 检查设备的真实状态
+     * 检查设备的真实状态,此操作将检查设备真实的状态.
+     * 如果设备协议中指定了{@link ProtocolSupport#getStateChecker()},则将调用指定的状态检查器进行检查.
+     * <br>
+     * 默认的状态检查逻辑:
+     * <br>
+     * <img src="doc-files/device-state-check.svg">
+     *
+     * @see DeviceStateChecker
      */
     Mono<Byte> checkState();
 

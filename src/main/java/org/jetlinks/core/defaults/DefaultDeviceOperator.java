@@ -43,7 +43,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time");
 
-    static final List<String> productIdAndVersionKey = Arrays.asList(productId.getKey(),productVersion.getKey());
+    static final List<String> productIdAndVersionKey = Arrays.asList(productId.getKey(), productVersion.getKey());
 
     private static final AtomicReferenceFieldUpdater<DefaultDeviceOperator, DeviceMetadata> METADATA_UPDATER =
             AtomicReferenceFieldUpdater.newUpdater(DefaultDeviceOperator.class, DeviceMetadata.class, "metadataCache");
@@ -109,10 +109,11 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         this.storageMono = storageManager.getStorage("device:" + id);
         this.parent = getReactiveStorage()
                 .flatMap(store -> store.getConfigs(productIdAndVersionKey))
-                .flatMap(productIdAndVersion->{
-                    String _productId = productIdAndVersion.getString(productId.getKey(),(String) null);
-                    String _version = productIdAndVersion.getString(productVersion.getKey(),(String) null);
-                    return registry.getProduct(_productId,_version);
+                .flatMap(productIdAndVersion -> {
+                    //支持指定产品版本
+                    String _productId = productIdAndVersion.getString(productId.getKey(), (String) null);
+                    String _version = productIdAndVersion.getString(productVersion.getKey(), (String) null);
+                    return registry.getProduct(_productId, _version);
                 });
         //支持设备自定义协议
         this.protocolSupportMono = this
@@ -200,23 +201,25 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         return this
                 .getSelfConfigs(Arrays.asList("state", parentGatewayId.getKey(), selfManageState.getKey()))
                 .flatMap(values -> {
+                    //缓存中的状态
                     Byte state = values
                             .getValue("state")
                             .map(val -> val.as(Byte.class))
                             .orElse(DeviceState.unknown);
-
+                    //是否为状态自管理,通常是子设备设置此配置
                     boolean isSelfManageState = values
-                            .getValue(selfManageState.getKey())
-                            .map(val -> val.as(Boolean.class))
+                            .getValue(selfManageState)
                             .orElse(false);
+                    //网关ID
                     String parentGatewayId = values
                             .getValue(DeviceConfigKey.parentGatewayId)
                             .orElse(null);
-
+                    //存在循环依赖时直接返回
                     if (getDeviceId().equals(parentGatewayId)) {
                         log.warn(LocaleUtils.resolveMessage("validation.parent_id_and_id_can_not_be_same", parentGatewayId));
                         return Mono.just(state);
                     }
+                    //如果是自状态管理则返回缓存中的状态?
                     if (isSelfManageState) {
                         return Mono.just(state);
                     }
@@ -342,7 +345,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 .flatMap(tp2 -> {
                     byte newer = tp2.getT1();
                     byte old = tp2.getT2();
-                    //状态不一致?
+                    //最新的状态与缓存中的状态不一致.
                     if (newer != old) {
                         log.info("device[{}] state changed from {} to {}", this.getDeviceId(), old, newer);
                         Map<String, Object> configs = new HashMap<>();
