@@ -2,6 +2,12 @@ package org.jetlinks.core.cluster;
 
 import reactor.core.publisher.Mono;
 
+/**
+ * 集群计数器支持
+ *
+ * @author zhouhao
+ * @since 1.1.4
+ */
 public interface ClusterCounter {
 
     /**

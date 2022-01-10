@@ -86,6 +86,11 @@
             <artifactId>nio-multipart-parser</artifactId>
         </dependency>
 
+        <dependency>
+            <artifactId>jctools-core</artifactId>
+            <groupId>org.jctools</groupId>
+            <version>2.1.2</version>
+        </dependency>
     </dependencies>
 
 </project>

@@ -38,4 +38,9 @@ public interface DeviceMessage extends ThingMessage, Jsonable {
 
     @Override
     DeviceMessage addHeaderIfAbsent(String header, Object value);
+
+    @Override
+    default DeviceMessage copy() {
+        return (DeviceMessage)ThingMessage.super.copy();
+    }
 }

@@ -1,9 +1,6 @@
 package org.jetlinks.core.things;
 
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
@@ -11,8 +8,14 @@ import lombok.Setter;
 @EqualsAndHashCode
 public class MetadataId {
 
+    @NonNull
     private ThingMetadataType type;
 
+    @NonNull
     private String id;
 
+    @Override
+    public String toString() {
+        return type.name() + ":" + id;
+    }
 }

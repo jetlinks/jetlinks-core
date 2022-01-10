@@ -27,9 +27,14 @@ public class DeviceInfo implements Serializable {
     private String id;
 
     /**
-     * 产品-型号ID
+     * 产品ID
      */
     private String productId;
+
+    /**
+     * 产品版本
+     */
+    private String productVersion;
 
     /**
      * 消息协议

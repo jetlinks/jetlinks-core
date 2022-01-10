@@ -49,6 +49,9 @@ public interface DeviceMessageReply extends DeviceMessage, ThingMessageReply {
     //设置消息ID
     DeviceMessageReply messageId(@NotNull String messageId);
 
+    @Override
+    DeviceMessageReply timestamp(long timestamp);
+
     //添加头
     @Override
     DeviceMessageReply addHeader(@NotNull String header, @NotNull Object value);
@@ -63,5 +66,10 @@ public interface DeviceMessageReply extends DeviceMessage, ThingMessageReply {
     default <T> DeviceMessageReply addHeader(@NotNull HeaderKey<T> header, @NotNull T value) {
         addHeader(header.getKey(), value);
         return this;
+    }
+
+    @Override
+    default DeviceMessageReply copy() {
+        return (DeviceMessageReply)ThingMessageReply.super.copy();
     }
 }

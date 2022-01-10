@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * 读取设备属性消息, 方向: 平台->设备
  * <p>
- * 下发指令后,设备需要回复指令{@link ReadPropertyMessageReply}
+ * 下发指令后,设备需要回复指令{@link ReadPropertyMessageReply},且{@link ReadPropertyMessage#getMessageId()}值需要相同
  *
  * @author zhouhao
  * @see ReadPropertyMessageReply

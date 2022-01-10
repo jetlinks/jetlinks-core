@@ -42,6 +42,9 @@ public interface ThingMessageReply extends ThingMessage{
     //设置消息ID
     ThingMessageReply messageId(@NotNull String messageId);
 
+    //设置时间戳
+    ThingMessageReply timestamp(@NotNull long timestamp);
+
     //添加头
     @Override
     ThingMessageReply addHeader(@NotNull String header, @NotNull Object value);
@@ -50,5 +53,10 @@ public interface ThingMessageReply extends ThingMessage{
     default <T> ThingMessageReply addHeader(@NotNull HeaderKey<T> header, @NotNull T value) {
         addHeader(header.getKey(), value);
         return this;
+    }
+
+    @Override
+    default ThingMessageReply copy() {
+        return (ThingMessageReply)ThingMessage.super.copy();
     }
 }

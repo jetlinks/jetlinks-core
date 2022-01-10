@@ -41,6 +41,11 @@ public class ProductInfo implements Serializable {
      */
     private Map<String, Object> configuration = new HashMap<>();
 
+    /**
+     * 版本号
+     */
+    private String version;
+
     public ProductInfo(String id, String protocol, String metadata) {
         this.id = id;
         this.protocol = protocol;

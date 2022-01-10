@@ -36,54 +36,60 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
     public abstract MessageType getMessageType();
 
     @Override
-    public ThingMessage thingId(String thingType, String thingId) {
+    public SELF thingId(String thingType, String thingId) {
         this.setThingType(thingType);
         this.setThingId(thingId);
-        return this;
+        return castSelf();
     }
 
     @Override
-    public synchronized ThingMessage addHeader(String header, Object value) {
+    public SELF timestamp(long timestamp) {
+        this.timestamp = timestamp;
+        return castSelf();
+    }
+
+    @Override
+    public synchronized SELF addHeader(String header, Object value) {
         if (headers == null) {
             this.headers = new ConcurrentHashMap<>();
         }
         if (header != null && value != null) {
             this.headers.put(header, value);
         }
-        return this;
+        return castSelf();
     }
 
     @Override
-    public synchronized ThingMessage addHeaderIfAbsent(String header, Object value) {
+    public synchronized SELF addHeaderIfAbsent(String header, Object value) {
         if (headers == null) {
             this.headers = new ConcurrentHashMap<>();
         }
         if (header != null && value != null) {
             this.headers.putIfAbsent(header, value);
         }
-        return this;
+        return castSelf();
     }
 
     private Map<String, Object> safeGetHeader() {
         return headers == null ? headers = new ConcurrentHashMap<>() : headers;
     }
 
-    public SELF messageId(String messageId){
+    public SELF messageId(String messageId) {
         this.setMessageId(messageId);
         return castSelf();
     }
 
     @SuppressWarnings("all")
-    protected SELF castSelf(){
-        return (SELF)this;
+    protected SELF castSelf() {
+        return (SELF) this;
     }
 
     @Override
-    public ThingMessage removeHeader(String header) {
+    public SELF removeHeader(String header) {
         if (this.headers != null) {
             this.headers.remove(header);
         }
-        return this;
+        return castSelf();
     }
 
     @Override
@@ -94,8 +100,8 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
     }
 
     @Override
-    public void computeHeader(String key, BiFunction<String, Object, Object> computer) {
-        safeGetHeader().compute(key, computer);
+    public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
+       return safeGetHeader().compute(key, computer);
     }
 
     @Override
@@ -108,4 +114,9 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
         return toJson().toJSONString();
     }
 
+    @Override
+    @SuppressWarnings("all")
+    public SELF copy() {
+        return (SELF) ThingMessage.super.copy();
+    }
 }

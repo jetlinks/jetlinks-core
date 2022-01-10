@@ -9,10 +9,28 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 使用{@link ConfigStorage}来提供配置支持
+ *
+ * @author zhouhao
+ * @see ConfigStorage
+ * @see ConfigStorageManager
+ * @since 1.0
+ */
 public interface StorageConfigurable extends Configurable {
 
+    /**
+     * 异步获取配置器
+     *
+     * @return ConfigStorage
+     */
     Mono<ConfigStorage> getReactiveStorage();
 
+    /**
+     * 获取上级配置器
+     *
+     * @return Configurable
+     */
     default Mono<? extends Configurable> getParent() {
         return Mono.empty();
     }

@@ -9,6 +9,21 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.ServiceLoader;
 
+/**
+ * 可拓展的{@link FileQueue.Builder}实现,利用jdk spi功能进行自定义拓展:
+ *
+ * <pre>
+ *     --resources
+ *     ---|---META-INF
+ *     ---|-----|--services
+ *     ---|-----|-----|---org.jetlinks.core.cache.FileQueueBuilderFactory
+ * </pre>
+ *
+ * @param <T> Queue元素类型
+ * @see FileQueueBuilderFactory
+ * @see FileQueue.Builder
+ * @since 1.1.7
+ */
 @Slf4j
 class SPIFileQueueBuilder<T> implements FileQueue.Builder<T> {
 

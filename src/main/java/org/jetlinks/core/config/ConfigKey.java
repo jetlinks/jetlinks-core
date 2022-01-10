@@ -1,29 +1,78 @@
 package org.jetlinks.core.config;
 
+/**
+ * 用于定义配置key,增加key的可读性
+ *
+ * @param <V> 值类型
+ * @author zhouhao
+ * @since 1.0
+ */
 public interface ConfigKey<V> {
+    /**
+     * @return key
+     */
     String getKey();
 
+    /**
+     * key的名称,说明
+     *
+     * @return name
+     */
     default String getName() {
         return getKey();
     }
 
+    /**
+     * key 对应值的类型
+     *
+     * @return 类型
+     */
     default Class<V> getType() {
         return (Class<V>) Object.class;
     }
 
+    /**
+     * 根据一个字符串来创建一个ConfigKey,它的key和name的值都为此字符串
+     *
+     * @param key 字符串
+     * @param <T> 值类型
+     * @return ConfigKey
+     */
     static <T> ConfigKey<T> of(String key) {
         return of(key, key);
     }
 
+    /**
+     * 指定key和名称创建key
+     *
+     * @param key  key
+     * @param name 名称
+     * @param <T>  值类型
+     * @return ConfigKey
+     */
     static <T> ConfigKey<T> of(String key, String name) {
         return SimpleConfigKey.of(key, name, (Class<T>) Object.class);
     }
 
+    /**
+     * 指定key字符串和名称以及值类型创建key
+     *
+     * @param key  key
+     * @param name 名称
+     * @param <T>  值类型
+     * @param type 类型
+     * @return ConfigKey
+     */
     static <T> ConfigKey<T> of(String key, String name, Class<T> type) {
         return SimpleConfigKey.of(key, name, type);
     }
 
-
+    /**
+     * 使用指定的值，将key转为ConfigKeyValue
+     *
+     * @param value 值
+     * @return ConfigKeyValue
+     */
     default ConfigKeyValue<V> value(V value) {
         return new ConfigKeyValue<V>() {
             @Override

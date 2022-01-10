@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.reactivestreams.Subscription;
 import reactor.core.Disposable;
 import reactor.core.publisher.BaseSubscriber;
@@ -14,11 +15,38 @@ import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 public class FluxUtils {
+
+
+    /**
+     * 构造有效期内去重的Flux
+     *
+     * <pre>
+     *    flux.as(ReactorUtils.distinct(MyData::getId,Duration.ofSeconds(30)))
+     * </pre>
+     *
+     * @param keySelector 去重的key
+     * @param duration    有效期
+     * @param <T>         泛型
+     * @return 去重构造器
+     */
+    public static <T> Function<Flux<T>, Flux<T>> distinct(Function<T, ?> keySelector, Duration duration) {
+        return flux -> flux
+                .distinct(keySelector,
+                          () -> Caffeine
+                                  .newBuilder()
+                                  //有效期内去重
+                                  .expireAfterWrite(duration)
+                                  .build()
+                                  .asMap(),
+                          (cache, id) -> cache.put(id, 1) == null,
+                          Map::clear);
+    }
 
     /**
      * 安全的转换Flux中的值,当mapper返回<code>null</code>时会忽略而不是报错

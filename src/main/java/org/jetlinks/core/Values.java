@@ -54,10 +54,20 @@ public interface Values {
      */
     Set<String> getNonExistentKeys(Collection<String> keys);
 
+    /**
+     * 是否为空
+     *
+     * @return true 为空，false 非空
+     */
     default boolean isEmpty() {
         return size() == 0;
     }
 
+    /**
+     * 是否不为空
+     *
+     * @return true 不为空，false 为空
+     */
     default boolean isNoEmpty() {
         return size() > 0;
     }

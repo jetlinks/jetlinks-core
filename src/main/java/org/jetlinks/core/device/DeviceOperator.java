@@ -15,7 +15,7 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 
 /**
- * 设备操作接口
+ * 设备操作接口,用于发送指令到设备{@link DeviceOperator#messageSender()}以及获取配置等相关信息
  *
  * @author zhouhao
  * @since 1.0.0
@@ -64,13 +64,21 @@ public interface DeviceOperator extends Thing {
     Mono<Boolean> putState(byte state);
 
     /**
+     * 获取设备当前缓存的状态,此状态可能与实际的状态不一致.
      * @return 获取当前状态
      * @see DeviceState
      */
     Mono<Byte> getState();
 
     /**
-     * 检查设备的真实状态
+     * 检查设备的真实状态,此操作将检查设备真实的状态.
+     * 如果设备协议中指定了{@link ProtocolSupport#getStateChecker()},则将调用指定的状态检查器进行检查.
+     * <br>
+     * 默认的状态检查逻辑:
+     * <br>
+     * <img src="doc-files/device-state-check.svg">
+     *
+     * @see DeviceStateChecker
      */
     Mono<Byte> checkState();
 
@@ -85,7 +93,7 @@ public interface DeviceOperator extends Thing {
     Mono<Long> getOfflineTime();
 
     /**
-     * 设备上线
+     * 设备上线,通常不需要手动调用
      *
      * @param serverId  设备所在服务ID
      * @param sessionId 会话ID

@@ -267,7 +267,7 @@ public class DefaultThingsDataManager implements ThingsDataManager {
                 if (ref.timestamp < baseTime) {
                     return Mono.just(ref.copy());
                 }
-                if (ref.pre != null && ref.pre.timestamp < baseTime && ref.pre.value != NULL) {
+                if (ref.pre != null && ref.pre.timestamp < baseTime && ref.pre.value != null && ref.pre.value != NULL) {
                     return Mono.just(ref.pre.copy());
                 }
                 //获取当前数据之前的数据

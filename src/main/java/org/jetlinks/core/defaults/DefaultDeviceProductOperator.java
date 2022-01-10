@@ -1,5 +1,6 @@
 package org.jetlinks.core.defaults;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.ProtocolSupports;
@@ -26,6 +27,7 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
 
     private volatile DeviceMetadata metadata;
 
+    @Getter(AccessLevel.PROTECTED)
     private final Mono<ConfigStorage> storageMono;
 
     private final Supplier<Flux<DeviceOperator>> devicesSupplier;
@@ -51,9 +53,15 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
                                         ProtocolSupports supports,
                                         ConfigStorageManager manager,
                                         Supplier<Flux<DeviceOperator>> supplier) {
+        this(id, supports, manager.getStorage("device-product:".concat(id)), supplier);
+    }
+
+    public DefaultDeviceProductOperator(String id,
+                                        ProtocolSupports supports,
+                                        Mono<ConfigStorage> storageMono,
+                                        Supplier<Flux<DeviceOperator>> supplier) {
         this.id = id;
-//        this.protocolSupports = supports;
-        this.storageMono = manager.getStorage("device-product:".concat(id));
+        this.storageMono = storageMono;
         this.devicesSupplier = supplier;
         this.inLocalMetadata = Mono.fromSupplier(() -> metadata);
         this.protocolSupportMono = this
@@ -90,7 +98,6 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
                 .switchIfEmpty(loadMetadata);
     }
 
-
     @Override
     public Mono<DeviceMetadata> getMetadata() {
         return this.metadataMono;
@@ -99,9 +106,9 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
 
     @Override
     public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
-        if(metadata instanceof DeviceMetadata) {
+        if (metadata instanceof DeviceMetadata) {
             return getProtocol()
-                    .flatMap(protocol -> protocol.getMetadataCodec().encode((DeviceMetadata)metadata))
+                    .flatMap(protocol -> protocol.getMetadataCodec().encode((DeviceMetadata) metadata))
                     .flatMap(this::updateMetadata);
         }
         // FIXME: 2021/11/3

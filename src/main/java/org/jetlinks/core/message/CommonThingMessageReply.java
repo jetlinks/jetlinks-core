@@ -39,7 +39,6 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
 
     private Map<String, Object> headers;
 
-
     private Map<String, Object> safeGetHeader() {
         return headers == null ? headers = new ConcurrentHashMap<>() : headers;
     }
@@ -138,6 +137,12 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     }
 
     @Override
+    public SELF timestamp(long timestamp) {
+        this.timestamp = timestamp;
+        return castSelf();
+    }
+
+    @Override
     public <T> SELF addHeader(HeaderKey<T> header, T value) {
         return (SELF) ThingMessageReply.super.addHeader(header, value);
     }
@@ -158,7 +163,6 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     public void fromJson(JSONObject jsonObject) {
         ThingMessageReply.super.fromJson(jsonObject);
         success = jsonObject.getBooleanValue("success");
-
         timestamp = jsonObject.getLongValue("timestamp");
         if (timestamp == 0) {
             timestamp = System.currentTimeMillis();
@@ -172,8 +176,8 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     }
 
     @Override
-    public void computeHeader(String key, BiFunction<String, Object, Object> computer) {
-        safeGetHeader().compute(key, computer);
+    public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
+        return safeGetHeader().compute(key, computer);
     }
 
     @Override
@@ -181,4 +185,9 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
         return toJson().toJSONString();
     }
 
+    @Override
+    @SuppressWarnings("all")
+    public SELF copy() {
+        return (SELF) ThingMessageReply.super.copy();
+    }
 }

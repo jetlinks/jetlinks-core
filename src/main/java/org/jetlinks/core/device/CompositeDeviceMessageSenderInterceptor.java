@@ -29,6 +29,16 @@ public class CompositeDeviceMessageSenderInterceptor implements DeviceMessageSen
     }
 
     @Override
+    public Flux<DeviceMessage> doSend(DeviceOperator device, DeviceMessage source, Flux<DeviceMessage> sender) {
+        Flux<DeviceMessage> flux = sender;
+
+        for (DeviceMessageSenderInterceptor interceptor : interceptors) {
+            flux = interceptor.doSend(device, source, flux);
+        }
+        return flux;
+    }
+
+    @Override
     public <R extends DeviceMessage> Flux<R> afterSent(DeviceOperator device, DeviceMessage message, Flux<R> reply) {
 
         Flux<R> flux = reply;
