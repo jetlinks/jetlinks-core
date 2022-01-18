@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.cache.CacheBuilder;
 import org.jctools.maps.NonBlockingHashMap;
 
+import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
@@ -12,7 +13,7 @@ import java.util.function.Supplier;
  * 缓存工具,根据环境来创建不同的ConcurrentMap实现,
  * <p>
  * 支持 jctools{@link NonBlockingHashMap },Caffeine{@link Caffeine},Guava.
- *
+ * <p>
  * 优先级:
  * <ul style="list-style-type:decimal;">
  *     <li>jctools</li>
@@ -80,6 +81,19 @@ public class Caches {
     @SuppressWarnings("all")
     public static <K, V> ConcurrentMap<K, V> newCache() {
         return (ConcurrentMap) cacheSupplier.get();
+    }
+
+    public static <K, V> ConcurrentMap<K, V> newCache(Duration ttl) {
+        if (caffeinePresent()) {
+            return Caffeine.newBuilder()
+                           .expireAfterWrite(ttl)
+                           .<K, V>build()
+                           .asMap();
+        }
+        return CacheBuilder
+                .newBuilder()
+                .expireAfterWrite(ttl)
+                .<K, V>build().asMap();
     }
 
 }
