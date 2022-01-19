@@ -196,10 +196,16 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         return setConfig("state", state);
     }
 
+    private final static List<String> stateCacheKeys = Arrays
+            .asList("state",
+                    parentGatewayId.getKey(),
+                    selfManageState.getKey(),
+                    connectionServerId.getKey());
+
     @Override
     public Mono<Byte> getState() {
         return this
-                .getSelfConfigs(Arrays.asList("state", parentGatewayId.getKey(), selfManageState.getKey()))
+                .getSelfConfigs(stateCacheKeys)
                 .flatMap(values -> {
                     //缓存中的状态
                     Byte state = values
@@ -210,6 +216,15 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                     boolean isSelfManageState = values
                             .getValue(selfManageState)
                             .orElse(false);
+
+                    String server = values
+                            .getValue(connectionServerId)
+                            .orElse(null);
+
+                    //已经连接到服务器,则直接返回状态
+                    if (StringUtils.hasText(server)) {
+                        return Mono.just(state);
+                    }
                     //网关ID
                     String parentGatewayId = values
                             .getValue(DeviceConfigKey.parentGatewayId)
@@ -237,11 +252,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private Mono<Byte> doCheckState() {
         return Mono
                 .defer(() -> this
-                        .getSelfConfigs(Arrays.asList(
-                                connectionServerId.getKey(),
-                                parentGatewayId.getKey(),
-                                selfManageState.getKey(),
-                                "state"))
+                        .getSelfConfigs(stateCacheKeys)
                         .flatMap(values -> {
 
                             //当前设备连接到的服务器
