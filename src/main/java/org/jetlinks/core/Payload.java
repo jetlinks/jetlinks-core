@@ -27,6 +27,7 @@ public interface Payload extends ReferenceCounted {
     @Nonnull
     ByteBuf getBody();
 
+    @Deprecated
     default Payload slice() {
         return Payload.of(getBody().slice());
     }
