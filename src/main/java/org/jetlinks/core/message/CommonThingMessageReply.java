@@ -40,7 +40,7 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     private Map<String, Object> headers;
 
     private Map<String, Object> safeGetHeader() {
-        return headers == null ? headers = new ConcurrentHashMap<>() : headers;
+        return headers == null ? headers = new ConcurrentHashMap<>(64) : headers;
     }
 
     @Override
@@ -94,6 +94,12 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     @Override
     public SELF success() {
         success = true;
+        return castSelf();
+    }
+
+    @Override
+    public SELF success(boolean success) {
+        this.success = success;
         return castSelf();
     }
 

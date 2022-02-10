@@ -61,6 +61,23 @@ public class WritePropertyMessageReply extends CommonDeviceMessageReply<WritePro
         return this;
     }
 
+    @Override
+    public WritePropertyMessageReply propertySourceTimes(Map<String, Long> times) {
+        this.propertySourceTimes = times;
+        return this;
+    }
+
+    @Override
+    public WritePropertyMessageReply propertyStates(Map<String, String> states) {
+        this.propertyStates = states;
+        return this;
+    }
+
+    @Override
+    public WritePropertyMessageReply properties(Map<String, Object> properties) {
+        return success(properties);
+    }
+
     public synchronized WritePropertyMessageReply addProperty(String key, Object value) {
         if (properties == null) {
             properties = new LinkedHashMap<>();

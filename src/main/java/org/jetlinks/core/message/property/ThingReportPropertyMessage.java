@@ -5,6 +5,9 @@ import org.jetlinks.core.message.ThingMessage;
 import org.jetlinks.core.things.ThingProperty;
 import org.jetlinks.core.things.ThingType;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.List;
 import java.util.Map;
 
@@ -53,7 +56,6 @@ public interface ThingReportPropertyMessage extends ThingMessage, PropertyMessag
      */
     ThingReportPropertyMessage success(List<ThingProperty> properties);
 
-
     default MessageType getMessageType() {
         return MessageType.REPORT_PROPERTY;
     }
@@ -69,5 +71,17 @@ public interface ThingReportPropertyMessage extends ThingMessage, PropertyMessag
         message.setThingId(deviceId);
         message.setThingType(thingType.getId());
         return message;
+    }
+
+    @Override
+    default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        ThingMessage.super.readExternal(in);
+        PropertyMessage.super.readExternal(in);
+    }
+
+    @Override
+    default void writeExternal(ObjectOutput out) throws IOException {
+        ThingMessage.super.writeExternal(out);
+        PropertyMessage.super.writeExternal(out);
     }
 }

@@ -1,9 +1,14 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSON;
+import lombok.SneakyThrows;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -61,7 +66,36 @@ public class MessageTypeTest {
 
         FunctionInvokeMessage message = MessageType.INVOKE_FUNCTION.convert(Collections.singletonMap("inputs", inputs));
 
-        assertEquals(message.inputsToMap(),inputs);
+        assertEquals(message.inputsToMap(), inputs);
 
+    }
+
+    @Test
+    @SneakyThrows
+    public void testExternalizable() {
+        for (MessageType value : MessageType.values()) {
+            if (value.deviceInstance != null && value.deviceInstance.get() instanceof ThingMessage) {
+
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                ThingMessage source = (ThingMessage) value.deviceInstance.get();
+                {
+                    source.thingId("device", "test");
+                    source.messageId("test-msg");
+                    source.addHeader("key", "value");
+                    source.addHeader("null", null);
+                    ObjectOutputStream stream = new ObjectOutputStream(out);
+                    MessageType.writeExternal(source, stream);
+                    stream.close();
+                }
+                ByteArrayInputStream input = new ByteArrayInputStream(out.toByteArray());
+                ObjectInputStream inputStream = new ObjectInputStream(input);
+                {
+                    ThingMessage message = (ThingMessage) MessageType.readExternal(inputStream);
+                    assertEquals(message.getThingId(), source.getThingId());
+                    assertEquals(message.getMessageId(), source.getMessageId());
+                    assertEquals(message.getHeaders(), source.getHeaders());
+                }
+            }
+        }
     }
 }

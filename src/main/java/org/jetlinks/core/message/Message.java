@@ -7,7 +7,7 @@ import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.metadata.Jsonable;
 
 import javax.annotation.Nullable;
-import java.io.Serializable;
+import java.io.Externalizable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiFunction;
@@ -30,7 +30,7 @@ import static org.jetlinks.core.message.MessageType.UNKNOWN;
  * @see ChildDeviceMessage
  * @see ChildDeviceMessageReply
  */
-public interface Message extends Jsonable, Serializable {
+public interface Message extends Jsonable, Externalizable {
 
     default MessageType getMessageType() {
         return UNKNOWN;

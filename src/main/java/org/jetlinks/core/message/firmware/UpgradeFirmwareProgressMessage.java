@@ -5,6 +5,13 @@ import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+
+import static org.jetlinks.core.utils.SerializeUtils.readNullableUTF;
+import static org.jetlinks.core.utils.SerializeUtils.writeNullableUTF;
+
 /**
  * 上报固件更新进度
  *
@@ -50,5 +57,29 @@ public class UpgradeFirmwareProgressMessage extends CommonDeviceMessage {
     @Override
     public MessageType getMessageType() {
         return MessageType.UPGRADE_FIRMWARE_PROGRESS;
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        super.writeExternal(out);
+        out.writeInt(progress);
+        out.writeBoolean(complete);
+        out.writeBoolean(success);
+
+        writeNullableUTF(version, out);
+        writeNullableUTF(errorReason, out);
+        writeNullableUTF(firmwareId, out);
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        super.readExternal(in);
+        this.progress = in.readInt();
+        this.complete = in.readBoolean();
+        this.success = in.readBoolean();
+        this.version = readNullableUTF(in);
+        this.errorReason = readNullableUTF(in);
+        this.firmwareId = readNullableUTF(in);
     }
 }

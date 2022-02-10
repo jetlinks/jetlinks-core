@@ -6,7 +6,11 @@ import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.RepayableThingMessage;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import org.jetlinks.core.things.ThingType;
+import org.jetlinks.core.utils.SerializeUtils;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,6 +38,8 @@ public interface ThingFunctionInvokeMessage<R extends ThingFunctionInvokeMessage
     List<FunctionParameter> getInputs();
 
     ThingFunctionInvokeMessage<R> addInput(FunctionParameter parameter);
+
+    ThingFunctionInvokeMessage<R> functionId(String id);
 
     @Override
     R newReply();
@@ -102,4 +108,20 @@ public interface ThingFunctionInvokeMessage<R extends ThingFunctionInvokeMessage
         return message;
     }
 
+    @Override
+    default void writeExternal(ObjectOutput out) throws IOException {
+        RepayableThingMessage.super.writeExternal(out);
+        SerializeUtils.writeNullableUTF(getFunctionId(), out);
+        SerializeUtils.writeKeyValue(getInputs(),
+                                     FunctionParameter::getName,
+                                     FunctionParameter::getValue,
+                                     out);
+    }
+
+    @Override
+    default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        RepayableThingMessage.super.readExternal(in);
+        this.functionId(SerializeUtils.readNullableUTF(in));
+        SerializeUtils.readKeyValue(in,this::addInput);
+    }
 }

@@ -1,11 +1,15 @@
 package org.jetlinks.core.message;
 
 import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.utils.SerializeUtils;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 
-public interface ThingMessageReply extends ThingMessage{
+public interface ThingMessageReply extends ThingMessage {
 
     //是否成功
     boolean isSuccess();
@@ -25,10 +29,12 @@ public interface ThingMessageReply extends ThingMessage{
     ThingMessageReply error(Throwable err);
 
     //设置物类型和物ID
-    ThingMessageReply thingId(String type,String thingId);
+    ThingMessageReply thingId(String type, String thingId);
 
     //设置成功
     ThingMessageReply success();
+
+    ThingMessageReply success(boolean success);
 
     //设置业务码
     ThingMessageReply code(@NotNull String code);
@@ -57,6 +63,22 @@ public interface ThingMessageReply extends ThingMessage{
 
     @Override
     default ThingMessageReply copy() {
-        return (ThingMessageReply)ThingMessage.super.copy();
+        return (ThingMessageReply) ThingMessage.super.copy();
+    }
+
+    @Override
+    default void writeExternal(ObjectOutput out) throws IOException {
+        ThingMessage.super.writeExternal(out);
+        out.writeBoolean(isSuccess());
+        SerializeUtils.writeNullableUTF(getCode(), out);
+        SerializeUtils.writeNullableUTF(getMessage(), out);
+    }
+
+    @Override
+    default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        ThingMessage.super.readExternal(in);
+        this.success(in.readBoolean());
+        this.code(SerializeUtils.readNullableUTF(in));
+        this.message(SerializeUtils.readNullableUTF(in));
     }
 }

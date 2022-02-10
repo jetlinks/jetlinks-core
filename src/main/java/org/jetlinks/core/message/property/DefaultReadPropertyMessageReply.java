@@ -61,7 +61,7 @@ public class DefaultReadPropertyMessageReply extends CommonThingMessageReply<Def
     }
 
     @Override
-    public ReadThingPropertyMessageReply success(List<ThingProperty> properties) {
+    public DefaultReadPropertyMessageReply success(List<ThingProperty> properties) {
         this.properties = new LinkedHashMap<>();
         this.propertySourceTimes = new LinkedHashMap<>();
         this.propertyStates = new LinkedHashMap<>();
@@ -71,6 +71,23 @@ public class DefaultReadPropertyMessageReply extends CommonThingMessageReply<Def
             this.propertyStates.put(property.getProperty(), property.getState());
         }
         return this;
+    }
+
+    @Override
+    public DefaultReadPropertyMessageReply propertySourceTimes(Map<String, Long> times) {
+        this.propertySourceTimes = times;
+        return this;
+    }
+
+    @Override
+    public DefaultReadPropertyMessageReply propertyStates(Map<String, String> states) {
+        this.propertyStates = states;
+        return this;
+    }
+
+    @Override
+    public DefaultReadPropertyMessageReply properties(Map<String, Object> properties) {
+        return success(properties);
     }
 
     @Override

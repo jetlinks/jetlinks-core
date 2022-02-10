@@ -4,6 +4,11 @@ import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.ThingMessage;
 import org.jetlinks.core.metadata.EventMetadata;
 import org.jetlinks.core.things.ThingType;
+import org.jetlinks.core.utils.SerializeUtils;
+
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 
 /**
  * 物事件消息
@@ -29,6 +34,7 @@ public interface ThingEventMessage extends ThingMessage {
 
     /**
      * 设置事件
+     *
      * @param event event
      * @return this
      */
@@ -36,6 +42,7 @@ public interface ThingEventMessage extends ThingMessage {
 
     /**
      * 设置事件数据
+     *
      * @param data data
      * @return this
      */
@@ -57,5 +64,19 @@ public interface ThingEventMessage extends ThingMessage {
         message.setThingId(thingId);
         message.setThingType(thingType.getId());
         return message;
+    }
+
+    @Override
+    default void writeExternal(ObjectOutput out) throws IOException {
+        ThingMessage.super.writeExternal(out);
+        SerializeUtils.writeNullableUTF(getEvent(),out);
+        SerializeUtils.writeNullableObject(getData(),out);
+    }
+
+    @Override
+    default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        ThingMessage.super.readExternal(in);
+        event(SerializeUtils.readNullableUTF(in));
+        data(SerializeUtils.readNullableObject(in));
     }
 }

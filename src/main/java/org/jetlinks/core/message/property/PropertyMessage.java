@@ -2,11 +2,17 @@ package org.jetlinks.core.message.property;
 
 import com.alibaba.fastjson.annotation.JSONField;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.collect.Maps;
 import org.jetlinks.core.metadata.PropertyMetadata;
+import org.jetlinks.core.utils.SerializeUtils;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +28,7 @@ import java.util.stream.Collectors;
  * @see WritePropertyMessageReply
  * @since 1.1.7
  */
-public interface PropertyMessage {
+public interface PropertyMessage extends Externalizable {
 
     /**
      * 获取全部属性值,key为物模型中的属性ID,value为属性的值
@@ -135,5 +141,27 @@ public interface PropertyMessage {
                     return SimplePropertyValue.of(prop.getKey(), prop.getValue(), ts, state);
                 })
                 .collect(Collectors.toList());
+    }
+
+    PropertyMessage properties(Map<String, Object> properties);
+
+    PropertyMessage propertySourceTimes(Map<String, Long> times);
+
+    PropertyMessage propertyStates(Map<String, String> states);
+
+
+    @Override
+    default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        properties(SerializeUtils.<Object>readMap(in, Maps::newLinkedHashMapWithExpectedSize));
+        propertySourceTimes(SerializeUtils.<Long>readMap(in, Maps::newLinkedHashMapWithExpectedSize));
+        propertyStates(SerializeUtils.<String>readMap(in, Maps::newLinkedHashMapWithExpectedSize));
+
+    }
+
+    @Override
+    default void writeExternal(ObjectOutput out) throws IOException {
+        SerializeUtils.writeKeyValue(getProperties(), out);
+        SerializeUtils.writeKeyValue(getPropertySourceTimes(), out);
+        SerializeUtils.writeKeyValue(getPropertyStates(), out);
     }
 }

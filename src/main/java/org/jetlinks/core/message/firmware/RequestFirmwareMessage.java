@@ -5,12 +5,17 @@ import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.RepayableDeviceMessage;
+import org.jetlinks.core.utils.SerializeUtils;
+
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 
 /**
  * 拉取固件更新请求
  *
- * @since 1.0.3
  * @see RequestFirmwareMessageReply
+ * @since 1.0.3
  */
 @Getter
 @Setter
@@ -30,5 +35,20 @@ public class RequestFirmwareMessage extends CommonDeviceMessage implements Repay
     @Override
     public RequestFirmwareMessageReply newReply() {
         return new RequestFirmwareMessageReply().from(this);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        super.readExternal(in);
+        this.currentVersion = SerializeUtils.readNullableUTF(in);
+        this.requestVersion = SerializeUtils.readNullableUTF(in);
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        super.writeExternal(out);
+        SerializeUtils.writeNullableUTF(currentVersion, out);
+        SerializeUtils.writeNullableUTF(requestVersion, out);
+
     }
 }

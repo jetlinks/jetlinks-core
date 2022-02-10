@@ -48,6 +48,12 @@ public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<Functio
     }
 
     @Override
+    public FunctionInvokeMessageReply functionId(String functionId) {
+        this.functionId=functionId;
+        return this;
+    }
+
+    @Override
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
         this.functionId = jsonObject.getString("functionId");

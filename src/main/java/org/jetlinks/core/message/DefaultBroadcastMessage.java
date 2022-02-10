@@ -65,4 +65,16 @@ public class DefaultBroadcastMessage implements BroadcastMessage {
     public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
         return safeGetHeader().compute(key, computer);
     }
+
+    @Override
+    public BroadcastMessage message(Message message) {
+        this.message = message;
+        return this;
+    }
+
+    @Override
+    public BroadcastMessage address(String address) {
+        this.address = address;
+        return this;
+    }
 }

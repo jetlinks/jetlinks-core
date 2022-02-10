@@ -4,6 +4,9 @@ import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.ThingMessageReply;
 import org.jetlinks.core.things.ThingProperty;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.List;
 import java.util.Map;
 
@@ -54,10 +57,19 @@ public interface ReadThingPropertyMessageReply extends ThingMessageReply, Proper
      */
     ReadThingPropertyMessageReply success(List<ThingProperty> properties);
 
-
-
     default MessageType getMessageType() {
         return MessageType.READ_PROPERTY_REPLY;
     }
 
+    @Override
+    default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        ThingMessageReply.super.readExternal(in);
+        PropertyMessage.super.readExternal(in);
+    }
+
+    @Override
+    default void writeExternal(ObjectOutput out) throws IOException {
+        ThingMessageReply.super.writeExternal(out);
+        PropertyMessage.super.writeExternal(out);
+    }
 }

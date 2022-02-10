@@ -35,7 +35,6 @@ public class FunctionInvokeMessageTest {
             }
         });
 
-        Assert.assertEquals(message.getCode(),"1");
         Assert.assertEquals(message.getMessageId(),"M1");
 
 

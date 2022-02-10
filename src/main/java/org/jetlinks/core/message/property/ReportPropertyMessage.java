@@ -50,6 +50,24 @@ public class ReportPropertyMessage extends CommonDeviceMessage implements ThingR
         this.properties = properties;
         return this;
     }
+
+    @Override
+    public ReportPropertyMessage propertySourceTimes(Map<String, Long> times) {
+        this.propertySourceTimes = times;
+        return this;
+    }
+
+    @Override
+    public ReportPropertyMessage propertyStates(Map<String, String> states) {
+        this.propertyStates = states;
+        return this;
+    }
+
+    @Override
+    public ReportPropertyMessage properties(Map<String, Object> properties) {
+        return success(properties);
+    }
+
     @Override
     public ReportPropertyMessage success(List<ThingProperty> properties) {
         this.properties = new LinkedHashMap<>();

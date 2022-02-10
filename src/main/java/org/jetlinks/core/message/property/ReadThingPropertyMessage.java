@@ -4,6 +4,10 @@ import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.RepayableThingMessage;
 import org.jetlinks.core.things.ThingType;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -40,5 +44,33 @@ public interface ReadThingPropertyMessage<T extends ReadThingPropertyMessageRepl
         message.setThingId(deviceId);
         message.setThingType(thingType.getId());
         return message;
+    }
+
+    @Override
+    default void writeExternal(ObjectOutput out) throws IOException {
+        RepayableThingMessage.super.writeExternal(out);
+        List<String> properties = getProperties();
+        if (properties == null) {
+            out.writeInt(0);
+        } else {
+            out.writeInt(properties.size());
+            for (String property : properties) {
+                out.writeUTF(property);
+            }
+        }
+    }
+
+    @Override
+    default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        RepayableThingMessage.super.readExternal(in);
+        int size = in.readInt();
+        if (size > 0) {
+            List<String> properties = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                properties.add(in.readUTF());
+            }
+            addProperties(properties);
+        }
+
     }
 }

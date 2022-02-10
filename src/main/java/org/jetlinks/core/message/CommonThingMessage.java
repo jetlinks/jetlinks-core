@@ -50,28 +50,22 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
 
     @Override
     public synchronized SELF addHeader(String header, Object value) {
-        if (headers == null) {
-            this.headers = new ConcurrentHashMap<>();
-        }
         if (header != null && value != null) {
-            this.headers.put(header, value);
+            safeGetHeader().put(header, value);
         }
         return castSelf();
     }
 
     @Override
     public synchronized SELF addHeaderIfAbsent(String header, Object value) {
-        if (headers == null) {
-            this.headers = new ConcurrentHashMap<>();
-        }
         if (header != null && value != null) {
-            this.headers.putIfAbsent(header, value);
+            safeGetHeader().putIfAbsent(header, value);
         }
         return castSelf();
     }
 
     private Map<String, Object> safeGetHeader() {
-        return headers == null ? headers = new ConcurrentHashMap<>() : headers;
+        return headers == null ? headers = new ConcurrentHashMap<>(64) : headers;
     }
 
     public SELF messageId(String messageId) {

@@ -1,18 +1,25 @@
 package org.jetlinks.core.message.firmware;
 
+import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.RepayableDeviceMessage;
+import org.jetlinks.core.utils.SerializeUtils;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.Map;
+
+import static org.jetlinks.core.utils.SerializeUtils.*;
 
 /**
  * 更新设备固件消息,平台->设备
  *
- * @since 1.0.3
  * @see UpgradeFirmwareMessageReply
+ * @since 1.0.3
  */
 @Getter
 @Setter
@@ -65,5 +72,29 @@ public class UpgradeFirmwareMessage extends CommonDeviceMessage implements Repay
     @Override
     public MessageType getMessageType() {
         return MessageType.UPGRADE_FIRMWARE;
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        super.writeExternal(out);
+        writeNullableUTF(url, out);
+        writeNullableUTF(version, out);
+        writeNullableUTF(sign, out);
+        writeNullableUTF(signMethod, out);
+        writeNullableUTF(firmwareId, out);
+        out.writeLong(size);
+        writeKeyValue(parameters, out);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        super.readExternal(in);
+        this.url = readNullableUTF(in);
+        this.version = readNullableUTF(in);
+        this.sign = readNullableUTF(in);
+        this.signMethod = readNullableUTF(in);
+        this.firmwareId = readNullableUTF(in);
+        this.size = in.readLong();
+        this.parameters = SerializeUtils.<Object>readMap(in, Maps::newHashMapWithExpectedSize);
     }
 }

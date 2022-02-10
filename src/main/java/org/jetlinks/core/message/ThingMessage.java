@@ -2,6 +2,11 @@ package org.jetlinks.core.message;
 
 import org.jetlinks.core.things.ThingId;
 import org.jetlinks.core.things.ThingType;
+import org.jetlinks.core.utils.SerializeUtils;
+
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 
 /**
  * 物消息
@@ -69,5 +74,24 @@ public interface ThingMessage extends Message {
     @Override
     default ThingMessage copy() {
         return (ThingMessage) Message.super.copy();
+    }
+
+    @Override
+    default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        SerializeUtils.readKeyValue(in, this::addHeader);
+        thingId(SerializeUtils.readNullableUTF(in), SerializeUtils.readNullableUTF(in));
+        messageId(SerializeUtils.readNullableUTF(in));
+        timestamp(in.readLong());
+    }
+
+    @Override
+    default void writeExternal(ObjectOutput out) throws IOException {
+        //header
+        SerializeUtils.writeKeyValue(getHeaders(), out);
+
+        SerializeUtils.writeNullableUTF(getThingType(), out);
+        SerializeUtils.writeNullableUTF(getThingId(), out);
+        SerializeUtils.writeNullableUTF(getMessageId(), out);
+        out.writeLong(getTimestamp());
     }
 }

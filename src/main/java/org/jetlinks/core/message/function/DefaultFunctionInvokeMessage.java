@@ -49,6 +49,12 @@ public class DefaultFunctionInvokeMessage extends CommonThingMessage<DefaultFunc
     }
 
     @Override
+    public DefaultFunctionInvokeMessage functionId(String id) {
+        this.functionId=id;
+        return this;
+    }
+
+    @Override
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
         this.functionId = jsonObject.getString("functionId");

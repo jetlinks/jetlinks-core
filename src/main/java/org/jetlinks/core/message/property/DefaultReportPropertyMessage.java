@@ -61,6 +61,23 @@ public class DefaultReportPropertyMessage extends CommonThingMessage<DefaultRepo
     }
 
     @Override
+    public DefaultReportPropertyMessage propertySourceTimes(Map<String, Long> times) {
+        this.propertySourceTimes = times;
+        return this;
+    }
+
+    @Override
+    public DefaultReportPropertyMessage propertyStates(Map<String, String> states) {
+        this.propertyStates = states;
+        return this;
+    }
+
+    @Override
+    public DefaultReportPropertyMessage properties(Map<String, Object> properties) {
+        return success(properties);
+    }
+
+    @Override
     @SuppressWarnings("all")
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);

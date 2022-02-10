@@ -33,6 +33,12 @@ public class DefaultFunctionInvokeMessageReply extends CommonThingMessageReply<D
         return reply;
     }
 
+    @Override
+    public DefaultFunctionInvokeMessageReply functionId(String id) {
+        this.functionId = id;
+        return this;
+    }
+
     public DefaultFunctionInvokeMessageReply success() {
         this.setSuccess(true);
         return this;
@@ -59,7 +65,7 @@ public class DefaultFunctionInvokeMessageReply extends CommonThingMessageReply<D
                                                             String thingId,
                                                             String functionId,
                                                             String messageId,
-                                                            Object output){
+                                                            Object output) {
         DefaultFunctionInvokeMessageReply reply = new DefaultFunctionInvokeMessageReply();
 
         reply.setFunctionId(functionId);
@@ -76,7 +82,7 @@ public class DefaultFunctionInvokeMessageReply extends CommonThingMessageReply<D
                                                           String thingId,
                                                           String functionId,
                                                           String messageId,
-                                                          String message){
+                                                          String message) {
         DefaultFunctionInvokeMessageReply reply = new DefaultFunctionInvokeMessageReply();
 
         reply.setFunctionId(functionId);

@@ -42,7 +42,7 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
      *
      * @since 1.1.7
      */
-    private Map<String,String> propertyStates;
+    private Map<String, String> propertyStates;
 
     public static ReadPropertyMessageReply create() {
         ReadPropertyMessageReply reply = new ReadPropertyMessageReply();
@@ -61,7 +61,7 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
     }
 
     @Override
-    public ReadThingPropertyMessageReply success(List<ThingProperty> properties) {
+    public ReadPropertyMessageReply success(List<ThingProperty> properties) {
         this.properties = new LinkedHashMap<>();
         this.propertySourceTimes = new LinkedHashMap<>();
         this.propertyStates = new LinkedHashMap<>();
@@ -72,6 +72,24 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
         }
         return this;
     }
+
+    @Override
+    public ReadPropertyMessageReply propertySourceTimes(Map<String, Long> times) {
+        this.propertySourceTimes = times;
+        return this;
+    }
+
+    @Override
+    public ReadPropertyMessageReply propertyStates(Map<String, String> states) {
+        this.propertyStates = states;
+        return this;
+    }
+
+    @Override
+    public ReadPropertyMessageReply properties(Map<String, Object> properties) {
+        return success(properties);
+    }
+
 
     @Override
     @SuppressWarnings("all")

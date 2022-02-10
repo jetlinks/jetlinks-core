@@ -57,7 +57,7 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     private Map<String, Object> safeGetHeader() {
-        return headers == null ? headers = new ConcurrentHashMap<>() : headers;
+        return headers == null ? headers = new ConcurrentHashMap<>(64) : headers;
     }
 
     @Override

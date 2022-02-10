@@ -39,7 +39,7 @@ public class DefaultWritePropertyMessageReply extends CommonThingMessageReply<De
      *
      * @since 1.1.7
      */
-    private Map<String,String> propertyStates;
+    private Map<String, String> propertyStates;
 
     public synchronized DefaultWritePropertyMessageReply addProperty(String key, Object value) {
         if (properties == null) {
@@ -69,6 +69,24 @@ public class DefaultWritePropertyMessageReply extends CommonThingMessageReply<De
             this.propertyStates.put(property.getProperty(), property.getState());
         }
         return this;
+    }
+
+
+    @Override
+    public DefaultWritePropertyMessageReply propertySourceTimes(Map<String, Long> times) {
+        this.propertySourceTimes = times;
+        return this;
+    }
+
+    @Override
+    public DefaultWritePropertyMessageReply propertyStates(Map<String, String> states) {
+        this.propertyStates = states;
+        return this;
+    }
+
+    @Override
+    public DefaultWritePropertyMessageReply properties(Map<String, Object> properties) {
+        return success(properties);
     }
 
     public static DefaultWritePropertyMessageReply create() {

@@ -1,6 +1,7 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
+import lombok.SneakyThrows;
 import org.jetlinks.core.device.DeviceThingType;
 import org.jetlinks.core.message.event.DefaultEventMessage;
 import org.jetlinks.core.message.event.EventMessage;
@@ -14,6 +15,8 @@ import org.jetlinks.core.message.state.DeviceStateCheckMessage;
 import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
 import org.jetlinks.core.things.ThingId;
 
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -270,4 +273,25 @@ public enum MessageType {
         return Optional.of(UNKNOWN);
     }
 
+    @SneakyThrows
+    public static Message readExternal(ObjectInput input) {
+        int type = input.readByte();
+        MessageType messageType = values()[type];
+        boolean isDevice = input.readBoolean();
+        Message message;
+        if (isDevice && messageType.deviceInstance != null) {
+            message = messageType.deviceInstance.get();
+        } else {
+            message = messageType.thingInstance.get();
+        }
+        message.readExternal(input);
+        return message;
+    }
+
+    @SneakyThrows
+    public static void writeExternal(Message message, ObjectOutput output) {
+        output.writeByte(message.getMessageType().ordinal());
+        output.writeBoolean(message instanceof DeviceMessage);
+        message.writeExternal(output);
+    }
 }

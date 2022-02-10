@@ -22,7 +22,7 @@ import java.util.function.BiFunction;
 @AllArgsConstructor
 @NoArgsConstructor
 @SuppressWarnings("all")
-public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> implements DeviceMessageReply {
+public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply> implements DeviceMessageReply {
     private static final long serialVersionUID = -6849794470754667710L;
 
     private boolean success = true;
@@ -52,58 +52,64 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     }
 
     private Map<String, Object> safeGetHeader() {
-        return headers == null ? headers = new ConcurrentHashMap<>() : headers;
+        return headers == null ? headers = new ConcurrentHashMap<>(64) : headers;
     }
 
     @Override
-    public synchronized ME addHeaderIfAbsent(String header, Object value) {
+    public synchronized Self addHeaderIfAbsent(String header, Object value) {
         if (header != null && value != null) {
             safeGetHeader().putIfAbsent(header, value);
         }
-        return (ME) this;
+        return caseSelf();
     }
 
     @Override
-    public synchronized ME addHeader(String header, Object value) {
+    public synchronized Self addHeader(String header, Object value) {
         if (header != null && value != null) {
             safeGetHeader().put(header, value);
         }
-        return (ME) this;
+        return caseSelf();
     }
 
     @Override
-    public ME removeHeader(String header) {
+    public Self removeHeader(String header) {
         if (headers != null) {
             this.headers.remove(header);
         }
-        return (ME) this;
+        return caseSelf();
     }
 
-    public ME code(String code) {
+    public Self code(String code) {
         this.code = code;
 
-        return (ME) this;
+        return caseSelf();
     }
 
-    public ME message(String message) {
+    public Self message(String message) {
         this.message = message;
 
-        return (ME) this;
+        return caseSelf();
     }
 
-    public ME deviceId(String deviceId) {
+    public Self deviceId(String deviceId) {
         this.deviceId = deviceId;
 
-        return (ME) this;
+        return caseSelf();
     }
 
     @Override
-    public ME success() {
+    public Self success() {
         success = true;
-        return (ME) this;
+        return caseSelf();
     }
 
-    public ME error(Throwable e) {
+    @Override
+    public Self success(boolean success) {
+        this.success = success;
+        return caseSelf();
+    }
+
+    public Self error(Throwable e) {
         success = false;
         if (e instanceof DeviceOperationException) {
             error(((DeviceOperationException) e).getCode());
@@ -114,43 +120,47 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         addHeader("errorType", e.getClass().getName());
         addHeader("errorMessage", e.getMessage());
 
-        return ((ME) this);
+        return (caseSelf());
     }
 
     @Override
-    public ME error(ErrorCode errorCode) {
+    public Self error(ErrorCode errorCode) {
         success = false;
         code = errorCode.name();
         message = errorCode.getText();
         timestamp = System.currentTimeMillis();
-        return (ME) this;
+        return caseSelf();
     }
 
     @Override
-    public ME from(Message message) {
+    public Self from(Message message) {
         this.messageId = message.getMessageId();
         if (message instanceof DeviceMessage) {
             this.deviceId = ((DeviceMessage) message).getDeviceId();
         }
 
-        return (ME) this;
+        return caseSelf();
     }
 
     @Override
-    public ME messageId(String messageId) {
+    public Self messageId(String messageId) {
         this.messageId = messageId;
-        return (ME) this;
+        return caseSelf();
     }
 
     @Override
-    public ME timestamp(long timestamp) {
+    public Self timestamp(long timestamp) {
         this.timestamp = timestamp;
-        return (ME) this;
+        return caseSelf();
     }
 
     @Override
-    public <T> ME addHeader(HeaderKey<T> header, T value) {
-        return (ME) DeviceMessageReply.super.addHeader(header, value);
+    public <T> Self addHeader(HeaderKey<T> header, T value) {
+        return (Self) DeviceMessageReply.super.addHeader(header, value);
+    }
+
+    private Self caseSelf() {
+        return (Self) this;
     }
 
     @Override
@@ -181,7 +191,7 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
 
     @Override
     public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
-       return safeGetHeader().compute(key, computer);
+        return safeGetHeader().compute(key, computer);
     }
 
     @Override
@@ -190,7 +200,8 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
     }
 
     @Override
-    public ME copy() {
-        return (ME) DeviceMessageReply.super.copy();
+    public Self copy() {
+        return (Self) DeviceMessageReply.super.copy();
     }
+
 }
