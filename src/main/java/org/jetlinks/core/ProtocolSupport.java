@@ -5,6 +5,7 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.*;
+import org.jetlinks.core.route.Route;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.DeviceGatewayContext;
 import org.springframework.core.Ordered;
@@ -37,6 +38,10 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      * @return 说明
      */
     String getDescription();
+
+    default String getDocument() {
+        return null;
+    }
 
     /**
      * @return 获取支持的协议类型
@@ -312,6 +317,16 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
     default Mono<DeviceInfo> doBeforeDeviceCreate(Transport transport,
                                                   DeviceInfo deviceInfo) {
         return Mono.just(deviceInfo);
+    }
+
+    /**
+     * 获取指定协议的路由信息,比如MQTT topic,HTTP url地址
+     *
+     * @param transport 协议
+     * @return 路由信息
+     */
+    default Flux<Route> getRoutes(Transport transport) {
+        return Flux.empty();
     }
 
     @Override

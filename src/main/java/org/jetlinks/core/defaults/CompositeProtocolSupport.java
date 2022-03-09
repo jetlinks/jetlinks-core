@@ -9,14 +9,19 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.*;
+import org.jetlinks.core.route.Route;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.DeviceGatewayContext;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.StreamUtils;
 import reactor.core.Disposable;
 import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -34,6 +39,9 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private String name;
 
     private String description;
+
+    //协议说明文档地址
+    private String docFile = "document.md";
 
     private DeviceMetadataCodec metadataCodec;
 
@@ -86,6 +94,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     private Map<String, Flux<Feature>> features = new ConcurrentHashMap<>();
     private List<Feature> globalFeatures = new CopyOnWriteArrayList<>();
+
+    private Map<String, List<Route>> routes = new ConcurrentHashMap<>();
 
     private int order = Integer.MAX_VALUE;
 
@@ -181,6 +191,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     public void setExpandsConfigMetadata(Transport transport,
                                          ExpandsConfigMetadataSupplier supplier) {
         expandsConfigSupplier.put(transport.getId(), supplier);
+    }
+
+    public void addRoutes(Transport transport, Collection<? extends Route> routes) {
+        this.routes.computeIfAbsent(transport.getId(), id -> new ArrayList<>())
+                   .addAll(routes);
     }
 
 
@@ -453,5 +468,31 @@ public class CompositeProtocolSupport implements ProtocolSupport {
                         features.getOrDefault(transport.getId(), Flux.empty())
                 )
                 .distinct(Feature::getId);
+    }
+
+    @Override
+    public Flux<Route> getRoutes(Transport transport) {
+        return Flux.fromIterable(routes.getOrDefault(transport.getId(), Collections.emptyList()));
+    }
+
+    @Override
+    public String getDocument() {
+        if (docFile == null) {
+            return null;
+        }
+        if (docFile.startsWith("http")) {
+            return docFile;
+        }
+        try {
+            ClassPathResource resource = new ClassPathResource(docFile, this.getClass().getClassLoader());
+            if (resource.exists()) {
+                try (InputStream docStream = resource.getInputStream()) {
+                    return StreamUtils.copyToString(docStream, StandardCharsets.UTF_8);
+                }
+            }
+        } catch (Throwable ignore) {
+
+        }
+        return null;
     }
 }
