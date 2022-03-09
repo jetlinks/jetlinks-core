@@ -3,6 +3,7 @@ package org.jetlinks.core.defaults;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
@@ -13,6 +14,7 @@ import org.jetlinks.core.route.Route;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.DeviceGatewayContext;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.util.StreamUtils;
 import reactor.core.Disposable;
 import reactor.core.Disposables;
@@ -23,6 +25,7 @@ import javax.annotation.Nonnull;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiFunction;
@@ -39,9 +42,6 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private String name;
 
     private String description;
-
-    //协议说明文档地址
-    private String docFile = "document.md";
 
     private DeviceMetadataCodec metadataCodec;
 
@@ -96,6 +96,7 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private List<Feature> globalFeatures = new CopyOnWriteArrayList<>();
 
     private Map<String, List<Route>> routes = new ConcurrentHashMap<>();
+    private Map<String, Supplier<String>> docFiles = new ConcurrentHashMap<>();
 
     private int order = Integer.MAX_VALUE;
 
@@ -451,6 +452,36 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         onBeforeCreate.put(transport.getId(), listener);
     }
 
+
+    @SneakyThrows
+    public void setDocument(Transport transport, String documentUrlOrFile,ClassLoader loader) {
+        if (documentUrlOrFile.startsWith("http")) {
+            setDocument(transport, () -> documentUrlOrFile);
+        } else {
+            setDocument(transport, () -> new ClassPathResource(documentUrlOrFile, loader));
+        }
+    }
+
+    public void setDocument(Transport transport, Supplier<String> document) {
+
+        docFiles.put(transport.getId(), document);
+    }
+
+    public void setDocument(Transport transport, Callable<Resource> document) {
+        setDocument(transport, () -> {
+            try {
+                Resource resource = document.call();
+                if (resource.exists()) {
+                    try (InputStream input = resource.getInputStream()) {
+                        return StreamUtils.copyToString(input, StandardCharsets.UTF_8);
+                    }
+                }
+            } catch (Throwable ignore) {
+            }
+            return null;
+        });
+    }
+
     @Override
     public Mono<DeviceInfo> doBeforeDeviceCreate(Transport transport, DeviceInfo deviceInfo) {
         Function<DeviceInfo, Mono<DeviceInfo>> listener = onBeforeCreate.get(transport.getId());
@@ -476,23 +507,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     }
 
     @Override
-    public String getDocument() {
+    public String getDocument(Transport transport) {
+        Supplier<String> docFile = docFiles.get(transport.getId());
         if (docFile == null) {
             return null;
         }
-        if (docFile.startsWith("http")) {
-            return docFile;
-        }
-        try {
-            ClassPathResource resource = new ClassPathResource(docFile, this.getClass().getClassLoader());
-            if (resource.exists()) {
-                try (InputStream docStream = resource.getInputStream()) {
-                    return StreamUtils.copyToString(docStream, StandardCharsets.UTF_8);
-                }
-            }
-        } catch (Throwable ignore) {
-
-        }
-        return null;
+        return docFile.get();
     }
 }

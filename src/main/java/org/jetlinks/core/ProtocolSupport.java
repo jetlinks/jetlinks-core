@@ -39,7 +39,7 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      */
     String getDescription();
 
-    default String getDocument() {
+    default String getDocument(Transport transport) {
         return null;
     }
 

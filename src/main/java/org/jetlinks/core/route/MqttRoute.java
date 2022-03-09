@@ -8,7 +8,7 @@ public interface MqttRoute extends Route {
 
     boolean isDownstream();
 
-    default int getQoS() {
+    default int getQos() {
         return 0;
     }
 
