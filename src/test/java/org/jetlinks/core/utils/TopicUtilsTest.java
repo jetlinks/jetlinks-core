@@ -100,4 +100,30 @@ public class TopicUtilsTest {
 
 
     }
+
+    @Test
+    public void testMqtt(){
+        assertEquals(
+                "/device/#",
+                TopicUtils.convertToMqttTopic("/device/**")
+
+        );
+
+        assertEquals(
+                "/device/+",
+                TopicUtils.convertToMqttTopic("/device/*")
+
+        );
+
+        assertEquals(
+                "/device/+",
+                TopicUtils.convertToMqttTopic("/device/{deviceId}")
+        );
+
+        assertEquals(
+                "/device/+/+",
+                TopicUtils.convertToMqttTopic("/device/{deviceId:设备ID}/{type:类型}")
+
+        );
+    }
 }
