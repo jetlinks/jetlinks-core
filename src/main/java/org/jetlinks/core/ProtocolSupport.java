@@ -338,4 +338,8 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
     default int compareTo(@Nonnull ProtocolSupport o) {
         return Integer.compare(this.getOrder(), o.getOrder());
     }
+
+    default boolean isEmbedded() {
+        return this instanceof Embedded;
+    }
 }
