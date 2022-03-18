@@ -1,0 +1,58 @@
+package org.jetlinks.core.trace;
+
+import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
+import lombok.AllArgsConstructor;
+import org.jetlinks.core.event.EventBus;
+import org.jetlinks.core.trace.data.SpanDataInfo;
+import org.jetlinks.core.utils.StringBuilderUtils;
+import reactor.core.publisher.Mono;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+@AllArgsConstructor(staticName = "create")
+public class EventBusSpanExporter implements SpanExporter {
+    private final EventBus eventBus;
+
+    @Override
+    public CompletableResultCode export(Collection<SpanData> spans) {
+        List<CompletableResultCode> codes = new ArrayList<>(spans.size());
+
+        for (SpanData span : spans) {
+            CompletableResultCode code = new CompletableResultCode();
+            doPublish(span)
+                    .subscribe(nil -> code.succeed(), err -> code.fail());
+        }
+        return CompletableResultCode.ofAll(codes);
+    }
+
+    //  /trace/{app}/{span}
+    Mono<Void> doPublish(SpanData data) {
+        String topic = StringBuilderUtils
+                .buildString(data, (_data, builder) -> {
+                    builder.append("/trace/")
+                           .append(_data.getInstrumentationLibraryInfo().getName());
+                    if (!_data.getName().startsWith("/")) {
+                        builder.append("/");
+                    }
+                    builder.append(_data.getName());
+                });
+        return eventBus
+                .publish(topic, Mono.fromSupplier(() -> SpanDataInfo.of(data)))
+                .then();
+    }
+
+
+    @Override
+    public CompletableResultCode flush() {
+        return CompletableResultCode.ofSuccess();
+    }
+
+    @Override
+    public CompletableResultCode shutdown() {
+        return CompletableResultCode.ofSuccess();
+    }
+}

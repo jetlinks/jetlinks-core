@@ -9,6 +9,33 @@ public class TopicUtils {
 
     private final static PathMatcher pathMatcher = new AntPathMatcher();
 
+
+    /**
+     * 将url转为mqtt topic,支持通配符转转换
+     * <pre>
+     *    /user/* => /user/+
+     *    /user/** => /user/#
+     *    /user/{uid}/msg => /user/+/msg
+     * </pre>
+     *
+     * @param url URL
+     * @return topic
+     */
+    public static String convertToMqttTopic(String url) {
+        String[] arr = split(url);
+        for (int i = 0; i < arr.length; i++) {
+            String str = arr[i];
+            if (str.startsWith("{") && str.endsWith("}")) {
+                arr[i] = "+";
+            } else if (str.equals("**")) {
+                arr[i] = "#";
+            } else if (str.equals("*")) {
+                arr[i] = "+";
+            }
+        }
+        return String.join("/", arr);
+    }
+
     /**
      * 匹配topic
      *
@@ -198,7 +225,7 @@ public class TopicUtils {
      *     /device/b/*
      *     /device/v/*
      * </pre>
-     *
+     * <p>
      * before:
      * <pre>
      *     /device/{id}
@@ -212,7 +239,7 @@ public class TopicUtils {
      * @return 展开的topic集合
      */
     public static List<String> expand(String topic) {
-        if (!topic.contains(",")&&!topic.contains("{")) {
+        if (!topic.contains(",") && !topic.contains("{")) {
             return Collections.singletonList(topic);
         }
         if (topic.startsWith("/")) {
