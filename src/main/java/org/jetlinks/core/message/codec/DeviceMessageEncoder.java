@@ -52,6 +52,7 @@ public interface DeviceMessageEncoder {
      * @see org.jetlinks.core.message.ChildDeviceMessage 子设备消息
      * @see org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor
      * @see ParallelIntervalHelper
+     * @see org.jetlinks.core.trace.DeviceTracer.SpanName#encode(String)
      */
     @Nonnull
     Publisher<? extends EncodedMessage> encode(@Nonnull MessageEncodeContext context);

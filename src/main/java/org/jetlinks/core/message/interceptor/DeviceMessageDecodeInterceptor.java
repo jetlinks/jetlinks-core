@@ -16,7 +16,9 @@ public interface DeviceMessageDecodeInterceptor extends DeviceMessageCodecInterc
      *
      * @param context 上下文
      */
-   default void preDecode(MessageDecodeContext context){}
+   default Mono<Void> preDecode(MessageDecodeContext context){
+       return Mono.empty();
+   }
 
     /**
      * 解码后执行

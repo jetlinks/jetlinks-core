@@ -2,7 +2,9 @@ package org.jetlinks.core.server.session;
 
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.codec.EncodedMessage;
+import org.jetlinks.core.message.codec.TraceDeviceSession;
 import org.jetlinks.core.message.codec.Transport;
+import org.jetlinks.core.trace.TraceHolder;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nullable;
@@ -139,5 +141,13 @@ public interface DeviceSession {
      */
     default <T extends DeviceSession> T unwrap(Class<T> type) {
         return type.cast(this);
+    }
+
+
+    static  DeviceSession trace(DeviceSession target) {
+        if (TraceHolder.isDisabled()) {
+            return target;
+        }
+        return TraceDeviceSession.of(target);
     }
 }

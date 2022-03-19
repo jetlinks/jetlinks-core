@@ -21,6 +21,7 @@ public interface DeviceSessionManager {
      * @return 设备会话, 不存在则返回<code>null</code>
      */
     @Nullable
+    //todo reactive
     DeviceSession getSession(String idOrDeviceId);
 
     /**
@@ -30,6 +31,7 @@ public interface DeviceSessionManager {
      * @return 旧的设备会话, 不存在则返回<code>null</code>
      */
     @Nullable
+    //todo reactive
     DeviceSession register(DeviceSession session);
 
     /**
@@ -50,6 +52,7 @@ public interface DeviceSessionManager {
      * @param idOrDeviceId 设备ID或者会话ID
      * @return 被注销的会话, 不存在则返回<code>null</code>
      */
+    //todo reactive
     DeviceSession unregister(String idOrDeviceId);
 
     boolean sessionIsAlive(String deviceId);

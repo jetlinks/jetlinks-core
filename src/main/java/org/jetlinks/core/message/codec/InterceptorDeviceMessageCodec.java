@@ -5,6 +5,7 @@ import org.jetlinks.core.message.interceptor.DeviceMessageCodecInterceptor;
 import org.jetlinks.core.message.interceptor.DeviceMessageDecodeInterceptor;
 import org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -45,8 +46,9 @@ public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
     @Override
     public Flux<? extends EncodedMessage> encode(@Nonnull MessageEncodeContext context) {
         return Flux.defer(() -> {
+            Mono<Void> pre = Mono.empty();
             for (DeviceMessageEncodeInterceptor interceptor : encodeDeviceMessageInterceptors) {
-                interceptor.preEncode(context);
+                pre = pre.then(interceptor.preEncode(context));
             }
             Flux<? extends EncodedMessage> message = Flux.from(messageCodec.encode(context));
 
@@ -54,7 +56,7 @@ public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
                 message = message.flatMap(msg -> interceptor.postEncode(context, msg));
             }
 
-            return message;
+            return pre.thenMany(message);
         });
 
     }
@@ -63,8 +65,9 @@ public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
     @Override
     public Flux<? extends Message> decode(@Nonnull MessageDecodeContext context) {
         return Flux.defer(() -> {
+            Mono<Void> pre = Mono.empty();
             for (DeviceMessageDecodeInterceptor interceptor : decodeDeviceMessageInterceptors) {
-                interceptor.preDecode(context);
+                pre = pre.then(interceptor.preDecode(context));
             }
             Flux<? extends Message> message = Flux.from(messageCodec.decode(context));
 
@@ -72,7 +75,7 @@ public class InterceptorDeviceMessageCodec implements DeviceMessageCodec {
                 message = message.flatMap(msg -> interceptor.postDecode(context, msg));
             }
 
-            return message;
+            return pre.thenMany(message);
         });
     }
 }

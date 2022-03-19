@@ -7,12 +7,12 @@ import reactor.core.publisher.Mono;
 
 public interface DeviceTracer {
 
-    default <R> MonoTracer<R> fromMessage(Message message) {
+    static  <R> MonoTracer<R> fromMessage(Message message) {
         return MonoTracer.createWith(message.getHeaders());
     }
 
     @SuppressWarnings("all")
-    default <R extends Message> Mono<R> writeToMessage(R message) {
+    static <R extends Message> Mono<R> writeToMessage(R message) {
         return TraceHolder.writeContextTo(message, Message::addHeader);
     }
 
@@ -50,10 +50,20 @@ public interface DeviceTracer {
             return operation(deviceId, "auth");
         }
 
+        static String decode(String deviceId) {
+            return operation(deviceId, "decode");
+        }
+
+        static String encode(String deviceId) {
+            return operation(deviceId, "encode");
+        }
+
+        @Deprecated
         static String receiveMessage(String deviceId) {
             return operation(deviceId, "receive");
         }
 
+        @Deprecated
         static String sendMessage(String deviceId) {
             return operation(deviceId, "send");
         }
