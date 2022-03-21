@@ -4,6 +4,8 @@ import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import lombok.AllArgsConstructor;
+import org.jetlinks.core.codec.Codec;
+import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.event.EventBus;
 import org.jetlinks.core.trace.data.SpanDataInfo;
 import org.jetlinks.core.utils.StringBuilderUtils;
@@ -14,6 +16,8 @@ import java.util.Collection;
 @AllArgsConstructor(staticName = "create")
 public class EventBusSpanExporter implements SpanExporter {
     private final EventBus eventBus;
+
+    private static Codec<SpanDataInfo> codec = Codecs.lookup(SpanDataInfo.class);
 
     @Override
     public CompletableResultCode export(Collection<SpanData> spans) {
@@ -36,7 +40,7 @@ public class EventBusSpanExporter implements SpanExporter {
                     builder.append(_data.getName());
                 });
         return eventBus
-                .publish(topic, Mono.fromSupplier(() -> SpanDataInfo.of(data)))
+                .publish(topic, codec, SpanDataInfo.of(data))
                 .then();
     }
 

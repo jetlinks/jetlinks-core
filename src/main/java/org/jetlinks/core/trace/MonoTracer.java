@@ -17,6 +17,10 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
         return source -> source;
     }
 
+    static <T> ReactiveTracerBuilder<MonoTracer<T>, T> builder() {
+        return new MonoTracerBuilder<>();
+    }
+
     static <T> MonoTracer<T> create(String spanName) {
         return create(TraceHolder.appName(), spanName);
     }
@@ -55,20 +59,35 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
         return create(TraceHolder.appName(), spanName, onNext, builderConsumer);
     }
 
+    static <T> MonoTracer<T> create(String spanName,
+                                    BiConsumer<Span, T> onNext,
+                                    BiConsumer<Span, Boolean> onComplete) {
+        return create(TraceHolder.appName(), spanName, onNext, onComplete, null);
+    }
+
     static <T> MonoTracer<T> create(String scopeName,
                                     String spanName,
                                     BiConsumer<Span, T> onNext,
                                     Consumer<SpanBuilder> builderConsumer) {
+        return create(scopeName, spanName, onNext, null, builderConsumer);
+    }
+
+    static <T> MonoTracer<T> create(String scopeName,
+                                    String spanName,
+                                    BiConsumer<Span, T> onNext,
+                                    BiConsumer<Span, Boolean> onComplete,
+                                    Consumer<SpanBuilder> builderConsumer) {
         if (TraceHolder.isDisabled(spanName)) {
             return unsupported();
         }
-        return source ->
-                new TraceFlux<>(source.flux(),
-                                spanName,
-                                TraceHolder.telemetry().getTracer(scopeName),
-                                onNext,
-                                builderConsumer)
-                        .singleOrEmpty();
+        return MonoTracer
+                .<T>builder()
+                .scopeName(scopeName)
+                .spanName(spanName)
+                .onNext(onNext)
+                .onComplete(onComplete)
+                .onSubscription(builderConsumer)
+                .build();
     }
 
     @SuppressWarnings("all")

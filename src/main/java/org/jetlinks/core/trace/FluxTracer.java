@@ -16,6 +16,10 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
         return source -> source;
     }
 
+    static <T> ReactiveTracerBuilder<FluxTracer<T>, T> builder() {
+        return new FluxTracerBuilder<>();
+    }
+
     static <T> FluxTracer<T> create(String spanName) {
         return create(TraceHolder.appName(), spanName);
     }
@@ -47,27 +51,41 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
         return create(scopeName, spanName, null, builderConsumer);
     }
 
-
     static <T> FluxTracer<T> create(String spanName,
                                     BiConsumer<Span, T> onNext,
                                     Consumer<SpanBuilder> builderConsumer) {
         return create(TraceHolder.appName(), spanName, onNext, builderConsumer);
     }
 
+    static <T> FluxTracer<T> create(String spanName,
+                                    BiConsumer<Span, T> onNext,
+                                    BiConsumer<Span, Boolean> onComplete) {
+        return create(TraceHolder.appName(), spanName, onNext, onComplete, null);
+    }
+
     static <T> FluxTracer<T> create(String scopeName,
                                     String spanName,
                                     BiConsumer<Span, T> onNext,
                                     Consumer<SpanBuilder> builderConsumer) {
+        return create(scopeName, spanName, onNext, null, builderConsumer);
+    }
+
+    static <T> FluxTracer<T> create(String scopeName,
+                                    String spanName,
+                                    BiConsumer<Span, T> onNext,
+                                    BiConsumer<Span, Boolean> onComplete,
+                                    Consumer<SpanBuilder> builderConsumer) {
         if (TraceHolder.isDisabled(spanName)) {
             return unsupported();
         }
-        return source ->
-                new TraceFlux<>(source,
-                                spanName,
-                                TraceHolder.telemetry().getTracer(scopeName),
-                                onNext,
-                                builderConsumer
-                );
+        return FluxTracer
+                .<T>builder()
+                .scopeName(scopeName)
+                .spanName(spanName)
+                .onNext(onNext)
+                .onComplete(onComplete)
+                .onSubscription(builderConsumer)
+                .build();
     }
 
 
