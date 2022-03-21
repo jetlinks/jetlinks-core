@@ -2,13 +2,9 @@ package org.jetlinks.core.trace;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.context.propagation.TextMapPropagator;
 import reactor.core.publisher.Flux;
 
-import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -62,7 +58,7 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
                                     String spanName,
                                     BiConsumer<Span, T> onNext,
                                     Consumer<SpanBuilder> builderConsumer) {
-        if (TraceHolder.isDisabled()) {
+        if (TraceHolder.isDisabled(spanName)) {
             return unsupported();
         }
         return source ->
@@ -80,38 +76,18 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
         if (TraceHolder.isDisabled()) {
             return unsupported();
         }
-        return createWith(carrier, new TextMapGetter<Map<String, ?>>() {
-            @Override
-            public Iterable<String> keys(Map<String, ?> carrier) {
-                return carrier.keySet();
-            }
-
-            @Nullable
-            @Override
-            public String get(@Nullable Map<String, ?> carrier, String key) {
-                return (String) carrier.get(key);
-            }
-        });
+        return createWith(carrier, MapTextMapGetter.instance());
     }
 
     @SuppressWarnings("all")
-    static <T, R> FluxTracer<R> createWith(T source, TextMapGetter<T> setter) {
+    static <T, R> FluxTracer<R> createWith(T source, TextMapGetter<T> getter) {
         if (TraceHolder.isDisabled()) {
             return unsupported();
         }
-        ContextPropagators propagators = TraceHolder.telemetry().getPropagators();
-        TextMapPropagator propagator = propagators.getTextMapPropagator();
-
         return flux -> Flux
                 .deferContextual(ctx -> {
-                    Context context = ctx.getOrDefault(Context.class, Context.root());
-                    if (null != context) {
-                        context = propagator.extract(context, source, setter);
-                        return flux
-                                .contextWrite(reactor.util.context.Context
-                                                      .of(Context.class, context));
-                    }
-                    return flux;
+                    return flux
+                            .contextWrite(TraceHolder.readToContext(ctx, source, getter));
                 });
     }
 

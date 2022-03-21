@@ -5,6 +5,8 @@ import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.utils.RecyclableDequeue;
+import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.TopicUtils;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
@@ -198,10 +200,15 @@ public final class Topic<T> {
     public void findTopic(String topic,
                           Consumer<Topic<T>> sink,
                           Runnable end) {
+        String[] topics = TopicUtils.split(topic);
+
         if (!topic.startsWith("/")) {
-            topic = "/" + topic;
+            String[] newTopics = new String[topics.length + 1];
+            newTopics[0] = "";
+            System.arraycopy(topics, 0, newTopics, 1, topics.length);
+            topics = newTopics;
         }
-        find(TopicUtils.split(topic), this, sink, end);
+        find(topics, this, sink, end);
     }
 
     @Override
@@ -219,64 +226,64 @@ public final class Topic<T> {
                                 Topic<T> topicPart,
                                 Consumer<Topic<T>> sink,
                                 Runnable end) {
-        ArrayDeque<Topic<T>> cache = new ArrayDeque<>(128);
-        cache.add(topicPart);
+        RecyclableDequeue<Topic<T>> cache = RecyclerUtils.dequeue();
+        try {
+            cache.add(topicPart);
 
-        String nextPart = null;
-        while (!cache.isEmpty()) {
-            Topic<T> part = cache.poll();
-            if (part == null) {
-                break;
-            }
-            if (part.match(topicParts)) {
-                sink.accept(part);
-            }
-//                if (part.part.equals("**")
-//                        || matcher.match(part.getTopic(), topic)
-//                        || (matcher.match(topic, part.getTopic()))) {
-//                    sink.next(part);
-//                }
+            String nextPart = null;
 
-            //订阅了如 /device/**/event/*
-            if (part.part.equals("**")) {
-                Topic<T> tmp = null;
-                for (int i = part.depth; i < topicParts.length; i++) {
-                    tmp = part.child.get(topicParts[i]);
-                    if (tmp != null) {
-                        cache.add(tmp);
+            while (!cache.isEmpty()) {
+                Topic<T> part = cache.poll();
+                if (part == null) {
+                    break;
+                }
+                if (part.match(topicParts)) {
+                    sink.accept(part);
+                }
+                //订阅了如 /device/**/event/*
+                if (part.part.equals("**")) {
+                    Topic<T> tmp = null;
+                    for (int i = part.depth; i < topicParts.length; i++) {
+                        tmp = part.child.get(topicParts[i]);
+                        if (tmp != null) {
+                            cache.add(tmp);
+                        }
+                    }
+                    if (null != tmp) {
+                        continue;
                     }
                 }
-                if (null != tmp) {
+                if ("**".equals(nextPart) || "*".equals(nextPart)) {
+                    cache.addAll(part.child.values());
                     continue;
                 }
-            }
-            if ("**".equals(nextPart) || "*".equals(nextPart)) {
-                cache.addAll(part.child.values());
-                continue;
-            }
-            Topic<T> next = part.child.get("**");
-            if (next != null) {
-                cache.add(next);
-            }
-            next = part.child.get("*");
-            if (next != null) {
-                cache.add(next);
+                Topic<T> next = part.child.get("**");
+                if (next != null) {
+                    cache.add(next);
+                }
+                next = part.child.get("*");
+                if (next != null) {
+                    cache.add(next);
+                }
+
+                if (part.depth + 1 >= topicParts.length) {
+                    continue;
+                }
+                nextPart = topicParts[part.depth + 1];
+                if (nextPart.equals("*") || nextPart.equals("**")) {
+                    cache.addAll(part.child.values());
+                    continue;
+                }
+                next = part.child.get(nextPart);
+                if (next != null) {
+                    cache.add(next);
+                }
             }
 
-            if (part.depth + 1 >= topicParts.length) {
-                continue;
-            }
-            nextPart = topicParts[part.depth + 1];
-            if (nextPart.equals("*") || nextPart.equals("**")) {
-                cache.addAll(part.child.values());
-                continue;
-            }
-            next = part.child.get(nextPart);
-            if (next != null) {
-                cache.add(next);
-            }
+            end.run();
+        } finally {
+            cache.recycle();
         }
-        end.run();
     }
 
     public long getTotalTopic() {

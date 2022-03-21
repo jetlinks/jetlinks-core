@@ -2,13 +2,10 @@ package org.jetlinks.core.trace;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.context.propagation.TextMapPropagator;
+import org.apache.commons.collections.MapUtils;
 import reactor.core.publisher.Mono;
 
-import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -62,7 +59,7 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
                                     String spanName,
                                     BiConsumer<Span, T> onNext,
                                     Consumer<SpanBuilder> builderConsumer) {
-        if (TraceHolder.isDisabled()) {
+        if (TraceHolder.isDisabled(spanName)) {
             return unsupported();
         }
         return source ->
@@ -74,24 +71,12 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
                         .singleOrEmpty();
     }
 
-
     @SuppressWarnings("all")
     static <R> MonoTracer<R> createWith(Map<String, ?> carrier) {
-        if (TraceHolder.isDisabled()) {
+        if (TraceHolder.isDisabled() || MapUtils.isEmpty(carrier)) {
             return unsupported();
         }
-        return createWith(carrier, new TextMapGetter<Map<String, ?>>() {
-            @Override
-            public Iterable<String> keys(Map<String, ?> carrier) {
-                return carrier.keySet();
-            }
-
-            @Nullable
-            @Override
-            public String get(@Nullable Map<String, ?> carrier, String key) {
-                return (String) carrier.get(key);
-            }
-        });
+        return createWith(carrier, MapTextMapGetter.instance());
     }
 
     /**
@@ -109,23 +94,14 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      * @return 追踪器
      */
     @SuppressWarnings("all")
-    static <T, R> MonoTracer<R> createWith(T source, TextMapGetter<T> setter) {
+    static <T, R> MonoTracer<R> createWith(T source, TextMapGetter<T> getter) {
         if (TraceHolder.isDisabled()) {
             return unsupported();
         }
-        ContextPropagators propagators = TraceHolder.telemetry().getPropagators();
-        TextMapPropagator propagator = propagators.getTextMapPropagator();
-
         return mono -> Mono
                 .deferContextual(ctx -> {
-                    Context context = ctx.getOrDefault(Context.class, Context.root());
-                    if (null != context) {
-                        context = propagator.extract(context, source, setter);
-                        return mono
-                                .contextWrite(reactor.util.context.Context
-                                                      .of(Context.class, context));
-                    }
-                    return mono;
+                    return mono
+                            .contextWrite(TraceHolder.readToContext(ctx, source, getter));
                 });
     }
 

@@ -30,7 +30,7 @@ public class TopicTest {
         Topic<String> root = Topic.createRoot();
         root.append("/device/*/*/**").subscribe("1");
 
-        root.findTopic("/device/0/message/property/report")
+        root.findTopic("device/0/message/property/report")
             .filter(topicPart -> topicPart.getSubscribers().size() > 0)
             .doOnNext(System.out::println)
             .map(Topic::getTopic)
@@ -208,7 +208,7 @@ public class TopicTest {
 
         System.out.println(root);
 
-        root.findTopic("/device/1")
+        root.findTopic("device/1")
             .map(Topic::getTopic)
             .as(StepVerifier::create)
             .expectNext("/device/*")

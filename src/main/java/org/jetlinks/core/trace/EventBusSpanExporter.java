@@ -9,9 +9,7 @@ import org.jetlinks.core.trace.data.SpanDataInfo;
 import org.jetlinks.core.utils.StringBuilderUtils;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
 @AllArgsConstructor(staticName = "create")
 public class EventBusSpanExporter implements SpanExporter {
@@ -19,14 +17,11 @@ public class EventBusSpanExporter implements SpanExporter {
 
     @Override
     public CompletableResultCode export(Collection<SpanData> spans) {
-        List<CompletableResultCode> codes = new ArrayList<>(spans.size());
 
         for (SpanData span : spans) {
-            CompletableResultCode code = new CompletableResultCode();
-            doPublish(span)
-                    .subscribe(nil -> code.succeed(), err -> code.fail());
+            doPublish(span).subscribe();
         }
-        return CompletableResultCode.ofAll(codes);
+        return CompletableResultCode.ofSuccess();
     }
 
     //  /trace/{app}/{span}

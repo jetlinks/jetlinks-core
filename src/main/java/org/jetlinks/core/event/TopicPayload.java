@@ -15,6 +15,7 @@ import org.jetlinks.core.utils.TopicUtils;
 
 import javax.annotation.Nonnull;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
 @AllArgsConstructor(staticName = "of")
@@ -27,6 +28,8 @@ public class TopicPayload implements Payload {
     private String topic;
 
     private Payload payload;
+
+    private Map<String, Object> headers;
 
     private final Recycler.Handle<TopicPayload> handle;
 
@@ -42,10 +45,32 @@ public class TopicPayload implements Payload {
                 topicPayload.payload = payload;
                 return topicPayload;
             } catch (Exception e) {
-                return TopicPayload.of(topic, payload, null);
+                return TopicPayload.of(topic, payload, null, null);
             }
         }
-        return TopicPayload.of(topic, payload, null);
+        return TopicPayload.of(topic, payload, null, null);
+    }
+
+    private Map<String, Object> getOrCreateHeader() {
+        return headers != null ? headers : (headers = new ConcurrentHashMap<>());
+    }
+
+    public  Map<String, Object> writableHeaders(){
+        return getOrCreateHeader();
+    }
+
+    public TopicPayload addHeader(String key, Object value) {
+        getOrCreateHeader().put(key, value);
+        return this;
+    }
+
+    public TopicPayload addHeader(Map<String, ?> headers) {
+        getOrCreateHeader().putAll(headers);
+        return this;
+    }
+
+    public Object getHeader(String key) {
+        return headers == null ? null : headers.get(key);
     }
 
     @Nonnull

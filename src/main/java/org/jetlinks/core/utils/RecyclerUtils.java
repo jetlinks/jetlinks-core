@@ -27,10 +27,10 @@ public class RecyclerUtils {
                 .orElse(defaultRatio);
 
         if (log.isDebugEnabled()) {
-            log.debug("-D{}: {}",getConfigName(type,"maxCapacityPerThread"), maxCapacityPerThread);
-            log.debug("-D{}: {}",getConfigName(type,"maxSharedCapacityFactor"), maxSharedCapacityFactor);
-            log.debug("-D{}: {}", getConfigName(type,"maxDelayedQueuesPerThread"), maxDelayedQueuesPerThread);
-            log.debug("-D{}: {}", getConfigName(type,"ratio"), ratio);
+            log.debug("-D{}: {}", getConfigName(type, "maxCapacityPerThread"), maxCapacityPerThread);
+            log.debug("-D{}: {}", getConfigName(type, "maxSharedCapacityFactor"), maxSharedCapacityFactor);
+            log.debug("-D{}: {}", getConfigName(type, "maxDelayedQueuesPerThread"), maxDelayedQueuesPerThread);
+            log.debug("-D{}: {}", getConfigName(type, "ratio"), ratio);
         }
         return new Recycler<T>(maxCapacityPerThread, maxSharedCapacityFactor, ratio, maxDelayedQueuesPerThread) {
             @Override
@@ -51,5 +51,9 @@ public class RecyclerUtils {
 
     private static String getConfigName(Class<?> type, String key) {
         return (type.getName() + ".pool." + key).replace("$$", ".").replace("$", ".");
+    }
+
+    public static <T> RecyclableDequeue<T> dequeue() {
+        return RecyclableDequeue.newInstance();
     }
 }

@@ -17,14 +17,14 @@ public interface DeviceTracer {
     }
 
     interface SpanKey {
-        AttributeKey<String> deviceId = AttributeKey.stringKey("deviceId");
-        AttributeKey<String> message = AttributeKey.stringKey("message");
-        AttributeKey<String> address = AttributeKey.stringKey("address");
 
-        AttributeKey<String> mqttTopic = AttributeKey.stringKey("topic");
-        AttributeKey<String> mqttClientId = AttributeKey.stringKey("clientId");
-        AttributeKey<String> mqttUsername = AttributeKey.stringKey("username");
-        AttributeKey<String> mqttPassword = AttributeKey.stringKey("password");
+        AttributeKey<String> deviceId = AttributeKey.stringKey("deviceId");
+
+        AttributeKey<String> message = AttributeKey.stringKey("message");
+
+        AttributeKey<String> response = AttributeKey.stringKey("response");
+
+        AttributeKey<String> address = AttributeKey.stringKey("address");
 
     }
 
@@ -35,7 +35,7 @@ public interface DeviceTracer {
                     .buildString(deviceId, operation,
                                  (str, opt, stringBuilder) -> {
                                      stringBuilder
-                                             .append("device/")
+                                             .append("/device/")
                                              .append(str)
                                              .append("/")
                                              .append(opt);
@@ -58,14 +58,8 @@ public interface DeviceTracer {
             return operation(deviceId, "encode");
         }
 
-        @Deprecated
-        static String receiveMessage(String deviceId) {
-            return operation(deviceId, "receive");
-        }
-
-        @Deprecated
-        static String sendMessage(String deviceId) {
-            return operation(deviceId, "send");
+        static String request(String deviceId) {
+            return operation(deviceId, "request");
         }
 
         static String downstream(String deviceId) {

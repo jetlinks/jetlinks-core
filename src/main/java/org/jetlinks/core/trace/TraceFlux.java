@@ -79,6 +79,7 @@ class TraceFlux<T> extends FluxOperator<T, T> {
 
         @Override
         protected void hookOnError(@Nonnull Throwable throwable) {
+            span.setStatus(StatusCode.ERROR);
             span.recordException(throwable);
             actual.onError(throwable);
         }

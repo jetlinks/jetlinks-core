@@ -90,15 +90,18 @@ public interface Payload extends ReferenceCounted {
         }
     }
 
+    @Deprecated
     default Payload retain() {
         return retain(1);
     }
 
+    @Deprecated
     default Payload retain(int inc) {
         getBody().retain(inc);
         return this;
     }
 
+    @Deprecated
     default boolean release(int dec) {
         if (refCnt() >= dec) {
             return ReferenceCountUtil.release(getBody(), dec);
@@ -106,6 +109,7 @@ public interface Payload extends ReferenceCounted {
         return true;
     }
 
+    @Deprecated
     default boolean release() {
         return release(1);
     }
@@ -152,17 +156,20 @@ public interface Payload extends ReferenceCounted {
         return decode(JSONArray.class);
     }
 
+    @Deprecated
     @Override
     default int refCnt() {
         return getBody().refCnt();
     }
 
+    @Deprecated
     @Override
     default Payload touch() {
         getBody().touch();
         return this;
     }
 
+    @Deprecated
     @Override
     default Payload touch(Object o) {
         getBody().touch(o);
