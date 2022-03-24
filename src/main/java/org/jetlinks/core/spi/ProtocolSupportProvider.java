@@ -20,7 +20,7 @@ public interface ProtocolSupportProvider extends Disposable {
      */
     Mono<? extends ProtocolSupport> create(ServiceContext context);
 
-    //已启用，请实现dispose
+    //已弃用，请实现dispose
     @Deprecated
     default void close() {
 

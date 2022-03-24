@@ -27,6 +27,12 @@ public class TraceHolderTest {
     @SneakyThrows
     public void testMono() {
 
+
+        TraceMono.trace(Mono.just(1).name("test123"))
+                 .onNext((span, integer) -> span.setAttribute("test", integer))
+                 .subscribe(System.out::println);
+
+
         Mono.just(1)
             .as(MonoTracer
                         .create("iot-service",
