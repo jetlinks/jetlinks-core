@@ -62,6 +62,10 @@ public interface DeviceTracer {
             return operation(deviceId, "request");
         }
 
+        static String response(String deviceId) {
+            return operation(deviceId, "response");
+        }
+
         static String downstream(String deviceId) {
             return operation(deviceId, "downstream");
         }
