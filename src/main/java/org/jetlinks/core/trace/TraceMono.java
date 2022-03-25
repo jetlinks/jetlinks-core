@@ -6,26 +6,27 @@ import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import lombok.extern.slf4j.Slf4j;
-import org.reactivestreams.Publisher;
 import reactor.core.CoreSubscriber;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxOperator;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.MonoOperator;
 import reactor.util.context.ContextView;
 
 import javax.annotation.Nonnull;
 import java.util.function.BiConsumer;
 
+/**
+ * @param <T>
+ */
 @Slf4j
-public class TraceFlux<T> extends FluxOperator<T, T> {
+public class TraceMono<T> extends MonoOperator<T, T> {
     private final String spanName;
     private final Tracer tracer;
     private final BiConsumer<Span, T> onNext;
     private final BiConsumer<Span, Long> onComplete;
     private final BiConsumer<ContextView, SpanBuilder> onSubscription;
 
-    public static <T> TraceFlux<T> trace(Publisher<T> source) {
-
-        return new TraceFlux<>(Flux.from(source),
+    public static <T> TraceMono<T> trace(Mono<T> source) {
+        return new TraceMono<>(source,
                                null,
                                null,
                                null,
@@ -33,7 +34,7 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                                null);
     }
 
-    TraceFlux(Flux<? extends T> source,
+    TraceMono(Mono<? extends T> source,
               String name,
               Tracer tracer,
               BiConsumer<Span, T> onNext,
@@ -47,22 +48,8 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
         this.onComplete = onComplete;
     }
 
-    public TraceFlux<T> onNext(BiConsumer<Span, T> onNext) {
-        if (this.onNext != null) {
-            onNext = this.onNext.andThen(onNext);
-        }
-        return new TraceFlux<>(this.source, this.spanName, this.tracer, onNext, this.onComplete, this.onSubscription);
-    }
-
-    public TraceFlux<T> onComplete(BiConsumer<Span, Long> onComplete) {
-        if (this.onComplete != null) {
-            onComplete = this.onComplete.andThen(onComplete);
-        }
-        return new TraceFlux<>(this.source, this.spanName, this.tracer, this.onNext, onComplete, this.onSubscription);
-    }
-
-    public TraceFlux<T> spanName(String spanName) {
-        return new TraceFlux<>(this.source,
+    public TraceMono<T> spanName(String spanName) {
+        return new TraceMono<>(this.source,
                                spanName,
                                this.tracer,
                                this.onNext,
@@ -70,8 +57,8 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                                this.onSubscription);
     }
 
-    public TraceFlux<T> scopeName(String scopeName) {
-        return new TraceFlux<>(this.source,
+    public TraceMono<T> scopeName(String scopeName) {
+        return new TraceMono<>(this.source,
                                this.spanName,
                                TraceHolder.telemetry().getTracer(scopeName),
                                this.onNext,
@@ -79,11 +66,34 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                                this.onSubscription);
     }
 
-    public TraceFlux<T> onSubscription(BiConsumer<ContextView, SpanBuilder> onSubscription) {
+    public TraceMono<T> scopeName(String scopeName, String scopeVersion) {
+        return new TraceMono<>(this.source,
+                               this.spanName,
+                               TraceHolder.telemetry().getTracer(scopeName, scopeVersion),
+                               this.onNext,
+                               this.onComplete,
+                               this.onSubscription);
+    }
+
+    public TraceMono<T> onNext(BiConsumer<Span, T> onNext) {
+        if (this.onNext != null) {
+            onNext = this.onNext.andThen(onNext);
+        }
+        return new TraceMono<>(this.source, this.spanName, this.tracer, onNext, this.onComplete, this.onSubscription);
+    }
+
+    public TraceMono<T> onComplete(BiConsumer<Span, Long> onComplete) {
+        if (this.onComplete != null) {
+            onComplete = this.onComplete.andThen(onComplete);
+        }
+        return new TraceMono<>(this.source, this.spanName, this.tracer, this.onNext, onComplete, this.onSubscription);
+    }
+
+    public TraceMono<T> onSubscription(BiConsumer<ContextView, SpanBuilder> onSubscription) {
         if (this.onSubscription != null) {
             onSubscription = this.onSubscription.andThen(onSubscription);
         }
-        return new TraceFlux<>(this.source, this.spanName, this.tracer, this.onNext, this.onComplete, onSubscription);
+        return new TraceMono<>(this.source, this.spanName, this.tracer, this.onNext, this.onComplete, onSubscription);
     }
 
     @Override

@@ -16,30 +16,63 @@ import reactor.util.context.ContextView;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * 基于<a href="https://github.com/open-telemetry/opentelemetry-java/">OpenTelemetry</a>链路追踪工具类，
+ * 用于进行响应式链路追踪的常用.
+ * 支持动态全局开启关闭追踪,支持开启禁用特定的spanName,spanName支持类似url的洗粒度控制.
+ *
+ * @author zhouhao
+ * @see MonoTracer
+ * @see FluxTracer
+ * @since 1.2
+ */
 public class TraceHolder {
 
+    //全局应用名: -Dtrace.app.name
     private static String GLOBAL_APP_NAME = System.getProperty("trace.app.name", "default");
+    //是否全局开启: -Dtrace.enabled=true
     private static boolean traceEnabled = Boolean.parseBoolean(System.getProperty("trace.enabled", "true"));
 
+    //禁用的spanName
     private static final Topic<String> disabledSpanName = Topic.createRoot();
+    //启用的spanName
     private static final Topic<String> enabledSpanName = Topic.createRoot();
 
+    /**
+     * 动态设置全局应用名
+     */
     public static void setupGlobalName(String name) {
         GLOBAL_APP_NAME = name;
     }
 
+    /**
+     * @return 当前应用名
+     */
     public static String appName() {
         return GLOBAL_APP_NAME;
     }
 
+    /**
+     * @return 是否全局开启
+     */
     public static boolean isEnabled() {
         return traceEnabled;
     }
 
+    /**
+     * @return 是否全局禁用
+     */
     public static boolean isDisabled() {
         return !isEnabled();
     }
 
+    /**
+     * 判断指定的spanName是否开启. spanName支持以/分割的树结构,
+     * 如: /device/id/operation
+     *
+     * @param name spanName
+     * @return 是否开启
+     */
     public static boolean isEnabled(String name) {
         //全局关闭
         if (!traceEnabled) {
@@ -67,18 +100,41 @@ public class TraceHolder {
         return enabled.get();
     }
 
+    /**
+     * 判断指定的spanName是否禁用,与{@link #isEnabled(String)}逻辑相反
+     *
+     * @param name spanName
+     * @return 是否开启
+     */
     public static boolean isDisabled(String name) {
         return !isEnabled(name);
     }
 
+    /**
+     * 全局开启跟踪
+     */
     public static void enable() {
         traceEnabled = true;
     }
 
+    /**
+     * 全局关闭跟踪
+     */
     public static void disable() {
         traceEnabled = false;
     }
 
+    /**
+     * 指定handle,开启追踪指定的spanName.
+     * <p>
+     * spanName支持通配符,比如:{@code   /device/&#42;/name}
+     * <p>
+     * 在禁用时,需要使用开启时指定的handler进行禁用,或者调用返回值:{@link  Disposable#dispose()}来禁用spanName
+     *
+     * @param spanName spanName
+     * @param handler  handler
+     * @return Disposable
+     */
     public static Disposable enable(String spanName, String handler) {
         disabledSpanName
                 .getTopic(spanName)
@@ -89,6 +145,16 @@ public class TraceHolder {
         return () -> disable(spanName, handler);
     }
 
+    /**
+     * 指定handler,禁用指定的spanName. 禁用的优先级低于启用.
+     * <p>
+     * spanName支持通配符,比如:{@code   /device/&#42;/name}
+     * <p>
+     * 在禁用时,需要使用开启时指定的handler进行禁用,或者调用返回值:{@link  Disposable#dispose()}来禁用spanName
+     *
+     * @param spanName spanName
+     * @param handler  handler
+     */
     public static void disable(String spanName, String handler) {
         disabledSpanName
                 .append(spanName)
@@ -98,67 +164,162 @@ public class TraceHolder {
                 .ifPresent(topic -> topic.unsubscribe(handler));
     }
 
+    /**
+     * @return 获取当前的OpenTelemetry
+     */
     public static OpenTelemetry telemetry() {
         return GlobalOpenTelemetry.get();
     }
 
 
-    public static <T> reactor.util.context.Context readToContext(ContextView ctx,
-                                                                 Map<String, ?> getter) {
-        if (TraceHolder.isDisabled() || MapUtils.isEmpty(getter)) {
-            return reactor.util.context.Context.of(ctx);
+    /**
+     * 使用指定的reactor上下文作为父级上下文,从指定的Map中获取跟踪信息并转换新的reactor上下文信息.
+     * 可将转换后上下文应用到reactor操作符中进行链路追踪,如:
+     *
+     * <pre>{@code
+     *
+     *    service
+     *    .doSomeThing()
+     *    //传递追踪上下文到doSomeThing操作中
+     *    .contextWrite(readToContext(Context.empty(),headers))
+     *
+     * }</pre>
+     *
+     * @param parent  父级上下文
+     * @param carrier 追踪信息载体
+     * @return 包含跟踪信息的上下文
+     * @see io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
+     * @see Context
+     */
+    public static reactor.util.context.Context readToContext(ContextView parent,
+                                                             Map<String, ?> carrier) {
+        if (TraceHolder.isDisabled() || MapUtils.isEmpty(carrier)) {
+            return reactor.util.context.Context.of(parent);
         }
-        return readToContext(ctx, getter, MapTextMapGetter.instance());
+        return readToContext(parent, carrier, MapTextMapGetter.instance());
     }
 
-    public static <T> reactor.util.context.Context readToContext(ContextView ctx,
+    /**
+     * 使用指定的reactor上下文作为父级上下文,从指定的对象中获取跟踪信息并转换新的reactor上下文信息.
+     * 可将转换后上下文应用到reactor操作符中进行链路追踪,如:
+     *
+     * <pre>{@code
+     *
+     *    service
+     *    .doSomeThing()
+     *    //传递追踪上下文到doSomeThing操作中
+     *    .contextWrite(readToContext(Context.empty(),data,getter))
+     *
+     * }</pre>
+     *
+     * @param parent 父级上下文
+     * @param source 源对象
+     * @param getter 跟踪信息载体
+     * @return 包含跟踪信息的上下文
+     * @see io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
+     * @see Context
+     */
+    public static <T> reactor.util.context.Context readToContext(ContextView parent,
                                                                  T source,
                                                                  TextMapGetter<T> getter) {
         ContextPropagators propagators = TraceHolder.telemetry().getPropagators();
         TextMapPropagator propagator = propagators.getTextMapPropagator();
 
-        Context context = ctx.getOrDefault(Context.class, Context.root());
+        Context context = parent.getOrDefault(Context.class, Context.root());
         if (null != context) {
             context = propagator.extract(context, source, getter);
             return reactor.util.context.Context
                     .of(Context.class, context);
         }
-        return reactor.util.context.Context.of(ctx);
+        return reactor.util.context.Context.of(parent);
     }
 
+    /**
+     * 写出上下文中的跟踪信息到指定的载体中
+     * <pre>{@code
+     *
+     *    TraceHolder
+     *    .writeContextTo(ctx,new HashMap<>(), Map::put)
+     *
+     * }</pre>
+     *
+     * @param ctx     上下文
+     * @param carrier 跟踪信息载体
+     * @param setter  跟踪信息setter
+     * @param <T>     载体泛型
+     * @return 原始载体
+     */
     public static <T> T writeContextTo(ContextView ctx,
-                                       T source,
+                                       T carrier,
                                        Consumer3<T, String, String> setter) {
-        if (!traceEnabled) {
-            return source;
+        if (isDisabled()) {
+            return carrier;
         }
         ContextPropagators propagators = TraceHolder.telemetry().getPropagators();
         TextMapPropagator propagator = propagators.getTextMapPropagator();
         Context context = ctx.getOrDefault(Context.class, Context.root());
         if (null != context) {
-            propagator.inject(context, source, setter::accept);
+            propagator.inject(context, carrier, setter::accept);
         }
-        return source;
+        return carrier;
     }
 
-
-    public static <T> Mono<T> writeContextTo(T source, Consumer3<T, String, String> setter) {
-        if (!traceEnabled) {
-            return Mono.just(source);
+    /**
+     * 写出响应式操作符中的上下文到指定的载体中,注意,所有响应式操作符必须组合在一起.否则将无法获取到上下文信息.
+     *
+     * <pre>{@code
+     * public class TraceExchangeFilterFunction implements ExchangeFilterFunction {
+     *
+     *     @Override
+     *     @Nonnull
+     *     public Mono<ClientResponse> filter(@Nonnull ClientRequest request,
+     *                                        @Nonnull ExchangeFunction next) {
+     *      return TraceHolder
+     *            .writeContextTo(ClientRequest.from(request),
+     *                            ClientRequest.Builder::header)
+     *            .flatMap(builder -> next.exchange(builder.build()));
+     *     }
+     *
+     * }
+     * }</pre>
+     *
+     * @param carrier 跟踪信息载体
+     * @param setter  跟踪信息setter
+     * @param <T>     载体泛型
+     * @return Mono
+     */
+    public static <T> Mono<T> writeContextTo(T carrier, Consumer3<T, String, String> setter) {
+        if (isDisabled()) {
+            return Mono.just(carrier);
         }
         return Mono
-                .deferContextual(ctx -> Mono.just(writeContextTo(ctx, source, setter)));
+                .deferContextual(ctx -> Mono.just(writeContextTo(ctx, carrier, setter)));
     }
 
+    /**
+     * 复制源Map中的跟踪信息到指定的载体.
+     * <pre>{@code
+     *
+     * TraceHolder
+     *   .copyContext(request.headers(), message, Message::addHeader)
+     *
+     * }</pre>
+     *
+     * @param source  源
+     * @param carrier 载体
+     * @param setter  跟踪信息setter
+     * @param <D>     载体泛型
+     * @return 原始载体
+     */
     public static <D> D copyContext(Map<String, ?> source,
-                                    D dest,
+                                    D carrier,
                                     Consumer3<D, String, String> setter) {
-        if(isDisabled()){
-            return dest;
+        if (isDisabled()) {
+            return carrier;
         }
         return TraceHolder.writeContextTo(
                 TraceHolder.readToContext(reactor.util.context.Context.empty(), source),
-                dest,
+                carrier,
                 setter);
     }
 
