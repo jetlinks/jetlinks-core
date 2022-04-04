@@ -1,6 +1,7 @@
 package org.jetlinks.core.trace.data;
 
 import com.google.common.collect.Maps;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.trace.data.EventData;
 import lombok.Getter;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Map;
+import java.util.Optional;
 
 @Getter
 @Setter
@@ -26,6 +28,17 @@ public class SpanEventDataInfo implements Externalizable {
 
     public static SpanEventDataInfo of(EventData eventData) {
         return new SpanEventDataInfo().with(eventData);
+    }
+
+    public <T> Optional<T> getAttribute(String key) {
+        if (attributes == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable((T) attributes.get(key));
+    }
+
+    public <T> Optional<T> getAttribute(AttributeKey<T> key) {
+        return getAttribute(key.getKey());
     }
 
     public SpanEventDataInfo with(EventData eventData) {

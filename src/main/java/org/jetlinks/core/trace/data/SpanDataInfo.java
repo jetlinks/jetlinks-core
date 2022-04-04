@@ -1,6 +1,7 @@
 package org.jetlinks.core.trace.data;
 
 import com.google.common.collect.Maps;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.trace.data.EventData;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -13,9 +14,7 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Getter
 @Setter
@@ -54,6 +53,30 @@ public class SpanDataInfo implements Externalizable {
             }
         }
         return this;
+    }
+
+    public Optional<SpanEventDataInfo> getEvent(String name) {
+        if (name == null) {
+            return Optional.empty();
+        }
+        for (SpanEventDataInfo eventInfo : events) {
+            if (Objects.equals(name, eventInfo.getName())) {
+                return Optional.of(eventInfo);
+            }
+        }
+        return Optional.empty();
+    }
+
+    @SuppressWarnings("all")
+    public <T> Optional<T> getAttribute(String key) {
+        if (attributes == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable((T) attributes.get(key));
+    }
+
+    public <T> Optional<T> getAttribute(AttributeKey<T> key) {
+        return getAttribute(key.getKey());
     }
 
     @Override
