@@ -17,7 +17,7 @@ import java.util.Collection;
 public class EventBusSpanExporter implements SpanExporter {
     private final EventBus eventBus;
 
-    private static Codec<SpanDataInfo> codec = Codecs.lookup(SpanDataInfo.class);
+    private final static Codec<SpanDataInfo> codec = Codecs.lookup(SpanDataInfo.class);
 
     @Override
     public CompletableResultCode export(Collection<SpanData> spans) {

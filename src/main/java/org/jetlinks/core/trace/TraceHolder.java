@@ -139,10 +139,9 @@ public class TraceHolder {
         disabledSpanName
                 .getTopic(spanName)
                 .ifPresent(topic -> topic.unsubscribe(handler));
-        enabledSpanName
-                .append(spanName)
-                .subscribe(handler);
-        return () -> disable(spanName, handler);
+        Topic<String> subTable = enabledSpanName.append(spanName);
+        subTable.subscribe(handler);
+        return () -> subTable.unsubscribe(handler);
     }
 
     /**

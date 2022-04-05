@@ -56,7 +56,7 @@ public class SpanDataInfo implements Externalizable {
     }
 
     public Optional<SpanEventDataInfo> getEvent(String name) {
-        if (name == null) {
+        if (events == null) {
             return Optional.empty();
         }
         for (SpanEventDataInfo eventInfo : events) {
