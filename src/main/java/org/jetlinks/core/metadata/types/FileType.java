@@ -5,6 +5,7 @@ import lombok.Setter;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
+import org.springframework.http.MediaType;
 
 import java.util.Optional;
 
@@ -14,6 +15,8 @@ public class FileType extends AbstractType<FileType> implements DataType, Conver
     public static final String ID = "file";
 
     private BodyType bodyType = BodyType.url;
+
+    private MediaType mediaType = MediaType.ALL;
 
     @Override
     public String getId() {
@@ -43,6 +46,13 @@ public class FileType extends AbstractType<FileType> implements DataType, Conver
     @Override
     public String convert(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    public FileType mediaType(MediaType type) {
+        if (type != null) {
+            this.mediaType = type;
+        }
+        return this;
     }
 
     public enum BodyType {
