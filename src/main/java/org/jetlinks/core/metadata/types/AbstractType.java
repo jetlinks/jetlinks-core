@@ -12,50 +12,53 @@ import java.util.Map;
 
 @Getter
 @Setter
-@SuppressWarnings("all")
-public abstract class AbstractType<R> implements DataType {
+public abstract class AbstractType<Self extends AbstractType<Self>> implements DataType {
 
     private Map<String, Object> expands;
 
     private String description;
 
-    public R expands(Map<String, Object> expands) {
-        if(CollectionUtils.isEmpty(expands)){
-            return (R) this;
+    public Self expands(Map<String, Object> expands) {
+        if (CollectionUtils.isEmpty(expands)) {
+            return castSelf();
         }
         if (this.expands == null) {
             this.expands = new HashMap<>();
         }
         this.expands.putAll(expands);
-        return (R) this;
+        return castSelf();
     }
 
-    public R expand(ConfigKeyValue<?>... kvs) {
+    public Self expand(ConfigKeyValue<?>... kvs) {
         for (ConfigKeyValue<?> kv : kvs) {
             expand(kv.getKey(), kv.getValue());
         }
-        return (R) this;
+        return castSelf();
     }
 
-    public <V> R expand(ConfigKey<V> configKey, V value) {
+    public <V> Self expand(ConfigKey<V> configKey, V value) {
         return expand(configKey.getKey(), value);
     }
 
-    public R expand(String configKey, Object value) {
+    public Self expand(String configKey, Object value) {
 
         if (value == null) {
-            return (R) this;
+            return castSelf();
         }
         if (expands == null) {
             expands = new HashMap<>();
         }
         expands.put(configKey, value);
-        return (R) this;
+        return castSelf();
     }
 
-    public R description(String description) {
+    public Self description(String description) {
         this.description = description;
-        return (R) this;
+        return castSelf();
     }
 
+    @SuppressWarnings("all")
+    protected Self castSelf() {
+        return (Self) this;
+    }
 }
