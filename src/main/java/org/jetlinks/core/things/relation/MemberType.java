@@ -9,5 +9,5 @@ public interface MemberType extends Metadata {
 
     List<PropertyMetadata> getProperties();
 
-    List<Relation> getRelations(MemberType anotherMemberType);
+    List<Relation> getRelations(String anotherMemberType);
 }
