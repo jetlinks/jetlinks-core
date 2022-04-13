@@ -29,8 +29,9 @@ import java.util.Collection;
  *
  *   //等同于
  *   manager
- *    .evalProperty("test@device:manager@user.email")
- *    .flatMap(prop-> sendEmail(prop.getValue()))
+ *    .getObject(ObjectSpec.parse("test@device:manager@user"))
+ *    .flatMap(manager-> manager.properties().get("email"))
+ *    .flatMap(email-> sendEmail(email))
  *    ...
  *
  * }</pre>
@@ -58,45 +59,42 @@ public interface RelationManager {
     /**
      * 获取指定类型的对象信息,如: 获取一个设备,然后获取和该设备有关系的信息
      *
-     * @param memberType 成员类型 {@link ObjectType#getId()}
-     * @param memberId   数据ID
+     * @param objectType 成员类型 {@link ObjectType#getId()}
+     * @param objectId   数据ID
      * @return 成员
      */
-    Mono<RelationObject> getObject(String memberType,
-                                   String memberId);
+    Mono<RelationObject> getObject(String objectType,
+                                   String objectId);
 
     /**
      * 获取指定类型的多个对象信息,如: 获取一个设备,然后获取和该设备有关系的信息
      *
-     * @param memberType 成员类型 {@link ObjectType#getId()}
-     * @param memberId   数据ID
+     * @param objectType 成员类型 {@link ObjectType#getId()}
+     * @param objectIds   数据ID
      * @return 成员
      */
-    Flux<RelationObject> getObjects(String memberType,
-                                    Collection<String> memberId);
+    Flux<RelationObject> getObjects(String objectType,
+                                    Collection<String> objectIds);
 
     /**
-     * 根据表达式获取对象属性,表达式格式: {对象ID}@{类型}:{关系}@{类型}.{属性}
-     * <pre>{@code
-     *  //id为test的设备的管理员的邮箱属性
-     *  test@device:manager@user.email
-     * }</pre>
+     * 根据对象关系描述来获取对象
      *
-     * @param expression 表达式
-     * @return 属性, 如果属性或者关系不存在则返回 {@link Flux#empty()}
+     * @param spec 对象描述
+     * @return void
+     * @see ObjectSpec
      */
-    Flux<ObjectProperty> evalProperty(String expression);
-
-    /**
-     * 根据表达式获取对象关系,表达式格式: {对象ID}@{类型}:{关系}@{类型}
-     * <pre>{@code
-     *  //id为test的设备的管理员的邮箱属性
-     *  test@device:manager@user.email
-     * }</pre>
-     *
-     * @param expression 表达式
-     * @return 属性, 如果属性或者关系不存在则返回 {@link Flux#empty()}
-     */
-    Flux<RelationObject> evalObject(String expression);
+    default Flux<RelationObject> getObjects(ObjectSpec spec) {
+        Flux<RelationObject> first = getObject(spec.getObjectType(), spec.getObjectType()).flux();
+        RelationSpec rel = spec.getRelated();
+        while (rel != null) {
+            RelationSpec fRel = rel;
+            first = first
+                    .flatMap(obj -> obj
+                            .relations(false)
+                            .get(fRel.getObjectType(), fRel.getRelation()));
+            rel = fRel.getNext();
+        }
+        return first;
+    }
 
 }
