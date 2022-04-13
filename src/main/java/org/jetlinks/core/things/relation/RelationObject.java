@@ -1,12 +1,12 @@
 package org.jetlinks.core.things.relation;
 
 /**
- * 成员(Member): 某一成员类型对应的具体的数据,如: 具体的某个用户,设备等
+ * 关系对象(RelationObject): 某一类型对应的具体的数据,如: 具体的某个用户,设备等
  *
  * @author zhouhao
  * @since 1.2
  */
-public interface Member {
+public interface RelationObject {
 
     /**
      * 成员ID
@@ -19,7 +19,7 @@ public interface Member {
      * 成员类型
      *
      * @return 类型
-     * @see MemberType#getId()
+     * @see ObjectType#getId()
      */
     String getType();
 
@@ -31,13 +31,13 @@ public interface Member {
      * @param reverse 是否反转关系
      * @return 关系操作接口
      */
-    RelationMemberOperation relations(boolean reverse);
+    RelationOperation relations(boolean reverse);
 
     /**
      * 开始对成员属性进行操作
      *
      * @return 属性操作接口
      */
-    MemberPropertyOperation properties();
+    PropertyOperation properties();
 
 }
