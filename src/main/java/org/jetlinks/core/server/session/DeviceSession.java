@@ -1,5 +1,6 @@
 package org.jetlinks.core.server.session;
 
+import org.jetlinks.core.command.Command;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.TraceDeviceSession;
@@ -7,6 +8,7 @@ import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.trace.TraceHolder;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.time.Duration;
@@ -60,6 +62,12 @@ public interface DeviceSession {
      */
     Mono<Boolean> send(EncodedMessage encodedMessage);
 
+
+    @Nonnull
+    default <V> Mono<V> execute(@Nonnull Command<V> command) {
+        return Mono.error(UnsupportedOperationException::new);
+    }
+
     /**
      * 传输协议,比如MQTT,TCP等
      *
@@ -77,6 +85,7 @@ public interface DeviceSession {
      *
      * @see DeviceSession#keepAlive()
      */
+    @Deprecated
     void ping();
 
     /**
@@ -94,6 +103,7 @@ public interface DeviceSession {
     /**
      * @return 会话连接的服务ID
      */
+    @Deprecated
     default Optional<String> getServerId() {
         return Optional.empty();
     }
@@ -118,7 +128,7 @@ public interface DeviceSession {
 
     }
 
-    default Duration getKeepAliveTimeout(){
+    default Duration getKeepAliveTimeout() {
         return Duration.ZERO;
     }
 
@@ -144,7 +154,7 @@ public interface DeviceSession {
     }
 
 
-    static  DeviceSession trace(DeviceSession target) {
+    static DeviceSession trace(DeviceSession target) {
         if (TraceHolder.isDisabled()) {
             return target;
         }

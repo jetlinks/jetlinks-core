@@ -25,7 +25,7 @@ public interface DeviceOperationBroker {
      * @param deviceGatewayServerId 设备所在服务ID {@link ServerNode#getId()}
      * @param deviceIdList          设备列表
      * @return 设备状态
-     * @see DeviceOperator#getConnectionServerId()
+     * @see org.jetlinks.core.device.session.DeviceSessionManager#isAlive(String)
      */
     Flux<DeviceStateInfo> getDeviceState(String deviceGatewayServerId, Collection<String> deviceIdList);
 

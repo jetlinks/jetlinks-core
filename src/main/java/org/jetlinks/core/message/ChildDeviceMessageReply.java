@@ -4,7 +4,11 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.utils.SerializeUtils;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.function.BiConsumer;
 
 /**
@@ -62,5 +66,20 @@ public class ChildDeviceMessageReply extends CommonDeviceMessageReply<ChildDevic
             json.put("childDeviceMessage", childDeviceMessage.toJson());
         }
         return json;
+    }
+
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        super.writeExternal(out);
+        SerializeUtils.writeNullableUTF(childDeviceId, out);
+        out.writeObject(childDeviceMessage);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        super.readExternal(in);
+        this.childDeviceId = SerializeUtils.readNullableUTF(in);
+        this.childDeviceMessage = (Message) in.readObject();
     }
 }

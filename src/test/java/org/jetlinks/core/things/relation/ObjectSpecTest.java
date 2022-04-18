@@ -1,6 +1,8 @@
 package org.jetlinks.core.things.relation;
 
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -12,7 +14,8 @@ public class ObjectSpecTest {
         ObjectSpec spec = ObjectSpec.parse("dev1@device:manager@user:member@user");
         Assert.assertNotNull(spec);
 
-        System.out.printf(spec.toString());
+        System.out.println(spec);
 
+        System.out.println(JSON.toJSONString(spec, SerializerFeature.PrettyFormat));
     }
 }

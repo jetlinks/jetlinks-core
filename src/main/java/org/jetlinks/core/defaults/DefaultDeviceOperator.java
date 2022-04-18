@@ -293,7 +293,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                         .flatMap(device -> {
                                             //不是状态自管理则直接返回网关的状态
                                             if (!isSelfManageState) {
-                                                return device.checkState();
+                                                return Mono.just(state);
                                             }
                                             //发送设备状态检查指令给网关设备
                                             return device
@@ -303,8 +303,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                                                          .create(parentGatewayId,
                                                                                  DeviceStateCheckMessage.create(getDeviceId())
                                                                          )
-                                                                         .addHeader(Headers.timeout, 5000L)
-                                                    )
+                                                                         .addHeader(Headers.timeout, 5000L))
                                                     .singleOrEmpty()
                                                     .map(msg -> {
                                                         if (msg.getChildDeviceMessage() instanceof DeviceStateCheckMessageReply) {

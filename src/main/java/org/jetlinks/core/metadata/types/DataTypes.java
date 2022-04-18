@@ -1,6 +1,7 @@
 package org.jetlinks.core.metadata.types;
 
 import org.jetlinks.core.metadata.DataType;
+import org.jetlinks.core.metadata.UserType;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +30,7 @@ public class DataTypes {
         supports.put(PasswordType.ID, PasswordType::new);
         supports.put(GeoShapeType.ID, GeoShapeType::new);
 
+        supports.put(UserType.ID,UserType::new);
     }
 
     public static void register(String id, Supplier<DataType> supplier) {

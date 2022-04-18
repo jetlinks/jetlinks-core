@@ -133,4 +133,19 @@ public interface Headers {
      * @see org.jetlinks.core.message.property.ReportPropertyMessage
      */
     HeaderKey<String> geoProperty = HeaderKey.of("geoProperty", null, String.class);
+
+    /**
+     * 在设备离线时,标记是否清理所有会话.
+     * <p>
+     * 通常用于短连接方式接入平台的场景,
+     * 在集群的多台节点中存在同一个设备的会话时,默认只有集群全部会话失效时,设备才算离线.
+     * 可通过在发送离线消息中指定header: clearAllSession来标识是否让集群全部会话都失效.
+     *
+     * <pre>{@code
+     *     message.addHeader(Headers.clearAllSession,true);
+     * }</pre>
+     *
+     * @see DeviceOfflineMessage
+     */
+    HeaderKey<Boolean> clearAllSession = HeaderKey.of("clearAllSession", false, Boolean.class);
 }

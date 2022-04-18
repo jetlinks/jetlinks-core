@@ -5,7 +5,11 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
+import org.jetlinks.core.utils.SerializeUtils;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -73,5 +77,19 @@ public class ChildDeviceMessage extends CommonDeviceMessage implements Repayable
                 deviceId.add(childId);
             } while (msg instanceof ChildDeviceMessage);
         }
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        super.writeExternal(out);
+        SerializeUtils.writeNullableUTF(childDeviceId, out);
+        out.writeObject(childDeviceMessage);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        super.readExternal(in);
+        this.childDeviceId = SerializeUtils.readNullableUTF(in);
+        this.childDeviceMessage = (Message) in.readObject();
     }
 }

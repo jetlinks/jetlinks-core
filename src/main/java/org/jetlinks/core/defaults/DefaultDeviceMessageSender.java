@@ -9,7 +9,6 @@ import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
-import org.jetlinks.core.utils.DeviceMessageTracer;
 import org.reactivestreams.Publisher;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
@@ -146,15 +145,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                         .then(operator.getConnectionServerId()));
     }
 
-    private Flux<DeviceMessage> sendToParentDevice(String parentId,
-                                                   DeviceMessage message) {
-        if (parentId.equals(operator.getDeviceId())) {
-            return Flux
-                    .error(
-                            new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "validation.parent_id_and_id_can_not_be_same")
-                    );
-        }
-
+    private ChildDeviceMessage createChildDeviceMessage(String parentId, DeviceMessage message) {
         ChildDeviceMessage children = new ChildDeviceMessage();
         children.setDeviceId(parentId);
         children.setMessageId(message.getMessageId());
@@ -168,6 +159,19 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         }
         message.addHeader(Headers.dispatchToParent, true);
         children.validate();
+        return children;
+    }
+
+    private Flux<DeviceMessage> sendToParentDevice(String parentId,
+                                                   DeviceMessage message) {
+        if (parentId.equals(operator.getDeviceId())) {
+            return Flux
+                    .error(
+                            new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "validation.parent_id_and_id_can_not_be_same")
+                    );
+        }
+
+        ChildDeviceMessage children = createChildDeviceMessage(parentId, message);
         return registry
                 .getDevice(parentId)
                 .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.UNKNOWN_PARENT_DEVICE)))
@@ -198,7 +202,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                             .andThen(globalInterceptor);
                     String server = serverAndInterceptor.getT1();
                     String parentGatewayId = serverAndInterceptor.getT3();
-                    //设备未连接,有上级网关设备则通过父级设备发送消息
+                    //有上级网关设备则通过父级设备发送消息
                     if (StringUtils.isEmpty(server) && StringUtils.hasText(parentGatewayId)) {
                         return Flux
                                 .from(message)
@@ -211,10 +215,9 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                     }
                     return Flux
                             .from(message)
-                            .flatMap(msg -> interceptor.preSend(operator, msg))
+                            .flatMap(msg -> interceptor.preSend(operator,msg))
                             .concatMap(msg -> Flux
                                     .defer(() -> {
-                                        DeviceMessageTracer.trace(msg, "send.before");
                                         if (StringUtils.isEmpty(server)) {
                                             return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                         }
@@ -283,7 +286,6 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                     log.debug("send device[{}] message complete", operator.getDeviceId());
                                                     return interceptor.afterSent(operator, msg, replyStream);
                                                 })
-                                                .doOnNext(r -> DeviceMessageTracer.trace(r, "send.reply"))
                                                 ;
                                     })
                                     .as(flux -> interceptor

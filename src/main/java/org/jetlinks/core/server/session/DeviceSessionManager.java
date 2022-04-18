@@ -12,6 +12,7 @@ import javax.annotation.Nullable;
  * @author zhouhao
  * @since 1.0.0
  */
+@Deprecated
 public interface DeviceSessionManager {
 
     /**

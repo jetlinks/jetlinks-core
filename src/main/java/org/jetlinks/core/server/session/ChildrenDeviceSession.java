@@ -22,6 +22,7 @@ public class ChildrenDeviceSession implements DeviceSession {
     @Getter
     private final String deviceId;
 
+    @Getter
     private final DeviceSession parent;
 
     @Getter

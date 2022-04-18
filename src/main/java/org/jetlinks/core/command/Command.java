@@ -1,5 +1,7 @@
 package org.jetlinks.core.command;
 
-public interface Command<Response> {
+import java.io.Serializable;
+
+public interface Command<Response> extends Serializable {
 
 }

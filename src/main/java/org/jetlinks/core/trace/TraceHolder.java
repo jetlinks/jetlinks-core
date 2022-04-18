@@ -1,6 +1,5 @@
 package org.jetlinks.core.trace;
 
-import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.ContextPropagators;
@@ -37,6 +36,12 @@ public class TraceHolder {
     private static final Topic<String> disabledSpanName = Topic.createRoot();
     //启用的spanName
     private static final Topic<String> enabledSpanName = Topic.createRoot();
+
+    private static OpenTelemetry telemetry;
+
+    public static void setup(OpenTelemetry telemetry) {
+        TraceHolder.telemetry = telemetry;
+    }
 
     /**
      * 动态设置全局应用名
@@ -167,7 +172,7 @@ public class TraceHolder {
      * @return 获取当前的OpenTelemetry
      */
     public static OpenTelemetry telemetry() {
-        return GlobalOpenTelemetry.get();
+        return telemetry == null ? OpenTelemetry.noop() : telemetry;
     }
 
 

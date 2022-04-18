@@ -32,7 +32,9 @@ public interface MessageHandler {
      *
      * @param serverId    服务ID,在集群时,不同的节点serverId不同
      * @param stateMapper 状态检查器
+     * @deprecated {@link  org.jetlinks.core.device.session.DeviceSessionManager#isAlive(String)}
      */
+    @Deprecated
     Disposable handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper);
 
     /**

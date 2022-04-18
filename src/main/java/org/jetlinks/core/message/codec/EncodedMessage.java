@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
  * @see org.jetlinks.core.message.codec.http.HttpExchangeMessage
  * @since 1.0.0
  */
-public interface EncodedMessage {
+public interface EncodedMessage  {
 
     /**
      * 获取原始报文
