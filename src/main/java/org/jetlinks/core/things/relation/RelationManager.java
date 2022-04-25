@@ -90,7 +90,7 @@ public interface RelationManager {
             RelationSpec fRel = rel;
             first = first
                     .flatMap(obj -> obj
-                            .relations(false)
+                            .relations(fRel.isReverse())
                             .get(fRel.getObjectType(), fRel.getRelation()));
             rel = fRel.getNext();
         }

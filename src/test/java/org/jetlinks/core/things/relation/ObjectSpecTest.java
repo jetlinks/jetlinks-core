@@ -18,4 +18,15 @@ public class ObjectSpecTest {
 
         System.out.println(JSON.toJSONString(spec, SerializerFeature.PrettyFormat));
     }
+
+    @Test
+    public void tesOpt() {
+
+        ObjectSpec spec = ObjectSpec.parse("dev1@device:manager$reverse@user:member@user");
+        Assert.assertNotNull(spec);
+
+        System.out.println(spec);
+
+        System.out.println(JSON.toJSONString(spec, SerializerFeature.PrettyFormat));
+    }
 }
