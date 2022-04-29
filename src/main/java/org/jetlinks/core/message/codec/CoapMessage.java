@@ -99,7 +99,7 @@ public interface CoapMessage extends EncodedMessage {
         }
         if (num == OptionNumberRegistry.CONTENT_FORMAT && !valueIsNumber) {
             return new Option(num, MediaTypeRegistry.parse(value));
-        } else if (OptionNumberRegistry.getFormatByNr(num) == OptionNumberRegistry.optionFormats.INTEGER) {
+        } else if (OptionNumberRegistry.getFormatByNr(num) == OptionNumberRegistry.OptionFormat.INTEGER) {
             return new Option(num, new BigDecimal(value).longValue());
         } else if (valueIsHex) {
             return new Option(num, ByteBufUtil.decodeHexDump(value.substring(2)));

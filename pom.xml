@@ -43,7 +43,7 @@
         <dependency>
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
-            <version>2.0.1</version>
+            <version>3.0.2</version>
         </dependency>
 
         <dependency>
@@ -71,7 +71,7 @@
         <dependency>
             <groupId>org.eclipse.californium</groupId>
             <artifactId>californium-core</artifactId>
-            <version>2.0.0</version>
+            <version>3.3.1</version>
             <optional>true</optional>
         </dependency>
 
@@ -89,7 +89,6 @@
         <dependency>
             <artifactId>jctools-core</artifactId>
             <groupId>org.jctools</groupId>
-            <version>2.1.2</version>
         </dependency>
 
         <dependency>
