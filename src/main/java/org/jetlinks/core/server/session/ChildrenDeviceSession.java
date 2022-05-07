@@ -104,11 +104,6 @@ public class ChildrenDeviceSession implements DeviceSession {
     }
 
     @Override
-    public boolean isWrapFrom(Class<?> type) {
-        return type == ChildrenDeviceSession.class || parent.isWrapFrom(type);
-    }
-
-    @Override
     public Optional<InetSocketAddress> getClientAddress() {
         return parent.getClientAddress();
     }
@@ -124,8 +119,13 @@ public class ChildrenDeviceSession implements DeviceSession {
     }
 
     @Override
+    public boolean isWrapFrom(Class<?> type) {
+        return type.isInstance(this) || parent.isWrapFrom(type);
+    }
+
+    @Override
     public <T extends DeviceSession> T unwrap(Class<T> type) {
-        return type == ChildrenDeviceSession.class ? type.cast(this) : parent.unwrap(type);
+        return type.isInstance(this) ? type.cast(this) : parent.unwrap(type);
     }
 
     @Override

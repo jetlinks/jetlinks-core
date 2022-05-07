@@ -87,7 +87,8 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
 
     @Override
     public ReadPropertyMessageReply properties(Map<String, Object> properties) {
-        return success(properties);
+        this.properties = properties;
+        return this;
     }
 
 

@@ -87,7 +87,8 @@ public class DefaultReadPropertyMessageReply extends CommonThingMessageReply<Def
 
     @Override
     public DefaultReadPropertyMessageReply properties(Map<String, Object> properties) {
-        return success(properties);
+        this.properties = properties;
+        return this;
     }
 
     @Override

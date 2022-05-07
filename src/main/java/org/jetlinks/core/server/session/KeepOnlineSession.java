@@ -118,12 +118,12 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public boolean isWrapFrom(Class<?> type) {
-        return type == KeepOnlineSession.class || parent.isWrapFrom(type);
+        return type.isInstance(this) || parent.isWrapFrom(type);
     }
 
     @Override
     public <T extends DeviceSession> T unwrap(Class<T> type) {
-        return type == KeepOnlineSession.class ? type.cast(this) : parent.unwrap(type);
+        return type.isInstance(this) ? type.cast(this) : parent.unwrap(type);
     }
 
     @Override
