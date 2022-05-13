@@ -28,6 +28,7 @@ public interface ClusterManager {
     /**
      * @return 高可用管理器
      */
+    @Deprecated
     HaManager getHaManager();
 
     /**

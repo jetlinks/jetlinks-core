@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * 管理相关特性
+ * 设备管理相关特性
  *
  * @author zhouhao
  * @since 1.1.8
@@ -22,4 +22,8 @@ public enum ManagementFeature implements Feature {
         return name();
     }
 
+    @Override
+    public String getType() {
+        return "device-manage";
+    }
 }
