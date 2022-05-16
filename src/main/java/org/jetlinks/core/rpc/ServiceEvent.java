@@ -7,7 +7,9 @@ import lombok.Getter;
 @Getter
 public class ServiceEvent{
 
-    private final String service;
+    private final String serviceId;
+
+    private final String serviceName;
 
     private final String serverNodeId;
 

@@ -4,7 +4,6 @@ package org.jetlinks.core.ipc;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.jetlinks.core.codec.Codec;
-import org.jetlinks.core.rpc.RpcDefinition;
 
 @AllArgsConstructor
 @Getter
