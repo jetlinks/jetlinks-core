@@ -1,8 +1,8 @@
 package org.jetlinks.core.defaults;
 
-import io.vavr.Function3;
 import org.jetlinks.core.things.*;
 import reactor.core.publisher.Mono;
+import reactor.function.Function3;
 
 import javax.annotation.Nonnull;
 import java.util.Map;

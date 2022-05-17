@@ -2,9 +2,9 @@ package org.jetlinks.core.cluster.load;
 
 import reactor.core.publisher.Mono;
 
-public interface FeatureLoadSupplier {
+public interface LoadSupplier {
 
-    String featureId();
+    String loadId();
 
     Mono<Long> currentLoad();
 

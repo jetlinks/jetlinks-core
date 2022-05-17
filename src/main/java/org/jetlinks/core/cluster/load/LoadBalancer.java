@@ -9,13 +9,13 @@ import java.util.Comparator;
 
 public interface LoadBalancer {
 
-    Disposable register(FeatureLoadSupplier loadSupplier);
+    Disposable register(LoadSupplier loadSupplier);
 
     Flux<ServerLoad> loads();
 
     Flux<ServerLoad> loads(String serviceNodeId);
 
-    Mono<ServerLoad> load(String serviceNodeId,String featureId);
+    Mono<ServerLoad> load(String serviceNodeId, String featureId);
 
     Flux<ServerLoad> localLoads();
 

@@ -12,6 +12,11 @@ import reactor.core.publisher.Mono;
  */
 public interface RpcManager {
 
+    /**
+     * 当前集群节点ID
+     *
+     * @return 当前集群节点ID
+     */
     String currentServerId();
 
     /**

@@ -1,7 +1,5 @@
 package org.jetlinks.core.message.codec;
 
-import io.vavr.CheckedConsumer;
-import io.vavr.CheckedRunnable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -10,6 +8,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * 文本消息解析
@@ -22,13 +21,13 @@ import java.util.function.BiConsumer;
 @AllArgsConstructor(staticName = "of")
 public class TextMessageParser {
 
-    private final CheckedConsumer<String> startConsumer;
+    private final Consumer<String> startConsumer;
 
     private final BiConsumer<String, String> headerConsumer;
 
-    private final CheckedConsumer<Payload> bodyConsumer;
+    private final Consumer<Payload> bodyConsumer;
 
-    private final CheckedRunnable noBodyConsumer;
+    private final Runnable noBodyConsumer;
 
     @SneakyThrows
     public void parse(String text) {

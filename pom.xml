@@ -47,17 +47,6 @@
         </dependency>
 
         <dependency>
-            <groupId>io.vavr</groupId>
-            <artifactId>vavr</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.vavr</groupId>
-            <artifactId>vavr-match</artifactId>
-            <version>0.9.2</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.hswebframework.web</groupId>
             <artifactId>hsweb-core</artifactId>
             <version>${hsweb.framework.version}</version>
@@ -94,33 +83,33 @@
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-api</artifactId>
-            <version>1.12.0</version>
+            <version>1.13.0</version>
         </dependency>
 
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-extension-annotations</artifactId>
-            <version>1.12.0</version>
+            <version>1.13.0</version>
         </dependency>
 
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-exporter-logging</artifactId>
-            <version>1.12.0</version>
+            <version>1.13.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk-trace</artifactId>
-            <version>1.12.0</version>
+            <version>1.13.0</version>
             <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk</artifactId>
-            <version>1.12.0</version>
+            <version>1.13.0</version>
             <scope>test</scope>
         </dependency>
 

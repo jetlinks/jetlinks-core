@@ -15,6 +15,8 @@ import java.io.ObjectOutput;
 @AllArgsConstructor(staticName = "of")
 @NoArgsConstructor
 public class ServerLoad implements Externalizable {
+    private static final long serialVersionUID = 1;
+
     private String serverNodeId;
 
     private String feature;
