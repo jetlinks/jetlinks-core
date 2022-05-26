@@ -84,7 +84,7 @@ public interface RelationManager {
      * @see ObjectSpec
      */
     default Flux<RelationObject> getObjects(ObjectSpec spec) {
-        Flux<RelationObject> first = getObject(spec.getObjectType(), spec.getObjectType()).flux();
+        Flux<RelationObject> first = getObject(spec.getObjectType(), spec.getObjectId()).flux();
         RelationSpec rel = spec.getRelated();
         while (rel != null) {
             RelationSpec fRel = rel;
