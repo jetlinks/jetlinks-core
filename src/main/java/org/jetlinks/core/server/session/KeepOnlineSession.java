@@ -23,6 +23,10 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     private final long connectTime = System.currentTimeMillis();
 
+    //忽略上级会话信息,设置为true后. 设备是否离线以超时时间为准
+    @Setter
+    private boolean ignoreParent = false;
+
     private long keepAliveTimeOutMs;
 
     public KeepOnlineSession(DeviceSession parent, Duration keepAliveTimeOut) {
@@ -74,7 +78,9 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public void close() {
-        parent.close();
+        if (!ignoreParent) {
+            parent.close();
+        }
     }
 
     @Override
@@ -85,9 +91,12 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public boolean isAlive() {
-        return keepAliveTimeOutMs <= 0
-                || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs
-                || parent.isAlive();
+        boolean isTimeout = keepAliveTimeOutMs <= 0
+                || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs;
+        if (ignoreParent) {
+            return isTimeout;
+        }
+        return !isTimeout || parent.isAlive();
     }
 
     @Override
@@ -118,12 +127,15 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public boolean isWrapFrom(Class<?> type) {
-        return type == KeepOnlineSession.class || parent.isWrapFrom(type);
+        return PersistentSession.super.isWrapFrom(type) || parent.isWrapFrom(type);
     }
 
     @Override
     public <T extends DeviceSession> T unwrap(Class<T> type) {
-        return type == KeepOnlineSession.class ? type.cast(this) : parent.unwrap(type);
+        if (PersistentSession.super.isWrapFrom(type)) {
+            return PersistentSession.super.unwrap(type);
+        }
+        return parent.unwrap(type);
     }
 
     @Override
