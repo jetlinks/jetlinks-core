@@ -44,18 +44,21 @@ class KeepOnlineDeviceSessionProvider implements DeviceSessionProvider {
                                                   Transport.of(transport)),
                             Duration.ofMillis(timeout));
                     session.setLastKeepAliveTime(lstTime);
+                    session.setIgnoreParent(data.getBooleanValue("ignoreParent"));
                     return session;
                 });
     }
 
     @Override
     public Mono<byte[]> serialize(PersistentSession session, DeviceRegistry registry) {
+        KeepOnlineSession keepOnlineSession = session.unwrap(KeepOnlineSession.class);
         JSONObject data = new JSONObject();
         data.put("id", session.getId());
         data.put("deviceId", session.getDeviceId());
         data.put("timeout", session.getKeepAliveTimeout().toMillis());
         data.put("lstTime", session.lastPingTime());
         data.put("transport", session.getTransport().getId());
+        data.put("ignoreParent", keepOnlineSession.isIgnoreParent());
         return Mono.just(JSON.toJSONBytes(data));
     }
 }
