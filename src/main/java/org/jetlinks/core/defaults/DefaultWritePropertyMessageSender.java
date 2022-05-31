@@ -14,8 +14,10 @@ import java.util.function.Consumer;
 
 public class DefaultWritePropertyMessageSender implements WritePropertyMessageSender {
 
+    //修改设备属性消息
     private final WritePropertyMessage message = new WritePropertyMessage();
 
+    //设备操作接口,用于发送指令到设备,以及获取配置等相关信
     private final DeviceOperator operator;
 
     public DefaultWritePropertyMessageSender(DeviceOperator operator) {
@@ -30,18 +32,37 @@ public class DefaultWritePropertyMessageSender implements WritePropertyMessageSe
         return this;
     }
 
+    /**
+     * 添加消息头
+     *
+     * @param header 消息头标识
+     * @param value 消息头存储的值
+     * @return 修改设备属性消息发送器
+     */
     @Override
     public WritePropertyMessageSender header(String header, Object value) {
         message.addHeader(header, value);
         return this;
     }
 
+    /**
+     * 添加消息ID
+     *
+     * @param messageId 消息ID
+     * @return 修改设备属性消息发送器
+     */
     @Override
     public WritePropertyMessageSender messageId(String messageId) {
         message.setMessageId(messageId);
         return this;
     }
 
+    /**
+     * 设置设备修改消息中的属性集合
+     *
+     * @param property 属性集合
+     * @return 修改设备属性消息发送器
+     */
     @Override
     public WritePropertyMessageSender write(String property, Object value) {
         message.addProperty(property, value);
@@ -65,6 +86,11 @@ public class DefaultWritePropertyMessageSender implements WritePropertyMessageSe
                 }).thenReturn(this);
     }
 
+    /**
+     * 发送修改设备属性消息
+     *
+     * @return 修改设备属性消息回复内容
+     */
     @Override
     public Flux<WritePropertyMessageReply> send() {
         return operator.messageSender().send(Mono.just(message));

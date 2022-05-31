@@ -27,10 +27,13 @@ import static org.jetlinks.core.device.DeviceConfigKey.connectionServerId;
 @Slf4j
 public class DefaultDeviceMessageSender implements DeviceMessageSender {
 
+    //设备操作代理,用于管理集群间设备指令发送
     private final DeviceOperationBroker handler;
 
+    //设备操作接口,用于发送指令到设备,以及获取配置等相关信息
     private final DeviceOperator operator;
 
+    //设备注册中心,用于统一管理设备以及产品的基本信息,缓存,进行设备指令下发等操作
     private final DeviceRegistry registry;
 
     private static final long DEFAULT_TIMEOUT = TimeUnit.SECONDS.toMillis(Integer.getInteger("jetlinks.device.message.default-timeout", 10));
@@ -51,6 +54,25 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         this.globalInterceptor = interceptor;
     }
 
+    /**
+     * 发送一个支持回复的消息.
+     * <p>
+     * ⚠️: 请勿自己实现消息对象,而应该使用框架定义的3种消息.
+     * ⚠️: 如果是异步消息,将直接返回<code>{"success":true,"code":"REQUEST_HANDLING"}</code>
+     *
+     * @param message 具体的消息对象
+     * @param <R>     返回类型
+     * @return 异步发送结果
+     * @see org.jetlinks.core.message.property.ReadPropertyMessage
+     * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
+     * @see org.jetlinks.core.message.property.WritePropertyMessage
+     * @see org.jetlinks.core.message.property.WritePropertyMessageReply
+     * @see org.jetlinks.core.message.function.FunctionInvokeMessage
+     * @see org.jetlinks.core.message.function.FunctionInvokeMessageReply
+     * @see org.jetlinks.core.enums.ErrorCode#CLIENT_OFFLINE
+     * @see org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING
+     * @see org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor
+     */
     @Override
     public <R extends DeviceMessageReply> Flux<R> send(Publisher<RepayableDeviceMessage<R>> message) {
         return send(message, this::convertReply);
@@ -133,6 +155,14 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         return flux;
     }
 
+    /**
+     * 发送消息并获取返回
+     *
+     * @param message 消息
+     * @param <R>     回复类型
+     * @return 异步发送结果
+     * @see DeviceMessageSender#send(Publisher)
+     */
     @Override
     public <R extends DeviceMessage> Flux<R> send(DeviceMessage message) {
         return send(Mono.just(message), this::convertReply);
@@ -181,6 +211,15 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                 ;
     }
 
+    /**
+     * 发送消息并自定义返回结果转换器
+     *
+     * @param message      消息
+     * @param replyMapping 消息回复转换器
+     * @param <R>          回复类型
+     * @return 异步发送结果
+     * @see DeviceMessageSender#send(Publisher)
+     */
     public <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping) {
         return Mono
                 .zip(
@@ -242,7 +281,8 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                     return Mono.error(error);
                                                 })
                                                 .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
-                                                .as(flux -> this.logReply(msg, flux));
+                                                .as(flux -> this.logReply(msg, flux))
+                                                .cache();
 
                                         //发送消息到设备连接的服务器
                                         return handler
@@ -295,17 +335,43 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
 
     }
 
+    /**
+     * 发送{@link org.jetlinks.core.message.function.FunctionInvokeMessage}消息更便捷的API
+     *
+     * @param function 要执行的功能
+     * @return FunctionInvokeMessageSender
+     * @see DeviceMessageSender#send(Publisher)
+     * @see org.jetlinks.core.message.function.FunctionInvokeMessage
+     * @see FunctionInvokeMessageSender
+     */
     @Override
     public FunctionInvokeMessageSender invokeFunction(String function) {
         return new DefaultFunctionInvokeMessageSender(operator, function);
     }
 
+    /**
+     * 发送{@link org.jetlinks.core.message.property.ReadPropertyMessage}消息更便捷的API
+     *
+     * @param property 要获取的属性列表
+     * @return ReadPropertyMessageSender
+     * @see DeviceMessageSender#send(Publisher)
+     * @see org.jetlinks.core.message.property.ReadPropertyMessage
+     * @see ReadPropertyMessageSender
+     */
     @Override
     public ReadPropertyMessageSender readProperty(String... property) {
         return new DefaultReadPropertyMessageSender(operator)
                 .read(property);
     }
 
+    /**
+     * 发送{@link org.jetlinks.core.message.property.WritePropertyMessage}消息更便捷的API
+     *
+     * @return WritePropertyMessageSender
+     * @see DeviceMessageSender#send(Publisher)
+     * @see org.jetlinks.core.message.property.WritePropertyMessage
+     * @see WritePropertyMessageSender
+     */
     @Override
     public WritePropertyMessageSender writeProperty() {
         return new DefaultWritePropertyMessageSender(operator);

@@ -23,6 +23,10 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     private final long connectTime = System.currentTimeMillis();
 
+    //忽略上级会话信息,设置为true后. 设备是否离线以超时时间为准
+    @Setter
+    private boolean ignoreParent = false;
+
     private long keepAliveTimeOutMs;
 
     public KeepOnlineSession(DeviceSession parent, Duration keepAliveTimeOut) {
@@ -74,7 +78,9 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public void close() {
-        parent.close();
+        if (!ignoreParent) {
+            parent.close();
+        }
     }
 
     @Override
@@ -85,9 +91,12 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public boolean isAlive() {
-        return keepAliveTimeOutMs <= 0
-                || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs
-                || parent.isAlive();
+        boolean isAlive = keepAliveTimeOutMs <= 0
+                || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs;
+        if (ignoreParent) {
+            return isAlive;
+        }
+        return isAlive || parent.isAlive();
     }
 
     @Override

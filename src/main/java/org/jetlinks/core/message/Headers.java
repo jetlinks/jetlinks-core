@@ -17,6 +17,11 @@ public interface Headers {
     HeaderKey<Boolean> keepOnline = HeaderKey.of("keepOnline", true, Boolean.class);
 
     /**
+     * 在保持在线时,忽略连接状态信息,设备是否在线以: {@link Headers#keepOnlineTimeoutSeconds}指定为准
+     */
+    HeaderKey<Boolean> keepOnlineIgnoreConnection = HeaderKey.of("keepOnlineIC", false, Boolean.class);
+
+    /**
      * 保持在线超时时间,超过指定时间未收到消息则认为离线
      */
     HeaderKey<Integer> keepOnlineTimeoutSeconds = HeaderKey.of("keepOnlineTimeoutSeconds", 600, Integer.class);

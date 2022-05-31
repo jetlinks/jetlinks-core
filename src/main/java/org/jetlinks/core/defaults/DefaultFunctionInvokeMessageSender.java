@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+
 @Slf4j
 public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessageSender {
 
@@ -56,18 +57,46 @@ public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessage
         return this;
     }
 
+    /**
+     * 添加消息ID
+     *
+     * @param messageId 消息ID
+     * @return 调用设备功能的消息发送器
+     */
     @Override
     public FunctionInvokeMessageSender messageId(String messageId) {
         message.setMessageId(messageId);
         return this;
     }
 
+    /**
+     * 添加消息头
+     *
+     * @param header 消息头标识
+     * @param value 消息头存储的值
+     * @return 调用设备功能的消息发送器
+     */
     @Override
     public FunctionInvokeMessageSender header(String header, Object value) {
         message.addHeader(header, value);
         return this;
     }
 
+    /**
+     * 执行参数校验
+     * <pre>
+     *     function("door-open")
+     *     .validate()
+     *     .flatMany(FunctionInvokeMessageSender::send)
+     *     .doOnError(IllegalParameterException.class,err->log.error(err.getMessage(),err))
+     *     ...
+     * </pre>
+     *
+     * @see Mono#doOnError(Consumer)
+     * @see org.jetlinks.core.message.exception.IllegalParameterException
+     * @see org.jetlinks.core.message.exception.FunctionUndefinedException
+     * @see org.jetlinks.core.message.exception.FunctionIllegalParameterException
+     */
     @Override
     public Mono<FunctionInvokeMessageSender> validate() {
         String function = message.getFunctionId();
@@ -110,6 +139,13 @@ public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessage
                 ;
     }
 
+    /**
+     * 发送消息
+     *
+     * @return 返回结果
+     * @see org.jetlinks.core.exception.DeviceOperationException
+     * @see org.jetlinks.core.enums.ErrorCode#CLIENT_OFFLINE
+     */
     @Override
     public Flux<FunctionInvokeMessageReply> send() {
         if (message.getHeader(Headers.async).isPresent()) {
@@ -122,6 +158,11 @@ public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessage
                 .thenMany(doSend());
     }
 
+    /**
+     * 发送消息
+     *
+     * @return 回复内容
+     */
     private Flux<FunctionInvokeMessageReply> doSend() {
         return operator
                 .messageSender()
