@@ -2,6 +2,7 @@ package org.jetlinks.core.device.session;
 
 import org.jetlinks.core.server.session.DeviceSession;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.function.Function;
@@ -71,6 +72,13 @@ public interface DeviceSessionManager {
      * @return 会话
      */
     Mono<DeviceSession> getSession(String deviceId);
+
+    /**
+     * 获取当前服务节点的全部会话信息
+     *
+     * @return 会话
+     */
+    Flux<DeviceSession> getSessions();
 
     /**
      * 移除会话,如果会话存在将触发{@link DeviceSessionEvent}
