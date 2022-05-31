@@ -1,6 +1,7 @@
 package org.jetlinks.core.server.session;
 
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.enums.ErrorCode;
@@ -25,6 +26,7 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     //忽略上级会话信息,设置为true后. 设备是否离线以超时时间为准
     @Setter
+    @Getter
     private boolean ignoreParent = false;
 
     private long keepAliveTimeOutMs;
