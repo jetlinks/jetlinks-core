@@ -281,8 +281,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                     return Mono.error(error);
                                                 })
                                                 .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
-                                                .as(flux -> this.logReply(msg, flux))
-                                                .cache();
+                                                .as(flux -> this.logReply(msg, flux));
 
                                         //发送消息到设备连接的服务器
                                         return handler
