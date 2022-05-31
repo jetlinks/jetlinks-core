@@ -91,12 +91,12 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public boolean isAlive() {
-        boolean isTimeout = keepAliveTimeOutMs <= 0
+        boolean isAlive = keepAliveTimeOutMs <= 0
                 || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs;
         if (ignoreParent) {
-            return isTimeout;
+            return isAlive;
         }
-        return !isTimeout || parent.isAlive();
+        return isAlive || parent.isAlive();
     }
 
     @Override
