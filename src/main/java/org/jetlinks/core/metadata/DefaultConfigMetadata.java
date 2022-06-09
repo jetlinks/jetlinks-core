@@ -1,7 +1,11 @@
 package org.jetlinks.core.metadata;
 
 import lombok.*;
+import org.springframework.core.io.Resource;
+import org.springframework.util.StreamUtils;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -15,6 +19,8 @@ public class DefaultConfigMetadata implements ConfigMetadata {
 
     private String description;
 
+    private String document;
+
     private ConfigScope[] scopes;
 
     public DefaultConfigMetadata() {
@@ -24,6 +30,15 @@ public class DefaultConfigMetadata implements ConfigMetadata {
     public DefaultConfigMetadata(String name, String description) {
         this.name = name;
         this.description = description;
+    }
+
+    @SneakyThrows
+    public DefaultConfigMetadata(String name, String description, Resource document) {
+        this.name = name;
+        this.description = description;
+        try (InputStream doc = document.getInputStream()) {
+            this.document = StreamUtils.copyToString(doc, StandardCharsets.UTF_8);
+        }
     }
 
     @Override
