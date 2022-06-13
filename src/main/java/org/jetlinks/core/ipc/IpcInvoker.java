@@ -12,6 +12,7 @@ import reactor.core.publisher.Mono;
  * @param <REQ>
  * @param <RES>
  */
+@Deprecated
 public interface IpcInvoker<REQ, RES> extends Disposable {
 
     String getName();

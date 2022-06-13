@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+@Deprecated
 public interface IpcInvokerBuilder<REQ, RES> {
 
     IpcInvokerBuilder<REQ, RES> name(String name);
