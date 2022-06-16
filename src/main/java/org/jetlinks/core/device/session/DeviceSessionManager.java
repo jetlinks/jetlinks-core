@@ -5,6 +5,8 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.function.Function;
 
 /**
@@ -60,8 +62,30 @@ public interface DeviceSessionManager {
      * @return 处理后的会话
      * @see DeviceSessionEvent.Type#register
      */
-    Mono<DeviceSession> compute(String deviceId,
-                                Function<Mono<DeviceSession>, Mono<DeviceSession>> computer);
+    Mono<DeviceSession> compute(@Nonnull String deviceId,
+                                @Nonnull Function<Mono<DeviceSession>, Mono<DeviceSession>> computer);
+
+    /**
+     * 计算设备会话,用于处理创建会话或者更新会话.
+     * 会话如果不存在则执行creator逻辑,如果会话已存在则执行updater逻辑.
+     *
+     * updater如果执行后返回empty,则将注销会话.
+     *
+     * <pre>{@code
+     *
+     *  manager
+     *  .compute(deviceId,createNewSession(),this::updateSession)
+     *  .flatMap(this::handleSession)
+     *
+     * }</pre>
+     * @param deviceId 设备ID
+     * @param creator  会话创建器,如果为null则不执行创建
+     * @param updater  会话更新器,如果为null则不进行会话更新
+     * @return 会话信息
+     */
+    Mono<DeviceSession> compute(@Nonnull String deviceId,
+                                @Nullable Mono<DeviceSession> creator,
+                                @Nullable Function<DeviceSession, Mono<DeviceSession>> updater);
 
     /**
      * 获取设备会话.会话不存在则返回{@link  Mono#empty()}.
