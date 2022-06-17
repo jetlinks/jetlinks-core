@@ -39,6 +39,10 @@ public interface ClusterQueue<T> {
      */
     Mono<Boolean> add(Publisher<T> publisher);
 
+   default Mono<Boolean> add(T data){
+       return add(Mono.just(data));
+   }
+
     /**
      * 向队列中批量添加数据
      *
