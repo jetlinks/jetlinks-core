@@ -26,7 +26,11 @@ public class TopicUtils {
         for (int i = 0; i < arr.length; i++) {
             String str = arr[i];
             if (str.startsWith("{") && str.endsWith("}")) {
-                arr[i] = "+";
+                if(str.charAt(1)=='#'){
+                    arr[i] = "#";
+                }else {
+                    arr[i] = "+";
+                }
             } else if (str.equals("**")) {
                 arr[i] = "#";
             } else if (str.equals("*")) {

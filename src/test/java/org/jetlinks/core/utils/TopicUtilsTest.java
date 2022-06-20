@@ -121,6 +121,12 @@ public class TopicUtilsTest {
         );
 
         assertEquals(
+                "/device/#",
+                TopicUtils.convertToMqttTopic("/device/{#:后缀}")
+        );
+
+
+        assertEquals(
                 "/device/+/+",
                 TopicUtils.convertToMqttTopic("/device/{deviceId:设备ID}/{type:类型}")
 
