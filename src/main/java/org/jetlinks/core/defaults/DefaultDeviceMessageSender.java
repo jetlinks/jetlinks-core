@@ -257,6 +257,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                             .flatMap(msg -> interceptor.preSend(operator,msg))
                             .concatMap(msg -> Flux
                                     .defer(() -> {
+                                        //缓存中没有serverId,说明当前设备并未连接到平台.
                                         if (StringUtils.isEmpty(server)) {
                                             return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                         }
