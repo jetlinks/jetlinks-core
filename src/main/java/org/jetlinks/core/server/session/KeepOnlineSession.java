@@ -8,6 +8,7 @@ import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
+import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nullable;
@@ -93,12 +94,18 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public boolean isAlive() {
-        boolean isAlive = keepAliveTimeOutMs <= 0
-                || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs;
-        if (ignoreParent) {
-            return isAlive;
+        if (aliveByKeepAlive()) {
+            return true;
         }
-        return isAlive || parent.isAlive();
+        if (ignoreParent) {
+            return false;
+        }
+        return parent.isAlive();
+    }
+
+    private boolean aliveByKeepAlive() {
+        return keepAliveTimeOutMs <= 0
+                || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs;
     }
 
     @Override
@@ -147,4 +154,17 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
         return KeepOnlineDeviceSessionProvider.ID;
     }
 
+    @Override
+    public Mono<Boolean> isAliveAsync() {
+        //心跳正常
+        if (aliveByKeepAlive()) {
+            return Reactors.ALWAYS_TRUE;
+        }
+        //忽略上级
+        if (ignoreParent) {
+            return Reactors.ALWAYS_FALSE;
+        }
+        //判断上级
+        return parent.isAliveAsync();
+    }
 }

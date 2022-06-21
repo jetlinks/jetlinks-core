@@ -101,4 +101,9 @@ public class TraceDeviceSession implements DeviceSession {
     public Duration getKeepAliveTimeout() {
         return target.getKeepAliveTimeout();
     }
+
+    @Override
+    public Mono<Boolean> isAliveAsync() {
+        return target.isAliveAsync();
+    }
 }

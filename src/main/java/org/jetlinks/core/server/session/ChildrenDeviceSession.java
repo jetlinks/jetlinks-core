@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
+import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
@@ -43,7 +44,7 @@ public class ChildrenDeviceSession implements DeviceSession {
 
     }
 
-    public DeviceOperator getParentDevice(){
+    public DeviceOperator getParentDevice() {
         return parent.getOperator();
     }
 
@@ -83,11 +84,12 @@ public class ChildrenDeviceSession implements DeviceSession {
 
     @Override
     public boolean isAlive() {
-        if (keepAliveTimeOutMs <= 0) {
-            return parent.isAlive();
-        }
-        return System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs
-                && parent.isAlive();
+        return aliveByKeepAlive() && parent.isAlive();
+    }
+
+    private boolean aliveByKeepAlive() {
+        return keepAliveTimeOutMs <= 0
+                || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs;
     }
 
     @Override
@@ -126,6 +128,16 @@ public class ChildrenDeviceSession implements DeviceSession {
     @Override
     public <T extends DeviceSession> T unwrap(Class<T> type) {
         return type.isInstance(this) ? type.cast(this) : parent.unwrap(type);
+    }
+
+    @Override
+    public Mono<Boolean> isAliveAsync() {
+        //心跳超时
+        if (!aliveByKeepAlive()) {
+            return Reactors.ALWAYS_FALSE;
+        }
+        //判断上级
+        return parent.isAliveAsync();
     }
 
     @Override

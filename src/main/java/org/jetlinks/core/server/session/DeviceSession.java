@@ -153,6 +153,15 @@ public interface DeviceSession {
         return type.cast(this);
     }
 
+    /**
+     * 异步判断session是否存活
+     *
+     * @return async result
+     * @since 1.20
+     */
+    default Mono<Boolean> isAliveAsync() {
+        return Mono.fromSupplier(this::isAlive);
+    }
 
     static DeviceSession trace(DeviceSession target) {
         if (TraceHolder.isDisabled()) {
