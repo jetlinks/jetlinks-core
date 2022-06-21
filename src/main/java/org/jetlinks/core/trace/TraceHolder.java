@@ -141,13 +141,24 @@ public class TraceHolder {
      * @return Disposable
      */
     public static Disposable enable(String spanName, String handler) {
-        disabledSpanName
-                .getTopic(spanName)
-                .ifPresent(topic -> topic.unsubscribe(handler));
+       removeDisabled(spanName,handler);
         Topic<String> subTable = enabledSpanName.append(spanName);
         subTable.subscribe(handler);
         return () -> subTable.unsubscribe(handler);
     }
+
+    public static void removeEnabled(String spanName, String handler) {
+        enabledSpanName
+                .getTopic(spanName)
+                .ifPresent(topic -> topic.unsubscribe(handler));
+    }
+
+    public static void removeDisabled(String spanName, String handler) {
+        disabledSpanName
+                .getTopic(spanName)
+                .ifPresent(topic -> topic.unsubscribe(handler));
+    }
+
 
     /**
      * 指定handler,禁用指定的spanName. 禁用的优先级低于启用.
@@ -163,9 +174,7 @@ public class TraceHolder {
         disabledSpanName
                 .append(spanName)
                 .subscribe(handler);
-        enabledSpanName
-                .getTopic(spanName)
-                .ifPresent(topic -> topic.unsubscribe(handler));
+        removeEnabled(spanName,handler);
     }
 
     /**
