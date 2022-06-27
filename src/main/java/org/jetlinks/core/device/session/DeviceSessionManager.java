@@ -68,7 +68,7 @@ public interface DeviceSessionManager {
     /**
      * 计算设备会话,用于处理创建会话或者更新会话.
      * 会话如果不存在则执行creator逻辑,如果会话已存在则执行updater逻辑.
-     *
+     * <p>
      * updater如果执行后返回empty,则将注销会话.
      *
      * <pre>{@code
@@ -78,6 +78,7 @@ public interface DeviceSessionManager {
      *  .flatMap(this::handleSession)
      *
      * }</pre>
+     *
      * @param deviceId 设备ID
      * @param creator  会话创建器,如果为null则不执行创建
      * @param updater  会话更新器,如果为null则不进行会话更新
@@ -88,14 +89,25 @@ public interface DeviceSessionManager {
                                 @Nullable Function<DeviceSession, Mono<DeviceSession>> updater);
 
     /**
-     * 获取设备会话.会话不存在则返回{@link  Mono#empty()}.
+     * 获取设备会话.会话不存在或者会话失效则返回{@link  Mono#empty()}.
      * <p>
      * 此方法仅会返回本地存活的会话信息.
+     * 如果设备已经失效,将会触发离线事件{@link DeviceSessionEvent}
      *
      * @param deviceId 设备ID
      * @return 会话
+     * @see DeviceSessionManager#getSession(String, boolean)
      */
     Mono<DeviceSession> getSession(String deviceId);
+
+    /**
+     * 获取设备会话.会话不存在则返回{@link Mono#empty()}.
+     *
+     * @param deviceId        设备ID
+     * @param unregisterWhenNotAlive 当会话失效时,是否注销会话
+     * @return 会话信息
+     */
+    Mono<DeviceSession> getSession(String deviceId, boolean unregisterWhenNotAlive);
 
     /**
      * 获取当前服务节点的全部会话信息

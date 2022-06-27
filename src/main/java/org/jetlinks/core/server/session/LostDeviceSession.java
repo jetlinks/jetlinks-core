@@ -62,6 +62,11 @@ public class LostDeviceSession implements DeviceSession {
     }
 
     @Override
+    public boolean isChanged(DeviceSession another) {
+        return !another.isWrapFrom(LostDeviceSession.class);
+    }
+
+    @Override
     public Mono<Boolean> isAliveAsync() {
         return Reactors.ALWAYS_FALSE;
     }

@@ -167,4 +167,9 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
         //判断上级
         return parent.isAliveAsync();
     }
+
+    @Override
+    public boolean isChanged(DeviceSession another) {
+        return parent.isChanged(another);
+    }
 }

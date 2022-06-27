@@ -163,6 +163,16 @@ public interface DeviceSession {
         return Mono.fromSupplier(this::isAlive);
     }
 
+    /**
+     * 判断会话当前会话与另外一个会话是否发生了变化
+     *
+     * @param another 另外一个会话
+     * @return 是否发生变化
+     */
+    default boolean isChanged(DeviceSession another) {
+        return !this.equals(another);
+    }
+
     static DeviceSession trace(DeviceSession target) {
         if (TraceHolder.isDisabled()) {
             return target;

@@ -141,6 +141,11 @@ public class ChildrenDeviceSession implements DeviceSession {
     }
 
     @Override
+    public boolean isChanged(DeviceSession another) {
+        return parent.isChanged(another);
+    }
+
+    @Override
     public String toString() {
         return "children device[" + deviceId + "] in " + parent;
     }
