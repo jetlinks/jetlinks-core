@@ -49,33 +49,10 @@ public class FluxUtils {
     }
 
     /**
-     * 安全的转换Flux中的值,当mapper返回<code>null</code>时会忽略而不是报错
-     *
-     * <pre>
-     *
-     *    flux
-     *    .as(FluxUtils.safeMap(this::doConvert))
-     *    ...
-     *
-     * </pre>
-     *
-     * @param mapper 转换器
-     * @param <S>    源类型
-     * @param <T>    目标类型
-     * @return 转换后的流
+     * @deprecated {@link  Flux#mapNotNull(Function)}
      */
     public static <S, T> Function<Flux<S>, Flux<T>> safeMap(Function<S, T> mapper) {
-        return source -> source
-                .handle((s, sink) -> {
-                    try {
-                        T t = mapper.apply(s);
-                        if (t != null) {
-                            sink.next(t);
-                        }
-                    } catch (Throwable error) {
-                        sink.error(error);
-                    }
-                });
+        return source -> source.mapNotNull(mapper);
     }
 
 

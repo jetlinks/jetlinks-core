@@ -58,6 +58,7 @@ public interface FileQueue<T> extends Queue<T> {
          * @param codec 编解码器
          * @return this
          */
+        @Deprecated
         Builder<T> codec(Codec<T> codec);
 
         /**
