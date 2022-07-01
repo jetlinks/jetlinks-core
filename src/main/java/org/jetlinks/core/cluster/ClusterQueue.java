@@ -64,6 +64,11 @@ public interface ClusterQueue<T> {
     void stop();
 
     /**
+     * @return 是否不再消费数据
+     */
+    boolean hasLocalConsumer();
+
+    /**
      * 获取队列中消息数量
      *
      * @return 消息数量

@@ -41,12 +41,12 @@ public interface StorageConfigurable extends Configurable {
     }
 
     default Mono<Value> getConfig(String key, boolean fallbackParent) {
-        return getReactiveStorage()
-                .flatMap(store -> store.getConfig(key))
-                .switchIfEmpty(fallbackParent
-                                       ? Mono.defer(() -> getParent().flatMap(parent -> parent.getConfig(key)))
-                                       : Mono.empty()
-                );
+        if (fallbackParent) {
+            return getReactiveStorage()
+                    .flatMap(store -> store.getConfig(key))
+                    .switchIfEmpty(getParent().flatMap(parent -> parent.getConfig(key)));
+        }
+        return getReactiveStorage().flatMap(store -> store.getConfig(key));
     }
 
     default Mono<Values> getConfigs(Collection<String> keys, boolean fallbackParent) {

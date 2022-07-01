@@ -27,6 +27,7 @@ public interface ClusterManager {
 
     /**
      * @return 高可用管理器
+     * @deprecated 已弃用,请使用 ExtendedCluster
      */
     @Deprecated
     HaManager getHaManager();
