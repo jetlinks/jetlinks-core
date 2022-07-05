@@ -43,7 +43,7 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     private String description;
 
-    private DeviceMetadataCodec metadataCodec;
+    private DeviceMetadataCodec metadataCodec = DeviceMetadataCodecs.defaultCodec();
 
     @Getter(AccessLevel.PRIVATE)
     private final Map<String, Supplier<Mono<ConfigMetadata>>> configMetadata = new ConcurrentHashMap<>();
