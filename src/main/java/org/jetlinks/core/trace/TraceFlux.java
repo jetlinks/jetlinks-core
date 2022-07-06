@@ -2,7 +2,6 @@ package org.jetlinks.core.trace;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
-import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import lombok.extern.slf4j.Slf4j;
@@ -104,14 +103,8 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                     .setParent(ctx)
                     .startSpan();
 
-            TraceSubscriber<T> subscriber = new TraceSubscriber<>(actual, span, onNext, onComplete);
-
             this.source
-                    .contextWrite(reactor.util.context.Context
-                                          .of(context)
-                                          .put(SpanContext.class, span.getSpanContext())
-                                          .put(Context.class, span.storeInContext(ctx)))
-                    .subscribe(subscriber);
+                    .subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete,ctx));
 
         } catch (Throwable e) {
             actual.onError(e);

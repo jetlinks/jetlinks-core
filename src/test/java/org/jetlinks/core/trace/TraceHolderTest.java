@@ -56,7 +56,7 @@ public class TraceHolderTest {
     public void testFlux() {
 
         Map<String, String> map = new HashMap<>();
-//        map.put("traceparent","00-1c7639bf41f3291edccd49ae7a1235c6-498329cea58d365a-01");
+        map.put("traceparent","00-1c7639bf41f3291edccd49ae7a1235c6-498329cea58d365a-01");
 
         TraceHolder
                 .writeContextTo(map, Map::put)

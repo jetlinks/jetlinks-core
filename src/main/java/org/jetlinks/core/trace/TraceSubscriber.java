@@ -9,6 +9,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.SignalType;
+import reactor.util.context.Context;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
@@ -21,7 +22,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
 
     @SuppressWarnings("all")
     final static AtomicLongFieldUpdater<TraceSubscriber> NEXT_COUNT = AtomicLongFieldUpdater
-            .newUpdater(TraceSubscriber.class,"nextCount");
+            .newUpdater(TraceSubscriber.class, "nextCount");
 
     private final CoreSubscriber<? super T> actual;
     private final Span span;
@@ -31,15 +32,21 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
 
     private volatile long nextCount;
     private volatile boolean stateSet;
+    private final Context context;
 
     public TraceSubscriber(CoreSubscriber<? super T> actual,
                            Span span,
                            BiConsumer<Span, T> onNext,
-                           BiConsumer<Span, Long> onComplete) {
+                           BiConsumer<Span, Long> onComplete,
+                           io.opentelemetry.context.Context ctx) {
         this.actual = actual;
         this.span = span;
         this.onNext = onNext;
         this.onComplete = onComplete;
+        this.context = reactor.util.context.Context
+                .of(actual.currentContext())
+                .put(SpanContext.class, span.getSpanContext())
+                .put(io.opentelemetry.context.Context.class, span.storeInContext(ctx));
     }
 
     @Override
@@ -52,6 +59,12 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
         span.setStatus(StatusCode.ERROR);
         span.recordException(throwable);
         actual.onError(throwable);
+    }
+
+    @Override
+    @Nonnull
+    public Context currentContext() {
+        return context;
     }
 
     @Override
@@ -80,7 +93,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
         if (onComplete != null) {
             onComplete.accept(this, nextCount);
         }
-        span.setAttribute(count,nextCount);
+        span.setAttribute(count, nextCount);
         if (!stateSet) {
             span.setStatus(StatusCode.OK);
         }
@@ -88,19 +101,19 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
     }
 
     @Override
-    public <R> Span setAttribute(@Nonnull AttributeKey<R> key,@Nonnull R value) {
+    public <R> Span setAttribute(@Nonnull AttributeKey<R> key, @Nonnull R value) {
         span.setAttribute(key, value);
         return this;
     }
 
     @Override
-    public Span addEvent(@Nonnull String name,@Nonnull Attributes attributes) {
+    public Span addEvent(@Nonnull String name, @Nonnull Attributes attributes) {
         span.addEvent(name, attributes);
         return this;
     }
 
     @Override
-    public Span addEvent(@Nonnull String name,@Nonnull Attributes attributes, long timestamp,@Nonnull TimeUnit unit) {
+    public Span addEvent(@Nonnull String name, @Nonnull Attributes attributes, long timestamp, @Nonnull TimeUnit unit) {
         span.addEvent(name, attributes, timestamp, unit);
         return this;
     }
@@ -113,7 +126,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
     }
 
     @Override
-    public Span recordException(@Nonnull Throwable exception,@Nonnull Attributes additionalAttributes) {
+    public Span recordException(@Nonnull Throwable exception, @Nonnull Attributes additionalAttributes) {
         span.recordException(exception, additionalAttributes);
         return this;
     }
@@ -130,7 +143,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
     }
 
     @Override
-    public void end(long timestamp,@Nonnull TimeUnit unit) {
+    public void end(long timestamp, @Nonnull TimeUnit unit) {
         //do nothing
     }
 
