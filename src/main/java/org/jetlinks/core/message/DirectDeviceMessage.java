@@ -5,6 +5,9 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.annotation.Nonnull;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 
 /**
  * 透传设备消息
@@ -33,5 +36,20 @@ public class DirectDeviceMessage extends CommonDeviceMessage {
         if (null != ts) {
             setTimestamp(ts);
         }
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        super.writeExternal(out);
+        out.writeInt(payload.length);
+        out.write(payload);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        super.readExternal(in);
+        int len = in.readInt();
+        payload = new byte[len];
+        in.read(payload);
     }
 }
