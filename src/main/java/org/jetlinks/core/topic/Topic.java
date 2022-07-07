@@ -8,7 +8,6 @@ import lombok.Setter;
 import org.jetlinks.core.utils.RecyclableDequeue;
 import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.TopicUtils;
-import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 
@@ -40,18 +39,6 @@ public final class Topic<T> {
     private final ConcurrentMap<String, Topic<T>> child = Maps.newConcurrentMap();
 
     private final ConcurrentMap<T, AtomicInteger> subscribers = Maps.newConcurrentMap();
-
-    private static final AntPathMatcher matcher = new AntPathMatcher() {
-        @Override
-        protected String[] tokenizePath(String path) {
-            return TopicUtils.split(path);
-        }
-    };
-
-    static {
-        matcher.setCachePatterns(true);
-        matcher.setCaseSensitive(true);
-    }
 
     public static <T> Topic<T> createRoot() {
         return new Topic<>(null, "/");
@@ -200,7 +187,7 @@ public final class Topic<T> {
     public void findTopic(String topic,
                           Consumer<Topic<T>> sink,
                           Runnable end) {
-        String[] topics = TopicUtils.split(topic);
+        String[] topics = TopicUtils.split(topic,true);
 
         if (!topic.startsWith("/")) {
             String[] newTopics = new String[topics.length + 1];

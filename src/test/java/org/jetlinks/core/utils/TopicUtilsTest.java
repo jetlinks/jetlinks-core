@@ -2,6 +2,7 @@ package org.jetlinks.core.utils;
 
 import org.junit.Test;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -131,5 +132,23 @@ public class TopicUtilsTest {
                 TopicUtils.convertToMqttTopic("/device/{deviceId:设备ID}/{type:类型}")
 
         );
+    }
+
+    @Test
+    public void benchmark(){
+        {
+            long nanos = System.nanoTime();
+            for (int i = 0; i < 100_0000; i++) {
+                TopicUtils.split("/test/1/2/3");
+            }
+            System.out.println(Duration.ofNanos(System.nanoTime()-nanos));
+        }
+        {
+            long nanos = System.nanoTime();
+            for (int i = 0; i < 100_0000; i++) {
+                TopicUtils.split("/test/1/2/3",true);
+            }
+            System.out.println(Duration.ofNanos(System.nanoTime()-nanos));
+        }
     }
 }

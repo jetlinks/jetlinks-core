@@ -1,14 +1,22 @@
 package org.jetlinks.core.utils;
 
 import org.springframework.util.AntPathMatcher;
+import org.springframework.util.ConcurrentReferenceHashMap;
 import org.springframework.util.PathMatcher;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentMap;
 
 public class TopicUtils {
+    public static final char PATH_SPLITTER = '/';
 
     private final static PathMatcher pathMatcher = new AntPathMatcher();
 
+    private final static ConcurrentMap<String, String[]> splitCache;
+
+    static {
+        splitCache = new ConcurrentReferenceHashMap<>(65535, ConcurrentReferenceHashMap.ReferenceType.SOFT);
+    }
 
     /**
      * 将url转为mqtt topic,支持通配符转转换
@@ -26,9 +34,9 @@ public class TopicUtils {
         for (int i = 0; i < arr.length; i++) {
             String str = arr[i];
             if (str.startsWith("{") && str.endsWith("}")) {
-                if(str.charAt(1)=='#'){
+                if (str.charAt(1) == '#') {
                     arr[i] = "#";
-                }else {
+                } else {
                     arr[i] = "+";
                 }
             } else if (str.equals("**")) {
@@ -96,7 +104,11 @@ public class TopicUtils {
      * @return 分隔结果
      */
     public static String[] split(String topic) {
-        return topic.split("/");
+        return split(topic, false);
+    }
+
+    public static String[] split(String topic, boolean cache) {
+        return cache ? splitCache.computeIfAbsent(topic, t -> t.split("/")) : topic.split("/");
     }
 
     private static boolean matchStrings(String str, String pattern) {
