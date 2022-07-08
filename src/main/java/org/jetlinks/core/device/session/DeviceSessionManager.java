@@ -148,6 +148,14 @@ public interface DeviceSessionManager {
     Mono<Boolean> isAlive(String deviceId, boolean onlyLocal);
 
     /**
+     * 检查会话是否存活,如果存活将同步连接信息到缓存中.
+     * @param deviceId 设备ID
+     * @param onlyLocal 是否只检查本地会话
+     * @return 是否存活
+     */
+    Mono<Boolean> checkAlive(String deviceId, boolean onlyLocal);
+
+    /**
      * 获取会话总数
      *
      * @param onlyLocal 是否仅获取本地的会话数量
