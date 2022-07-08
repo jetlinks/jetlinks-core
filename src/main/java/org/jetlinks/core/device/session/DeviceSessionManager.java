@@ -103,7 +103,7 @@ public interface DeviceSessionManager {
     /**
      * 获取设备会话.会话不存在则返回{@link Mono#empty()}.
      *
-     * @param deviceId        设备ID
+     * @param deviceId               设备ID
      * @param unregisterWhenNotAlive 当会话失效时,是否注销会话
      * @return 会话信息
      */
@@ -154,6 +154,21 @@ public interface DeviceSessionManager {
      * @return 总数
      */
     Mono<Long> totalSessions(boolean onlyLocal);
+
+    /**
+     * 获取全部会话信息
+     *
+     * @return 会话信息
+     */
+    Flux<DeviceSessionInfo> getSessionInfo();
+
+    /**
+     * 获取指定服务的会话信息
+     *
+     * @param serverId 服务ID
+     * @return 会话信息
+     */
+    Flux<DeviceSessionInfo> getSessionInfo(String serverId);
 
     /**
      * 监听并处理会话事件,可通过调用返回值{@link  Disposable#dispose()}来取消监听
