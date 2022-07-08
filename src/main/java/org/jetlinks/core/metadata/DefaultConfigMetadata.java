@@ -1,13 +1,19 @@
 package org.jetlinks.core.metadata;
 
 import lombok.*;
+import org.jetlinks.core.config.ConfigKey;
+import org.jetlinks.core.config.ConfigKeyValue;
 import org.springframework.core.io.Resource;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StreamUtils;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Getter
@@ -22,6 +28,8 @@ public class DefaultConfigMetadata implements ConfigMetadata {
     private String document;
 
     private ConfigScope[] scopes;
+
+    private List<ConfigPropertyMetadata> properties = new ArrayList<>();
 
     public DefaultConfigMetadata() {
 
@@ -46,8 +54,6 @@ public class DefaultConfigMetadata implements ConfigMetadata {
         return this.scopes == null ? ConfigMetadata.super.getScopes() : scopes;
     }
 
-    private List<ConfigPropertyMetadata> properties = new ArrayList<>();
-
     @Override
     public List<ConfigPropertyMetadata> getProperties() {
         return properties;
@@ -65,6 +71,15 @@ public class DefaultConfigMetadata implements ConfigMetadata {
 
     public DefaultConfigMetadata add(String property,
                                      String name,
+                                     DataType type,
+                                     Consumer<Property> custom) {
+        Property prop = Property.of(property, name, description, type, all, null);
+        custom.accept(prop);
+        return add(prop);
+    }
+
+    public DefaultConfigMetadata add(String property,
+                                     String name,
                                      DataType type) {
         return add(property, name, null, type);
     }
@@ -73,7 +88,7 @@ public class DefaultConfigMetadata implements ConfigMetadata {
                                      String name,
                                      String description,
                                      DataType type) {
-        return add(Property.of(property, name, description, type, all));
+        return add(Property.of(property, name, description, type, all, null));
     }
 
     public DefaultConfigMetadata add(String property,
@@ -88,7 +103,7 @@ public class DefaultConfigMetadata implements ConfigMetadata {
                                      String description,
                                      DataType type,
                                      ConfigScope... scopes) {
-        return add(Property.of(property, name, description, type, scopes));
+        return add(Property.of(property, name, description, type, scopes, null));
     }
 
     @Override
@@ -125,6 +140,51 @@ public class DefaultConfigMetadata implements ConfigMetadata {
         private DataType type;
 
         private ConfigScope[] scopes;
+
+        private Map<String, Object> expands;
+
+        public Property description(String description) {
+            this.description = description;
+            return this;
+        }
+
+        public Property scope(ConfigScope... scopes) {
+            this.scopes = scopes;
+            return this;
+        }
+
+        public Property expands(Map<String, Object> expands) {
+            if (CollectionUtils.isEmpty(expands)) {
+                return this;
+            }
+            if (this.expands == null) {
+                this.expands = new HashMap<>();
+            }
+            this.expands.putAll(expands);
+            return this;
+        }
+
+        public Property expand(ConfigKeyValue<?>... kvs) {
+            for (ConfigKeyValue<?> kv : kvs) {
+                expand(kv.getKey(), kv.getValue());
+            }
+            return this;
+        }
+
+        public <V> Property expand(ConfigKey<V> configKey, V value) {
+            return expand(configKey.getKey(), value);
+        }
+
+        public Property expand(String configKey, Object value) {
+            if (value == null) {
+                return this;
+            }
+            if (expands == null) {
+                expands = new HashMap<>();
+            }
+            expands.put(configKey, value);
+            return this;
+        }
 
     }
 
