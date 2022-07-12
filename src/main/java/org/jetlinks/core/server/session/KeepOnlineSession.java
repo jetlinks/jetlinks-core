@@ -172,4 +172,9 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     public boolean isChanged(DeviceSession another) {
         return parent.isChanged(another);
     }
+
+    @Override
+    public String toString() {
+        return "keepOnline["+keepAliveTimeOutMs+"ms]:"+parent;
+    }
 }
