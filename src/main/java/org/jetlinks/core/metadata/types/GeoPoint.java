@@ -51,12 +51,12 @@ public class GeoPoint implements Serializable {
                 val = strVal.split("[,]");
             }
         }
-        //{"lat":lat,"lon":lon} or {"x":lon,"y":lat}
+        //{"lat":lat,"lon":lon} or {"x":lat,"y":lon}
         if (val instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<Object, Object> mapVal = ((Map<Object, Object>) val);
-            Object lon = mapVal.getOrDefault("lon", mapVal.get("x"));
-            Object lat = mapVal.getOrDefault("lat", mapVal.get("y"));
+            Object lon = mapVal.getOrDefault("lon", mapVal.get("y"));
+            Object lat = mapVal.getOrDefault("lat", mapVal.get("x"));
             val = new Object[]{lon, lat};
         }
         //  [lon,lat]
