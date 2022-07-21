@@ -50,6 +50,6 @@ public class DirectDeviceMessage extends CommonDeviceMessage {
         super.readExternal(in);
         int len = in.readInt();
         payload = new byte[len];
-        in.read(payload);
+        in.readFully(payload);
     }
 }

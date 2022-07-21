@@ -53,11 +53,11 @@ public class SerializeUtils {
                                               Function<Integer, Map<String, T>> mapBuilder) {
         //header
         int headerSize = in.readInt();
-        Map<String, T> map = mapBuilder.apply(Math.max(8, headerSize));
+        Map<String, T> map = mapBuilder.apply(Math.min(8, headerSize));
 
         for (int i = 0; i < headerSize; i++) {
             String key = in.readUTF();
-            Object value =in.readObject();
+            Object value = in.readObject();
             map.put(key, (T)value);
         }
         return map;
