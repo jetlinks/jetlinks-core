@@ -152,9 +152,9 @@ public interface PropertyMessage extends Externalizable {
 
     @Override
     default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        properties(SerializeUtils.<Object>readMap(in, Maps::newLinkedHashMapWithExpectedSize));
-        propertySourceTimes(SerializeUtils.<Long>readMap(in, Maps::newLinkedHashMapWithExpectedSize));
-        propertyStates(SerializeUtils.<String>readMap(in, Maps::newLinkedHashMapWithExpectedSize));
+        properties(SerializeUtils.readMap(in, Maps::newLinkedHashMapWithExpectedSize));
+        propertySourceTimes(SerializeUtils.readMap(in, Maps::newLinkedHashMapWithExpectedSize));
+        propertyStates(SerializeUtils.readMap(in, Maps::newLinkedHashMapWithExpectedSize));
 
     }
 

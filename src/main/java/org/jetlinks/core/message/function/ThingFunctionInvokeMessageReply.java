@@ -57,13 +57,13 @@ public interface ThingFunctionInvokeMessageReply extends ThingMessageReply {
     default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         ThingMessageReply.super.readExternal(in);
         functionId(SerializeUtils.readNullableUTF(in));
-        output(SerializeUtils.readNullableObject(in));
+        output(SerializeUtils.readObject(in));
     }
 
     @Override
     default void writeExternal(ObjectOutput out) throws IOException {
         ThingMessageReply.super.writeExternal(out);
         SerializeUtils.writeNullableUTF(getFunctionId(), out);
-        SerializeUtils.writeNullableObject(getOutput(), out);
+        SerializeUtils.writeObject(getOutput(), out);
     }
 }

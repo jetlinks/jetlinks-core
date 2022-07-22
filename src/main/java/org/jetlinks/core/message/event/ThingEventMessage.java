@@ -70,13 +70,13 @@ public interface ThingEventMessage extends ThingMessage {
     default void writeExternal(ObjectOutput out) throws IOException {
         ThingMessage.super.writeExternal(out);
         SerializeUtils.writeNullableUTF(getEvent(),out);
-        SerializeUtils.writeNullableObject(getData(),out);
+        SerializeUtils.writeObject(getData(),out);
     }
 
     @Override
     default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         ThingMessage.super.readExternal(in);
         event(SerializeUtils.readNullableUTF(in));
-        data(SerializeUtils.readNullableObject(in));
+        data(SerializeUtils.readObject(in));
     }
 }

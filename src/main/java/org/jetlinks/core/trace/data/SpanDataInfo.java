@@ -104,7 +104,7 @@ public class SpanDataInfo implements Externalizable {
         this.traceId = in.readUTF();
         this.startWithNanos = in.readLong();
         this.endWithNanos = in.readLong();
-        this.attributes = SerializeUtils.<Object>readMap(in, Maps::newHashMapWithExpectedSize);
+        this.attributes = SerializeUtils.readMap(in, Maps::newHashMapWithExpectedSize);
         int eventSize = in.readInt();
         if (eventSize > 0) {
             events = new ArrayList<>(eventSize);

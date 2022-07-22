@@ -95,6 +95,6 @@ public class UpgradeFirmwareMessage extends CommonDeviceMessage implements Repay
         this.signMethod = readNullableUTF(in);
         this.firmwareId = readNullableUTF(in);
         this.size = in.readLong();
-        this.parameters = SerializeUtils.<Object>readMap(in, Maps::newHashMapWithExpectedSize);
+        this.parameters = SerializeUtils.readMap(in, Maps::newHashMapWithExpectedSize);
     }
 }

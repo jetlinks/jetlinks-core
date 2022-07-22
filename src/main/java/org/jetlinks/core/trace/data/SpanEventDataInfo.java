@@ -63,6 +63,6 @@ public class SpanEventDataInfo implements Externalizable {
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         this.name = in.readUTF();
         this.timeNanos = in.readLong();
-        this.attributes = SerializeUtils.<Object>readMap(in, Maps::newHashMapWithExpectedSize);
+        this.attributes = SerializeUtils.readMap(in, Maps::newHashMapWithExpectedSize);
     }
 }
