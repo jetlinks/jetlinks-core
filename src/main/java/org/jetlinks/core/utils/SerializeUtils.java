@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import com.google.common.primitives.Primitives;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
+import org.springframework.util.ConcurrentReferenceHashMap;
 
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -14,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -446,7 +446,7 @@ public class SerializeUtils {
 
         final static Type[] all = values();
 
-        private static final Map<Class<?>, Type> cache = new ConcurrentHashMap<>();
+        private static final Map<Class<?>, Type> cache = new ConcurrentReferenceHashMap<>();
 
         public static Type of(Object javaType) {
             if (javaType instanceof String) {

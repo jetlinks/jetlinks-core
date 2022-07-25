@@ -1,40 +1,57 @@
 package org.jetlinks.core.cache;
 
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.context.ContextView;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-class DefaultReactiveCacheContainer<T> implements ReactiveCacheContainer<T> {
+class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V> {
 
-    private final Map<String, Container<T>> cache = new ConcurrentHashMap<>();
+    private final Map<K, Container<K, V>> cache = new ConcurrentHashMap<>();
 
     @Override
-    public Mono<T> compute(String key, BiFunction<String, T, Mono<T>> compute) {
+    public Mono<V> compute(K key, BiFunction<K, V, Mono<V>> compute) {
 
         return cache
                 .compute(key, (k, old) -> {
                     if (old == null) {
-                        Mono<T> loader = compute.apply(key, null);
+                        Mono<V> loader = compute.apply(k, null);
                         return new Container<>(
-                                key,
+                                k,
                                 DefaultReactiveCacheContainer.this,
                                 loader);
                     }
-                    old.update(compute.apply(key, old.loaded));
+                    old.update(compute.apply(k, old.loaded));
                     return old;
                 })
                 .ref();
     }
 
     @Override
-    public Mono<T> get(String key, Mono<T> defaultValue) {
-        Container<T> container = cache.get(key);
+    public Mono<V> computeIfAbsent(K key, Function<K, Mono<V>> compute) {
+        return cache
+                .computeIfAbsent(key, k -> {
+                    Mono<V> loader = compute.apply(k);
+                    return new Container<>(
+                            k,
+                            DefaultReactiveCacheContainer.this,
+                            loader);
+                })
+                .ref();
+    }
+
+    @Override
+    public Mono<V> get(K key, Mono<V> defaultValue) {
+        Container<K, V> container = cache.get(key);
         if (container != null) {
             return container.ref();
         }
@@ -42,8 +59,23 @@ class DefaultReactiveCacheContainer<T> implements ReactiveCacheContainer<T> {
     }
 
     @Override
-    public T getNow(String key) {
-        Container<T> container = cache.get(key);
+    public V put(K key, V value) {
+        Container<K, V> container = cache.put(key, new Container<>(key, this, value));
+        if (container != null) {
+            container.dispose();
+            return container.loaded;
+        }
+        return null;
+    }
+
+    @Override
+    public boolean containsKey(K key) {
+        return cache.containsKey(key);
+    }
+
+    @Override
+    public V getNow(K key) {
+        Container<K, V> container = cache.get(key);
         if (container != null) {
             return container.loaded;
         }
@@ -51,14 +83,30 @@ class DefaultReactiveCacheContainer<T> implements ReactiveCacheContainer<T> {
     }
 
     @Override
-    public T remove(String key) {
-        Container<T> container = cache.remove(key);
+    public V remove(K key) {
+        Container<K, V> container = cache.remove(key);
         if (null != container) {
             container.dispose();
         }
         return container == null ? null : container.loaded;
     }
 
+    @Override
+    public Flux<V> values() {
+        return Flux
+                .fromIterable(cache.values())
+                .flatMap(Container::ref);
+    }
+
+    @Override
+    public List<V> valuesNow() {
+        return cache
+                .values()
+                .stream()
+                .filter(c -> c.loaded != null)
+                .map(c -> c.loaded)
+                .collect(Collectors.toList());
+    }
 
     @SuppressWarnings("rawtypes")
     private final static AtomicReferenceFieldUpdater<Container, Mono> LOADER
@@ -71,19 +119,27 @@ class DefaultReactiveCacheContainer<T> implements ReactiveCacheContainer<T> {
     }
 
 
-    static class Container<T> implements Disposable {
-        private final DefaultReactiveCacheContainer<T> main;
-        private final String key;
+    static class Container<K, T> implements Disposable {
+        private final DefaultReactiveCacheContainer<K, T> main;
+        private final K key;
         private Sinks.One<T> await;
         public volatile T loaded;
         protected volatile Mono<T> loader;
         private volatile Disposable disposable;
 
-        public Container(String key, DefaultReactiveCacheContainer<T> main, Mono<T> loader) {
+        public Container(K key, DefaultReactiveCacheContainer<K, T> main, Mono<T> loader) {
             this.key = key;
             this.main = main;
             this.loader = loader;
             update(loader);
+        }
+
+        public Container(K key, DefaultReactiveCacheContainer<K, T> main, T loaded) {
+            this.key = key;
+            this.main = main;
+            this.loaded = loaded;
+            this.loader = Mono.just(loaded);
+            update(this.loader);
         }
 
         public void update(Mono<T> ref) {

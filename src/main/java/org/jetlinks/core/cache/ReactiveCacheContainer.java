@@ -1,21 +1,34 @@
 package org.jetlinks.core.cache;
 
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
-public interface ReactiveCacheContainer<T> extends Disposable {
+public interface ReactiveCacheContainer<K, V> extends Disposable {
 
-    Mono<T> compute(String key, BiFunction<String, T, Mono<T>> compute);
+    Mono<V> compute(K key, BiFunction<K, V, Mono<V>> compute);
 
-    Mono<T> get(String key, Mono<T> defaultValue);
+    Mono<V> computeIfAbsent(K key, Function<K, Mono<V>> compute);
 
-    T getNow(String key);
+    Mono<V> get(K key, Mono<V> defaultValue);
 
-    T remove(String key);
+    V put(K key, V value);
 
-    static <T> ReactiveCacheContainer<T> create() {
+    boolean containsKey(K key);
+
+    V getNow(K key);
+
+    V remove(K key);
+
+    Flux<V> values();
+
+    List<V> valuesNow();
+
+    static <K, T> ReactiveCacheContainer<K, T> create() {
         return new DefaultReactiveCacheContainer<>();
     }
 }

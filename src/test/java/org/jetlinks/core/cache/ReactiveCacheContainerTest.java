@@ -14,7 +14,7 @@ public class ReactiveCacheContainerTest {
 
     @Test
     public void testError() {
-        ReactiveCacheContainer<Disposable> cache = ReactiveCacheContainer.create();
+        ReactiveCacheContainer<String,Disposable> cache = ReactiveCacheContainer.create();
         cache
                 .compute("test", (k, v) -> Mono
                         .error(new RuntimeException("error"))
@@ -27,7 +27,7 @@ public class ReactiveCacheContainerTest {
     }
     @Test
    public void test() {
-        ReactiveCacheContainer<Disposable> cache = ReactiveCacheContainer.create();
+        ReactiveCacheContainer<String,Disposable> cache = ReactiveCacheContainer.create();
         AtomicBoolean disposed = new AtomicBoolean();
         cache
                 .compute("test", (k, v) -> Mono
