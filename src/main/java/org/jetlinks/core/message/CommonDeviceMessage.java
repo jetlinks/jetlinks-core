@@ -94,7 +94,7 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     @Override
     public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
-       return safeGetHeader().compute(key, computer);
+        return safeGetHeader().compute(key, computer);
     }
 
     @Override
@@ -107,6 +107,9 @@ public class CommonDeviceMessage implements DeviceMessage {
     @Override
     public void fromJson(JSONObject jsonObject) {
         DeviceMessage.super.fromJson(jsonObject);
+        if (this.headers != null && !(this.headers instanceof ConcurrentHashMap)) {
+            this.headers = new ConcurrentHashMap<>(this.headers);
+        }
     }
 
     @Override

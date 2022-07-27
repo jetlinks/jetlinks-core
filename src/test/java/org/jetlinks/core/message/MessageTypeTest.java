@@ -7,6 +7,7 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.Assert.*;
 
@@ -61,7 +62,19 @@ public class MessageTypeTest {
 
         FunctionInvokeMessage message = MessageType.INVOKE_FUNCTION.convert(Collections.singletonMap("inputs", inputs));
 
-        assertEquals(message.inputsToMap(),inputs);
+        assertEquals(message.inputsToMap(), inputs);
+
+    }
+
+    @Test
+    public void testHeader() {
+        Map<String, Object> msg = new HashMap<>();
+        msg.put("headers", new ConcurrentHashMap<>());
+        msg.put("messageType", MessageType.INVOKE_FUNCTION);
+        Message message = MessageType.convertMessage(msg).orElse(null);
+
+        assertNotNull(message);
+        assertTrue(message.getHeaders() instanceof  ConcurrentHashMap);
 
     }
 }

@@ -177,6 +177,9 @@ public class CommonDeviceMessageReply<ME extends CommonDeviceMessageReply> imple
         code = jsonObject.getString("code");
         message = jsonObject.getString("message");
         headers = jsonObject.getJSONObject("headers");
+        if(this.headers!=null && !(this.headers instanceof ConcurrentHashMap)){
+            this.headers = new ConcurrentHashMap<>(this.headers);
+        }
     }
 
     @Override
