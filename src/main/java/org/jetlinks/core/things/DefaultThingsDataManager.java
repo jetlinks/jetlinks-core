@@ -42,49 +42,36 @@ public class DefaultThingsDataManager implements ThingsDataManager {
     }
 
     @Override
-    public final Mono<ThingProperty> getLastProperty(ThingType thingType,
+    public final Mono<ThingProperty> getLastProperty(String thingType,
                                                      String thingId,
                                                      String property,
                                                      long baseTime) {
         return localCache
-                .computeIfAbsent(ThingId.of(thingType.getId(), thingId), ThingPropertyRef::new)
+                .computeIfAbsent(ThingId.of(thingType, thingId), ThingPropertyRef::new)
                 .getLastProperty(property, baseTime);
     }
 
     @Override
-    public final Mono<ThingProperty> getFirstProperty(ThingType thingType,
+    public final Mono<ThingProperty> getFirstProperty(String thingType,
                                                       String thingId,
                                                       String property) {
         return localCache
-                .computeIfAbsent(ThingId.of(thingType.getId(), thingId), ThingPropertyRef::new)
+                .computeIfAbsent(ThingId.of(thingType, thingId), ThingPropertyRef::new)
                 .getFirstProperty(property);
     }
 
     @Override
-    public Mono<Long> getLastPropertyTime(ThingType thingType,
+    public Mono<Long> getLastPropertyTime(String thingType,
                                           String thingId,
                                           long baseTime) {
         return localCache
-                .computeIfAbsent(ThingId.of(thingType.getId(), thingId), ThingPropertyRef::new)
+                .computeIfAbsent(ThingId.of(thingType, thingId), ThingPropertyRef::new)
                 .getLastPropertyTime(baseTime);
     }
 
     @Override
-    public Mono<Long> getFirstPropertyTime(ThingType thingType, String thingId) {
-        return registry
-                .getThing(thingType, thingId)
-                .flatMap(thing -> thing
-                        .getSelfConfig(ThingsConfigKeys.firstPropertyTime)
-                        .switchIfEmpty(Mono.defer(() -> this
-                                .<Mono<ThingProperty>>computeSupport(thingType,
-                                                                     support -> support.getFirstProperty(thingType, thingId),
-                                                                     Mono::empty)
-                                .map(ThingProperty::getTimestamp)
-                                .flatMap(t -> thing
-                                        .setConfig(ThingsConfigKeys.firstPropertyTime, t)
-                                        .thenReturn(t)
-                                )
-                        )));
+    public Mono<Long> getFirstPropertyTime(String thingType, String thingId) {
+        return Mono.empty();
     }
 
     private static final Object NULL = new Object();

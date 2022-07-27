@@ -39,6 +39,13 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply> imp
 
     private Map<String, Object> headers;
 
+    public void setHeaders(Map<String, Object> headers) {
+        if (headers != null && !(headers instanceof ConcurrentHashMap)) {
+            headers = new ConcurrentHashMap<>(headers);
+        }
+        this.headers = headers;
+    }
+
     @Override
     @JsonIgnore
     @JSONField(serialize = false)

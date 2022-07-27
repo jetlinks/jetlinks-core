@@ -30,6 +30,13 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     private long timestamp = System.currentTimeMillis();
 
+    public void setHeaders(Map<String, Object> headers) {
+        if (headers != null && !(headers instanceof ConcurrentHashMap)) {
+            headers = new ConcurrentHashMap<>(headers);
+        }
+        this.headers = headers;
+    }
+
     @Override
     @JsonIgnore
     @JSONField(serialize = false)
@@ -94,7 +101,7 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     @Override
     public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
-       return safeGetHeader().compute(key, computer);
+        return safeGetHeader().compute(key, computer);
     }
 
     @Override

@@ -13,11 +13,7 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.*;
 
 /**
  * 定义属性相关消息操作接口
@@ -83,13 +79,13 @@ public interface PropertyMessage extends Externalizable {
      * @param property 属性ID
      * @return Optional 属性状态
      */
-   default Optional<String> getPropertyState(@Nonnull String property){
-       Map<String, String> states = getPropertyStates();
-       if (CollectionUtils.isEmpty(states)) {
-           return Optional.empty();
-       }
-       return Optional.of(states.get(property));
-   }
+    default Optional<String> getPropertyState(@Nonnull String property) {
+        Map<String, String> states = getPropertyStates();
+        if (CollectionUtils.isEmpty(states)) {
+            return Optional.empty();
+        }
+        return Optional.of(states.get(property));
+    }
 
     /**
      * 获取属性值
@@ -132,15 +128,13 @@ public interface PropertyMessage extends Externalizable {
         if (CollectionUtils.isEmpty(properties)) {
             return Collections.emptyList();
         }
-        return properties
-                .entrySet()
-                .stream()
-                .map(prop -> {
-                    long ts = getPropertySourceTime(prop.getKey()).orElse(getTimestamp());
-                    String state = getPropertyState(prop.getKey()).orElse(null);
-                    return SimplePropertyValue.of(prop.getKey(), prop.getValue(), ts, state);
-                })
-                .collect(Collectors.toList());
+        List<Property> list = new ArrayList<>(properties.size());
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            long ts = getPropertySourceTime(entry.getKey()).orElse(getTimestamp());
+            String state = getPropertyState(entry.getKey()).orElse(null);
+            list.add(SimplePropertyValue.of(entry.getKey(), entry.getValue(), ts, state));
+        }
+        return list;
     }
 
     PropertyMessage properties(Map<String, Object> properties);

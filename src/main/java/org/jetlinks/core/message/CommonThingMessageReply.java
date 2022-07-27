@@ -39,6 +39,13 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
 
     private Map<String, Object> headers;
 
+    public void setHeaders(Map<String, Object> headers) {
+        if (headers != null && !(headers instanceof ConcurrentHashMap)) {
+            headers = new ConcurrentHashMap<>(headers);
+        }
+        this.headers = headers;
+    }
+
     private Map<String, Object> safeGetHeader() {
         return headers == null ? headers = new ConcurrentHashMap<>(64) : headers;
     }

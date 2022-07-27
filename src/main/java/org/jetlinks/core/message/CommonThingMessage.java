@@ -31,6 +31,13 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
 
     private Map<String, Object> headers;
 
+    public void setHeaders(Map<String, Object> headers) {
+        if (headers != null && !(headers instanceof ConcurrentHashMap)) {
+            headers = new ConcurrentHashMap<>(headers);
+        }
+        this.headers = headers;
+    }
+
     private long timestamp = System.currentTimeMillis();
 
     public abstract MessageType getMessageType();
