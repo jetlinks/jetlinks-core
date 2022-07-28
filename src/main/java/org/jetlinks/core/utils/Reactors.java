@@ -1,6 +1,8 @@
 package org.jetlinks.core.utils;
 
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
+import reactor.util.concurrent.Queues;
 
 public interface Reactors {
     Mono<Boolean> ALWAYS_TRUE = Mono.just(true);
@@ -11,5 +13,31 @@ public interface Reactors {
 
     Mono<Long> ALWAYS_ONE_LONG = Mono.just(1L);
     Mono<Long> ALWAYS_ZERO_LONG = Mono.just(0L);
+
+    Sinks.EmitFailureHandler RETRY_NON_SERIALIZED = (signal, failure) -> failure == Sinks.EmitResult.FAIL_NON_SERIALIZED;
+
+    static Sinks.EmitFailureHandler emitFailureHandler() {
+        return RETRY_NON_SERIALIZED;
+    }
+
+    static Sinks.EmitFailureHandler retryNonSerialized() {
+        return RETRY_NON_SERIALIZED;
+    }
+
+    static <T> Sinks.Many<T> createMany(int bufferSize, boolean autoCancel) {
+        return Sinks
+                .many()
+                .multicast()
+                .onBackpressureBuffer(bufferSize, autoCancel);
+    }
+
+    static <T> Sinks.Many<T> createMany(boolean autoCancel) {
+        return createMany(Queues.SMALL_BUFFER_SIZE, autoCancel);
+    }
+
+    static <T> Sinks.Many<T> createMany() {
+        return createMany(false);
+    }
+
 
 }
