@@ -8,6 +8,7 @@ package org.jetlinks.core.metadata;
  * @see ManagementFeature
  * @see SimpleFeature
  * @see org.jetlinks.core.message.codec.CodecFeature
+ * @see org.jetlinks.core.device.DeviceFeatures
  * @since 1.1.6
  */
 public interface Feature {

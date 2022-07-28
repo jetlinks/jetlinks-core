@@ -83,7 +83,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
                 int partTotal = message.getHeader(Headers.fragmentNumber).orElse(1);
                 AtomicInteger counter = partCache.computeIfAbsent(partMsgId, ignore -> new AtomicInteger(partTotal));
 
-                processor.tryEmitNext(message);
+                processor.emitNext(message, Sinks.EmitFailureHandler.FAIL_FAST);
                 if (counter.decrementAndGet() <= 0) {
                     processor.tryEmitComplete();
                     replyProcessor.remove(partMsgId);

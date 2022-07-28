@@ -54,7 +54,7 @@ class QueueSerialContext<IN, OUT> implements SerialContext<IN, OUT> {
             Tuple2<IN, Consumer<OUT>> input = inputQueue.poll();
             if (input != null) {
                 output.set(input.getT2());
-                inputSinksMany.tryEmitNext(input.getT1());
+                inputSinksMany.emitNext(input.getT1(), Sinks.EmitFailureHandler.FAIL_FAST);
             }
         }
     }
