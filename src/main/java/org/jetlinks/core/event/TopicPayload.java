@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @AllArgsConstructor(staticName = "of")
 @Slf4j
 public class TopicPayload implements Payload {
-    public static boolean POOL_ENABLED = Boolean.parseBoolean(System.getProperty("jetlinks.eventbus.payload.pool.enabled", "true"));
+    public static boolean POOL_ENABLED = Boolean.parseBoolean(System.getProperty("jetlinks.eventbus.payload.pool.enabled", "false"));
 
     public static Recycler<TopicPayload> RECYCLER = RecyclerUtils.newRecycler(TopicPayload.class, TopicPayload::new, 1);
 

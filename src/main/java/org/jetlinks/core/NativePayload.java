@@ -27,7 +27,7 @@ import java.util.function.Supplier;
 @Setter
 @Slf4j
 public class NativePayload<T> extends AbstractReferenceCounted implements Payload {
-    public static boolean POOL_ENABLED = Boolean.parseBoolean(System.getProperty("jetlinks.eventbus.payload.pool.enabled", "true"));
+    public static boolean POOL_ENABLED = Boolean.parseBoolean(System.getProperty("jetlinks.eventbus.payload.pool.enabled", "false"));
 
     private T nativeObject;
 
