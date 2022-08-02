@@ -8,6 +8,7 @@ import org.springframework.util.ConcurrentReferenceHashMap;
 
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -360,19 +361,6 @@ public class SerializeUtils {
                 input.writeUTF(String.valueOf(value));
             }
         },
-        OBJECT(Object.class) {
-            @Override
-            @SneakyThrows
-            Object read(ObjectInput input) {
-                return input.readObject();
-            }
-
-            @Override
-            @SneakyThrows
-            void write(Object value, ObjectOutput input) {
-                input.writeObject(value);
-            }
-        },
         ARRAY(Object[].class) {
             @Override
             @SneakyThrows
@@ -412,6 +400,19 @@ public class SerializeUtils {
                 writeKeyValue(((Map) value), input);
             }
         },
+        OBJECT(Serializable.class) {
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                return input.readObject();
+            }
+
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput input) {
+                input.writeObject(value);
+            }
+        },
         COLLECTION(List.class) {
             @Override
             @SneakyThrows
@@ -435,6 +436,34 @@ public class SerializeUtils {
                 for (Object o : list) {
                     writeObject(o, input);
                 }
+            }
+        },
+        JSON(Object.class) {
+            private final Map<String, Class<?>> clazzCache = new ConcurrentReferenceHashMap<>();
+
+            @SneakyThrows
+            private Class<?> loadClass(String name) {
+                return SerializeUtils.class.getClassLoader().loadClass(name);
+            }
+
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                String clazz = input.readUTF();
+                Class<?> tClass = clazzCache.computeIfAbsent(clazz, this::loadClass);
+                int len = input.readInt();
+                byte[] jsonByte = new byte[len];
+                input.readFully(jsonByte);
+                return com.alibaba.fastjson.JSON.parseObject(jsonByte, tClass);
+            }
+
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput output) {
+                output.writeUTF(value.getClass().getName());
+                byte[] jsonBytes = com.alibaba.fastjson.JSON.toJSONBytes(value);
+                output.writeInt(jsonBytes.length);
+                output.write(jsonBytes);
             }
         };
 
@@ -504,7 +533,7 @@ public class SerializeUtils {
                 if (t.isArray() && !t.getComponentType().isPrimitive()) {
                     return ARRAY;
                 }
-                return OBJECT;
+                return JSON;
             });
         }
 

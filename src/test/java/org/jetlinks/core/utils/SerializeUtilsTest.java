@@ -1,6 +1,6 @@
 package org.jetlinks.core.utils;
 
-import lombok.SneakyThrows;
+import lombok.*;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -102,6 +102,36 @@ public class SerializeUtilsTest {
 
         assertEquals(Collections.singletonMap("test", null), codec(Collections.singletonMap("test", null)));
 
+    }
+
+    @Test
+    public void testJson() {
+
+        assertEquals(new JsonData("test"), codec(new JsonData("test")));
+
+    }
+
+    @Test
+    public void testEnum() {
+
+        for (EnumTest value : EnumTest.values()) {
+            assertEquals(value,codec(value));
+
+        }
+
+    }
+
+    public enum EnumTest{
+        A,B,C
+    }
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Getter
+    @Setter
+    @EqualsAndHashCode(of = "data")
+    public static class JsonData{
+        private String data;
     }
 
     @SneakyThrows
