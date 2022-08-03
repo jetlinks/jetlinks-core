@@ -43,6 +43,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time");
 
+    private static final ConfigKey<Byte> stateKey = ConfigKey.of("state", "状态");
+
     static final List<String> productIdAndVersionKey = Arrays.asList(productId.getKey(), productVersion.getKey());
 
     private static final AtomicReferenceFieldUpdater<DefaultDeviceOperator, DeviceMetadata> METADATA_UPDATER =
@@ -197,7 +199,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     }
 
     private final static List<String> stateCacheKeys = Arrays
-            .asList("state",
+            .asList(stateKey.getKey(),
                     parentGatewayId.getKey(),
                     selfManageState.getKey(),
                     connectionServerId.getKey());
@@ -205,48 +207,51 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<Byte> getState() {
         return this
-                .getSelfConfigs(stateCacheKeys)
-                .flatMap(values -> {
-                    //缓存中的状态
-                    Byte state = values
-                            .getValue("state")
-                            .map(val -> val.as(Byte.class))
-                            .orElse(DeviceState.unknown);
-                    //是否为状态自管理,通常是子设备设置此配置
-                    boolean isSelfManageState = values
-                            .getValue(selfManageState)
-                            .orElse(false);
-
-                    String server = values
-                            .getValue(connectionServerId)
-                            .orElse(null);
-
-                    //已经连接到服务器,则直接返回状态
-                    if (StringUtils.hasText(server)) {
-                        return Mono.just(state);
-                    }
-                    //网关ID
-                    String parentGatewayId = values
-                            .getValue(DeviceConfigKey.parentGatewayId)
-                            .orElse(null);
-                    //存在循环依赖时直接返回
-                    if (getDeviceId().equals(parentGatewayId)) {
-                        log.warn(LocaleUtils.resolveMessage("validation.parent_id_and_id_can_not_be_same", parentGatewayId));
-                        return Mono.just(state);
-                    }
-                    //如果是自状态管理则返回缓存中的状态?
-                    if (isSelfManageState) {
-                        return Mono.just(state);
-                    }
-                    //获取网关设备状态
-                    if (StringUtils.hasText(parentGatewayId)) {
-                        return registry
-                                .getDevice(parentGatewayId)
-                                .flatMap(DeviceOperator::getState);
-                    }
-                    return Mono.just(state);
-                })
+                .getSelfConfig(stateKey)
                 .defaultIfEmpty(DeviceState.unknown);
+//        return this
+//                .getSelfConfigs(stateCacheKeys)
+//                .flatMap(values -> {
+//                    //缓存中的状态
+//                    Byte state = values
+//                            .getValue("state")
+//                            .map(val -> val.as(Byte.class))
+//                            .orElse(DeviceState.unknown);
+//                    //是否为状态自管理,通常是子设备设置此配置
+//                    boolean isSelfManageState = values
+//                            .getValue(selfManageState)
+//                            .orElse(false);
+//
+//                    String server = values
+//                            .getValue(connectionServerId)
+//                            .orElse(null);
+//
+//                    //已经连接到服务器,则直接返回状态
+//                    if (StringUtils.hasText(server)) {
+//                        return Mono.just(state);
+//                    }
+//                    //网关ID
+//                    String parentGatewayId = values
+//                            .getValue(DeviceConfigKey.parentGatewayId)
+//                            .orElse(null);
+//                    //存在循环依赖时直接返回
+//                    if (getDeviceId().equals(parentGatewayId)) {
+//                        log.warn(LocaleUtils.resolveMessage("validation.parent_id_and_id_can_not_be_same", parentGatewayId));
+//                        return Mono.just(state);
+//                    }
+//                    //如果是自状态管理则返回缓存中的状态?
+//                    if (isSelfManageState) {
+//                        return Mono.just(state);
+//                    }
+//                    //获取网关设备状态
+//                    if (StringUtils.hasText(parentGatewayId)) {
+//                        return registry
+//                                .getDevice(parentGatewayId)
+//                                .flatMap(DeviceOperator::getState);
+//                    }
+//                    return Mono.just(state);
+//                })
+//                .defaultIfEmpty(DeviceState.unknown);
     }
 
     private Mono<Byte> doCheckState() {
@@ -261,8 +266,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                     .orElse(null);
 
                             //设备缓存的状态
-                            Byte state = values.getValue("state")
-                                               .map(val -> val.as(Byte.class))
+                            Byte state = values.getValue(stateKey)
                                                .orElse(DeviceState.unknown);
 
 
@@ -417,7 +421,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                         DeviceConfigKey.sessionId.value(sessionId),
                         ConfigKey.of("address").value(address),
                         ConfigKey.of("onlineTime").value(System.currentTimeMillis()),
-                        ConfigKey.of("state").value(DeviceState.online)
+                        stateKey.value(DeviceState.online)
                 )
                 .doOnError(err -> log.error("online device error", err));
     }

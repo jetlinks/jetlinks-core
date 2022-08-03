@@ -63,6 +63,10 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
         return connectTime;
     }
 
+    public DeviceSession getParent() {
+        return parent;
+    }
+
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
         return Mono
