@@ -188,7 +188,11 @@ public enum MessageType {
     }
 
     public <T extends DeviceMessage> T forDevice() {
-        return (T) deviceInstance.get();
+        return deviceInstance == null ? null : (T) deviceInstance.get();
+    }
+
+    public boolean iSupportDevice() {
+        return deviceInstance != null;
     }
 
     public <T extends ThingMessage> T forThing() {
