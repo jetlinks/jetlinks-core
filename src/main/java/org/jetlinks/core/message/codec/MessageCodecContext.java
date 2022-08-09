@@ -1,6 +1,7 @@
 package org.jetlinks.core.message.codec;
 
 
+import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.device.DeviceOperator;
 import reactor.core.publisher.Mono;
 
@@ -15,7 +16,7 @@ import java.util.Optional;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface MessageCodecContext {
+public interface MessageCodecContext extends Wrapper {
 
     /**
      * 获取当前上下文中到设备操作接口,
