@@ -1,6 +1,6 @@
 package org.jetlinks.core.utils;
 
-import java.util.UUID;
+import org.hswebframework.web.id.IDGenerator;
 
 /**
  * @author zhouhao
@@ -9,6 +9,6 @@ import java.util.UUID;
 public class IdUtils {
 
     public static String newUUID() {
-        return UUID.randomUUID().toString().replace("-", "");
+        return IDGenerator.SNOW_FLAKE_STRING.generate();
     }
 }

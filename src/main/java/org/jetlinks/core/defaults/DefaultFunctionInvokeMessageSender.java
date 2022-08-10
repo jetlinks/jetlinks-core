@@ -28,9 +28,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DefaultFunctionInvokeMessageSender implements FunctionInvokeMessageSender {
 
-    private FunctionInvokeMessage message = new FunctionInvokeMessage();
+    private final FunctionInvokeMessage message = new FunctionInvokeMessage();
 
-    private DeviceOperator operator;
+    private final DeviceOperator operator;
 
     public DefaultFunctionInvokeMessageSender(DeviceOperator operator, String functionId) {
         this.operator = operator;

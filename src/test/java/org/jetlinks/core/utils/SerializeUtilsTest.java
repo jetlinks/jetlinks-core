@@ -1,5 +1,7 @@
 package org.jetlinks.core.utils;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import lombok.*;
 import org.junit.Test;
 
@@ -9,6 +11,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -115,14 +118,39 @@ public class SerializeUtilsTest {
     public void testEnum() {
 
         for (EnumTest value : EnumTest.values()) {
-            assertEquals(value,codec(value));
+            assertEquals(value, codec(value));
 
         }
 
     }
 
-    public enum EnumTest{
-        A,B,C
+    @Test
+    public void testByteBuf() {
+
+        ByteBuf buf = ByteBufAllocator.DEFAULT
+                .buffer()
+                .writeInt(100);
+
+        ByteBuf decode = (ByteBuf) codec(buf);
+
+        assertEquals(100, decode.readInt());
+
+    }
+
+    @Test
+    public void testNio() {
+
+        ByteBuffer buf = ByteBuffer.allocate(32);
+        buf.putInt(100);
+
+        ByteBuffer decode = (ByteBuffer) codec(buf);
+
+        assertEquals(100, decode.getInt());
+
+    }
+
+    public enum EnumTest {
+        A, B, C
     }
 
     @AllArgsConstructor
@@ -130,7 +158,7 @@ public class SerializeUtilsTest {
     @Getter
     @Setter
     @EqualsAndHashCode(of = "data")
-    public static class JsonData{
+    public static class JsonData {
         private String data;
     }
 

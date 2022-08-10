@@ -15,10 +15,10 @@ import java.util.function.Consumer;
 public class DefaultReadPropertyMessageSender implements ReadPropertyMessageSender {
 
     //设备属性读取消息
-    private ReadPropertyMessage message = new ReadPropertyMessage();
+    private final ReadPropertyMessage message = new ReadPropertyMessage();
 
     //设备操作接口,用于发送指令到设备,以及获取配置等相关信
-    private DeviceOperator operator;
+    private final DeviceOperator operator;
 
     public DefaultReadPropertyMessageSender(DeviceOperator operator) {
         this.operator = operator;

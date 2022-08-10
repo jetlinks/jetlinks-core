@@ -2,6 +2,10 @@ package org.jetlinks.core.utils;
 
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Primitives;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.util.ConcurrentReferenceHashMap;
@@ -12,6 +16,7 @@ import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -47,7 +52,7 @@ public class SerializeUtils {
         } else {
             type = Type.of(obj);
         }
-        out.writeByte(type.ordinal());
+        out.writeByte(type.code);
         type.write(obj, out);
     }
 
@@ -118,7 +123,7 @@ public class SerializeUtils {
 
     @AllArgsConstructor
     private enum Type {
-        NULL(Void.class) {
+        NULL(0x00, Void.class) {
             @Override
             public Object read(ObjectInput in) {
                 return null;
@@ -129,7 +134,7 @@ public class SerializeUtils {
 
             }
         },
-        BOOLEAN(Boolean.class) {
+        BOOLEAN(0x01, Boolean.class) {
             @Override
             @SneakyThrows
             public Object read(ObjectInput in) {
@@ -142,7 +147,7 @@ public class SerializeUtils {
                 input.writeBoolean((Boolean) value);
             }
         },
-        BYTE(Byte.class) {
+        BYTE(0x02, Byte.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -155,7 +160,7 @@ public class SerializeUtils {
                 input.writeByte(((Byte) value));
             }
         },
-        CHAR(Character.class) {
+        CHAR(0x03, Character.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -168,7 +173,7 @@ public class SerializeUtils {
                 input.writeChar(((Character) value));
             }
         },
-        SHORT(Short.class) {
+        SHORT(0x04, Short.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -181,7 +186,7 @@ public class SerializeUtils {
                 input.writeShort(((Short) value));
             }
         },
-        INT(Integer.class) {
+        INT(0x05, Integer.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -194,7 +199,7 @@ public class SerializeUtils {
                 input.writeInt(((Integer) value));
             }
         },
-        LONG(Long.class) {
+        LONG(0x06, Long.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -207,7 +212,7 @@ public class SerializeUtils {
                 input.writeLong(((Long) value));
             }
         },
-        FLOAT(Float.class) {
+        FLOAT(0x07, Float.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -220,7 +225,7 @@ public class SerializeUtils {
                 input.writeFloat(((Float) value));
             }
         },
-        DOUBLE(Double.class) {
+        DOUBLE(0x08, Double.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -233,7 +238,7 @@ public class SerializeUtils {
                 input.writeDouble(((Double) value));
             }
         },
-        BIG_DECIMAL(BigDecimal.class) {
+        BIG_DECIMAL(0x09, BigDecimal.class) {
             private final static byte ZERO = 0x00;
             private final static byte ONE = 0x01;
             private final static byte SMALL_SCALE_0 = 0x10;
@@ -298,7 +303,7 @@ public class SerializeUtils {
 
             }
         },
-        BIG_INTEGER(BigInteger.class) {
+        BIG_INTEGER(0x0A, BigInteger.class) {
             private final static byte ZERO = 0x00;
             private final static byte ONE = 0x01;
             private final static byte SMALL = 0x10;
@@ -348,7 +353,7 @@ public class SerializeUtils {
 
             }
         },
-        STRING(String.class) {
+        STRING(0x0B, String.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -361,7 +366,7 @@ public class SerializeUtils {
                 input.writeUTF(String.valueOf(value));
             }
         },
-        ARRAY(Object[].class) {
+        ARRAY(0x0C, Object[].class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -389,7 +394,7 @@ public class SerializeUtils {
 
             }
         },
-        MAP(Map.class) {
+        MAP(0x0D, Map.class) {
             @Override
             Object read(ObjectInput input) {
                 return SerializeUtils.readMap(input, Maps::newLinkedHashMapWithExpectedSize);
@@ -400,7 +405,7 @@ public class SerializeUtils {
                 writeKeyValue(((Map) value), input);
             }
         },
-        OBJECT(Serializable.class) {
+        OBJECT(0x0E, Serializable.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -413,7 +418,7 @@ public class SerializeUtils {
                 input.writeObject(value);
             }
         },
-        COLLECTION(List.class) {
+        COLLECTION(0x0F, List.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -438,7 +443,57 @@ public class SerializeUtils {
                 }
             }
         },
-        JSON(Object.class) {
+
+        Netty(0x11, io.netty.buffer.ByteBuf.class) {
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput output) {
+                ByteBuf buf = ((ByteBuf) value);
+                byte[] bytes = ByteBufUtil.getBytes(buf);
+                ReferenceCountUtil.safeRelease(buf);
+
+                output.writeInt(bytes.length);
+                output.write(bytes);
+            }
+
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                int len = input.readInt();
+                byte[] bytes = new byte[len];
+                input.readFully(bytes);
+                return Unpooled.wrappedBuffer(bytes);
+            }
+        },
+
+        Nio(0x12, ByteBuffer.class) {
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput output) {
+                ByteBuffer buf = ((ByteBuffer) value);
+                byte[] bytes;
+                if (buf.hasArray()) {
+                    bytes = buf.array();
+                } else {
+                    bytes = new byte[buf.remaining()];
+                    buf.get(bytes);
+                }
+                output.writeInt(bytes.length);
+                output.write(bytes);
+            }
+
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                int len = input.readInt();
+                byte[] bytes = new byte[len];
+                input.readFully(bytes);
+                return ByteBuffer.wrap(bytes);
+            }
+        },
+
+
+        JSON(0x10, Object.class) {
             private final Map<String, Class<?>> clazzCache = new ConcurrentReferenceHashMap<>();
 
             @SneakyThrows
@@ -467,13 +522,21 @@ public class SerializeUtils {
             }
         };
 
+        private final int code;
         private final Class<?> javaType;
 
         abstract Object read(ObjectInput input);
 
         abstract void write(Object value, ObjectOutput input);
 
-        final static Type[] all = values();
+        final static Type[] all;
+
+        static {
+            all = new Type[0xff];
+            for (Type value : values()) {
+                all[value.code] = value;
+            }
+        }
 
         private static final Map<Class<?>, Type> cache = new ConcurrentReferenceHashMap<>();
 
@@ -516,6 +579,12 @@ public class SerializeUtils {
             }
             if (javaType instanceof List) {
                 return COLLECTION;
+            }
+            if (javaType instanceof ByteBuf) {
+                return Netty;
+            }
+            if (javaType instanceof ByteBuffer) {
+                return Nio;
             }
             return of(javaType.getClass());
         }
