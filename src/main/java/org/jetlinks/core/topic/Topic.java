@@ -10,6 +10,8 @@ import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.TopicUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
+import reactor.function.Consumer4;
+import reactor.function.Consumer5;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
@@ -187,7 +189,20 @@ public final class Topic<T> {
     public void findTopic(String topic,
                           Consumer<Topic<T>> sink,
                           Runnable end) {
-        String[] topics = TopicUtils.split(topic,true);
+        findTopic(topic,
+                  null,
+                  null,
+                  end,
+                  sink,
+                  (nil, nil2, _end, _sink, _topic) -> _sink.accept(_topic),
+                  (nil ,nil2, _end, _sink) -> _end.run());
+    }
+
+    public <ARG0, ARG1, ARG2, ARG3> void findTopic(String topic,
+                                                   ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+                                                   Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+                                                   Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        String[] topics = TopicUtils.split(topic, true);
 
         if (!topic.startsWith("/")) {
             String[] newTopics = new String[topics.length + 1];
@@ -195,7 +210,8 @@ public final class Topic<T> {
             System.arraycopy(topics, 0, newTopics, 1, topics.length);
             topics = newTopics;
         }
-        find(topics, this, sink, end);
+
+        find(topics, this, arg0, arg1, arg2, arg3, sink, end);
     }
 
     @Override
@@ -208,11 +224,13 @@ public final class Topic<T> {
                 || TopicUtils.match(pars, getTopics());
     }
 
+    public static <T, ARG0, ARG1, ARG2, ARG3> void find(
+            String[] topicParts,
+            Topic<T> topicPart,
+            ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+            Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+            Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
 
-    public static <T> void find(String[] topicParts,
-                                Topic<T> topicPart,
-                                Consumer<Topic<T>> sink,
-                                Runnable end) {
         RecyclableDequeue<Topic<T>> cache = RecyclerUtils.dequeue();
         try {
             cache.add(topicPart);
@@ -225,7 +243,7 @@ public final class Topic<T> {
                     break;
                 }
                 if (part.match(topicParts)) {
-                    sink.accept(part);
+                    sink.accept(arg0, arg1, arg2, arg3, part);
                 }
                 //订阅了如 /device/**/event/*
                 if (part.part.equals("**")) {
@@ -267,7 +285,7 @@ public final class Topic<T> {
                 }
             }
 
-            end.run();
+            end.accept(arg0, arg1, arg2, arg3);
         } finally {
             cache.recycle();
         }

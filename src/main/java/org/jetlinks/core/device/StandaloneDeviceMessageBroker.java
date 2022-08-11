@@ -33,7 +33,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
     @Setter
     private ReplyFailureHandler replyFailureHandler = (error, message) -> StandaloneDeviceMessageBroker.log.warn("unhandled reply message:{}", message, error);
 
-    private final Map<String, Function<Publisher<String>, Flux<DeviceStateInfo>>> stateHandler = new ConcurrentHashMap<>();
+    private Function<Publisher<String>, Flux<DeviceStateInfo>> stateHandler;
 
     public StandaloneDeviceMessageBroker() {
         this(Sinks.many().multicast().onBackpressureBuffer());
@@ -51,14 +51,16 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
 
     @Override
     public Disposable handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper) {
-        stateHandler.put(serverId, stateMapper);
-        return () -> stateHandler.remove(serverId);
+        this.stateHandler = stateMapper;
+        return () -> this.stateHandler = null;
     }
 
     @Override
     public Flux<DeviceStateInfo> getDeviceState(String serviceId, Collection<String> deviceIdList) {
-        return Mono.justOrEmpty(stateHandler.get(serviceId))
-                   .flatMapMany(fun -> fun.apply(Flux.fromIterable(deviceIdList)));
+        if (this.stateHandler != null) {
+            return stateHandler.apply(Flux.fromIterable(deviceIdList));
+        }
+        return Flux.empty();
     }
 
     @Override

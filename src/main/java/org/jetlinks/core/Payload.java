@@ -25,6 +25,7 @@ import java.util.function.Function;
 public interface Payload extends ReferenceCounted {
 
     @Nonnull
+    @Deprecated
     ByteBuf getBody();
 
     @Deprecated
@@ -32,6 +33,7 @@ public interface Payload extends ReferenceCounted {
         return Payload.of(getBody().slice());
     }
 
+    @Deprecated
     default <T> T decode(Decoder<T> decoder, boolean release) {
         try {
             return decoder.decode(this);
@@ -42,14 +44,17 @@ public interface Payload extends ReferenceCounted {
         }
     }
 
+    @Deprecated
     default <T> T decode(Decoder<T> decoder) {
         return decode(decoder, true);
     }
 
+    @Deprecated
     default <T> T decode(Class<T> decoder) {
         return decode(decoder, true);
     }
 
+    @Deprecated
     default <T> T decode(Class<T> decoder, boolean release) {
         return decode(Codecs.lookup(decoder), release);
     }
@@ -75,10 +80,12 @@ public interface Payload extends ReferenceCounted {
         return decode(true);
     }
 
+    @Deprecated
     default <T> T convert(Function<ByteBuf, T> mapper) {
         return convert(mapper, true);
     }
 
+    @Deprecated
     default <T> T convert(Function<ByteBuf, T> mapper, boolean release) {
         ByteBuf body = getBody();
         try {
@@ -114,14 +121,17 @@ public interface Payload extends ReferenceCounted {
         return release(1);
     }
 
+    @Deprecated
     default byte[] getBytes() {
         return getBytes(true);
     }
 
+    @Deprecated
     default byte[] getBytes(boolean release) {
         return convert(ByteBufUtil::getBytes, release);
     }
 
+    @Deprecated
     default byte[] getBytes(int offset, int length, boolean release) {
         return convert(byteBuf -> ByteBufUtil.getBytes(byteBuf, offset, length), release);
     }

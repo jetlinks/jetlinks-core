@@ -29,7 +29,8 @@ public class Subscription implements Externalizable {
 
     private transient Runnable doOnSubscribe;
 
-    public Subscription(){}
+    public Subscription() {
+    }
 
     public static Subscription of(String subscriber, String... topic) {
 
@@ -119,7 +120,9 @@ public class Subscription implements Externalizable {
         //订阅本地消息
         local("订阅本地消息"),
         //订阅来自代理的消息
-        broker("订阅代理消息");
+        broker("订阅代理消息"),
+
+        sharedOldest("相同订阅者总是最先订阅的收到数据");
 
         private final String text;
 
@@ -195,6 +198,10 @@ public class Subscription implements Externalizable {
 
         public Builder shared() {
             return features(Feature.shared);
+        }
+
+        public Builder sharedOldest() {
+            return features(Feature.shared, Feature.sharedOldest);
         }
 
         public Subscription build() {

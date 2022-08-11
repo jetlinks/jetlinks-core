@@ -69,7 +69,7 @@ public class SerializeUtils {
         //header
         int headerSize = in.readInt();
 
-        Map<K, T> map = mapBuilder.apply(Math.min(8, headerSize));
+        Map<K, T> map = mapBuilder.apply(Math.max(8, headerSize));
 
         for (int i = 0; i < headerSize; i++) {
             Object key = readObject(in);

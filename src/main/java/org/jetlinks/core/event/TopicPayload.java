@@ -3,14 +3,11 @@ package org.jetlinks.core.event;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.Recycler;
-import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.codec.Decoder;
-import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.TopicUtils;
 
 import javax.annotation.Nonnull;
@@ -21,9 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @AllArgsConstructor(staticName = "of")
 @Slf4j
 public class TopicPayload implements Payload {
-    public static boolean POOL_ENABLED = Boolean.parseBoolean(System.getProperty("jetlinks.eventbus.payload.pool.enabled", "false"));
-
-    public static Recycler<TopicPayload> RECYCLER = RecyclerUtils.newRecycler(TopicPayload.class, TopicPayload::new, 1);
 
     private String topic;
 
@@ -31,24 +25,8 @@ public class TopicPayload implements Payload {
 
     private Map<String, Object> headers;
 
-    private final Recycler.Handle<TopicPayload> handle;
-
-    private TopicPayload(Recycler.Handle<TopicPayload> handle) {
-        this.handle = handle;
-    }
-
     public static TopicPayload of(String topic, Payload payload) {
-        if (POOL_ENABLED) {
-            try {
-                TopicPayload topicPayload = RECYCLER.get();
-                topicPayload.topic = topic;
-                topicPayload.payload = payload;
-                return topicPayload;
-            } catch (Exception e) {
-                return TopicPayload.of(topic, payload, null, null);
-            }
-        }
-        return TopicPayload.of(topic, payload, null, null);
+        return TopicPayload.of(topic, payload, null);
     }
 
     private Map<String, Object> getOrCreateHeader() {
@@ -86,64 +64,50 @@ public class TopicPayload implements Payload {
 
     @Override
     public boolean release() {
-        return topic == null || handleRelease(ReferenceCountUtil.release(payload));
+       return true;
     }
 
     @Override
     public boolean release(int dec) {
-        return topic == null || handleRelease(ReferenceCountUtil.release(payload, dec));
+      return true;
     }
 
-//    @Override
-//    protected void finalize() throws Throwable {
-//        if (handle != null && refCnt() != 0) {
-//            log.debug("topic [{}] payload was not release properly, release() was not called before it's garbage-collected. refCnt={}", this, refCnt());
-//        }
-//        super.finalize();
-//    }
-
     protected boolean handleRelease(boolean success) {
-        if (success) {
-            deallocate();
-        }
+
         return success;
     }
 
     protected void deallocate() {
-        if (handle != null) {
-            payload = null;
-            topic = null;
-            handle.recycle(this);
-        }
+
     }
 
     @Override
     public TopicPayload retain() {
-        payload.retain();
+
         return this;
     }
 
     @Override
     public TopicPayload retain(int inc) {
-        payload.retain(inc);
+
         return this;
     }
 
     @Override
     public TopicPayload touch(Object o) {
-        payload.touch(o);
+
         return this;
     }
 
     @Override
     public TopicPayload touch() {
-        payload.touch();
+
         return this;
     }
 
     @Override
     public int refCnt() {
-        return payload == null ? 0 : payload.refCnt();
+        return 0;
     }
 
     @Override
