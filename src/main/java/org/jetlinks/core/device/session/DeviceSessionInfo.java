@@ -19,12 +19,22 @@ public class DeviceSessionInfo implements Serializable {
 
     private long connectTime;
 
-    public static DeviceSessionInfo of(String serverId,DeviceSession session){
+    private long lastCommTime;
+
+    private String transport;
+
+    public static DeviceSessionInfo of(String serverId, DeviceSession session) {
         DeviceSessionInfo sessionInfo = new DeviceSessionInfo();
         sessionInfo.setServerId(serverId);
         sessionInfo.setAddress(session.getClientAddress().map(String::valueOf).orElse(null));
         sessionInfo.setConnectTime(session.connectTime());
         sessionInfo.setDeviceId(session.getDeviceId());
+
+        //上一次通信时间
+        sessionInfo.setLastCommTime(session.lastPingTime());
+        if (null != session.getTransport()) {
+            sessionInfo.setTransport(session.getTransport().getId());
+        }
         return sessionInfo;
     }
 }

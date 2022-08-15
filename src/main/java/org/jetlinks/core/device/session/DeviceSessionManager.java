@@ -179,6 +179,13 @@ public interface DeviceSessionManager {
     Flux<DeviceSessionInfo> getSessionInfo(String serverId);
 
     /**
+     * 获取本地的会话信息
+     *
+     * @return 会话信息
+     */
+    Flux<DeviceSessionInfo> getLocalSessionInfo();
+
+    /**
      * 监听并处理会话事件,可通过调用返回值{@link  Disposable#dispose()}来取消监听
      *
      * @param handler 事件处理器
