@@ -1,8 +1,12 @@
 package org.jetlinks.core.utils;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.concurrent.Queues;
+import reactor.util.context.ContextView;
+
+import java.util.function.Predicate;
 
 public interface Reactors {
     Mono<Boolean> ALWAYS_TRUE = Mono.just(true);
@@ -40,4 +44,21 @@ public interface Reactors {
     }
 
 
+    static <T> Flux<T> doWhenContext(Predicate<ContextView> predicate, Flux<T> flux) {
+        return Flux.deferContextual(ctx -> {
+            if (predicate.test(ctx)) {
+                return flux;
+            }
+            return Flux.empty();
+        });
+    }
+
+    static <T> Mono<T> doWhenContext(Predicate<ContextView> predicate, Mono<T> mono) {
+        return Mono.deferContextual(ctx -> {
+            if (predicate.test(ctx)) {
+                return mono;
+            }
+            return Mono.empty();
+        });
+    }
 }
