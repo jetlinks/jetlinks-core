@@ -1,13 +1,15 @@
 package org.jetlinks.core.message.property;
 
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
+import org.jetlinks.core.metadata.types.LongType;
 import org.jetlinks.core.things.ThingProperty;
+import org.jetlinks.core.utils.MapUtils;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -70,9 +72,9 @@ public class ReportPropertyMessage extends CommonDeviceMessage implements ThingR
 
     @Override
     public ReportPropertyMessage success(List<ThingProperty> properties) {
-        this.properties = new LinkedHashMap<>();
-        this.propertySourceTimes = new LinkedHashMap<>();
-        this.propertyStates = new LinkedHashMap<>();
+        this.properties = Maps.newLinkedHashMapWithExpectedSize(properties.size());
+        this.propertySourceTimes = Maps.newLinkedHashMapWithExpectedSize(properties.size());
+        this.propertyStates = Maps.newLinkedHashMapWithExpectedSize(properties.size());
         for (ThingProperty property : properties) {
             this.properties.put(property.getProperty(), property.getValue());
             this.propertySourceTimes.put(property.getProperty(), property.getTimestamp());
@@ -81,12 +83,21 @@ public class ReportPropertyMessage extends CommonDeviceMessage implements ThingR
         return this;
     }
     @Override
-    @SuppressWarnings("all")
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
         this.properties = jsonObject.getJSONObject("properties");
-        this.propertySourceTimes = (Map) jsonObject.getJSONObject("propertySourceTimes");
-        this.propertyStates = (Map) jsonObject.getJSONObject("propertyStates");
+        this.propertySourceTimes =
+                MapUtils.convertKeyValue(
+                        jsonObject.getJSONObject("propertySourceTimes"),
+                        String::valueOf,
+                        LongType.GLOBAL::convert
+                );
+        this.propertyStates = MapUtils
+                .convertKeyValue(
+                        jsonObject.getJSONObject("propertyStates"),
+                        String::valueOf,
+                        String::valueOf
+                );
     }
 
     public MessageType getMessageType() {
