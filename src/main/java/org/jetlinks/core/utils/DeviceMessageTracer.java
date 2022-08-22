@@ -3,6 +3,7 @@ package org.jetlinks.core.utils;
 import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.message.Message;
 
+@Deprecated
 public class DeviceMessageTracer {
 
     public static void trace(Message message, String name) {
