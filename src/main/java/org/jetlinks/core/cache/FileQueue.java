@@ -38,6 +38,20 @@ public interface FileQueue<T> extends Queue<T> {
     void flush();
 
     /**
+     * 删除第一个元素并返回该元素
+     *
+     * @return 被删除的元素
+     */
+    T removeFirst();
+
+    /**
+     * 删除最后一个元素并返回该元素
+     *
+     * @return 被删除的元素
+     */
+    T removeLast();
+
+    /**
      * 队列构造器
      *
      * @param <T>

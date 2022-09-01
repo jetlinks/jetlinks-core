@@ -22,6 +22,16 @@ public class FileQueueProxy<T> implements FileQueue<T> {
     }
 
     @Override
+    public T removeFirst() {
+        return target.removeFirst();
+    }
+
+    @Override
+    public T removeLast() {
+        return target.removeFirst();
+    }
+
+    @Override
     public int size() {
         return target.size();
     }
