@@ -1,10 +1,9 @@
 package org.jetlinks.core.message;
 
-import com.alibaba.fastjson.parser.ParserConfig;
-import com.alibaba.fastjson.util.TypeUtils;
 import org.apache.commons.collections.MapUtils;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.metadata.Jsonable;
+import org.jetlinks.core.utils.ConverterUtils;
 
 import javax.annotation.Nullable;
 import java.io.Externalizable;
@@ -117,7 +116,7 @@ public interface Message extends Jsonable, Externalizable {
     }
 
     default <T> T getOrAddHeaderDefault(HeaderKey<T> header) {
-        return getOrAddHeader(header,header::getDefaultValue);
+        return getOrAddHeader(header, header::getDefaultValue);
     }
 
     @SuppressWarnings("all")
@@ -135,7 +134,7 @@ public interface Message extends Jsonable, Externalizable {
         if (null == val) {
             return orElse == null ? null : orElse.get();
         }
-        return TypeUtils.cast(val, header.getType(), ParserConfig.global);
+        return ConverterUtils.convert(val, header);
     }
 
     default Object getHeaderOrElse(String header, @Nullable Supplier<Object> orElse) {
@@ -159,7 +158,7 @@ public interface Message extends Jsonable, Externalizable {
     @SuppressWarnings("all")
     default <T> T computeHeader(HeaderKey<T> key, BiFunction<String, T, T> computer) {
         return (T) computeHeader(key.getKey(),
-                                 (str, old) -> computer.apply(str, old == null ? null : TypeUtils.cast(old, key.getType(), ParserConfig.global)));
+                                 (str, old) -> computer.apply(str, old == null ? null : ConverterUtils.convert(old, key)));
     }
 
     default void validate() {

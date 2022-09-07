@@ -139,7 +139,7 @@ public interface DeviceOperator extends Thing {
      */
     default <V> Mono<V> getSelfConfig(ConfigKey<V> key) {
         return getSelfConfig(key.getKey())
-                .map(value -> value.as(key.getType()));
+                .map(value -> value.as(key.getValueType()));
     }
 
     /**

@@ -20,7 +20,7 @@ public interface PropertyOperation {
     default <T> Mono<T> get(ConfigKey<T> key) {
         return this
                 .get(key.getKey())
-                .cast(key.getType());
+                .map(key::convertValue);
     }
 
     default Flux<ObjectProperty> get(Collection<String> keys) {

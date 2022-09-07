@@ -1,5 +1,9 @@
 package org.jetlinks.core.config;
 
+import org.jetlinks.core.utils.ConverterUtils;
+
+import java.lang.reflect.Type;
+
 /**
  * 用于定义配置key,增加key的可读性
  *
@@ -27,8 +31,21 @@ public interface ConfigKey<V> {
      *
      * @return 类型
      */
+    @Deprecated
     default Class<V> getType() {
         return (Class<V>) Object.class;
+    }
+    /**
+     * key 对应值的类型
+     *
+     * @return 类型
+     */
+    default Type getValueType() {
+        return Object.class;
+    }
+
+    default V convertValue(Object value) {
+        return ConverterUtils.convert(value, getValueType());
     }
 
     /**
@@ -51,7 +68,7 @@ public interface ConfigKey<V> {
      * @return ConfigKey
      */
     static <T> ConfigKey<T> of(String key, String name) {
-        return SimpleConfigKey.of(key, name, (Class<T>) Object.class);
+        return SimpleConfigKey.of(key, name, Object.class);
     }
 
     /**
@@ -63,7 +80,7 @@ public interface ConfigKey<V> {
      * @param type 类型
      * @return ConfigKey
      */
-    static <T> ConfigKey<T> of(String key, String name, Class<T> type) {
+    static <T> ConfigKey<T> of(String key, String name, Type type) {
         return SimpleConfigKey.of(key, name, type);
     }
 
@@ -91,8 +108,8 @@ public interface ConfigKey<V> {
             }
 
             @Override
-            public Class<V> getType() {
-                return ConfigKey.this.getType();
+            public Type getValueType() {
+                return ConfigKey.this.getValueType();
             }
         };
     }

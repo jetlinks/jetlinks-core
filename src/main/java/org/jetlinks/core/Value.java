@@ -1,5 +1,8 @@
 package org.jetlinks.core;
 
+import org.jetlinks.core.utils.ConverterUtils;
+
+import java.lang.reflect.Type;
 import java.util.Date;
 
 /**
@@ -80,10 +83,18 @@ public interface Value {
      * @param <T>  类型
      * @return 指定类型的值
      */
-    <T> T as(Class<T> type);
+   default  <T> T as(Class<T> type){
+       return ConverterUtils.convert(get(),type);
+   }
+
+    default <T> T as(Type type) {
+        return ConverterUtils.convert(get(), type);
+    }
+
 
     /**
      * 包装一个简单的值
+     *
      * @param value 原始值
      * @return 值
      */

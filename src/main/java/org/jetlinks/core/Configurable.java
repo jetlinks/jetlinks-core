@@ -59,7 +59,7 @@ public interface Configurable {
     default <V> Mono<V> getConfig(ConfigKey<V> key) {
         return getConfig(key.getKey())
                 .handle((value, sink) -> {
-                    V val = value.as(key.getType());
+                    V val = value.as(key.getValueType());
                     if (null != val) {
                         sink.next(val);
                     }

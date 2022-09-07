@@ -53,7 +53,7 @@ public enum DeviceConfigKey implements ConfigKey<String> {
     }
 
     @Override
-    public Class<String> getType() {
+    public Class<String> getValueType() {
         return String.class;
     }
 }

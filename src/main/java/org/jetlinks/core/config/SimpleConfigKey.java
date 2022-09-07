@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.lang.reflect.Type;
+
 @Getter
 @Setter
 @AllArgsConstructor(staticName = "of")
@@ -13,6 +15,6 @@ class SimpleConfigKey<V> implements ConfigKey<V> {
 
     private String name;
 
-    private Class<V> type;
+    private Type valueType;
 
 }

@@ -5,12 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.collections.map.CompositeMap;
-import org.hswebframework.web.bean.FastBeanCopier;
+import org.jetlinks.core.utils.ConverterUtils;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.math.BigDecimal;
+import java.util.*;
 import java.util.function.Supplier;
 
 @AllArgsConstructor(staticName = "of")
@@ -26,17 +24,22 @@ class SimpleValues implements Values {
 
     @Override
     public Optional<Value> getValue(String key) {
-        return Optional
-                .ofNullable(key)
-                .map(values::get)
-                .map(Value::simple);
+        if (key == null) {
+            return Optional.empty();
+        }
+        Object value = values.get(key);
+        if (null == value) {
+            return Optional.empty();
+        }
+        return Optional.of(Value.simple(value));
     }
 
     @Override
     public Values merge(Values source) {
         Map<String, Object> sourceValues = source instanceof SimpleValues ? ((SimpleValues) source).values : source.getAllValues();
 
-        Map<String, Object> merged = new CompositeMap(this.values,sourceValues);
+        @SuppressWarnings("all")
+        Map<String, Object> merged = new CompositeMap(this.values, sourceValues);
 
         return Values.of(merged);
     }
@@ -75,8 +78,9 @@ class SimpleValues implements Values {
         if (val instanceof Number) {
             return ((Number) val);
         }
-        return FastBeanCopier.DEFAULT_CONVERT.convert(
-                val, Number.class, FastBeanCopier.EMPTY_CLASS_ARRAY
-        );
+        if (val instanceof Date) {
+            return ((Date) val).getTime();
+        }
+        return ConverterUtils.convert(val, BigDecimal.class);
     }
 }

@@ -73,7 +73,7 @@ public interface Values {
 
     default <T> Optional<T> getValue(ConfigKey<T> key) {
         return getValue(key.getKey())
-                .map(val -> (val.as(key.getType())));
+                .map(val -> (val.as(key.getValueType())));
     }
 
     default String getString(String key, Supplier<String> defaultValue) {
