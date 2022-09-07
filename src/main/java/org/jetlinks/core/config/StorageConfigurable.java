@@ -7,7 +7,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 使用{@link ConfigStorage}来提供配置支持
@@ -55,7 +54,7 @@ public interface StorageConfigurable extends Configurable {
                 .flatMap(values -> {
                     //尝试获取上一级的配置
                     if (!keys.isEmpty() && values.size() != keys.size() && fallbackParent) {
-                        Set<String> nonExistent = values.getNonExistentKeys(keys);
+                        Collection<String> nonExistent = values.getNonExistentKeys(keys);
                         return getParent()
                                 .flatMap(parent -> parent.getConfigs(nonExistent))
                                 .map(parentValues -> parentValues.merge(values))
