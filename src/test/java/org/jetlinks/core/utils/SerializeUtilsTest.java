@@ -14,6 +14,9 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.Assert.*;
 
@@ -75,6 +78,21 @@ public class SerializeUtilsTest {
     }
 
     @Test
+    public void testSet() {
+
+        assertEquals(new HashSet<>(Arrays.asList(1, 2, 3)), codec(new HashSet<>(Arrays.asList(1, 2, 3))));
+
+        assertEquals(new HashSet<>(Arrays.asList(1, "2", 3)), codec(new HashSet<>(Arrays.asList(1, "2", 3))));
+
+        Set<Object> set= ConcurrentHashMap.newKeySet();
+
+        set.addAll(Arrays.asList(1, "2", 3));
+
+        assertEquals(ConcurrentHashMap.KeySetView.class, codec(set).getClass());
+
+    }
+
+    @Test
     public void testBigDecimal() {
         BigDecimal bigDecimal = new BigDecimal("12341315613123123789.12341231212312313312390123847289634591827634581723456789");
         assertEquals(bigDecimal, codec(bigDecimal));
@@ -104,6 +122,8 @@ public class SerializeUtilsTest {
 
 
         assertEquals(Collections.singletonMap("test", null), codec(Collections.singletonMap("test", null)));
+
+        assertEquals(ConcurrentHashMap.class, codec(new ConcurrentHashMap<>(Collections.singletonMap("test", Arrays.asList(1, 2, 3)))).getClass());
 
     }
 

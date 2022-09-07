@@ -1,6 +1,7 @@
 package org.jetlinks.core.utils;
 
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.Primitives;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -17,10 +18,9 @@ import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -418,7 +418,7 @@ public class SerializeUtils {
                 input.writeObject(value);
             }
         },
-        COLLECTION(0x0F, List.class) {
+        LIST(0x0F, List.class) {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
@@ -441,6 +441,70 @@ public class SerializeUtils {
                 for (Object o : list) {
                     writeObject(o, input);
                 }
+            }
+        },
+
+        SET(0x13, Set.class) {
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                int len = input.readInt();
+                Set<Object> list = Sets.newLinkedHashSetWithExpectedSize(len);
+                for (int i = 0; i < len; i++) {
+                    list.add(SerializeUtils.readObject(input));
+                }
+                return list;
+            }
+
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput input) {
+                Collection<?> list = ((Collection<?>) value);
+
+                int len = list.size();
+                input.writeInt(len);
+
+                for (Object o : list) {
+                    writeObject(o, input);
+                }
+            }
+        },
+        //ConcurrentSet
+        C_SET(0x23, Set.class) {
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                int len = input.readInt();
+                Set<Object> list = ConcurrentHashMap.newKeySet(len);
+                for (int i = 0; i < len; i++) {
+                    list.add(SerializeUtils.readObject(input));
+                }
+                return list;
+            }
+
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput input) {
+                Collection<?> list = ((Collection<?>) value);
+
+                int len = list.size();
+                input.writeInt(len);
+
+                for (Object o : list) {
+                    writeObject(o, input);
+                }
+            }
+        },
+        //ConcurrentMap
+        C_MAP(0x20, ConcurrentMap.class) {
+            @Override
+            Object read(ObjectInput input) {
+                return SerializeUtils.readMap(input, ConcurrentHashMap::new);
+            }
+
+            @Override
+            void write(Object value, ObjectOutput input) {
+                writeKeyValue(((Map) value), input);
             }
         },
 
@@ -574,11 +638,20 @@ public class SerializeUtils {
             if (javaType instanceof BigInteger) {
                 return BIG_INTEGER;
             }
+            if (javaType instanceof ConcurrentMap) {
+                return C_MAP;
+            }
+            if (javaType instanceof ConcurrentHashMap.KeySetView) {
+                return C_SET;
+            }
             if (javaType instanceof Map) {
                 return MAP;
             }
             if (javaType instanceof List) {
-                return COLLECTION;
+                return LIST;
+            }
+            if (javaType instanceof Set) {
+                return SET;
             }
             if (javaType instanceof ByteBuf) {
                 return Netty;
