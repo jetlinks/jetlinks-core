@@ -137,7 +137,10 @@ public interface FileQueue<T> extends Queue<T> {
                     }
                     : build();
 
-            return Sinks.many().unicast().onBackpressureBuffer(queue, queue::close);
+            return Sinks.unsafe()
+                        .many()
+                        .unicast()
+                        .onBackpressureBuffer(queue, queue::close);
         }
     }
 }
