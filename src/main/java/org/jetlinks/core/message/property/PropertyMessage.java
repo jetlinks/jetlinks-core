@@ -70,7 +70,7 @@ public interface PropertyMessage extends Externalizable {
         if (CollectionUtils.isEmpty(sourceTime)) {
             return Optional.empty();
         }
-        return Optional.of(sourceTime.get(property));
+        return Optional.ofNullable(sourceTime.get(property));
     }
 
     /**
@@ -84,7 +84,7 @@ public interface PropertyMessage extends Externalizable {
         if (CollectionUtils.isEmpty(states)) {
             return Optional.empty();
         }
-        return Optional.of(states.get(property));
+        return Optional.ofNullable(states.get(property));
     }
 
     /**
