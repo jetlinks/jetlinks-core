@@ -3,7 +3,9 @@ package org.jetlinks.core.things.relation;
 import org.jetlinks.core.metadata.Metadata;
 import org.jetlinks.core.metadata.PropertyMetadata;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 对象类型，用于定义一个对象的分类,如: 设备,用户
@@ -27,6 +29,13 @@ public interface ObjectType extends Metadata {
      * @return 关系定义
      */
     List<Relation> getRelations(String type);
+
+    /**
+     * @return 获取全部关系信息
+     */
+    default Map<String, List<Relation>> getRelations() {
+        return Collections.emptyMap();
+    }
 
     /**
      * 获取支持建立关系的对象类型,如: 设备支持和用户建立关系

@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
 
@@ -9,7 +10,7 @@ import java.util.Optional;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface Metadata {
+public interface Metadata extends Serializable {
 
     /**
      * 唯一标识别
