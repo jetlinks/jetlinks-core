@@ -2,8 +2,10 @@ package org.jetlinks.core.things;
 
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 /**
- * 物实例数据管理器
+ * 物实例数据管理器,用于管理物实例最近n条数据.
  *
  * @author zhouhao
  * @since 1.1.9
@@ -53,6 +55,47 @@ public interface ThingsDataManager {
      */
     Mono<Long> getFirstPropertyTime(String thingType,
                                     String thingId);
+
+    /**
+     * 获取指定属性在基准时间范围的全部缓存数据,缓存的数据量由具体的实现决定,通常不会返回全部的历史数据.
+     *
+     * @param thingType 类型
+     * @param thingId   物ID
+     * @param property  属性
+     * @param from      基准起始时间
+     * @param to        基准截止时间
+     * @return 属性数据
+     * @since 1.20
+     */
+    default Mono<List<ThingProperty>> getProperties(String thingType,
+                                                    String thingId,
+                                                    String property,
+                                                    long from,
+                                                    long to) {
+        return this
+                .getLastProperty(thingType, thingId, property, to)
+                .expandDeep(prop -> this
+                        .getLastProperty(thingType, thingId, property, prop.getTimestamp() - 1)
+                        .filter(p -> p.getTimestamp() >= from))
+                .collectList();
+    }
+
+    /**
+     * 获取指定属性在基准时间前的全部缓存数据,缓存的数据量由具体的实现决定,通常不会返回全部的历史数据.
+     *
+     * @param thingType 类型
+     * @param thingId   物ID
+     * @param property  属性
+     * @param baseTime  基准时间
+     * @return 属性数据
+     * @since 1.20
+     */
+    default Mono<List<ThingProperty>> getProperties(String thingType,
+                                                    String thingId,
+                                                    String property,
+                                                    long baseTime) {
+        return getProperties(thingType, thingId, property, 0, baseTime);
+    }
 
 
     /**
