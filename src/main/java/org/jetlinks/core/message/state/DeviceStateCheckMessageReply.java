@@ -6,6 +6,10 @@ import org.jetlinks.core.device.DeviceState;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
 import org.jetlinks.core.message.MessageType;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+
 /**
  * 设备状态检查回复,如果设备存在则回复{@link DeviceStateCheckMessageReply#success(byte)}
  *
@@ -44,5 +48,17 @@ public class DeviceStateCheckMessageReply extends CommonDeviceMessageReply<Devic
     @Override
     public MessageType getMessageType() {
         return MessageType.STATE_CHECK_REPLY;
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        super.writeExternal(out);
+        out.writeByte(state);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        super.readExternal(in);
+        state = in.readByte();
     }
 }
