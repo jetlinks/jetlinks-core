@@ -6,8 +6,9 @@ import lombok.Setter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class UpdateTagMessage extends CommonDeviceMessage implements UpdateTingTagsMessage{
+public class UpdateTagMessage extends CommonDeviceMessage implements UpdateTingTagsMessage {
 
     @Setter
     private Map<String, Object> tags;
@@ -25,8 +26,11 @@ public class UpdateTagMessage extends CommonDeviceMessage implements UpdateTingT
     }
 
     public UpdateTagMessage tags(Map<String, Object> tags) {
+        if (tags == null) {
+            return this;
+        }
         if (this.tags == null) {
-            this.tags = tags;
+            this.tags = new ConcurrentHashMap<>(tags);
             return this;
         }
         this.tags.putAll(tags);

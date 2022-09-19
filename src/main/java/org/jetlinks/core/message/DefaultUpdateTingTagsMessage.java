@@ -4,8 +4,8 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Setter;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultUpdateTingTagsMessage extends CommonThingMessage<DefaultUpdateTingTagsMessage> implements UpdateTingTagsMessage {
 
@@ -18,15 +18,18 @@ public class DefaultUpdateTingTagsMessage extends CommonThingMessage<DefaultUpda
 
     public DefaultUpdateTingTagsMessage tag(String tag, Object value) {
         if (tags == null) {
-            tags = new HashMap<>();
+            tags = new ConcurrentHashMap<>();
         }
         tags.put(tag, value);
         return this;
     }
 
     public DefaultUpdateTingTagsMessage tags(Map<String, Object> tags) {
+        if (tags == null) {
+            return this;
+        }
         if (this.tags == null) {
-            this.tags = tags;
+            this.tags = new ConcurrentHashMap<>(tags);
             return this;
         }
         this.tags.putAll(tags);
