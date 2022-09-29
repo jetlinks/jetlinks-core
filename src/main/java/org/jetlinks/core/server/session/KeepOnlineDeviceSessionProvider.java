@@ -2,6 +2,7 @@ package org.jetlinks.core.server.session;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import org.jetlinks.core.device.DeviceConfigKey;
 import org.jetlinks.core.device.DeviceRegistry;
 import org.jetlinks.core.message.codec.Transport;
 import reactor.core.publisher.Mono;
@@ -33,19 +34,37 @@ class KeepOnlineDeviceSessionProvider implements DeviceSessionProvider {
         String deviceId = data.getString("deviceId");
         return registry
                 .getDevice(deviceId)
-                .map(device -> {
+                .flatMap(device -> {
                     String id = data.getString("id");
                     String transport = data.getString("transport");
                     long timeout = data.getLongValue("timeout");
                     long lstTime = data.getLongValue("lstTime");
-                    KeepOnlineSession session = new KeepOnlineSession(
-                            new LostDeviceSession(id,
-                                                  device,
-                                                  Transport.of(transport)),
-                            Duration.ofMillis(timeout));
-                    session.setLastKeepAliveTime(lstTime);
-                    session.setIgnoreParent(data.getBooleanValue("ignoreParent"));
-                    return session;
+                    boolean children = data.getBooleanValue("children");
+
+                    Mono<DeviceSession> sessionMono = Mono.just(new LostDeviceSession(
+                            id,
+                            device,
+                            Transport.of(transport)));
+                    //子设备会话
+                    if (children) {
+                        sessionMono = device
+                                .getSelfConfig(DeviceConfigKey.parentGatewayId)
+                                .flatMap(registry::getDevice)
+                                .map(parentDevice -> new ChildrenDeviceSession(
+                                        id,
+                                        new LostDeviceSession(id,
+                                                              parentDevice,
+                                                              Transport.of(transport)),
+                                        parentDevice));
+                    }
+
+                    return sessionMono
+                            .map(parent -> {
+                                KeepOnlineSession session = new KeepOnlineSession(parent, Duration.ofMillis(timeout));
+                                session.setLastKeepAliveTime(lstTime);
+                                session.setIgnoreParent(data.getBooleanValue("ignoreParent"));
+                                return session;
+                            });
                 });
     }
 
@@ -59,6 +78,7 @@ class KeepOnlineDeviceSessionProvider implements DeviceSessionProvider {
         data.put("lstTime", session.lastPingTime());
         data.put("transport", session.getTransport().getId());
         data.put("ignoreParent", keepOnlineSession.isIgnoreParent());
+        data.put("children", session.isWrapFrom(ChildrenDeviceSession.class));
         return Mono.just(JSON.toJSONBytes(data));
     }
 }
