@@ -20,8 +20,8 @@ public class CompositeMap<K, V> implements Map<K, V>, Serializable {
     public int size() {
         int duplicate = 0;
 
-        for (K e : first.keySet()) {
-            if (second.containsKey(e)) {
+        for (K e : second.keySet()) {
+            if (first.containsKey(e)) {
                 duplicate++;
             }
         }
@@ -46,7 +46,11 @@ public class CompositeMap<K, V> implements Map<K, V>, Serializable {
 
     @Override
     public V get(Object key) {
-        return first.getOrDefault(key, second.get(key));
+        V firstValue = first.get(key);
+        if (firstValue == null) {
+            return second.get(key);
+        }
+        return firstValue;
     }
 
     @Override
@@ -86,7 +90,7 @@ public class CompositeMap<K, V> implements Map<K, V>, Serializable {
 
     @Override
     public String toString() {
-        return "["+first+","+second+"]";
+        return "[" + first + "," + second + "]";
     }
 
     class ValueView extends AbstractCollection<V> {
@@ -103,8 +107,8 @@ public class CompositeMap<K, V> implements Map<K, V>, Serializable {
     }
 
     class ValueIteratorView extends AbstractIterator<V> {
-        private final Iterator<Entry<K,V>> firstIt = first.entrySet().iterator();
-        private final Iterator<Entry<K,V>> secondIt = second.entrySet().iterator();
+        private final Iterator<Entry<K, V>> firstIt = first.entrySet().iterator();
+        private final Iterator<Entry<K, V>> secondIt = second.entrySet().iterator();
 
         @Override
         protected V computeNext() {
@@ -114,7 +118,7 @@ public class CompositeMap<K, V> implements Map<K, V>, Serializable {
             }
 
             while (firstIt.hasNext()) {
-                Entry<K,V> e = firstIt.next();
+                Entry<K, V> e = firstIt.next();
                 if (!second.containsKey(e.getKey())) {
                     return e.getValue();
                 }

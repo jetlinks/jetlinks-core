@@ -58,6 +58,7 @@ public class CompositeMapTest {
                     Maps.asMap(Sets.newHashSet("1","2","3"),String::valueOf),
                     Maps.asMap(Sets.newHashSet("a","b","c","1"),String::valueOf)
             );
+            System.out.println(map);
             assertEquals(6,map.size());
             assertEquals(6,new HashMap<>(map).size());
             assertEquals(6,map.values().size());
@@ -82,6 +83,20 @@ public class CompositeMapTest {
             CompositeMap<String,String> map = new CompositeMap<>(
                     Maps.asMap(Sets.newHashSet("1","2","a"),String::valueOf),
                     Maps.asMap(Sets.newHashSet("1","2","3","4"),String::valueOf)
+            );
+            assertEquals(5,map.size());
+            assertEquals(5,new HashMap<>(map).size());
+            System.out.println(map.values());
+            assertEquals(5,map.values().size());
+            assertEquals(5,map.keySet().size());
+
+        }
+
+        {
+            CompositeMap<String,String> map = new CompositeMap<>(
+                    Maps.asMap(Sets.newHashSet("1","2","3","4"),String::valueOf),
+                    Maps.asMap(Sets.newHashSet("1","2","a"),String::valueOf)
+
             );
             assertEquals(5,map.size());
             assertEquals(5,new HashMap<>(map).size());

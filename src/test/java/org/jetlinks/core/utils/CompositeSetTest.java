@@ -66,6 +66,19 @@ public class CompositeSetTest {
 
         {
             CompositeSet<String> set = new CompositeSet<>(
+                    Sets.newHashSet("a", "b", "c", "d"),
+                    Sets.newHashSet("a", "b", "c")
+            );
+
+            assertEquals(4, set.size());
+            assertEquals(4, new ArrayList<>(set).size());
+            assertEquals(4, set.toArray(new String[0]).length);
+            System.out.println(set);
+
+        }
+
+        {
+            CompositeSet<String> set = new CompositeSet<>(
                     Sets.newHashSet("a", "b", "c"),
                     Sets.newHashSet("1", "2", "3")
             );

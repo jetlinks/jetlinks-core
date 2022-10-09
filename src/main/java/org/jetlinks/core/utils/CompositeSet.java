@@ -17,8 +17,8 @@ public class CompositeSet<E> extends CompositeCollection<E> implements Set<E> {
     public int size() {
         int duplicate = 0;
 
-        for (E e : first) {
-            if (second.contains(e)) {
+        for (E e :second ) {
+            if (first.contains(e)) {
                 duplicate++;
             }
         }
