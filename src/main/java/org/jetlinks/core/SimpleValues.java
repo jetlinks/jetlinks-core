@@ -19,7 +19,7 @@ class SimpleValues implements Values {
 
     @Override
     public Map<String, Object> getAllValues() {
-        return new HashMap<>(values);
+        return values instanceof CompositeMap ? values : Collections.unmodifiableMap(values);
     }
 
     @Override
