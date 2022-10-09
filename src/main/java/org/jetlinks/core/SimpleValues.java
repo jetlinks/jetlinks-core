@@ -4,7 +4,7 @@ import com.google.common.collect.Collections2;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.collections.map.CompositeMap;
+import org.jetlinks.core.utils.CompositeMap;
 import org.jetlinks.core.utils.ConverterUtils;
 
 import java.math.BigDecimal;
@@ -38,15 +38,24 @@ class SimpleValues implements Values {
     public Values merge(Values source) {
         Map<String, Object> sourceValues = source instanceof SimpleValues ? ((SimpleValues) source).values : source.getAllValues();
 
-        @SuppressWarnings("all")
-        Map<String, Object> merged = new CompositeMap(this.values, sourceValues);
+        Map<String, Object> values = new CompositeMap<>(sourceValues, this.values);
 
-        return Values.of(merged);
+        return Values.of(values);
     }
 
     @Override
     public int size() {
         return values.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return values.isEmpty();
+    }
+
+    @Override
+    public boolean isNoEmpty() {
+        return !values.isEmpty();
     }
 
     @Override

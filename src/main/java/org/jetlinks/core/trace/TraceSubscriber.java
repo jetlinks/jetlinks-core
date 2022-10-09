@@ -5,6 +5,7 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.context.Scope;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.BaseSubscriber;
@@ -58,7 +59,9 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
     protected void hookOnError(@Nonnull Throwable throwable) {
         span.setStatus(StatusCode.ERROR);
         span.recordException(throwable);
-        actual.onError(throwable);
+        try (Scope scope = span.makeCurrent()) {
+            actual.onError(throwable);
+        }
     }
 
     @Override
@@ -85,7 +88,9 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
             onNext.accept(this, value);
         }
         NEXT_COUNT.incrementAndGet(this);
-        actual.onNext(value);
+        try (Scope scope = span.makeCurrent()) {
+            actual.onNext(value);
+        }
     }
 
     @Override
@@ -97,7 +102,9 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
         if (!stateSet) {
             span.setStatus(StatusCode.OK);
         }
-        actual.onComplete();
+        try (Scope scope = span.makeCurrent()) {
+            actual.onComplete();
+        }
     }
 
     @Override
