@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -17,9 +16,8 @@ import java.io.ObjectOutput;
  */
 @Getter
 @Setter
-public class DirectDeviceMessage extends CommonDeviceMessage {
+public class DirectDeviceMessage extends CommonDeviceMessage<DirectDeviceMessage> {
 
-    @Nonnull
     private byte[] payload;
 
     @Override
@@ -41,15 +39,21 @@ public class DirectDeviceMessage extends CommonDeviceMessage {
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         super.writeExternal(out);
-        out.writeInt(payload.length);
-        out.write(payload);
+        if (payload == null) {
+            out.writeInt(0);
+        } else {
+            out.writeInt(payload.length);
+            out.write(payload);
+        }
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         super.readExternal(in);
         int len = in.readInt();
-        payload = new byte[len];
-        in.readFully(payload);
+        if (len > 0) {
+            payload = new byte[len];
+            in.readFully(payload);
+        }
     }
 }

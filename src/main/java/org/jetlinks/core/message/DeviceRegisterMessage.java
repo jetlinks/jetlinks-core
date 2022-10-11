@@ -12,7 +12,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class DeviceRegisterMessage extends CommonDeviceMessage {
+public class DeviceRegisterMessage extends CommonDeviceMessage<DeviceRegisterMessage> {
 
     @Override
     public MessageType getMessageType() {

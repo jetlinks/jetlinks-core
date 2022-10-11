@@ -23,7 +23,7 @@ import static org.jetlinks.core.utils.SerializeUtils.*;
  */
 @Getter
 @Setter
-public class UpgradeFirmwareMessage extends CommonDeviceMessage implements RepayableDeviceMessage<UpgradeFirmwareMessageReply> {
+public class UpgradeFirmwareMessage extends CommonDeviceMessage<UpgradeFirmwareMessage> implements RepayableDeviceMessage<UpgradeFirmwareMessageReply> {
 
     /**
      * 固件下载地址

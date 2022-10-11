@@ -15,7 +15,7 @@ import java.util.List;
  */
 @Getter
 @Setter
-public class FunctionInvokeMessage extends CommonDeviceMessage
+public class FunctionInvokeMessage extends CommonDeviceMessage<FunctionInvokeMessage>
         implements RepayableDeviceMessage<FunctionInvokeMessageReply>,
         ThingFunctionInvokeMessage<FunctionInvokeMessageReply> {
 
@@ -35,18 +35,6 @@ public class FunctionInvokeMessage extends CommonDeviceMessage
 
     public FunctionInvokeMessage addInput(FunctionParameter parameter) {
         inputs.add(parameter);
-        return this;
-    }
-
-    @Override
-    public FunctionInvokeMessage addHeader(String header, Object value) {
-        super.addHeader(header, value);
-        return this;
-    }
-
-    @Override
-    public FunctionInvokeMessage removeHeader(String header) {
-        super.removeHeader(header);
         return this;
     }
 

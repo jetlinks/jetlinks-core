@@ -19,7 +19,7 @@ import java.util.Map;
  */
 @Getter
 @Setter
-public class WritePropertyMessage extends CommonDeviceMessage
+public class WritePropertyMessage extends CommonDeviceMessage<WritePropertyMessage>
         implements RepayableDeviceMessage<WritePropertyMessageReply>,
         WriteThingPropertyMessage<WritePropertyMessageReply> {
 

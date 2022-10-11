@@ -20,7 +20,7 @@ import java.util.Map;
  */
 @Getter
 @Setter
-public class ReportFirmwareMessage extends CommonDeviceMessage {
+public class ReportFirmwareMessage extends CommonDeviceMessage<ReportFirmwareMessage> {
 
     //版本号
     private String version;

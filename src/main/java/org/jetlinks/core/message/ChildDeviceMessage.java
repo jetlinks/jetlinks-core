@@ -24,7 +24,7 @@ import java.util.Set;
  */
 @Getter
 @Setter
-public class ChildDeviceMessage extends CommonDeviceMessage implements RepayableDeviceMessage<ChildDeviceMessageReply> {
+public class ChildDeviceMessage extends CommonDeviceMessage<ChildDeviceMessage> implements RepayableDeviceMessage<ChildDeviceMessageReply> {
     private String childDeviceId;
 
     private Message childDeviceMessage;

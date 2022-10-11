@@ -1,6 +1,6 @@
 package org.jetlinks.core.message;
 
-public class DisconnectDeviceMessage extends CommonDeviceMessage implements RepayableDeviceMessage<DisconnectDeviceMessageReply> {
+public class DisconnectDeviceMessage extends CommonDeviceMessage<DisconnectDeviceMessage> implements RepayableDeviceMessage<DisconnectDeviceMessageReply> {
 
     @Override
     public DisconnectDeviceMessageReply newReply() {

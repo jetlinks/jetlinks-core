@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class DerivedMetadataMessage extends CommonDeviceMessage {
+public class DerivedMetadataMessage extends CommonDeviceMessage<DerivedMetadataMessage> {
 
     //元数据
     private String metadata;

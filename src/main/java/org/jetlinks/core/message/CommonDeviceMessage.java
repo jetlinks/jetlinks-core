@@ -6,10 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
+import org.jetlinks.core.GenericHeaderSupport;
 
 /**
  * @author zhouhao
@@ -17,7 +14,7 @@ import java.util.function.BiFunction;
  */
 @Getter
 @Setter
-public class CommonDeviceMessage implements DeviceMessage {
+public class CommonDeviceMessage<SELF extends CommonDeviceMessage<SELF> > extends GenericHeaderSupport<SELF> implements DeviceMessage {
     private static final long serialVersionUID = -6849794470754667710L;
 
     private String code;
@@ -26,16 +23,7 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     private String deviceId;
 
-    private Map<String, Object> headers;
-
     private long timestamp = System.currentTimeMillis();
-
-    public void setHeaders(Map<String, Object> headers) {
-        if (headers != null && !(headers instanceof ConcurrentHashMap)) {
-            headers = new ConcurrentHashMap<>(headers);
-        }
-        this.headers = headers;
-    }
 
     @Override
     @JsonIgnore
@@ -52,57 +40,24 @@ public class CommonDeviceMessage implements DeviceMessage {
     }
 
     @Override
-    public CommonDeviceMessage messageId(String messageId) {
+    public SELF messageId(String messageId) {
         setMessageId(messageId);
-        return this;
+        return castSelf();
     }
 
     @Override
-    public CommonDeviceMessage thingId(String thingType, String thingId) {
+    public SELF thingId(String thingType, String thingId) {
         this.setDeviceId(thingId);
-        return this;
+        return castSelf();
     }
 
-    private Map<String, Object> safeGetHeader() {
-        return headers == null ? headers = new ConcurrentHashMap<>(64) : headers;
-    }
 
     @Override
-    public CommonDeviceMessage timestamp(long timestamp) {
+    public SELF timestamp(long timestamp) {
         this.timestamp = timestamp;
-        return this;
+        return castSelf();
     }
 
-    @Override
-    public synchronized CommonDeviceMessage addHeader(String header, Object value) {
-
-        if (header != null && value != null) {
-            safeGetHeader().put(header, value);
-        }
-        return this;
-    }
-
-    @Override
-    public synchronized CommonDeviceMessage addHeaderIfAbsent(String header, Object value) {
-
-        if (header != null && value != null) {
-            safeGetHeader().putIfAbsent(header, value);
-        }
-        return this;
-    }
-
-    @Override
-    public CommonDeviceMessage removeHeader(String header) {
-        if (this.headers != null) {
-            this.headers.remove(header);
-        }
-        return this;
-    }
-
-    @Override
-    public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
-        return safeGetHeader().compute(key, computer);
-    }
 
     @Override
     public JSONObject toJson() {
@@ -113,7 +68,14 @@ public class CommonDeviceMessage implements DeviceMessage {
 
     @Override
     public void fromJson(JSONObject jsonObject) {
-        DeviceMessage.super.fromJson(jsonObject);
+        FastBeanCopier.copy(jsonObject, this, "headers");
+        if (timestamp == 0) {
+            timestamp = System.currentTimeMillis();
+        }
+        JSONObject headers = jsonObject.getJSONObject("headers");
+        if (null != headers) {
+            headers.forEach(this::addHeader);
+        }
     }
 
     @Override

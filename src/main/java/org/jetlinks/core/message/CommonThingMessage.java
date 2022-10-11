@@ -4,11 +4,9 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
+import org.jetlinks.core.GenericHeaderSupport;
 
 import javax.annotation.Nonnull;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
 
 /**
  * @author zhouhao
@@ -16,7 +14,7 @@ import java.util.function.BiFunction;
  */
 @Getter
 @Setter
-public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> implements ThingMessage {
+public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> extends GenericHeaderSupport<SELF> implements ThingMessage {
     private static final long serialVersionUID = -6849794470754667710L;
 
     private String code;
@@ -28,15 +26,6 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
 
     @Nonnull
     private String thingId;
-
-    private Map<String, Object> headers;
-
-    public void setHeaders(Map<String, Object> headers) {
-        if (headers != null && !(headers instanceof ConcurrentHashMap)) {
-            headers = new ConcurrentHashMap<>(headers);
-        }
-        this.headers = headers;
-    }
 
     private long timestamp = System.currentTimeMillis();
 
@@ -55,43 +44,12 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
         return castSelf();
     }
 
-    @Override
-    public synchronized SELF addHeader(String header, Object value) {
-        if (header != null && value != null) {
-            safeGetHeader().put(header, value);
-        }
-        return castSelf();
-    }
-
-    @Override
-    public synchronized SELF addHeaderIfAbsent(String header, Object value) {
-        if (header != null && value != null) {
-            safeGetHeader().putIfAbsent(header, value);
-        }
-        return castSelf();
-    }
-
-    private Map<String, Object> safeGetHeader() {
-        return headers == null ? headers = new ConcurrentHashMap<>(64) : headers;
-    }
 
     public SELF messageId(String messageId) {
         this.setMessageId(messageId);
         return castSelf();
     }
 
-    @SuppressWarnings("all")
-    protected SELF castSelf() {
-        return (SELF) this;
-    }
-
-    @Override
-    public SELF removeHeader(String header) {
-        if (this.headers != null) {
-            this.headers.remove(header);
-        }
-        return castSelf();
-    }
 
     @Override
     public JSONObject toJson() {
@@ -101,13 +59,15 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
     }
 
     @Override
-    public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
-       return safeGetHeader().compute(key, computer);
-    }
-
-    @Override
     public void fromJson(JSONObject jsonObject) {
-        ThingMessage.super.fromJson(jsonObject);
+        FastBeanCopier.copy(jsonObject, this, "headers");
+        if (timestamp == 0) {
+            timestamp = System.currentTimeMillis();
+        }
+        JSONObject headers = jsonObject.getJSONObject("headers");
+        if (null != headers) {
+            headers.forEach(this::addHeader);
+        }
     }
 
     @Override
@@ -120,4 +80,5 @@ public abstract class CommonThingMessage<SELF extends CommonThingMessage<SELF>> 
     public SELF copy() {
         return (SELF) ThingMessage.super.copy();
     }
+
 }

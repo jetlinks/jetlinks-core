@@ -20,7 +20,7 @@ import static org.jetlinks.core.utils.SerializeUtils.writeNullableUTF;
  */
 @Getter
 @Setter
-public class UpgradeFirmwareProgressMessage extends CommonDeviceMessage {
+public class UpgradeFirmwareProgressMessage extends CommonDeviceMessage<UpgradeFirmwareProgressMessage> {
 
     /**
      * 进度0-100

@@ -188,7 +188,14 @@ public enum MessageType {
     }
 
     public <T extends DeviceMessage> T forDevice() {
-        return deviceInstance == null ? null : (T) deviceInstance.get();
+        if (deviceInstance == null) {
+            return null;
+        }
+        Message msg = deviceInstance.get();
+        if (msg instanceof DeviceMessage) {
+            return (T) msg;
+        }
+        return null;
     }
 
     public boolean iSupportDevice() {
@@ -230,12 +237,6 @@ public enum MessageType {
             T msg = (T) supplier.get();
             msg.fromJson(new JSONObject(map));
             return msg;
-//            try {
-//                return (T) FastBeanCopier.copy(map, supplier);
-//            } catch (Throwable e) {
-//                //fallback jsonobject
-//                return (T) new JSONObject(map).toJavaObject(supplier.get().getClass());
-//            }
         }
         return null;
     }

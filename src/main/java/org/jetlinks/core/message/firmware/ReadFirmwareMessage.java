@@ -9,7 +9,7 @@ import org.jetlinks.core.message.RepayableDeviceMessage;
  *
  * @since 1.0.3
  */
-public class ReadFirmwareMessage extends CommonDeviceMessage implements RepayableDeviceMessage<ReadFirmwareMessageReply> {
+public class ReadFirmwareMessage extends CommonDeviceMessage<ReadFirmwareMessage> implements RepayableDeviceMessage<ReadFirmwareMessageReply> {
 
     @Override
     public ReadFirmwareMessageReply newReply() {

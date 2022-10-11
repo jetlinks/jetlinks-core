@@ -15,7 +15,7 @@ import org.jetlinks.core.message.RepayableDeviceMessage;
  * @author zhouhao
  * @since 1.1.6
  */
-public class DeviceStateCheckMessage extends CommonDeviceMessage implements RepayableDeviceMessage<DeviceStateCheckMessageReply> {
+public class DeviceStateCheckMessage extends CommonDeviceMessage<DeviceStateCheckMessage> implements RepayableDeviceMessage<DeviceStateCheckMessageReply> {
 
     public static DeviceStateCheckMessage create(String deviceId) {
         DeviceStateCheckMessage message = new DeviceStateCheckMessage();

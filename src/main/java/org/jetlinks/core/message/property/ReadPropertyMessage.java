@@ -21,7 +21,7 @@ import java.util.List;
  */
 @Getter
 @Setter
-public class ReadPropertyMessage extends CommonDeviceMessage implements
+public class ReadPropertyMessage extends CommonDeviceMessage<ReadPropertyMessage> implements
         RepayableDeviceMessage<ReadPropertyMessageReply>,
         ReadThingPropertyMessage<ReadPropertyMessageReply> {
 

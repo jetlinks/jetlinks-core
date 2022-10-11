@@ -5,12 +5,9 @@ import com.alibaba.fastjson.annotation.JSONField;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import org.hswebframework.web.bean.FastBeanCopier;
+import org.jetlinks.core.GenericHeaderSupport;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
 
 /**
  * @author zhouhao
@@ -22,7 +19,7 @@ import java.util.function.BiFunction;
 @AllArgsConstructor
 @NoArgsConstructor
 @SuppressWarnings("all")
-public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply> implements DeviceMessageReply {
+public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self>> extends GenericHeaderSupport<Self> implements DeviceMessageReply {
     private static final long serialVersionUID = -6849794470754667710L;
 
     private boolean success = true;
@@ -37,14 +34,6 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply> imp
 
     private long timestamp = System.currentTimeMillis();
 
-    private Map<String, Object> headers;
-
-    public void setHeaders(Map<String, Object> headers) {
-        if (headers != null && !(headers instanceof ConcurrentHashMap)) {
-            headers = new ConcurrentHashMap<>(headers);
-        }
-        this.headers = headers;
-    }
 
     @Override
     @JsonIgnore
@@ -58,33 +47,6 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply> imp
         return DeviceMessageReply.super.getThingType();
     }
 
-    private Map<String, Object> safeGetHeader() {
-        return headers == null ? headers = new ConcurrentHashMap<>(64) : headers;
-    }
-
-    @Override
-    public synchronized Self addHeaderIfAbsent(String header, Object value) {
-        if (header != null && value != null) {
-            safeGetHeader().putIfAbsent(header, value);
-        }
-        return caseSelf();
-    }
-
-    @Override
-    public synchronized Self addHeader(String header, Object value) {
-        if (header != null && value != null) {
-            safeGetHeader().put(header, value);
-        }
-        return caseSelf();
-    }
-
-    @Override
-    public Self removeHeader(String header) {
-        if (headers != null) {
-            this.headers.remove(header);
-        }
-        return caseSelf();
-    }
 
     public Self code(String code) {
         this.code = code;
@@ -179,26 +141,14 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply> imp
 
     @Override
     public void fromJson(JSONObject jsonObject) {
-        DeviceMessageReply.super.fromJson(jsonObject);
-        success = jsonObject.getBooleanValue("success");
-
-        timestamp = jsonObject.getLongValue("timestamp");
+        FastBeanCopier.copy(jsonObject, this, "headers");
         if (timestamp == 0) {
             timestamp = System.currentTimeMillis();
         }
-        messageId = jsonObject.getString("messageId");
-        deviceId = jsonObject.getString("deviceId");
-        if (deviceId == null) {
-            deviceId = jsonObject.getString("thingId");
+        JSONObject headers = jsonObject.getJSONObject("headers");
+        if (null != headers) {
+            headers.forEach(this::addHeader);
         }
-        code = jsonObject.getString("code");
-        message = jsonObject.getString("message");
-        headers = jsonObject.getJSONObject("headers");
-    }
-
-    @Override
-    public Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
-        return safeGetHeader().compute(key, computer);
     }
 
     @Override

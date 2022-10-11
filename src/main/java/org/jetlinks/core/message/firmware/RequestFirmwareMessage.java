@@ -19,7 +19,7 @@ import java.io.ObjectOutput;
  */
 @Getter
 @Setter
-public class RequestFirmwareMessage extends CommonDeviceMessage implements RepayableDeviceMessage<RequestFirmwareMessageReply> {
+public class RequestFirmwareMessage extends CommonDeviceMessage<RequestFirmwareMessage> implements RepayableDeviceMessage<RequestFirmwareMessageReply> {
 
     //当前设备固件版本,没有则不传
     private String currentVersion;

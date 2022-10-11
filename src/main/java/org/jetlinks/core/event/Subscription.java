@@ -29,6 +29,9 @@ public class Subscription implements Externalizable {
 
     private transient Runnable doOnSubscribe;
 
+    //优先级,值越小优先级越高,优先级高的订阅者会先收到消息
+    private int priority = Integer.MAX_VALUE;
+
     public Subscription() {
     }
 
@@ -62,7 +65,7 @@ public class Subscription implements Externalizable {
     }
 
     public Subscription copy(Feature... newFeatures) {
-        return new Subscription(subscriber, topics, newFeatures, null);
+        return new Subscription(subscriber, topics, newFeatures, null, priority);
     }
 
     public Subscription onSubscribe(Runnable sub) {
@@ -84,6 +87,7 @@ public class Subscription implements Externalizable {
         }
 
         out.writeLong(EnumDict.toMask(features));
+        out.writeInt(priority);
     }
 
     @Override
@@ -99,6 +103,7 @@ public class Subscription implements Externalizable {
         features = EnumDict
                 .getByMask(Feature.class, in.readLong())
                 .toArray(new Feature[0]);
+        priority = in.readInt();
     }
 
     @Override
@@ -147,9 +152,15 @@ public class Subscription implements Externalizable {
         private final Set<Feature> features = new HashSet<>();
 
         private Runnable doOnSubscribe;
+        private int priority;
 
         public Builder randomSubscriberId() {
             return subscriberId(UUID.randomUUID().toString());
+        }
+
+        public Builder priority(int priority) {
+            this.priority = priority;
+            return this;
         }
 
         public Builder subscriberId(String id) {
@@ -210,7 +221,7 @@ public class Subscription implements Externalizable {
             }
             Assert.notEmpty(topics, "topic cannot be empty");
             Assert.hasText(subscriber, "subscriber cannot be empty");
-            return new Subscription(subscriber, topics.toArray(new String[0]), features.toArray(new Feature[0]), doOnSubscribe);
+            return new Subscription(subscriber, topics.toArray(new String[0]), features.toArray(new Feature[0]), doOnSubscribe, priority);
         }
 
     }

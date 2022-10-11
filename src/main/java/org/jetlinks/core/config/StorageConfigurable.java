@@ -43,7 +43,7 @@ public interface StorageConfigurable extends Configurable {
         if (fallbackParent) {
             return getReactiveStorage()
                     .flatMap(store -> store.getConfig(key))
-                    .switchIfEmpty(getParent().flatMap(parent -> parent.getConfig(key)));
+                    .switchIfEmpty(Mono.defer(()-> getParent().flatMap(parent -> parent.getConfig(key))));
         }
         return getReactiveStorage().flatMap(store -> store.getConfig(key));
     }

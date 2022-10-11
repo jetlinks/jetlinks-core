@@ -21,7 +21,7 @@ import java.util.Map;
  */
 @Getter
 @Setter
-public class ReportPropertyMessage extends CommonDeviceMessage implements ThingReportPropertyMessage {
+public class ReportPropertyMessage extends CommonDeviceMessage<ReportPropertyMessage> implements ThingReportPropertyMessage {
 
     /**
      * 属性值信息,key为物模型中的属性ID,value为物模型对应的类型值.

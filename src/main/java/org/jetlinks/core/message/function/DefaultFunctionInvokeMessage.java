@@ -35,19 +35,6 @@ public class DefaultFunctionInvokeMessage extends CommonThingMessage<DefaultFunc
         inputs.add(parameter);
         return this;
     }
-
-    @Override
-    public DefaultFunctionInvokeMessage addHeader(String header, Object value) {
-        super.addHeader(header, value);
-        return this;
-    }
-
-    @Override
-    public DefaultFunctionInvokeMessage removeHeader(String header) {
-        super.removeHeader(header);
-        return this;
-    }
-
     @Override
     public DefaultFunctionInvokeMessage functionId(String id) {
         this.functionId=id;

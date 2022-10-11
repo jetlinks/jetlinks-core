@@ -144,9 +144,10 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
                 })
                 //如果上游为空,则使用产品的物模型
-                .switchIfEmpty(this.getParent()
-                                   .switchIfEmpty(Mono.defer(this::onProductNonexistent))
-                                   .flatMap(DeviceProductOperator::getMetadata)
+                .switchIfEmpty(
+                        Mono.defer(() -> this.getParent()
+                                             .switchIfEmpty(Mono.defer(this::onProductNonexistent))
+                                             .flatMap(DeviceProductOperator::getMetadata))
                 );
     }
 

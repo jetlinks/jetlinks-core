@@ -10,7 +10,7 @@ import java.io.ObjectOutput;
 
 @Getter
 @Setter
-public class DeviceLogMessage extends CommonDeviceMessage {
+public class DeviceLogMessage extends CommonDeviceMessage<DeviceLogMessage> {
 
     private String log;
 
