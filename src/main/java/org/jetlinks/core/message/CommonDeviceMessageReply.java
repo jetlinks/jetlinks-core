@@ -51,31 +51,31 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
     public Self code(String code) {
         this.code = code;
 
-        return caseSelf();
+        return castSelf();
     }
 
     public Self message(String message) {
         this.message = message;
 
-        return caseSelf();
+        return castSelf();
     }
 
     public Self deviceId(String deviceId) {
         this.deviceId = deviceId;
 
-        return caseSelf();
+        return castSelf();
     }
 
     @Override
     public Self success() {
         success = true;
-        return caseSelf();
+        return castSelf();
     }
 
     @Override
     public Self success(boolean success) {
         this.success = success;
-        return caseSelf();
+        return castSelf();
     }
 
     public Self error(Throwable e) {
@@ -89,7 +89,7 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
         addHeader("errorType", e.getClass().getName());
         addHeader("errorMessage", e.getMessage());
 
-        return (caseSelf());
+        return (castSelf());
     }
 
     @Override
@@ -98,7 +98,7 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
         code = errorCode.name();
         message = errorCode.getText();
         timestamp = System.currentTimeMillis();
-        return caseSelf();
+        return castSelf();
     }
 
     @Override
@@ -108,28 +108,19 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
             this.deviceId = ((DeviceMessage) message).getDeviceId();
         }
 
-        return caseSelf();
+        return castSelf();
     }
 
     @Override
     public Self messageId(String messageId) {
         this.messageId = messageId;
-        return caseSelf();
+        return castSelf();
     }
 
     @Override
     public Self timestamp(long timestamp) {
         this.timestamp = timestamp;
-        return caseSelf();
-    }
-
-    @Override
-    public <T> Self addHeader(HeaderKey<T> header, T value) {
-        return (Self) DeviceMessageReply.super.addHeader(header, value);
-    }
-
-    private Self caseSelf() {
-        return (Self) this;
+        return castSelf();
     }
 
     @Override

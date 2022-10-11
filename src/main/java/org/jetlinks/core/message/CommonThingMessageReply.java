@@ -116,11 +116,6 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     }
 
     @Override
-    public <T> SELF addHeader(HeaderKey<T> header, T value) {
-        return (SELF) ThingMessageReply.super.addHeader(header, value);
-    }
-
-    @Override
     public JSONObject toJson() {
         JSONObject json = FastBeanCopier.copy(this, JSONObject::new);
         json.put("messageType", getMessageType().name());
