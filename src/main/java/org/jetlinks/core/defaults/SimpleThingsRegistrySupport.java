@@ -86,7 +86,7 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
                 .ifPresent(conf -> configs.put(ThingsConfigKeys.version.getKey(), conf));
         Optional.ofNullable(info.getTemplateId())
                 .ifPresent(conf -> configs.put(ThingsConfigKeys.templateId.getKey(), conf));
-        Optional.ofNullable(info.getTemplateId())
+        Optional.ofNullable(info.getName())
                 .ifPresent(conf -> configs.put(ThingsConfigKeys.name.getKey(), conf));
 
         //FIXME 版本比对?
@@ -133,6 +133,10 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
                 .ifPresent(conf -> configs.put(ThingsConfigKeys.metadata.getKey(), conf));
         Optional.ofNullable(info.getVersion())
                 .ifPresent(conf -> configs.put(ThingsConfigKeys.version.getKey(), conf));
+
+        Optional.ofNullable(info.getName())
+                .ifPresent(conf -> configs.put(ThingsConfigKeys.name.getKey(), conf));
+
         //FIXME 版本比对?
         return templateRegistryInfo
                 .flatMap(storage -> storage.setConfig(info.getId(), System.currentTimeMillis()))
