@@ -47,6 +47,15 @@ public interface RpcManager {
     <I> Flux<RpcService<I>> getServices(Class<I> service);
 
     /**
+     * 选择一个服务
+     *
+     * @param service 服务类型
+     * @param <I>     服务类型
+     * @return 选择结果
+     */
+    <I> Mono<RpcService<I>> selectService(Class<I> service);
+
+    /**
      * 获取指定服务ID的RPC服务接口
      *
      * @param serviceId 服务ID
