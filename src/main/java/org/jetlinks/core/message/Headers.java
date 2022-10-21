@@ -153,4 +153,21 @@ public interface Headers {
      * @see DeviceOfflineMessage
      */
     HeaderKey<Boolean> clearAllSession = HeaderKey.of("clearAllSession", false, Boolean.class);
+
+    /**
+     * copy有意义的header到新到消息中,比如标记异步,超时等信息
+     *
+     * @param from from
+     * @param to   to
+     */
+    static void copyFunctionalHeader(Message from, Message to) {
+
+        from.getHeader(async).ifPresent(val -> to.addHeader(async, val));
+        from.getHeader(timeout).ifPresent(val -> to.addHeader(timeout, val));
+        from.getHeader(sendAndForget).ifPresent(val -> to.addHeader(sendAndForget, val));
+        from.getHeader(force).ifPresent(val -> to.addHeader(force, val));
+        from.getHeader(ignore).ifPresent(val -> to.addHeader(ignore, val));
+        from.getHeader(ignoreLog).ifPresent(val -> to.addHeader(ignoreLog, val));
+
+    }
 }

@@ -17,7 +17,6 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -184,9 +183,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         children.setChildDeviceMessage(message);
 
         // https://github.com/jetlinks/jetlinks-pro/issues/19
-        if (null != message.getHeaders()) {
-            children.setHeaders(new ConcurrentHashMap<>(message.getHeaders()));
-        }
+        Headers.copyFunctionalHeader(message, children);
         message.addHeader(Headers.dispatchToParent, true);
         children.validate();
         return children;
@@ -254,7 +251,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                     }
                     return Flux
                             .from(message)
-                            .flatMap(msg -> interceptor.preSend(operator,msg))
+                            .flatMap(msg -> interceptor.preSend(operator, msg))
                             .concatMap(msg -> Flux
                                     .defer(() -> {
                                         //缓存中没有serverId,说明当前设备并未连接到平台.
