@@ -1,6 +1,7 @@
 package org.jetlinks.core.message.codec.context;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -54,7 +55,7 @@ class QueueSerialContext<IN, OUT> implements SerialContext<IN, OUT> {
             Tuple2<IN, Consumer<OUT>> input = inputQueue.poll();
             if (input != null) {
                 output.set(input.getT2());
-                inputSinksMany.emitNext(input.getT1(), Sinks.EmitFailureHandler.FAIL_FAST);
+                inputSinksMany.emitNext(input.getT1(), Reactors.emitFailureHandler());
             }
         }
     }
