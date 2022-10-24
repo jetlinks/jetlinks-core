@@ -6,6 +6,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.context.ContextView;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -106,6 +107,15 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 .filter(c -> c.loaded != null)
                 .map(c -> c.loaded)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public void clear() {
+        Map<K, Container<K, V>> cache = new HashMap<>(this.cache);
+        this.cache.clear();
+        for (Container<K, V> value : cache.values()) {
+            value.dispose();
+        }
     }
 
     @SuppressWarnings("rawtypes")

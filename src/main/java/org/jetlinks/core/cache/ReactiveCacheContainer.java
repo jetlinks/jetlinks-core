@@ -28,6 +28,8 @@ public interface ReactiveCacheContainer<K, V> extends Disposable {
 
     List<V> valuesNow();
 
+    void clear();
+
     static <K, T> ReactiveCacheContainer<K, T> create() {
         return new DefaultReactiveCacheContainer<>();
     }
