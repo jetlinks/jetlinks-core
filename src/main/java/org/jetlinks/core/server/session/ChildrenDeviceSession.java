@@ -11,12 +11,14 @@ import reactor.core.publisher.Mono;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiConsumer;
 
 
 @Slf4j
-public class ChildrenDeviceSession implements DeviceSession {
+public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSession {
     @Getter
     private final String id;
 
@@ -24,7 +26,7 @@ public class ChildrenDeviceSession implements DeviceSession {
     private final String deviceId;
 
     @Getter
-    private final DeviceSession parent;
+    private DeviceSession parent;
 
     @Getter
     private final DeviceOperator operator;
@@ -34,6 +36,8 @@ public class ChildrenDeviceSession implements DeviceSession {
     private long lastKeepAliveTime;
 
     private long keepAliveTimeOutMs = -1;
+
+    private BiConsumer<DeviceSession, DeviceSession> parentChanged;
 
     public ChildrenDeviceSession(String deviceId, DeviceSession parent, DeviceOperator operator) {
         this.id = deviceId;
@@ -148,5 +152,25 @@ public class ChildrenDeviceSession implements DeviceSession {
     @Override
     public String toString() {
         return "children device[" + deviceId + "] in " + parent;
+    }
+
+    public synchronized void doOnParentChanged(BiConsumer<DeviceSession, DeviceSession> consumer) {
+        this.parentChanged = consumer;
+    }
+
+    @Override
+    public void replaceWith(DeviceSession session) {
+        if (session == this || Objects.equals(session.getDeviceId(), this.getDeviceId())) {
+            throw new IllegalStateException("can not replace with self");
+        }
+        DeviceSession old = this.parent;
+        if (session.isWrapFrom(ChildrenDeviceSession.class)) {
+            this.parent = session.unwrap(ChildrenDeviceSession.class).getParent();
+        } else {
+            this.parent = session;
+        }
+        if (parentChanged != null) {
+            parentChanged.accept(old, this.parent);
+        }
     }
 }
