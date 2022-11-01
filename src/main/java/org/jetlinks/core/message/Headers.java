@@ -92,6 +92,7 @@ public interface Headers {
      *
      * @see org.jetlinks.core.utils.DeviceMessageTracer
      */
+    @Deprecated
     HeaderKey<Boolean> enableTrace = HeaderKey.of("_trace", Boolean.getBoolean("device.message.trace.enabled"), Boolean.class);
 
     /**
@@ -153,6 +154,16 @@ public interface Headers {
      * @see DeviceOfflineMessage
      */
     HeaderKey<Boolean> clearAllSession = HeaderKey.of("clearAllSession", false, Boolean.class);
+
+//    /**
+//     * 当返回错误{@link ThingMessageReply#isSuccess()}false时,是否通过抛出异常的方式返回错误信息.默认为true.
+//     *
+//     * @see ThingMessageReply#isSuccess()
+//     * @see ThingMessageReply#getCode()
+//     * @see org.jetlinks.core.exception.DeviceOperationException
+//     * @see org.jetlinks.core.enums.ErrorCode
+//     */
+//    HeaderKey<Boolean> throwWhenReplyError = HeaderKey.of("throwWhenReplyError", false, Boolean.class);
 
     /**
      * copy有意义的header到新到消息中,比如标记异步,超时等信息
