@@ -1,5 +1,6 @@
 package org.jetlinks.core.server.session;
 
+import io.netty.util.ReferenceCountUtil;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -74,7 +75,9 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
                     if (parent.isAlive()) {
                         return parent.send(encodedMessage);
                     }
-                    return Mono.error(new DeviceOperationException(ErrorCode.CONNECTION_LOST));
+                    return Mono
+                            .<Boolean>error(new DeviceOperationException(ErrorCode.CONNECTION_LOST))
+                            .doAfterTerminate(() -> ReferenceCountUtil.safeRelease(encodedMessage.getPayload()));
                 });
     }
 
@@ -179,6 +182,6 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     @Override
     public String toString() {
-        return "keepOnline["+keepAliveTimeOutMs+"ms]:"+parent;
+        return "keepOnline[" + keepAliveTimeOutMs + "ms]:" + parent;
     }
 }

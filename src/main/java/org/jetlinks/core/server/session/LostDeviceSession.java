@@ -1,5 +1,6 @@
 package org.jetlinks.core.server.session;
 
+import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.jetlinks.core.device.DeviceOperator;
@@ -38,7 +39,9 @@ public class LostDeviceSession implements DeviceSession {
 
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
-        return Mono.error(new DeviceOperationException(ErrorCode.CONNECTION_LOST));
+        return Mono
+                .<Boolean>error(new DeviceOperationException(ErrorCode.CONNECTION_LOST))
+                .doAfterTerminate(()-> ReferenceCountUtil.safeRelease(encodedMessage.getPayload()));
     }
 
     @Override
