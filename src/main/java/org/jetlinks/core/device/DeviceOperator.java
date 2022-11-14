@@ -5,7 +5,9 @@ import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.Value;
 import org.jetlinks.core.Values;
 import org.jetlinks.core.config.ConfigKey;
+import org.jetlinks.core.device.session.DeviceSessionManager;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.server.session.DeviceSession;
 import org.jetlinks.core.things.Thing;
 import org.jetlinks.core.things.ThingType;
 import reactor.core.publisher.Mono;
@@ -65,6 +67,7 @@ public interface DeviceOperator extends Thing {
 
     /**
      * 获取设备当前缓存的状态,此状态可能与实际的状态不一致.
+     *
      * @return 获取当前状态
      * @see DeviceState
      */
@@ -103,6 +106,15 @@ public interface DeviceOperator extends Thing {
     }
 
     Mono<Boolean> online(String serverId, String sessionId, String address);
+
+    /**
+     * 设备上线,通常不需要手动调用
+     *
+     * @param serverId   设备所在服务ID {@link DeviceSessionManager#getCurrentServerId()}
+     * @param address    设备地址
+     * @param onlineTime 上线时间 {@link DeviceSession#connectTime()}
+     */
+    Mono<Boolean> online(String serverId, String address, long onlineTime);
 
     /**
      * 获取设备自身的配置,如果配置不存在则返回{@link Mono#empty()}

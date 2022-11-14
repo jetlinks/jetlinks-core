@@ -428,6 +428,19 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     }
 
     @Override
+    public Mono<Boolean> online(String serverId, String address,long onlineTime) {
+        return this
+                .setConfigs(
+                        //  selfManageState.value(true),
+                        connectionServerId.value(serverId),
+                        ConfigKey.of("address").value(address),
+                        ConfigKey.of("onlineTime").value(onlineTime),
+                        stateKey.value(DeviceState.online)
+                )
+                .doOnError(err -> log.error("online device error", err));
+    }
+
+    @Override
     public Mono<Value> getSelfConfig(String key) {
         return getConfig(key, false);
     }
