@@ -112,7 +112,7 @@ public interface DeviceOperator extends Thing {
      *
      * @param serverId   设备所在服务ID {@link DeviceSessionManager#getCurrentServerId()}
      * @param address    设备地址
-     * @param onlineTime 上线时间 {@link DeviceSession#connectTime()}
+     * @param onlineTime 上线时间 {@link DeviceSession#connectTime()} 大于0有效
      */
     Mono<Boolean> online(String serverId, String address, long onlineTime);
 
