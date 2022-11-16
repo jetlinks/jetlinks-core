@@ -1,5 +1,8 @@
 package org.jetlinks.core.things.relation;
 
+/**
+ * 与某个对象建立了关系的对象
+ */
 public interface RelatedObject extends RelationObject {
 
     /**

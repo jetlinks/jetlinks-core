@@ -118,10 +118,6 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         }
     }
 
-    @SuppressWarnings("rawtypes")
-    private final static AtomicReferenceFieldUpdater<Container, Mono> LOADER
-            = AtomicReferenceFieldUpdater.newUpdater(Container.class, Mono.class, "loader");
-
     @Override
     public void dispose() {
         cache.values().forEach(Container::dispose);
@@ -130,6 +126,10 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
 
     static class Container<K, T> implements Disposable {
+        @SuppressWarnings("rawtypes")
+        private final static AtomicReferenceFieldUpdater<Container, Mono> LOADER
+                = AtomicReferenceFieldUpdater.newUpdater(Container.class, Mono.class, "loader");
+
         private final DefaultReactiveCacheContainer<K, T> main;
         private final K key;
         private Sinks.One<T> await;
