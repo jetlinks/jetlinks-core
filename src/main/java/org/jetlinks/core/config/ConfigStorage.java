@@ -1,5 +1,6 @@
 package org.jetlinks.core.config;
 
+import com.google.common.collect.Sets;
 import org.jetlinks.core.Value;
 import org.jetlinks.core.Values;
 import reactor.core.publisher.Mono;
@@ -31,7 +32,7 @@ public interface ConfigStorage {
      * @return 多个值信息
      */
     default Mono<Values> getConfigs(String... keys) {
-        return getConfigs(Arrays.asList(keys));
+        return getConfigs(Sets.newHashSet(keys));
     }
 
     /**

@@ -1,5 +1,7 @@
 package org.jetlinks.core;
 
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigKeyValue;
 import reactor.core.publisher.Mono;
@@ -7,6 +9,7 @@ import reactor.core.publisher.Mono;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -68,9 +71,11 @@ public interface Configurable {
     }
 
     default Mono<Values> getConfigs(ConfigKey<?>... key) {
-        return getConfigs(Arrays.stream(key)
-                                .map(ConfigKey::getKey)
-                                .collect(Collectors.toSet()));
+        Set<String> keys = Sets.newHashSetWithExpectedSize(key.length);
+        for (ConfigKey<?> configKey : key) {
+            keys.add(configKey.getKey());
+        }
+        return getConfigs(keys);
     }
 
     /**
@@ -79,7 +84,7 @@ public interface Configurable {
      * @return 所有配置结果集合
      */
     default Mono<Values> getConfigs(String... keys) {
-        return getConfigs(Arrays.asList(keys));
+        return getConfigs(Sets.newHashSet(keys));
     }
 
     /**
