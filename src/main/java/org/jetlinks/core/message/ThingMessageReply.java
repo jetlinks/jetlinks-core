@@ -23,6 +23,13 @@ public interface ThingMessageReply extends ThingMessage {
     String getMessage();
 
     //设置失败
+    default ThingMessageReply error(String errorCode, String msg) {
+        return success(false)
+                .code(errorCode)
+                .message(msg);
+    }
+
+    //设置失败
     ThingMessageReply error(ErrorCode errorCode);
 
     //设置失败

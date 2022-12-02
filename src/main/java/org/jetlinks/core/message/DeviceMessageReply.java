@@ -70,6 +70,6 @@ public interface DeviceMessageReply extends DeviceMessage, ThingMessageReply {
 
     @Override
     default DeviceMessageReply copy() {
-        return (DeviceMessageReply)ThingMessageReply.super.copy();
+        return (DeviceMessageReply) ThingMessageReply.super.copy();
     }
 }

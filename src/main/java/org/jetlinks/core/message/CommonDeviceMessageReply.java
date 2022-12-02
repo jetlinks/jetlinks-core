@@ -94,9 +94,14 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
 
     @Override
     public Self error(ErrorCode errorCode) {
+        return error(errorCode.name(), errorCode.getText());
+    }
+
+    @Override
+    public Self error(String errorCode, String msg) {
         success = false;
-        code = errorCode.name();
-        message = errorCode.getText();
+        code = errorCode;
+        message = msg;
         timestamp = System.currentTimeMillis();
         return castSelf();
     }

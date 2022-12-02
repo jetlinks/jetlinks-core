@@ -1,6 +1,8 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,6 +21,10 @@ import java.io.ObjectOutput;
 public class DirectDeviceMessage extends CommonDeviceMessage<DirectDeviceMessage> {
 
     private byte[] payload;
+
+    public ByteBuf asByteBuf() {
+        return payload == null ? Unpooled.EMPTY_BUFFER : Unpooled.wrappedBuffer(payload);
+    }
 
     @Override
     public MessageType getMessageType() {
