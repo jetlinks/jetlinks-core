@@ -47,7 +47,7 @@ declare module io.netty.buffer {
          * @return byte
          */
         // @ts-ignore
-        getByte(): byte;
+        readByte(): byte;
 
         /**
          * 获取指定索引的无符号单字节数据
