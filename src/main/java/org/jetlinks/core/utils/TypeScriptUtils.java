@@ -1,6 +1,5 @@
 package org.jetlinks.core.utils;
 
-import io.netty.util.concurrent.FastThreadLocal;
 import lombok.SneakyThrows;
 import org.apache.commons.collections.CollectionUtils;
 import org.jetlinks.core.metadata.DataType;
@@ -13,7 +12,6 @@ import org.springframework.core.io.ClassPathResource;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -44,6 +42,46 @@ public class TypeScriptUtils {
 
     }
 
+    public static void createMetadataVar(ThingMetadata metadata, StringBuilder main) {
+        List<PropertyMetadata> properties = metadata.getProperties();
+        List<String> declares = new ArrayList<>();
+        StringBuilder builder = new StringBuilder();
+
+        if (CollectionUtils.isNotEmpty(properties)) {
+            declareVar(properties, builder, declares);
+        }
+
+        for (String declare : declares) {
+            main.append(declare);
+        }
+        main.append(builder);
+
+    }
+
+    public static void declareVar(List<PropertyMetadata> properties,
+                                  StringBuilder builder,
+                                  List<String> declares) {
+
+
+        for (PropertyMetadata property : properties) {
+            String id = property.getId();
+            if (id.contains("-")) {
+                continue;
+            }
+            String comment = property.getName();
+            if (property.getDescription() != null) {
+                comment = comment + "\n" + property.getDescription();
+            }
+            appendComments(builder, property.getValueType(), comment);
+            builder.append("declare var ")
+                   .append(id)
+                   .append(":")
+                   .append(convertType(id, property.getValueType(), declares))
+                   .append(";")
+                   .append("\n");
+        }
+    }
+
     private static void declareClass(String name,
                                      String comment,
                                      List<PropertyMetadata> properties,
@@ -56,13 +94,14 @@ public class TypeScriptUtils {
             if (id.contains("-")) {
                 continue;
             }
+
             appendComments(builder, property.getValueType(), property.getName());
 
             builder.append(id)
-                    .append(":")
-                    .append(convertType(id, property.getValueType(), declares))
-                    .append(";")
-                    .append("\n");
+                   .append(":")
+                   .append(convertType(id, property.getValueType(), declares))
+                   .append(";")
+                   .append("\n");
         }
         builder.append("\n}\n");
     }
@@ -105,15 +144,16 @@ public class TypeScriptUtils {
 
     private static void appendComments(StringBuilder builder, DataType type, String comments) {
         builder.append("/**\n");
-        builder.append("* ").append(comments).append("\n\n");
+        builder.append("* ").append(comments.replace("\n", "\n* "))
+               .append("\n*");
         if (type instanceof EnumType) {
             for (EnumType.Element element : ((EnumType) type).getElements()) {
-                builder.append("*")
-                        .append(element.getValue())
-                        .append(" :")
-                        .append(element.getText())
-                        .append("\n");
-                builder.append("*\n");
+                builder.append("\n* ")
+                       .append(element.getValue())
+                       .append(" :")
+                       .append(element.getText())
+                       .append("\n");
+                builder.append("*");
             }
         }
         builder.append("*/\n");
@@ -151,9 +191,9 @@ public class TypeScriptUtils {
                     int index = line.lastIndexOf("from ");
                     if (index > 0) {
                         String module = line.substring(line.lastIndexOf("from ") + 5).trim()
-                                .replace("\"", "")
-                                .replace("'", "")
-                                .replace(";", "");
+                                            .replace("\"", "")
+                                            .replace("'", "")
+                                            .replace(";", "");
                         loadDeclare(module, builder, imports);
                         imports.add(module);
                     }
