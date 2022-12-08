@@ -12,6 +12,7 @@ import reactor.core.publisher.FluxOperator;
 import reactor.util.context.ContextView;
 
 import javax.annotation.Nonnull;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 @Slf4j
@@ -100,6 +101,7 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
             }
 
             Span span = builder
+                    .setStartTimestamp(System.nanoTime(), TimeUnit.NANOSECONDS)
                     .setParent(ctx)
                     .startSpan();
 
