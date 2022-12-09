@@ -111,7 +111,7 @@ public class TraceMono<T> extends MonoOperator<T, T> {
             }
 
             Span span = builder
-                    .setStartTimestamp(System.nanoTime(), TimeUnit.NANOSECONDS)
+                    .setStartTimestamp(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
                     .setParent(ctx)
                     .startSpan();
 
