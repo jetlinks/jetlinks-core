@@ -117,6 +117,10 @@
             <version>1.35</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-mqtt</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
