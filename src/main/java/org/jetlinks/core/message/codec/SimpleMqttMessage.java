@@ -2,14 +2,13 @@ package org.jetlinks.core.message.codec;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.mqtt.MqttProperties;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
-@NoArgsConstructor
 @AllArgsConstructor
 public class SimpleMqttMessage implements MqttMessage {
 
@@ -29,7 +28,27 @@ public class SimpleMqttMessage implements MqttMessage {
 
     private boolean retain;
 
+    @Deprecated
     private MessagePayloadType payloadType;
+
+    private MqttProperties properties;
+
+    public SimpleMqttMessage(String topic, String clientId, int qosLevel, ByteBuf payload, int messageId, boolean will, boolean dup, boolean retain, MessagePayloadType payloadType) {
+        this.topic = topic;
+        this.clientId = clientId;
+        this.qosLevel = qosLevel;
+        this.payload = payload;
+        this.messageId = messageId;
+        this.will = will;
+        this.dup = dup;
+        this.retain = retain;
+        this.payloadType = payloadType;
+        this.properties = MqttProperties.NO_PROPERTIES;
+    }
+
+    public SimpleMqttMessage() {
+    }
+
 
     public static SimpleMqttMessageBuilder builder() {
         return new SimpleMqttMessageBuilder();
@@ -47,8 +66,8 @@ public class SimpleMqttMessage implements MqttMessage {
      *     {"hello":"world"}
      * </pre>
      *
-     * @param str
-     * @return
+     * @param str mqtt string
+     * @return SimpleMqttMessage
      */
     public static SimpleMqttMessage of(String str) {
         SimpleMqttMessage mqttMessage = new SimpleMqttMessage();
@@ -91,6 +110,8 @@ public class SimpleMqttMessage implements MqttMessage {
         private boolean dup;
         private boolean retain;
         private MessagePayloadType payloadType;
+
+        private MqttProperties properties;
 
         SimpleMqttMessageBuilder() {
         }
@@ -151,13 +172,29 @@ public class SimpleMqttMessage implements MqttMessage {
             return this;
         }
 
+        @Deprecated
         public SimpleMqttMessageBuilder payloadType(MessagePayloadType payloadType) {
             this.payloadType = payloadType;
             return this;
         }
 
+        public SimpleMqttMessageBuilder properties(MqttProperties mqttProperties) {
+            this.properties = mqttProperties;
+            return this;
+        }
+
         public SimpleMqttMessage build() {
-            return new SimpleMqttMessage(topic, clientId, qosLevel, payload, messageId, will, dup, retain, payloadType);
+            return new SimpleMqttMessage(
+                    topic,
+                    clientId,
+                    qosLevel,
+                    payload,
+                    messageId,
+                    will,
+                    dup,
+                    retain,
+                    payloadType,
+                    properties == null ? MqttProperties.NO_PROPERTIES : properties);
         }
 
         public String toString() {

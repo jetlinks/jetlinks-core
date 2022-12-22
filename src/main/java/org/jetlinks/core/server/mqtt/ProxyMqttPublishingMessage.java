@@ -1,6 +1,7 @@
 package org.jetlinks.core.server.mqtt;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.mqtt.MqttProperties;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.message.codec.MqttMessage;
 
@@ -41,6 +42,11 @@ class ProxyMqttPublishingMessage implements MqttPublishingMessage {
         if (target instanceof MqttPublishingMessage) {
             ((MqttPublishingMessage) target).acknowledge();
         }
+    }
+
+    @Override
+    public MqttProperties getProperties() {
+        return target.getProperties();
     }
 
     @Override
