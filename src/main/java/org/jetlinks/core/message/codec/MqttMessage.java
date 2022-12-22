@@ -2,6 +2,7 @@ package org.jetlinks.core.message.codec;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
+import io.netty.handler.codec.mqtt.MqttProperties;
 import org.jetlinks.core.utils.StringBuilderUtils;
 
 import javax.annotation.Nonnull;
@@ -34,6 +35,10 @@ public interface MqttMessage extends EncodedMessage {
 
     default boolean isRetain() {
         return false;
+    }
+
+    default MqttProperties getProperties() {
+        return MqttProperties.NO_PROPERTIES;
     }
 
     default String print() {
