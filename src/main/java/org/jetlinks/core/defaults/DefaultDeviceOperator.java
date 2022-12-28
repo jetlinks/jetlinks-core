@@ -375,7 +375,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                 .thenReturn(newer);
                     }
                     return Mono.just(newer);
-                });
+                })
+                .doOnError(err -> log.warn("check device [{}] state error", getDeviceId(), err));
     }
 
     @Override
