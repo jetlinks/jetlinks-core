@@ -8,7 +8,7 @@ import java.io.Serializable;
 import java.util.Map;
 
 /**
- * 和物实例关联的其他数据
+ * 和物实例关联的其他业务数据
  */
 @Getter
 @Setter
@@ -40,6 +40,6 @@ public class ThingAssociatedData implements Serializable {
     /**
      * 拓展字段数据,key为列名,value为值
      */
-    private Map<String, Object> tags;
+    private Map<String, Object> properties;
 
 }

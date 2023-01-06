@@ -33,10 +33,16 @@ public class ThingInstance implements Serializable {
     /**
      * 拓展字段数据,key为列名,value为值
      */
-    private Map<String, Object> tags;
+    private Map<String, Object> properties;
 
     /**
      * 配置数据,可通过{@link Thing#getSelfConfig(String)}获取
      */
     private Map<String, Object> configuration;
+
+    /**
+     * 其他拓展数据,由不通的平台或者功能所需而决定,
+     * 如: 该物实例所属维度信息等
+     */
+    private Map<String, Object> expands;
 }
