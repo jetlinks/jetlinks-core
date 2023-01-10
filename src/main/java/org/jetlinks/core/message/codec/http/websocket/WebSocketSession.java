@@ -3,6 +3,7 @@ package org.jetlinks.core.message.codec.http.websocket;
 import io.netty.buffer.ByteBuf;
 import org.jetlinks.core.message.codec.http.Header;
 import org.jetlinks.core.message.codec.http.HttpUtils;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -41,6 +42,14 @@ public interface WebSocketSession {
     Mono<Void> close();
 
     Mono<Void> close(int status);
+
+    default Mono<Void> close(HttpStatus status) {
+        return close(1014, status.getReasonPhrase());
+    }
+
+    default Mono<Void> close(int status, String reason) {
+        return close(status);
+    }
 
     Map<String, Object> getAttributes();
 
