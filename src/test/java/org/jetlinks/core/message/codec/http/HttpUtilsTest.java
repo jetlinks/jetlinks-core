@@ -11,7 +11,7 @@ public class HttpUtilsTest {
     @Test
     public void testDecode(){
 
-        String str="a=b&b=c&c=a=b&d=a&d=c";
+        String str="https://www.baidu.com/?a=b&b=c&c=a=b&d=a&d=c";
         Map<String,String> params = HttpUtils.parseEncodedUrlParams(str);
 
         Assert.assertEquals(params.get("a"),"b");
@@ -37,12 +37,13 @@ public class HttpUtilsTest {
 
     @Test
     public void testPath(){
-        Assert.assertEquals(HttpUtils.getUrlPath("http://www.baidu.com/test/a"),"/test/a");
+        Assert.assertEquals(HttpUtils.getUrlPath("http://www.baidu.com/test/a?a=b"),"/test/a");
         Assert.assertEquals(HttpUtils.getUrlPath("http://www.baidu.com"),"/");
 
         Assert.assertEquals(HttpUtils.getUrlPath("/test/a"),"/test/a");
 
         Assert.assertEquals(HttpUtils.getUrlPath("test/a"),"/test/a");
+        Assert.assertEquals(HttpUtils.getUrlPath("test/a?a=b"),"/test/a");
 
     }
 

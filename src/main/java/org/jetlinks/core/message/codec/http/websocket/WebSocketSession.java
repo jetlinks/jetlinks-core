@@ -2,11 +2,13 @@ package org.jetlinks.core.message.codec.http.websocket;
 
 import io.netty.buffer.ByteBuf;
 import org.jetlinks.core.message.codec.http.Header;
+import org.jetlinks.core.message.codec.http.HttpUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,7 +18,17 @@ public interface WebSocketSession {
     Optional<InetSocketAddress> getRemoteAddress();
 
     default String getPath() {
-        return getUri();
+
+        return HttpUtils.getUrlPath(getUri());
+    }
+
+    default Map<String, String> getQueryParameters() {
+        String uri = getUri();
+        int indexOf = uri.indexOf('?');
+        if (indexOf < 0) {
+            return Collections.emptyMap();
+        }
+        return HttpUtils.parseEncodedUrlParams(uri);
     }
 
     String getUri();

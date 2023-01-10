@@ -30,11 +30,12 @@ public class HttpUtils {
     public static String getUrlPath(String url) {
         String path;
         if (!url.contains("://")) {
-            path = url;
-        } else {
-            path = new URL(url).getPath();
+            if (!url.startsWith("/")) {
+                url = "/" + url;
+            }
+            url = "http://test" + url;
         }
-
+        path = new URL(url).getPath();
         if (!path.startsWith("/")) {
             return "/".concat(path);
         }
@@ -42,22 +43,28 @@ public class HttpUtils {
     }
 
     public static String createEncodedUrlParams(Map<?, ?> maps) {
-        return maps.entrySet()
+        return maps
+                .entrySet()
                 .stream()
                 .map(e -> urlEncode(String.valueOf(e.getKey())) + "=" + urlEncode(String.valueOf(e.getValue())))
                 .collect(Collectors.joining("&"));
 
     }
 
-    public static Map<String, String> parseEncodedUrlParams(String keyValueString) {
-        return parseEncodedUrlParams(keyValueString, LinkedHashMap::new);
+    public static Map<String, String> parseEncodedUrlParams(String uriOrQuery) {
+        return parseEncodedUrlParams(uriOrQuery, LinkedHashMap::new);
     }
 
-    public static Map<String, String> parseEncodedUrlParams(String keyValueString, Supplier<Map<String, String>> supplier) {
-        if (StringUtils.isEmpty(keyValueString)) {
+    public static Map<String, String> parseEncodedUrlParams(String uriOrQuery, Supplier<Map<String, String>> supplier) {
+        if (StringUtils.isEmpty(uriOrQuery)) {
             return Collections.emptyMap();
         }
-        return Stream.of(keyValueString.split("[&]"))
+        int queryIndex = uriOrQuery.indexOf("?");
+        if (queryIndex >= 0) {
+            uriOrQuery = uriOrQuery.substring(queryIndex+1);
+        }
+        return Stream
+                .of(uriOrQuery.split("[&]"))
                 .map(par -> par.split("[=]", 2))
                 .collect(
                         Collectors.toMap(
@@ -69,8 +76,8 @@ public class HttpUtils {
                 );
     }
 
-    public static String appendUrlParameter(String url, Map<?,?> param) {
-        return appendUrlParameter(url,createEncodedUrlParams(param));
+    public static String appendUrlParameter(String url, Map<?, ?> param) {
+        return appendUrlParameter(url, createEncodedUrlParams(param));
     }
 
     public static String appendUrlParameter(String url, String param) {
@@ -78,9 +85,9 @@ public class HttpUtils {
             return url;
         }
         if (url.contains("?")) {
-           return url + "&" + param;
+            return url + "&" + param;
         } else {
-          return url + "?" + param;
+            return url + "?" + param;
         }
     }
 
