@@ -3,7 +3,6 @@ package org.jetlinks.core;
 import com.google.common.collect.Collections2;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
-import org.apache.commons.collections.MapUtils;
 import org.jetlinks.core.utils.CompositeMap;
 import org.jetlinks.core.utils.ConverterUtils;
 
@@ -65,9 +64,6 @@ class SimpleValues implements Values {
 
     @Override
     public String getString(String key, Supplier<String> defaultValue) {
-        if (MapUtils.isEmpty(values)) {
-            return defaultValue.get();
-        }
         Object val = values.get(key);
         if (val == null) {
             return defaultValue.get();
@@ -77,9 +73,6 @@ class SimpleValues implements Values {
 
     @Override
     public Number getNumber(String key, Supplier<Number> defaultValue) {
-        if (MapUtils.isEmpty(values)) {
-            return defaultValue.get();
-        }
         Object val = values.get(key);
         if (val == null) {
             return defaultValue.get();
