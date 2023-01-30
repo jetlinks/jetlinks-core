@@ -16,9 +16,10 @@ public interface ThingsDataManager {
     /**
      * 获取基准时间前最新的属性
      *
-     * @param thingId  物ID
-     * @param property 属性
-     * @param baseTime 基准时间
+     * @param thingType 物类型
+     * @param thingId   物ID
+     * @param property  属性
+     * @param baseTime  基准时间
      * @return 属性
      */
     Mono<ThingProperty> getLastProperty(String thingType,
@@ -149,4 +150,19 @@ public interface ThingsDataManager {
         return getFirstPropertyTime(thingType.getId(), thingId);
     }
 
+    /**
+     * 获取基准时间前最新的事件数据,缓存的数据量由具体的实现决定,只能获取最近的n条数据.
+     *
+     * @param thingType 物类型
+     * @param thingId   物ID
+     * @param event     物模型事件ID
+     * @param baseTime  基准时间
+     * @return 事件数据
+     */
+    default Mono<ThingEvent> getLastEvent(String thingType,
+                                          String thingId,
+                                          String event,
+                                          long baseTime) {
+        return Mono.empty();
+    }
 }
