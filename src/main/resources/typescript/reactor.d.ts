@@ -1,6 +1,9 @@
 export namespace reactor.core.publisher {
 
-    export class Mono<T> {
+    export class Publisher<T> {
+    }
+
+    export class Mono<T> extends Publisher<T> {
 
         static just<T>(value: T): Mono<T>;
 
@@ -34,7 +37,7 @@ export namespace reactor.core.publisher {
 
     }
 
-    export class Flux<T> {
+    export class Flux<T> extends Publisher<T> {
         static just<T>(...args: any): Flux<T>;
 
         map<U>(transfer: (val: T) => U): Flux<U>;
