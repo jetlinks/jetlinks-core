@@ -89,4 +89,14 @@ public interface RelationOperation {
      */
     Flux<RelatedObject> get(String type);
 
+    /**
+     * 获取和当前对象的关系对象
+     *
+     * @see RelationOperation#get(String, String, String)
+     */
+    default Flux<RelatedObject> getAll() {
+        return get(null);
+    }
+
+
 }
