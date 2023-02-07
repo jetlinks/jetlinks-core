@@ -133,7 +133,8 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
                 .ifPresent(conf -> configs.put(ThingsConfigKeys.metadata.getKey(), conf));
         Optional.ofNullable(info.getVersion())
                 .ifPresent(conf -> configs.put(ThingsConfigKeys.version.getKey(), conf));
-
+        Optional.ofNullable(info.getType())
+                .ifPresent(conf -> configs.put(ThingsConfigKeys.type.getKey(), conf));
         Optional.ofNullable(info.getName())
                 .ifPresent(conf -> configs.put(ThingsConfigKeys.name.getKey(), conf));
 

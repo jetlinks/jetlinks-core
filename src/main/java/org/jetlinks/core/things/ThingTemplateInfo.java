@@ -13,6 +13,8 @@ import java.util.Map;
 @Setter
 @Builder
 public class ThingTemplateInfo {
+    private String type;
+
     private String id;
 
     private String name;

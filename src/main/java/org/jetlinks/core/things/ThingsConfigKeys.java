@@ -6,6 +6,7 @@ public interface ThingsConfigKeys {
 
     ConfigKey<Long> version = ConfigKey.of("version", "版本");
     ConfigKey<String> metadata = ConfigKey.of("metadata", "物模型");
+    ConfigKey<String> type = ConfigKey.of("type", "物类型");
     ConfigKey<Long> firstPropertyTime = ConfigKey.of("firstProperty", "首次上报属性的时间");
     ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time","最后修改物模型的时间");
 
