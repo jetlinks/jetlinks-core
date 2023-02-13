@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.MessageType;
+import org.jetlinks.core.message.RepayableDeviceMessage;
 import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
@@ -13,14 +14,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 数采数据消息,通常用于数采类设备,如数采网关向平台传递采集到的数据.
+ *  写入数采点位数据消息,由平台下发给数采网关进行点位修改操作,数采网关需要回复{@link WriteCollectorDataMessageReply}消息给平台.
  *
  * @author zhouhao
  * @since 1.2.1
+ * @see WriteCollectorDataMessageReply
  */
 @Getter
 @Setter
-public class CollectorDataMessage extends CommonDeviceMessage<CollectorDataMessage> {
+public final class WriteCollectorDataMessage extends CommonDeviceMessage<WriteCollectorDataMessage>
+        implements RepayableDeviceMessage<WriteCollectorDataMessageReply> {
 
     /**
      * 数据列表
@@ -28,8 +31,8 @@ public class CollectorDataMessage extends CommonDeviceMessage<CollectorDataMessa
     private List<CollectorData> data;
 
     @Override
-    public final MessageType getMessageType() {
-        return MessageType.COLLECTOR;
+    public MessageType getMessageType() {
+        return MessageType.WRITE_COLLECTOR_DATA;
     }
 
     @Override
@@ -58,5 +61,10 @@ public class CollectorDataMessage extends CommonDeviceMessage<CollectorDataMessa
             data.readExternal(in);
             this.data.add(data);
         }
+    }
+
+    @Override
+    public WriteCollectorDataMessageReply newReply() {
+        return new WriteCollectorDataMessageReply();
     }
 }

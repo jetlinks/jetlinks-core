@@ -10,8 +10,6 @@ import java.io.ObjectOutput;
 
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor(staticName = "of")
 public class CollectorData implements Externalizable {
     private static final long serialVersionUID = 1L;
 
@@ -36,22 +34,17 @@ public class CollectorData implements Externalizable {
      */
     private Long timestamp;
 
-    public static CollectorData of(String path, Object value) {
-        return of(path, value, null, null);
-    }
-
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeUTF(address);
+        SerializeUtils.writeObject(address, out);
         SerializeUtils.writeObject(value, out);
         SerializeUtils.writeObject(state, out);
         SerializeUtils.writeObject(timestamp, out);
-
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        address = in.readUTF();
+        address = (String) SerializeUtils.readObject(in);
         value = SerializeUtils.readObject(in);
         state = (String) SerializeUtils.readObject(in);
         timestamp = (Long) SerializeUtils.readObject(in);

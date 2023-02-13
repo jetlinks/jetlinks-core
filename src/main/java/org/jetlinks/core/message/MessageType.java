@@ -3,7 +3,9 @@ package org.jetlinks.core.message;
 import com.alibaba.fastjson.JSONObject;
 import lombok.SneakyThrows;
 import org.jetlinks.core.device.DeviceThingType;
-import org.jetlinks.core.message.collector.CollectorDataMessage;
+import org.jetlinks.core.message.collector.ReadCollectorDataMessageReply;
+import org.jetlinks.core.message.collector.ReportCollectorDataMessage;
+import org.jetlinks.core.message.collector.WriteCollectorDataMessageReply;
 import org.jetlinks.core.message.event.DefaultEventMessage;
 import org.jetlinks.core.message.event.EventMessage;
 import org.jetlinks.core.message.firmware.*;
@@ -149,8 +151,13 @@ public enum MessageType {
     STATE_CHECK(DeviceStateCheckMessage::new),
     STATE_CHECK_REPLY(DeviceStateCheckMessageReply::new),
 
-    //数采数据消息
-    COLLECTOR(CollectorDataMessage::new),
+    //数采数据上报消息
+    REPORT_COLLECTOR(ReportCollectorDataMessage::new),
+    READ_COLLECTOR_DATA(ReportCollectorDataMessage::new),
+    READ_COLLECTOR_DATA_REPLY(ReadCollectorDataMessageReply::new),
+    WRITE_COLLECTOR_DATA(ReportCollectorDataMessage::new),
+    WRITE_COLLECTOR_DATA_REPLY(WriteCollectorDataMessageReply::new),
+
     //未知消息
     UNKNOWN(null) {
         @Override
