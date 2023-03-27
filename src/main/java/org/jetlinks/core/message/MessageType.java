@@ -1,6 +1,7 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Maps;
 import lombok.SneakyThrows;
 import org.jetlinks.core.device.DeviceThingType;
 import org.jetlinks.core.message.collector.ReadCollectorDataMessageReply;
@@ -38,22 +39,7 @@ public enum MessageType {
     READ_PROPERTY_REPLY(ReadPropertyMessageReply::new, DefaultReadPropertyMessageReply::new),
     WRITE_PROPERTY_REPLY(WritePropertyMessageReply::new, DefaultWritePropertyMessageReply::new),
     //下行调用功能
-    INVOKE_FUNCTION(FunctionInvokeMessage::new, DefaultFunctionInvokeMessage::new) {
-        @Override
-        public <T extends Message> T convert(Map<String, Object> map) {
-            Object inputs = map.get("inputs");
-            //处理以Map形式传入参数的场景
-            if (inputs instanceof Map) {
-                Map<String, Object> newMap = new HashMap<>(map);
-                @SuppressWarnings("unchecked")
-                Map<String, Object> inputMap = (Map<String, Object>) newMap.remove("inputs");
-                FunctionInvokeMessage message = super.convert(newMap);
-                inputMap.forEach(message::addInput);
-                return (T) message;
-            }
-            return super.convert(map);
-        }
-    },
+    INVOKE_FUNCTION(FunctionInvokeMessage::new, DefaultFunctionInvokeMessage::new),
     //上行调用功能回复
     INVOKE_FUNCTION_REPLY(FunctionInvokeMessageReply::new, DefaultFunctionInvokeMessageReply::new),
     //事件消息
@@ -80,35 +66,9 @@ public enum MessageType {
     DERIVED_METADATA(DerivedMetadataMessage::new),
 
     //下行子设备消息
-    CHILD(ChildDeviceMessage::new) {
-        @Override
-        @SuppressWarnings("all")
-        public <T extends Message> T convert(Map<String, Object> map) {
-            Object message = map.remove("childDeviceMessage");
-            ChildDeviceMessage children = super.convert(map);
-            if (message instanceof Map) {
-                this.convertMessage(((Map<String, Object>) message))
-                    .ifPresent(children::setChildDeviceMessage);
-            }
-
-            return (T) children;
-        }
-    },
+    CHILD(ChildDeviceMessage::new),
     //上行子设备消息回复
-    CHILD_REPLY(ChildDeviceMessageReply::new) {
-        @Override
-        @SuppressWarnings("all")
-        public <T extends Message> T convert(Map<String, Object> map) {
-            Object message = map.remove("childDeviceMessage");
-            ChildDeviceMessageReply children = super.convert(map);
-            if (message instanceof Map) {
-                this.convertMessage(((Map<String, Object>) message))
-                    .ifPresent(children::setChildDeviceMessage);
-            }
-
-            return (T) children;
-        }
-    },
+    CHILD_REPLY(ChildDeviceMessageReply::new),
 
     //读取设备固件信息
     READ_FIRMWARE(ReadFirmwareMessage::new),

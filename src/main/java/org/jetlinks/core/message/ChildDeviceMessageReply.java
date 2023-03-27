@@ -1,6 +1,7 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.enums.ErrorCode;
@@ -68,6 +69,17 @@ public class ChildDeviceMessageReply extends CommonDeviceMessageReply<ChildDevic
         return json;
     }
 
+    @Override
+    public void fromJson(JSONObject jsonObject) {
+        super.fromJson(new JSONObject(Maps.filterKeys(jsonObject, k -> !"childDeviceMessage".equals(k))));
+
+        JSONObject json = jsonObject.getJSONObject("childDeviceMessage");
+        if (json != null) {
+            childDeviceMessage = MessageType
+                    .convertMessage(json)
+                    .orElse(null);
+        }
+    }
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {

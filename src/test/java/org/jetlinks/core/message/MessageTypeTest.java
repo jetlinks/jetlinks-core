@@ -1,8 +1,11 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import lombok.SneakyThrows;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
+import org.jetlinks.core.message.property.ReadPropertyMessage;
+import org.jetlinks.core.message.property.ReportPropertyMessage;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -68,6 +71,48 @@ public class MessageTypeTest {
 
         assertEquals(message.inputsToMap(), inputs);
 
+    }
+
+    @Test
+    public void testChild() {
+        ChildDeviceMessage child = ChildDeviceMessage.create(
+                "parent",
+                new ReportPropertyMessage()
+                        .thingId("device", "child")
+                        .properties(Collections.singletonMap("temp", 1.88))
+        );
+
+        JSONObject jsonObject = child.toJson();
+        System.out.println(jsonObject);
+
+        ChildDeviceMessage msg = MessageType.<ChildDeviceMessage>convertMessage(jsonObject)
+                                            .orElseThrow(UnsupportedOperationException::new);
+
+
+        System.out.println(msg);
+        assertEquals(msg.getDeviceId(), child.getDeviceId());
+        assertEquals(msg.getChildDeviceMessage().toJson(), child.getChildDeviceMessage().toJson());
+    }
+
+    @Test
+    public void testChildReply() {
+        ChildDeviceMessageReply child = ChildDeviceMessage.create(
+                "parent",
+                new ReadPropertyMessage()
+                        .thingId("device", "child")
+                        .addProperties(Collections.singletonList("temp"))
+        ).newReply();
+
+        JSONObject jsonObject = child.toJson();
+        System.out.println(jsonObject);
+
+        ChildDeviceMessageReply msg = MessageType.<ChildDeviceMessageReply>convertMessage(jsonObject)
+                                            .orElseThrow(UnsupportedOperationException::new);
+
+
+        System.out.println(msg);
+        assertEquals(msg.getDeviceId(), child.getDeviceId());
+        assertEquals(msg.getChildDeviceMessage().toJson(), child.getChildDeviceMessage().toJson());
     }
 
     @Test
