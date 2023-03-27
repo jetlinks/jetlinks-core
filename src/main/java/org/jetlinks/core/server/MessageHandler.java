@@ -23,7 +23,7 @@ public interface MessageHandler {
      * 监听发往设备的指令
      *
      * @param serverId 服务ID,在集群时,不同的节点serverId不同 {@link ServerNode#getId()}
-     * @return 发网设备的消息指令流
+     * @return 发往设备的消息指令流
      */
     Flux<Message> handleSendToDeviceMessage(String serverId);
 

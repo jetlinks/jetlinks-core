@@ -1,13 +1,16 @@
 package org.jetlinks.core.message.function;
 
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
 import org.jetlinks.core.message.RepayableDeviceMessage;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author zhouhao
@@ -39,9 +42,25 @@ public class FunctionInvokeMessage extends CommonDeviceMessage<FunctionInvokeMes
     }
 
     @Override
+    @SuppressWarnings("all")
     public void fromJson(JSONObject jsonObject) {
-        super.fromJson(jsonObject);
         this.functionId = jsonObject.getString("functionId");
+
+        Object inputs = jsonObject.get("inputs");
+        //处理以Map形式传入参数的场景
+        if (inputs instanceof Map) {
+
+            super.fromJson(new JSONObject(
+                    Maps.filterKeys(jsonObject, key -> !"inputs".equals(key)
+                    )));
+
+            Map<String, Object> inputMap = (Map<String, Object>) inputs;
+            inputMap.forEach(this::addInput);
+
+            return;
+        }
+        super.fromJson(jsonObject);
+
     }
 
     @Override
