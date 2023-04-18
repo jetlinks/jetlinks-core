@@ -12,6 +12,7 @@ import java.util.function.Consumer;
  * @author zhouhao
  * @since 1.0
  */
+@Deprecated
 public interface HaManager {
 
     /**
