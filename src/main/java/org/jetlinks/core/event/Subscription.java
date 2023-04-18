@@ -124,10 +124,11 @@ public class Subscription implements Externalizable {
         shared("shared"),
         //订阅本地消息
         local("订阅本地消息"),
-        //订阅来自代理的消息
-        broker("订阅代理消息"),
+        //订阅来自代理(集群)的消息
+        broker("订阅集群消息"),
 
-        sharedOldest("相同订阅者总是最先订阅的收到数据");
+        sharedOldest("相同订阅者总是最先订阅的收到数据"),
+        sharedLocalFirst("集群下相同的订阅者总是本地的优先收到数据");
 
         private final String text;
 
@@ -213,6 +214,10 @@ public class Subscription implements Externalizable {
 
         public Builder sharedOldest() {
             return features(Feature.shared, Feature.sharedOldest);
+        }
+
+        public Builder sharedLocalFirst() {
+            return features(Feature.shared, Feature.sharedLocalFirst);
         }
 
         public Subscription build() {
