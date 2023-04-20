@@ -34,7 +34,7 @@ public class SpanDataInfo implements Externalizable {
     }
 
     public SpanDataInfo with(SpanData data) {
-        this.app = data.getInstrumentationLibraryInfo().getName();
+        this.app = data.getInstrumentationScopeInfo().getName();
         this.name = data.getName();
         this.traceId = data.getTraceId();
         this.startWithNanos = data.getStartEpochNanos();

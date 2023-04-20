@@ -29,26 +29,26 @@ abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuil
 
     @Override
     public ReactiveTracerBuilder<T, R> onNext(BiConsumer<Span, R> callback) {
-        this.onNext = callback;
+        this.onNext = this.onNext == null ? callback : this.onNext.andThen(callback);
         return this;
     }
 
     @Override
     public ReactiveTracerBuilder<T, R> onComplete(BiConsumer<Span, Long> callback) {
-        this.onComplete = callback;
+        this.onComplete = this.onComplete == null ? callback : this.onComplete.andThen(callback);
         return this;
     }
 
     @Override
     public ReactiveTracerBuilder<T, R> onSubscription(BiConsumer<ContextView, SpanBuilder> callback) {
-        this.onSubscription = callback;
+        this.onSubscription = this.onSubscription == null ? callback : this.onSubscription.andThen(callback);
         return this;
     }
 
     @Override
     public ReactiveTracerBuilder<T, R> onSubscription(Consumer<SpanBuilder> callback) {
-        this.onSubscription = callback == null ? null : (contextView, spanBuilder) -> callback.accept(spanBuilder);
-        return this;
+
+        return callback == null ? this : onSubscription((contextView, spanBuilder) -> callback.accept(spanBuilder));
     }
 
     @Override
