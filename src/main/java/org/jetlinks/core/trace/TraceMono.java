@@ -5,9 +5,12 @@ import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import lombok.extern.slf4j.Slf4j;
+import org.reactivestreams.Publisher;
 import reactor.core.CoreSubscriber;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoOperator;
+import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
 import javax.annotation.Nonnull;
@@ -21,12 +24,15 @@ import java.util.function.BiConsumer;
 public class TraceMono<T> extends MonoOperator<T, T> {
     private final String spanName;
     private final Tracer tracer;
-    private final BiConsumer<Span, T> onNext;
-    private final BiConsumer<Span, Long> onComplete;
+    private final Consumer3<ContextView, Span, T> onNext;
+    private final Consumer3<ContextView, Span, Long> onComplete;
     private final BiConsumer<ContextView, SpanBuilder> onSubscription;
+    private final BiConsumer<ContextView, Throwable> onError;
 
-    public static <T> TraceMono<T> trace(Mono<T> source) {
-        return new TraceMono<>(source,
+    public static <T> TraceFlux<T> trace(Publisher<T> source) {
+
+        return new TraceFlux<>(Flux.from(source),
+                               null,
                                null,
                                null,
                                null,
@@ -37,15 +43,60 @@ public class TraceMono<T> extends MonoOperator<T, T> {
     TraceMono(Mono<? extends T> source,
               String name,
               Tracer tracer,
-              BiConsumer<Span, T> onNext,
-              BiConsumer<Span, Long> onComplete,
-              BiConsumer<ContextView, SpanBuilder> builderConsumer) {
+              Consumer3<ContextView, Span, T> onNext,
+              Consumer3<ContextView, Span, Long> onComplete,
+              BiConsumer<ContextView, SpanBuilder> builderConsumer,
+              BiConsumer<ContextView, Throwable> onError) {
         super(source);
         this.spanName = name == null ? this.name() : name;
         this.tracer = tracer == null ? TraceHolder.telemetry().getTracer(TraceHolder.appName()) : tracer;
         this.onNext = onNext;
         this.onSubscription = builderConsumer;
         this.onComplete = onComplete;
+        this.onError = onError;
+    }
+
+    public TraceMono<T> onNext(BiConsumer<Span, T> onNext) {
+        return onNext((ctx, span, r) -> onNext.accept(span, r));
+    }
+
+    public TraceMono<T> onNext(Consumer3<ContextView, Span, T> callback) {
+        Consumer3<ContextView, Span, T> that = this.onNext;
+
+        Consumer3<ContextView, Span, T> onNext = that == null
+                ?
+                callback
+                :
+                (contextView, span, r) -> {
+                    that.accept(contextView, span, r);
+                    callback.accept(contextView, span, r);
+                };
+        return new TraceMono<>(this.source, this.spanName, this.tracer, onNext, this.onComplete, this.onSubscription, this.onError);
+    }
+
+    public TraceMono<T> onComplete(Consumer3<ContextView, Span, Long> callback) {
+        Consumer3<ContextView, Span, Long> that = this.onComplete;
+
+        Consumer3<ContextView, Span, Long> onComplete = that == null
+                ?
+                callback
+                :
+                (contextView, span, r) -> {
+                    that.accept(contextView, span, r);
+                    callback.accept(contextView, span, r);
+                };
+
+        return new TraceMono<>(this.source,
+                               this.spanName,
+                               this.tracer,
+                               this.onNext,
+                               onComplete,
+                               this.onSubscription,
+                               this.onError);
+    }
+
+    public TraceMono<T> onComplete(BiConsumer<Span, Long> onComplete) {
+        return onComplete((ctx, span, len) -> onComplete.accept(span, len));
     }
 
     public TraceMono<T> spanName(String spanName) {
@@ -54,7 +105,8 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                this.tracer,
                                this.onNext,
                                this.onComplete,
-                               this.onSubscription);
+                               this.onSubscription,
+                               this.onError);
     }
 
     public TraceMono<T> scopeName(String scopeName) {
@@ -63,38 +115,17 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                TraceHolder.telemetry().getTracer(scopeName),
                                this.onNext,
                                this.onComplete,
-                               this.onSubscription);
-    }
-
-    public TraceMono<T> scopeName(String scopeName, String scopeVersion) {
-        return new TraceMono<>(this.source,
-                               this.spanName,
-                               TraceHolder.telemetry().getTracer(scopeName, scopeVersion),
-                               this.onNext,
-                               this.onComplete,
-                               this.onSubscription);
-    }
-
-    public TraceMono<T> onNext(BiConsumer<Span, T> onNext) {
-        if (this.onNext != null) {
-            onNext = this.onNext.andThen(onNext);
-        }
-        return new TraceMono<>(this.source, this.spanName, this.tracer, onNext, this.onComplete, this.onSubscription);
-    }
-
-    public TraceMono<T> onComplete(BiConsumer<Span, Long> onComplete) {
-        if (this.onComplete != null) {
-            onComplete = this.onComplete.andThen(onComplete);
-        }
-        return new TraceMono<>(this.source, this.spanName, this.tracer, this.onNext, onComplete, this.onSubscription);
+                               this.onSubscription,
+                               this.onError);
     }
 
     public TraceMono<T> onSubscription(BiConsumer<ContextView, SpanBuilder> onSubscription) {
         if (this.onSubscription != null) {
             onSubscription = this.onSubscription.andThen(onSubscription);
         }
-        return new TraceMono<>(this.source, this.spanName, this.tracer, this.onNext, this.onComplete, onSubscription);
+        return new TraceMono<>(this.source, this.spanName, this.tracer, this.onNext, this.onComplete, onSubscription, onError);
     }
+
 
     @Override
     public void subscribe(@Nonnull CoreSubscriber<? super T> actual) {
@@ -115,7 +146,7 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                     .setParent(ctx)
                     .startSpan();
 
-            this.source.subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, ctx));
+            this.source.subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, onError, ctx));
 
         } catch (Throwable e) {
             actual.onError(e);

@@ -10,7 +10,9 @@ import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.SignalType;
+import reactor.function.Consumer3;
 import reactor.util.context.Context;
+import reactor.util.context.ContextView;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
@@ -27,9 +29,9 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
 
     private final CoreSubscriber<? super T> actual;
     private final Span span;
-    private final BiConsumer<Span, T> onNext;
-    private final BiConsumer<Span, Long> onComplete;
-
+    private final Consumer3<ContextView, Span, T> onNext;
+    private final Consumer3<ContextView, Span, Long> onComplete;
+    private final BiConsumer<ContextView, Throwable> onError;
 
     private volatile long nextCount;
     private volatile boolean stateSet;
@@ -37,13 +39,15 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
 
     public TraceSubscriber(CoreSubscriber<? super T> actual,
                            Span span,
-                           BiConsumer<Span, T> onNext,
-                           BiConsumer<Span, Long> onComplete,
+                           Consumer3<ContextView, Span, T> onNext,
+                           Consumer3<ContextView, Span, Long> onComplete,
+                           BiConsumer<ContextView, Throwable> onError,
                            io.opentelemetry.context.Context ctx) {
         this.actual = actual;
         this.span = span;
         this.onNext = onNext;
         this.onComplete = onComplete;
+        this.onError = onError;
         this.context = reactor.util.context.Context
                 .of(actual.currentContext())
                 .put(SpanContext.class, span.getSpanContext())
@@ -58,7 +62,11 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
     @Override
     protected void hookOnError(@Nonnull Throwable throwable) {
         span.setStatus(StatusCode.ERROR);
-        span.recordException(throwable);
+        if (onError != null) {
+            onError.accept(context, throwable);
+        } else {
+            span.recordException(throwable);
+        }
         try (Scope scope = span.makeCurrent()) {
             actual.onError(throwable);
         }
@@ -85,7 +93,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
     @Override
     protected void hookOnNext(@Nonnull T value) {
         if (null != onNext) {
-            onNext.accept(this, value);
+            onNext.accept(context, this, value);
         }
         NEXT_COUNT.incrementAndGet(this);
         try (Scope scope = span.makeCurrent()) {
@@ -96,7 +104,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements Span {
     @Override
     protected void hookOnComplete() {
         if (onComplete != null) {
-            onComplete.accept(this, nextCount);
+            onComplete.accept(context, this, nextCount);
         }
         span.setAttribute(count, nextCount);
         if (!stateSet) {

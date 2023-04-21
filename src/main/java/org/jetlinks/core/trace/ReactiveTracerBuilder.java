@@ -3,6 +3,7 @@ package org.jetlinks.core.trace;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
+import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
 import javax.annotation.Nonnull;
@@ -44,7 +45,19 @@ public interface ReactiveTracerBuilder<T, E> {
      * @see Span
      * @see reactor.core.publisher.Flux#doOnNext(Consumer)
      */
-    ReactiveTracerBuilder<T, E> onNext(BiConsumer<Span, E> callback);
+    default ReactiveTracerBuilder<T, E> onNext(BiConsumer<Span, E> callback) {
+        return callback == null ? this : onNext((ctx, span, val) -> callback.accept(span, val));
+    }
+
+    /**
+     * 监听流中的数据,并进行span自定义. 当流中产生数据时,回调函数被调用.
+     *
+     * @param callback 回调
+     * @return this
+     * @see Span
+     * @see reactor.core.publisher.Flux#doOnNext(Consumer)
+     */
+    ReactiveTracerBuilder<T, E> onNext(Consumer3<ContextView, Span, E> callback);
 
     /**
      * 监听流完成,流完成时,回调函数被调用
@@ -53,7 +66,28 @@ public interface ReactiveTracerBuilder<T, E> {
      * @return this
      * @see reactor.core.publisher.Flux#doOnComplete(Runnable)
      */
-    ReactiveTracerBuilder<T, E> onComplete(BiConsumer<Span, Long> callback);
+    default ReactiveTracerBuilder<T, E> onComplete(BiConsumer<Span, Long> callback) {
+        return callback == null ? this : onComplete((contextView, span, aLong) -> callback.accept(span, aLong));
+    }
+
+    /**
+     * 监听流完成,流完成时,回调函数被调用
+     *
+     * @param callback 回调函数
+     * @return this
+     * @see reactor.core.publisher.Flux#doOnComplete(Runnable)
+     */
+    ReactiveTracerBuilder<T, E> onComplete(Consumer3<ContextView, Span, Long> callback);
+
+    /**
+     * 监听流错误,当流发生异常时,回调函数被调用
+     *
+     * @param callback 回调函数
+     * @return this
+     * @see reactor.core.publisher.Flux#doOnError(Consumer)
+     */
+    ReactiveTracerBuilder<T, E> onError(BiConsumer<ContextView, Throwable> callback);
+
 
     /**
      * 当流被订阅时,回调函数被调用,可以使用回调中的上下文以及span builder来进行自定义.

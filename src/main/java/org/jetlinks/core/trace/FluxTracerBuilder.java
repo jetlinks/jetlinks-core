@@ -9,6 +9,7 @@ class FluxTracerBuilder<T> extends AbstractReactiveTracerBuilder<FluxTracer<T>,T
                                 TraceHolder.telemetry().getTracer(scopeName),
                                 onNext,
                                 onComplete,
-                                onSubscription);
+                                onSubscription,
+                                onError);
     }
 }
