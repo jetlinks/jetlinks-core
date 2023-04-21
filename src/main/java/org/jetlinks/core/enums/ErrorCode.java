@@ -28,7 +28,8 @@ public enum ErrorCode {
     UNKNOWN_PARENT_DEVICE("error.code.unknown_parent_device"),
     CYCLIC_DEPENDENCE("error.code.cyclic_dependence"),
     SERVER_NOT_AVAILABLE("error.code.server_not_available"),
-    UNKNOWN("error.code.unknown");
+    UNKNOWN("error.code.unknown"),
+    SYSTEM_BUSY("error.code.system_busy"),;
 
     private final String text;
 
