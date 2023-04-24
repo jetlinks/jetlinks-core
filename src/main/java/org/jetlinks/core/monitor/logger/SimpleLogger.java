@@ -2,6 +2,7 @@ package org.jetlinks.core.monitor.logger;
 
 import org.slf4j.event.Level;
 
+@Deprecated
 public abstract class SimpleLogger implements Logger {
 
     @Override

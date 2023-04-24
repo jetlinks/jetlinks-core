@@ -39,6 +39,13 @@ public interface Logger {
     }
 
     /**
+     * @return 什么也不做的Logger
+     */
+    static Logger noop() {
+        return NoopLogger.INSTANCE;
+    }
+
+    /**
      * 判断是否启用TRACE级别的日志
      *
      * @return 是否启用
@@ -155,9 +162,10 @@ public interface Logger {
 
     /**
      * 打印日志
-     * @param level 日志级别
+     *
+     * @param level   日志级别
      * @param message 日志内容
-     * @param args 模版参数
+     * @param args    模版参数
      */
     void log(Level level, String message, Object... args);
 

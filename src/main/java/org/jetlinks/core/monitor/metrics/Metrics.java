@@ -11,9 +11,7 @@ import java.util.function.Supplier;
 public interface Metrics {
 
     /**
-     * 啥也不做
-     *
-     * @return Metrics
+     * @return 什么也不做的Metrics
      */
     static Metrics noop() {
         return NoopMetrics.instance;

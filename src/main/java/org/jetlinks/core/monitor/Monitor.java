@@ -25,6 +25,13 @@ public interface Monitor {
     }
 
     /**
+     * @return 什么也不做的Monitor
+     */
+    static Monitor noop() {
+        return NoopMonitor.INSTANCE;
+    }
+
+    /**
      * 日志接口,用于打印日志,替代Slf4j,有助于更好的记录很跟踪对应操作的监控
      *
      * @return 日志接口

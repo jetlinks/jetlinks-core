@@ -31,6 +31,13 @@ public interface Tracer {
     }
 
     /**
+     * @return 什么也不做的Tracer
+     */
+    static Tracer noop() {
+        return NoopTracer.INSTANCE;
+    }
+
+    /**
      * 对Flux进行追踪
      * <pre>{@code
      *  tracer().traceFlux("request",(builder)->{
