@@ -1,7 +1,5 @@
 package org.jetlinks.core.trace;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import org.apache.commons.collections.MapUtils;
 import reactor.core.publisher.Flux;
@@ -98,7 +96,7 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      * @return FluxTracer
      */
     static <T> FluxTracer<T> create(String spanName,
-                                    BiConsumer<Span, T> onNext) {
+                                    BiConsumer<ReactiveSpan, T> onNext) {
         return create(TraceHolder.appName(), spanName, onNext, null);
     }
 
@@ -120,7 +118,7 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      */
     static <T> FluxTracer<T> create(String scopeName,
                                     String spanName,
-                                    BiConsumer<Span, T> onNext) {
+                                    BiConsumer<ReactiveSpan, T> onNext) {
         return create(scopeName, spanName, onNext, null);
     }
 
@@ -141,7 +139,7 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      * @return FluxTracer
      */
     static <T> FluxTracer<T> create(String spanName,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         return create(TraceHolder.appName(), spanName, null, builderConsumer);
     }
 
@@ -164,7 +162,7 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      */
     static <T> FluxTracer<T> create(String scopeName,
                                     String spanName,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         return create(scopeName, spanName, null, builderConsumer);
     }
 
@@ -188,8 +186,8 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      * @return FluxTracer
      */
     static <T> FluxTracer<T> create(String spanName,
-                                    BiConsumer<Span, T/*流中的数据*/> onNext,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    BiConsumer<ReactiveSpan, T/*流中的数据*/> onNext,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         return create(TraceHolder.appName(), spanName, onNext, builderConsumer);
     }
 
@@ -212,8 +210,8 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      * @return FluxTracer
      */
     static <T> FluxTracer<T> create(String spanName,
-                                    BiConsumer<Span, T> onNext,
-                                    BiConsumer<Span, Long/*流中数据的数量*/> onComplete) {
+                                    BiConsumer<ReactiveSpan, T> onNext,
+                                    BiConsumer<ReactiveSpan, Long/*流中数据的数量*/> onComplete) {
         return create(TraceHolder.appName(), spanName, onNext, onComplete, null);
     }
 
@@ -238,8 +236,8 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      */
     static <T> FluxTracer<T> create(String scopeName,
                                     String spanName,
-                                    BiConsumer<Span, T/*流中的数据*/> onNext,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    BiConsumer<ReactiveSpan, T/*流中的数据*/> onNext,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         return create(scopeName, spanName, onNext, null, builderConsumer);
     }
 
@@ -265,9 +263,9 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      */
     static <T> FluxTracer<T> create(String scopeName,
                                     String spanName,
-                                    BiConsumer<Span, T> onNext,
-                                    BiConsumer<Span, Long> onComplete,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    BiConsumer<ReactiveSpan, T> onNext,
+                                    BiConsumer<ReactiveSpan, Long> onComplete,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         if (TraceHolder.isDisabled(spanName)) {
             return unsupported();
         }

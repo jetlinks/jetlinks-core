@@ -2,7 +2,6 @@ package org.jetlinks.core.trace;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
 import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
@@ -45,7 +44,7 @@ public interface ReactiveTracerBuilder<T, E> {
      * @see Span
      * @see reactor.core.publisher.Flux#doOnNext(Consumer)
      */
-    default ReactiveTracerBuilder<T, E> onNext(BiConsumer<Span, E> callback) {
+    default ReactiveTracerBuilder<T, E> onNext(BiConsumer<ReactiveSpan, E> callback) {
         return callback == null ? this : onNext((ctx, span, val) -> callback.accept(span, val));
     }
 
@@ -57,7 +56,7 @@ public interface ReactiveTracerBuilder<T, E> {
      * @see Span
      * @see reactor.core.publisher.Flux#doOnNext(Consumer)
      */
-    ReactiveTracerBuilder<T, E> onNext(Consumer3<ContextView, Span, E> callback);
+    ReactiveTracerBuilder<T, E> onNext(Consumer3<ContextView, ReactiveSpan, E> callback);
 
     /**
      * 监听流完成,流完成时,回调函数被调用
@@ -66,7 +65,7 @@ public interface ReactiveTracerBuilder<T, E> {
      * @return this
      * @see reactor.core.publisher.Flux#doOnComplete(Runnable)
      */
-    default ReactiveTracerBuilder<T, E> onComplete(BiConsumer<Span, Long> callback) {
+    default ReactiveTracerBuilder<T, E> onComplete(BiConsumer<ReactiveSpan, Long> callback) {
         return callback == null ? this : onComplete((contextView, span, aLong) -> callback.accept(span, aLong));
     }
 
@@ -77,7 +76,7 @@ public interface ReactiveTracerBuilder<T, E> {
      * @return this
      * @see reactor.core.publisher.Flux#doOnComplete(Runnable)
      */
-    ReactiveTracerBuilder<T, E> onComplete(Consumer3<ContextView, Span, Long> callback);
+    ReactiveTracerBuilder<T, E> onComplete(Consumer3<ContextView, ReactiveSpan, Long> callback);
 
     /**
      * 监听流错误,当流发生异常时,回调函数被调用
@@ -95,7 +94,7 @@ public interface ReactiveTracerBuilder<T, E> {
      * @param callback 回调函数
      * @return this
      */
-    ReactiveTracerBuilder<T, E> onSubscription(BiConsumer<ContextView, SpanBuilder> callback);
+    ReactiveTracerBuilder<T, E> onSubscription(BiConsumer<ContextView, ReactiveSpanBuilder> callback);
 
     /**
      * 当流被订阅时,回调函数被调用,可以对span builder进行自定义.
@@ -103,7 +102,7 @@ public interface ReactiveTracerBuilder<T, E> {
      * @param callback 回调函数
      * @return this
      */
-    ReactiveTracerBuilder<T, E> onSubscription(Consumer<SpanBuilder> callback);
+    ReactiveTracerBuilder<T, E> onSubscription(Consumer<ReactiveSpanBuilder> callback);
 
     /**
      * 构造跟踪器

@@ -3,6 +3,7 @@ package org.jetlinks.core.monitor.tracer;
 import io.opentelemetry.api.trace.SpanBuilder;
 import org.jetlinks.core.trace.FluxTracer;
 import org.jetlinks.core.trace.MonoTracer;
+import org.jetlinks.core.trace.ReactiveSpanBuilder;
 import org.jetlinks.core.trace.ReactiveTracerBuilder;
 import reactor.core.publisher.Flux;
 import reactor.util.context.ContextView;
@@ -82,7 +83,7 @@ public interface Tracer {
      * @return FluxTracer
      */
     default <E> FluxTracer<E> traceFlux(String operation,
-                                        BiConsumer<ContextView, SpanBuilder> consumer) {
+                                        BiConsumer<ContextView, ReactiveSpanBuilder> consumer) {
         return traceFlux(operation, (builder) -> builder.onSubscription(consumer));
     }
 
@@ -131,7 +132,7 @@ public interface Tracer {
      * @return FluxTracer
      */
     default <E> MonoTracer<E> traceMono(String operation,
-                                        BiConsumer<ContextView, SpanBuilder> consumer) {
+                                        BiConsumer<ContextView, ReactiveSpanBuilder> consumer) {
         return traceMono(operation, (builder) -> builder.onSubscription(consumer));
     }
 }

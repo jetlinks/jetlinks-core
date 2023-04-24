@@ -99,7 +99,7 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      * @return MonoTracer
      */
     static <T> MonoTracer<T> create(String spanName,
-                                    BiConsumer<Span, T> onNext) {
+                                    BiConsumer<ReactiveSpan, T> onNext) {
         return create(TraceHolder.appName(), spanName, onNext, null);
     }
 
@@ -121,7 +121,7 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      */
     static <T> MonoTracer<T> create(String scopeName,
                                     String spanName,
-                                    BiConsumer<Span, T> onNext) {
+                                    BiConsumer<ReactiveSpan, T> onNext) {
         return create(scopeName, spanName, onNext, null);
     }
 
@@ -142,7 +142,7 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      * @return MonoTracer
      */
     static <T> MonoTracer<T> create(String spanName,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         return create(TraceHolder.appName(), spanName, null, builderConsumer);
     }
 
@@ -165,7 +165,7 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      */
     static <T> MonoTracer<T> create(String scopeName,
                                     String spanName,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         return create(scopeName, spanName, null, builderConsumer);
     }
 
@@ -189,8 +189,8 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      * @return MonoTracer
      */
     static <T> MonoTracer<T> create(String spanName,
-                                    BiConsumer<Span, T/*流中的数据*/> onNext,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    BiConsumer<ReactiveSpan, T/*流中的数据*/> onNext,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         return create(TraceHolder.appName(), spanName, onNext, builderConsumer);
     }
 
@@ -213,8 +213,8 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      * @return MonoTracer
      */
     static <T> MonoTracer<T> create(String spanName,
-                                    BiConsumer<Span, T> onNext,
-                                    BiConsumer<Span, Boolean/*流中是否有值*/> onComplete) {
+                                    BiConsumer<ReactiveSpan, T> onNext,
+                                    BiConsumer<ReactiveSpan, Boolean/*流中是否有值*/> onComplete) {
         return create(TraceHolder.appName(), spanName, onNext, onComplete, null);
     }
 
@@ -239,8 +239,8 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      */
     static <T> MonoTracer<T> create(String scopeName,
                                     String spanName,
-                                    BiConsumer<Span, T/*流中的数据*/> onNext,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    BiConsumer<ReactiveSpan, T/*流中的数据*/> onNext,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         return create(scopeName, spanName, onNext, null, builderConsumer);
     }
 
@@ -266,9 +266,9 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      */
     static <T> MonoTracer<T> create(String scopeName,
                                     String spanName,
-                                    BiConsumer<Span, T> onNext,
-                                    BiConsumer<Span, Boolean> onComplete,
-                                    Consumer<SpanBuilder> builderConsumer) {
+                                    BiConsumer<ReactiveSpan, T> onNext,
+                                    BiConsumer<ReactiveSpan, Boolean> onComplete,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
         if (TraceHolder.isDisabled(spanName)) {
             return unsupported();
         }

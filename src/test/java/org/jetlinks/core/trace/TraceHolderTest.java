@@ -1,6 +1,7 @@
 package org.jetlinks.core.trace;
 
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.exporter.logging.LoggingSpanExporter;
@@ -29,7 +30,7 @@ public class TraceHolderTest {
 
 
         TraceMono.trace(Mono.just(1).name("test123"))
-                 .onNext((span, integer) -> span.setAttribute("test", integer))
+                 .onNext((span, integer) -> span.setAttributeLazy(AttributeKey.stringKey("test"), ()->"123"))
                  .subscribe(System.out::println);
 
 

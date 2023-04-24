@@ -1,7 +1,5 @@
 package org.jetlinks.core.trace;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
 import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
@@ -12,9 +10,9 @@ import java.util.function.Consumer;
 abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuilder<T, R> {
     String scopeName;
     String spanName;
-    Consumer3<ContextView, Span, R> onNext;
-    Consumer3<ContextView, Span, Long> onComplete;
-    BiConsumer<ContextView, SpanBuilder> onSubscription;
+    Consumer3<ContextView, ReactiveSpan, R> onNext;
+    Consumer3<ContextView, ReactiveSpan, Long> onComplete;
+    BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription;
     BiConsumer<ContextView, Throwable> onError;
 
     @Override
@@ -30,12 +28,12 @@ abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuil
     }
 
     @Override
-    public ReactiveTracerBuilder<T, R> onNext(Consumer3<ContextView, Span, R> callback) {
+    public ReactiveTracerBuilder<T, R> onNext(Consumer3<ContextView, ReactiveSpan, R> callback) {
         if (callback == null) {
             return this;
         }
 
-        Consumer3<ContextView, Span, R> that = this.onNext;
+        Consumer3<ContextView, ReactiveSpan, R> that = this.onNext;
 
         this.onNext = that == null
                 ?
@@ -49,12 +47,12 @@ abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuil
     }
 
     @Override
-    public ReactiveTracerBuilder<T, R> onComplete(Consumer3<ContextView, Span, Long> callback) {
+    public ReactiveTracerBuilder<T, R> onComplete(Consumer3<ContextView, ReactiveSpan, Long> callback) {
         if (callback == null) {
             return this;
         }
-        
-        Consumer3<ContextView, Span, Long> that = this.onComplete;
+
+        Consumer3<ContextView, ReactiveSpan, Long> that = this.onComplete;
 
         this.onComplete = that == null
                 ?
@@ -69,7 +67,7 @@ abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuil
     }
 
     @Override
-    public ReactiveTracerBuilder<T, R> onSubscription(BiConsumer<ContextView, SpanBuilder> callback) {
+    public ReactiveTracerBuilder<T, R> onSubscription(BiConsumer<ContextView, ReactiveSpanBuilder> callback) {
         if (callback == null) {
             return this;
         }
@@ -87,7 +85,7 @@ abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuil
     }
 
     @Override
-    public ReactiveTracerBuilder<T, R> onSubscription(Consumer<SpanBuilder> callback) {
+    public ReactiveTracerBuilder<T, R> onSubscription(Consumer<ReactiveSpanBuilder> callback) {
 
         return callback == null ? this : onSubscription((contextView, spanBuilder) -> callback.accept(spanBuilder));
     }

@@ -4,6 +4,7 @@ import io.opentelemetry.api.trace.SpanBuilder;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.trace.FluxTracer;
 import org.jetlinks.core.trace.MonoTracer;
+import org.jetlinks.core.trace.ReactiveSpanBuilder;
 import org.jetlinks.core.trace.ReactiveTracerBuilder;
 import reactor.util.context.ContextView;
 
@@ -23,12 +24,12 @@ class ProxyTracer implements Tracer {
     }
 
     @Override
-    public <E> FluxTracer<E> traceFlux(String operation, BiConsumer<ContextView, SpanBuilder> consumer) {
+    public <E> FluxTracer<E> traceFlux(String operation, BiConsumer<ContextView, ReactiveSpanBuilder> consumer) {
         return lazyRef.get().traceFlux(operation, consumer);
     }
 
     @Override
-    public <E> MonoTracer<E> traceMono(String operation, BiConsumer<ContextView, SpanBuilder> consumer) {
+    public <E> MonoTracer<E> traceMono(String operation, BiConsumer<ContextView, ReactiveSpanBuilder> consumer) {
         return lazyRef.get().traceMono(operation, consumer);
     }
 

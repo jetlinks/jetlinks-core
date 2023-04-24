@@ -14,6 +14,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 @Getter
 @Setter
@@ -47,7 +48,12 @@ public class SpanEventDataInfo implements Externalizable {
         Attributes attr = eventData.getAttributes();
         if (!attr.isEmpty()) {
             attributes = Maps.newHashMapWithExpectedSize(attr.size());
-            attr.forEach((k, v) -> attributes.put(k.getKey(), v));
+            attr.forEach((k, v) -> {
+                if (v instanceof Supplier) {
+                    v = ((Supplier<?>) v).get();
+                }
+                attributes.put(k.getKey(), v);
+            });
         }
         return this;
     }

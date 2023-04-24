@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.*;
+import java.util.function.Supplier;
 
 @Getter
 @Setter
@@ -43,7 +44,12 @@ public class SpanDataInfo implements Externalizable {
         Attributes attr = data.getAttributes();
         if (!attr.isEmpty()) {
             attributes = Maps.newHashMapWithExpectedSize(attr.size());
-            attr.forEach((k, v) -> attributes.put(k.getKey(), v));
+            attr.forEach((k, v) -> {
+                if (v instanceof Supplier) {
+                    v = ((Supplier<?>) v).get();
+                }
+                attributes.put(k.getKey(), v);
+            });
         }
         List<EventData> eventData = data.getEvents();
         if (CollectionUtils.isNotEmpty(eventData)) {

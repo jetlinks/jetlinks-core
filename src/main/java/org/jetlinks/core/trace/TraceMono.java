@@ -24,9 +24,9 @@ import java.util.function.BiConsumer;
 public class TraceMono<T> extends MonoOperator<T, T> {
     private final String spanName;
     private final Tracer tracer;
-    private final Consumer3<ContextView, Span, T> onNext;
-    private final Consumer3<ContextView, Span, Long> onComplete;
-    private final BiConsumer<ContextView, SpanBuilder> onSubscription;
+    private final Consumer3<ContextView, ReactiveSpan, T> onNext;
+    private final Consumer3<ContextView, ReactiveSpan, Long> onComplete;
+    private final BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription;
     private final BiConsumer<ContextView, Throwable> onError;
 
     public static <T> TraceFlux<T> trace(Publisher<T> source) {
@@ -43,9 +43,9 @@ public class TraceMono<T> extends MonoOperator<T, T> {
     TraceMono(Mono<? extends T> source,
               String name,
               Tracer tracer,
-              Consumer3<ContextView, Span, T> onNext,
-              Consumer3<ContextView, Span, Long> onComplete,
-              BiConsumer<ContextView, SpanBuilder> builderConsumer,
+              Consumer3<ContextView, ReactiveSpan, T> onNext,
+              Consumer3<ContextView, ReactiveSpan, Long> onComplete,
+              BiConsumer<ContextView, ReactiveSpanBuilder> builderConsumer,
               BiConsumer<ContextView, Throwable> onError) {
         super(source);
         this.spanName = name == null ? this.name() : name;
@@ -56,14 +56,14 @@ public class TraceMono<T> extends MonoOperator<T, T> {
         this.onError = onError;
     }
 
-    public TraceMono<T> onNext(BiConsumer<Span, T> onNext) {
+    public TraceMono<T> onNext(BiConsumer<ReactiveSpan, T> onNext) {
         return onNext((ctx, span, r) -> onNext.accept(span, r));
     }
 
-    public TraceMono<T> onNext(Consumer3<ContextView, Span, T> callback) {
-        Consumer3<ContextView, Span, T> that = this.onNext;
+    public TraceMono<T> onNext(Consumer3<ContextView, ReactiveSpan, T> callback) {
+        Consumer3<ContextView, ReactiveSpan, T> that = this.onNext;
 
-        Consumer3<ContextView, Span, T> onNext = that == null
+        Consumer3<ContextView, ReactiveSpan, T> onNext = that == null
                 ?
                 callback
                 :
@@ -74,10 +74,10 @@ public class TraceMono<T> extends MonoOperator<T, T> {
         return new TraceMono<>(this.source, this.spanName, this.tracer, onNext, this.onComplete, this.onSubscription, this.onError);
     }
 
-    public TraceMono<T> onComplete(Consumer3<ContextView, Span, Long> callback) {
-        Consumer3<ContextView, Span, Long> that = this.onComplete;
+    public TraceMono<T> onComplete(Consumer3<ContextView, ReactiveSpan, Long> callback) {
+        Consumer3<ContextView, ReactiveSpan, Long> that = this.onComplete;
 
-        Consumer3<ContextView, Span, Long> onComplete = that == null
+        Consumer3<ContextView, ReactiveSpan, Long> onComplete = that == null
                 ?
                 callback
                 :
@@ -95,7 +95,7 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                this.onError);
     }
 
-    public TraceMono<T> onComplete(BiConsumer<Span, Long> onComplete) {
+    public TraceMono<T> onComplete(BiConsumer<ReactiveSpan, Long> onComplete) {
         return onComplete((ctx, span, len) -> onComplete.accept(span, len));
     }
 
@@ -119,7 +119,7 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                this.onError);
     }
 
-    public TraceMono<T> onSubscription(BiConsumer<ContextView, SpanBuilder> onSubscription) {
+    public TraceMono<T> onSubscription(BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription) {
         if (this.onSubscription != null) {
             onSubscription = this.onSubscription.andThen(onSubscription);
         }
@@ -130,7 +130,7 @@ public class TraceMono<T> extends MonoOperator<T, T> {
     @Override
     public void subscribe(@Nonnull CoreSubscriber<? super T> actual) {
         try {
-            SpanBuilder builder = tracer.spanBuilder(spanName);
+            ReactiveSpanBuilder builder = new ReactiveSpanBuilderWrapper(tracer.spanBuilder(spanName));
             ContextView context = actual.currentContext();
 
             Context ctx = context
