@@ -1,5 +1,6 @@
 package org.jetlinks.core.command;
 
+import lombok.EqualsAndHashCode;
 import org.jetlinks.core.utils.SerializeUtils;
 
 import java.io.Externalizable;
@@ -10,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+@EqualsAndHashCode(of = "properties")
 public abstract class AbstractCommand<Response, Self extends AbstractCommand<Response, Self>>
         implements Command<Response>, Externalizable {
 
