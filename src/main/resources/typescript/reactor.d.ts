@@ -1,4 +1,4 @@
-export namespace reactor.core.publisher {
+declare namespace reactor.core.publisher {
 
     export class Publisher<T> {
     }
@@ -54,6 +54,5 @@ export namespace reactor.core.publisher {
 
         then<U>(t: Mono<U>): Mono<U>;
     }
-
 
 }

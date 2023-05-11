@@ -21,6 +21,24 @@ import java.util.stream.Collectors;
 public class TypeScriptUtils {
 
 
+    public static StringBuilder declareClass(String name,
+                                             String comment,
+                                             List<PropertyMetadata> properties,
+                                             StringBuilder main) {
+
+        List<String> declares = new ArrayList<>();
+
+        StringBuilder builder = new StringBuilder();
+        declareClass(name, comment, properties, builder, declares);
+
+        for (String declare : declares) {
+            main.append(declare);
+        }
+        main.append(builder);
+        return main;
+    }
+
+
     public static void createMetadataDeclare(ThingMetadata metadata, StringBuilder main) {
 
         List<PropertyMetadata> properties = metadata.getProperties();
