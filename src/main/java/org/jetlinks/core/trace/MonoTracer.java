@@ -272,8 +272,8 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
         if (TraceHolder.isDisabled(spanName)) {
             return unsupported();
         }
-        return MonoTracer
-                .<T>builder()
+        return MonoTracerBuilder
+                .<T>create(true)
                 .scopeName(scopeName)
                 .spanName(spanName)
                 .onNext(onNext)

@@ -8,6 +8,7 @@ import reactor.util.context.ContextView;
 import javax.annotation.Nonnull;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * 响应式跟踪构造器
@@ -35,6 +36,14 @@ public interface ReactiveTracerBuilder<T, E> {
      * @return this
      */
     ReactiveTracerBuilder<T, E> spanName(@Nonnull String name);
+
+    /**
+     * 定义跟踪名称
+     *
+     * @param nameBuilder 名称
+     * @return this
+     */
+    ReactiveTracerBuilder<T, E> spanName(@Nonnull Function<ContextView, String> nameBuilder);
 
     /**
      * 监听流中的数据,并进行span自定义. 当流中产生数据时,回调函数被调用.

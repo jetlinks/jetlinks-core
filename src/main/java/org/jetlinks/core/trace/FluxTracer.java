@@ -269,8 +269,8 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
         if (TraceHolder.isDisabled(spanName)) {
             return unsupported();
         }
-        return FluxTracer
-                .<T>builder()
+        return FluxTracerBuilder
+                .<T>create(true)
                 .scopeName(scopeName)
                 .spanName(spanName)
                 .onNext(onNext)

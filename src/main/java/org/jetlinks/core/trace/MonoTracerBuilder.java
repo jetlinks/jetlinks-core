@@ -1,6 +1,13 @@
 package org.jetlinks.core.trace;
 
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+
+@AllArgsConstructor(staticName = "create")
+@NoArgsConstructor
 class MonoTracerBuilder<T> extends AbstractReactiveTracerBuilder<MonoTracer<T>, T> {
+
+    private boolean fastSubscribe;
     @Override
     public MonoTracer<T> build() {
         return source ->
@@ -10,6 +17,7 @@ class MonoTracerBuilder<T> extends AbstractReactiveTracerBuilder<MonoTracer<T>, 
                                 onNext,
                                 onComplete,
                                 onSubscription,
-                                onError);
+                                onError,
+                                fastSubscribe);
     }
 }

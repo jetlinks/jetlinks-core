@@ -6,10 +6,11 @@ import reactor.util.context.ContextView;
 import javax.annotation.Nonnull;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuilder<T, R> {
-    String scopeName;
-    String spanName;
+    String scopeName = TraceHolder.appName();
+    Function<ContextView, String> spanName;
     Consumer3<ContextView, ReactiveSpan, R> onNext;
     Consumer3<ContextView, ReactiveSpan, Long> onComplete;
     BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription;
@@ -23,7 +24,12 @@ abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuil
 
     @Override
     public ReactiveTracerBuilder<T, R> spanName(@Nonnull String name) {
-        this.spanName = name;
+        return this.spanName(ctx -> name);
+    }
+
+    @Override
+    public ReactiveTracerBuilder<T, R> spanName(@Nonnull Function<ContextView, String> nameBuilder) {
+        this.spanName = nameBuilder;
         return this;
     }
 

@@ -1,7 +1,6 @@
 package org.jetlinks.core.trace;
 
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import lombok.extern.slf4j.Slf4j;
@@ -15,15 +14,17 @@ import reactor.util.context.ContextView;
 import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 @Slf4j
 public class TraceFlux<T> extends FluxOperator<T, T> {
-    private final String spanName;
+    private final Function<ContextView, String> spanName;
     private final Tracer tracer;
     private final Consumer3<ContextView, ReactiveSpan, T> onNext;
     private final Consumer3<ContextView, ReactiveSpan, Long> onComplete;
     private final BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription;
     private final BiConsumer<ContextView, Throwable> onError;
+    private final boolean fastSubscribe;
 
     public static <T> TraceFlux<T> trace(Publisher<T> source) {
 
@@ -33,23 +34,26 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                                null,
                                null,
                                null,
-                               null);
+                               null,
+                               true);
     }
 
     TraceFlux(Flux<? extends T> source,
-              String name,
+              Function<ContextView, String> name,
               Tracer tracer,
               Consumer3<ContextView, ReactiveSpan, T> onNext,
               Consumer3<ContextView, ReactiveSpan, Long> onComplete,
-              BiConsumer<ContextView,ReactiveSpanBuilder> builderConsumer,
-              BiConsumer<ContextView, Throwable> onError) {
+              BiConsumer<ContextView, ReactiveSpanBuilder> builderConsumer,
+              BiConsumer<ContextView, Throwable> onError,
+              boolean fastSubscribe) {
         super(source);
-        this.spanName = name == null ? this.name() : name;
+        this.spanName = name == null ? (ctx) -> this.name() : name;
         this.tracer = tracer == null ? TraceHolder.telemetry().getTracer(TraceHolder.appName()) : tracer;
         this.onNext = onNext;
         this.onSubscription = builderConsumer;
         this.onComplete = onComplete;
         this.onError = onError;
+        this.fastSubscribe=fastSubscribe;
     }
 
     public TraceFlux<T> onNext(BiConsumer<ReactiveSpan, T> onNext) {
@@ -67,7 +71,14 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                     that.accept(contextView, span, r);
                     callback.accept(contextView, span, r);
                 };
-        return new TraceFlux<>(this.source, this.spanName, this.tracer, onNext, this.onComplete, this.onSubscription, this.onError);
+        return new TraceFlux<>(this.source,
+                               this.spanName,
+                               this.tracer,
+                               onNext,
+                               this.onComplete,
+                               this.onSubscription,
+                               this.onError,
+                               this.fastSubscribe);
     }
 
     public TraceFlux<T> onComplete(Consumer3<ContextView, ReactiveSpan, Long> callback) {
@@ -88,7 +99,8 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                                this.onNext,
                                onComplete,
                                this.onSubscription,
-                               this.onError);
+                               this.onError,
+                               this.fastSubscribe);
     }
 
     public TraceFlux<T> onComplete(BiConsumer<Span, Long> onComplete) {
@@ -97,12 +109,13 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
 
     public TraceFlux<T> spanName(String spanName) {
         return new TraceFlux<>(this.source,
-                               spanName,
+                               (ctx) -> spanName,
                                this.tracer,
                                this.onNext,
                                this.onComplete,
                                this.onSubscription,
-                               this.onError);
+                               this.onError,
+                               this.fastSubscribe);
     }
 
     public TraceFlux<T> scopeName(String scopeName) {
@@ -112,21 +125,36 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                                this.onNext,
                                this.onComplete,
                                this.onSubscription,
-                               this.onError);
+                               this.onError,
+                               this.fastSubscribe);
     }
 
     public TraceFlux<T> onSubscription(BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription) {
         if (this.onSubscription != null) {
             onSubscription = this.onSubscription.andThen(onSubscription);
         }
-        return new TraceFlux<>(this.source, this.spanName, this.tracer, this.onNext, this.onComplete, onSubscription, onError);
+        return new TraceFlux<>(this.source,
+                               this.spanName,
+                               this.tracer,
+                               this.onNext,
+                               this.onComplete,
+                               onSubscription,
+                               onError,
+                               this.fastSubscribe);
     }
 
     @Override
     public void subscribe(@Nonnull CoreSubscriber<? super T> actual) {
         try {
-            ReactiveSpanBuilder builder = new ReactiveSpanBuilderWrapper(tracer.spanBuilder(spanName));
             ContextView context = actual.currentContext();
+
+            String name = spanName.apply(context);
+            if (fastSubscribe && TraceHolder.isDisabled(name)) {
+                this.source.subscribe(actual);
+                return;
+            }
+
+            ReactiveSpanBuilder builder = new ReactiveSpanBuilderWrapper(tracer.spanBuilder(name));
 
             Context ctx = context
                     .<Context>getOrEmpty(Context.class)
@@ -141,8 +169,7 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                     .setParent(ctx)
                     .startSpan();
 
-            this.source
-                    .subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, onError,ctx));
+            this.source.subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, onError, ctx));
 
         } catch (Throwable e) {
             actual.onError(e);
