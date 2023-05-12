@@ -3,6 +3,10 @@ package org.jetlinks.core.utils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import lombok.*;
+import org.jetlinks.core.message.DeviceMessage;
+import org.jetlinks.core.message.Message;
+import org.jetlinks.core.message.MessageType;
+import org.jetlinks.core.message.ThingMessage;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -84,7 +88,7 @@ public class SerializeUtilsTest {
 
         assertEquals(new HashSet<>(Arrays.asList(1, "2", 3)), codec(new HashSet<>(Arrays.asList(1, "2", 3))));
 
-        Set<Object> set= ConcurrentHashMap.newKeySet();
+        Set<Object> set = ConcurrentHashMap.newKeySet();
 
         set.addAll(Arrays.asList(1, "2", 3));
 
@@ -142,6 +146,28 @@ public class SerializeUtilsTest {
 
         }
 
+    }
+
+    @Test
+    public void testMessage() {
+        for (MessageType value : MessageType.values()) {
+            {
+                DeviceMessage msg = value.forDevice();
+                if (msg != null) {
+                    DeviceMessage decode= (DeviceMessage)codec(msg);
+
+                    assertEquals(msg.getTimestamp(),decode.getTimestamp());
+                }
+            }
+            {
+                ThingMessage msg = value.forThing("test","test1");
+                if (msg != null) {
+                    ThingMessage decode = (ThingMessage)codec(msg);
+                    assertEquals(msg.getThingType(),decode.getThingType());
+                    assertEquals(msg.getTimestamp(),decode.getTimestamp());
+                }
+            }
+        }
     }
 
     @Test

@@ -174,7 +174,7 @@ public enum MessageType {
 
     public <T extends ThingMessage> T forThing() {
         if (null == thingInstance) {
-            throw new UnsupportedOperationException("type " + name() + " unsupported for thing");
+            return null;
         }
         return (T) thingInstance.get();
     }
@@ -184,10 +184,16 @@ public enum MessageType {
     }
 
     public <T extends ThingMessage> T forThing(String type, String id) {
+        T thing;
         if (!DeviceThingType.device.name().equals(type)) {
-            return (T) this.forThing().thingId(type, id);
+            thing = this.forThing();
+        } else {
+            thing = this.forDevice();
         }
-        return (T) this.forDevice().thingId(type, id);
+        if (thing != null) {
+            return (T) thing.thingId(type, id);
+        }
+        return null;
     }
 
     @SuppressWarnings("all")
@@ -248,16 +254,20 @@ public enum MessageType {
         return Optional.of(UNKNOWN);
     }
 
+    static final MessageType[] types = values();
+
     @SneakyThrows
     public static Message readExternal(ObjectInput input) {
         int type = input.readByte();
-        MessageType messageType = values()[type];
+        MessageType messageType = types[type];
         boolean isDevice = input.readBoolean();
         Message message;
         if (isDevice && messageType.deviceInstance != null) {
             message = messageType.deviceInstance.get();
-        } else {
+        } else if (messageType.thingInstance != null) {
             message = messageType.thingInstance.get();
+        } else {
+            message = new CommonDeviceMessage();
         }
         message.readExternal(input);
         return message;

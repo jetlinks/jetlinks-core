@@ -8,9 +8,13 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.SneakyThrows;
+import org.jetlinks.core.message.Message;
+import org.jetlinks.core.message.MessageType;
 import org.springframework.util.ConcurrentReferenceHashMap;
 
+import java.io.Externalizable;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serializable;
@@ -23,8 +27,40 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class SerializeUtils {
+
+    static final Serializer[] all = new Serializer[256];
+    private static final Map<Class<?>, Serializer> cache = new ConcurrentHashMap<>();
+
+    static {
+        for (InternalSerializers value : InternalSerializers.values()) {
+            registerSerializer(value);
+        }
+    }
+
+    public static synchronized void registerSerializer(Serializer serializer) {
+        if (serializer.getCode() > 255) {
+            throw new IllegalArgumentException("serializer code must be less than 255");
+        }
+
+        int code = serializer.getCode() & 0xFF;
+        if (all[code] != null && !Objects.equals(all[code], serializer)) {
+            throw new IllegalArgumentException("serializer code [" + serializer.getCode() + "] already exists,type:" + all[code].getJavaType());
+        }
+
+        all[code] = serializer;
+        if (!(serializer instanceof InternalSerializers)) {
+            cache.put(serializer.getJavaType(), serializer);
+        }
+    }
+
+    public static <T extends Externalizable> void registerSerializer(int code,
+                                                                     Class<T> type,
+                                                                     Function<ObjectInput, ? extends T> newInstance) {
+        registerSerializer(new ExternalSerializer(code, type, newInstance));
+    }
 
     @SneakyThrows
     public static String readNullableUTF(ObjectInput in) {
@@ -46,20 +82,104 @@ public class SerializeUtils {
 
     @SneakyThrows
     public static void writeObject(Object obj, ObjectOutput out) {
-        Type type;
+        Serializer serializer;
         if (obj == null) {
-            type = Type.NULL;
+            serializer = InternalSerializers.NULL;
         } else {
-            type = Type.of(obj);
+            serializer = lookup(obj);
         }
-        out.writeByte(type.code);
-        type.write(obj, out);
+        out.writeByte(serializer.getCode());
+        serializer.serialize(obj, out);
     }
 
     @SneakyThrows
     public static Object readObject(ObjectInput input) {
-        Type type = Type.all[input.readByte()];
-        return type.read(input);
+        Serializer serializer = all[input.readUnsignedByte()];
+        if (serializer == null) {
+            return null;
+        }
+        return serializer.deserialize(input);
+    }
+
+    public static Serializer lookup(Object readyToSer) {
+        if (readyToSer instanceof String) {
+            return InternalSerializers.STRING;
+        }
+        if (readyToSer instanceof Boolean) {
+            return InternalSerializers.BOOLEAN;
+        }
+        if (readyToSer instanceof Integer) {
+            return InternalSerializers.INT;
+        }
+        if (readyToSer instanceof Long) {
+            return InternalSerializers.LONG;
+        }
+        if (readyToSer instanceof Double) {
+            return InternalSerializers.DOUBLE;
+        }
+        if (readyToSer instanceof Float) {
+            return InternalSerializers.FLOAT;
+        }
+        if (readyToSer instanceof Byte) {
+            return InternalSerializers.BYTE;
+        }
+        if (readyToSer instanceof Short) {
+            return InternalSerializers.SHORT;
+        }
+        if (readyToSer instanceof Message) {
+            return InternalSerializers.MESSAGE;
+        }
+        if (readyToSer instanceof Character) {
+            return InternalSerializers.CHAR;
+        }
+        if (readyToSer instanceof BigDecimal) {
+            return InternalSerializers.BIG_DECIMAL;
+        }
+        if (readyToSer instanceof BigInteger) {
+            return InternalSerializers.BIG_INTEGER;
+        }
+        if (readyToSer instanceof ConcurrentMap) {
+            return InternalSerializers.C_MAP;
+        }
+        if (readyToSer instanceof ConcurrentHashMap.KeySetView) {
+            return InternalSerializers.C_SET;
+        }
+        if (readyToSer instanceof Map) {
+            return InternalSerializers.MAP;
+        }
+        if (readyToSer instanceof List) {
+            return InternalSerializers.LIST;
+        }
+        if (readyToSer instanceof Set) {
+            return InternalSerializers.SET;
+        }
+        if (readyToSer instanceof ByteBuf) {
+            return InternalSerializers.Netty;
+        }
+        if (readyToSer instanceof ByteBuffer) {
+            return InternalSerializers.Nio;
+        }
+        return lookup(readyToSer.getClass());
+    }
+
+    public static Serializer lookup(Class<?> javaType) {
+        return cache.computeIfAbsent(javaType, t -> {
+            if (t.isPrimitive()) {
+                t = Primitives.wrap(t);
+            }
+            for (Serializer type : all) {
+                if (type == null) {
+                    continue;
+                }
+                if (type.getJavaType() == t || type.getJavaType().isAssignableFrom(t)) {
+                    return type;
+                }
+            }
+            if (t.isArray() && !t.getComponentType().isPrimitive()) {
+                return InternalSerializers.ARRAY;
+            }
+            return InternalSerializers.JSON;
+        });
     }
 
     @SneakyThrows
@@ -122,7 +242,7 @@ public class SerializeUtils {
     }
 
     @AllArgsConstructor
-    private enum Type {
+    private enum InternalSerializers implements Serializer {
         NULL(0x00, Void.class) {
             @Override
             public Object read(ObjectInput in) {
@@ -370,9 +490,9 @@ public class SerializeUtils {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
-                Type elementType = Type.all[input.readByte()];
+                Serializer serializer = all[input.readUnsignedByte()];
                 int len = input.readInt();
-                Object array = Array.newInstance(elementType.javaType, len);
+                Object array = Array.newInstance(serializer.getJavaType(), len);
                 for (int i = 0; i < len; i++) {
                     Array.set(array, i, SerializeUtils.readObject(input));
                 }
@@ -383,8 +503,8 @@ public class SerializeUtils {
             @SneakyThrows
             void write(Object value, ObjectOutput input) {
                 Class<?> type = value.getClass().getComponentType();
-                Type elementType = Type.of(type);
-                input.writeByte(elementType.ordinal());
+                Serializer serializer = lookup(type);
+                input.writeByte(serializer.getCode());
                 int len = Array.getLength(value);
                 input.writeInt(len);
 
@@ -556,6 +676,17 @@ public class SerializeUtils {
             }
         },
 
+        MESSAGE(0x30, Message.class) {
+            @Override
+            void write(Object value, ObjectOutput output) {
+                MessageType.writeExternal(((Message) value), output);
+            }
+
+            @Override
+            Object read(ObjectInput input) {
+                return MessageType.readExternal(input);
+            }
+        },
 
         JSON(0x10, Object.class) {
             private final Map<String, Class<?>> clazzCache = new ConcurrentReferenceHashMap<>();
@@ -586,99 +717,56 @@ public class SerializeUtils {
             }
         };
 
-        private final int code;
-        private final Class<?> javaType;
+        @Getter
+        public final int code;
+        @Getter
+        public final Class<?> javaType;
 
         abstract Object read(ObjectInput input);
 
         abstract void write(Object value, ObjectOutput input);
 
-        final static Type[] all;
-
-        static {
-            all = new Type[0xff];
-            for (Type value : values()) {
-                all[value.code] = value;
-            }
+        @Override
+        public void serialize(Object value, ObjectOutput input) {
+            write(value, input);
         }
 
-        private static final Map<Class<?>, Type> cache = new ConcurrentReferenceHashMap<>();
-
-        public static Type of(Object javaType) {
-            if (javaType instanceof String) {
-                return STRING;
-            }
-            if (javaType instanceof Boolean) {
-                return BOOLEAN;
-            }
-            if (javaType instanceof Integer) {
-                return INT;
-            }
-            if (javaType instanceof Long) {
-                return LONG;
-            }
-            if (javaType instanceof Double) {
-                return DOUBLE;
-            }
-            if (javaType instanceof Float) {
-                return FLOAT;
-            }
-            if (javaType instanceof Byte) {
-                return BYTE;
-            }
-            if (javaType instanceof Short) {
-                return SHORT;
-            }
-            if (javaType instanceof Character) {
-                return CHAR;
-            }
-            if (javaType instanceof BigDecimal) {
-                return BIG_DECIMAL;
-            }
-            if (javaType instanceof BigInteger) {
-                return BIG_INTEGER;
-            }
-            if (javaType instanceof ConcurrentMap) {
-                return C_MAP;
-            }
-            if (javaType instanceof ConcurrentHashMap.KeySetView) {
-                return C_SET;
-            }
-            if (javaType instanceof Map) {
-                return MAP;
-            }
-            if (javaType instanceof List) {
-                return LIST;
-            }
-            if (javaType instanceof Set) {
-                return SET;
-            }
-            if (javaType instanceof ByteBuf) {
-                return Netty;
-            }
-            if (javaType instanceof ByteBuffer) {
-                return Nio;
-            }
-            return of(javaType.getClass());
+        @Override
+        public Object deserialize(ObjectInput input) {
+            return read(input);
         }
-
-        public static Type of(Class<?> javaType) {
-            return cache.computeIfAbsent(javaType, t -> {
-                if (t.isPrimitive()) {
-                    t = Primitives.wrap(t);
-                }
-                for (Type type : all) {
-                    if (type.javaType == t || type.javaType.isAssignableFrom(t)) {
-                        return type;
-                    }
-                }
-                if (t.isArray() && !t.getComponentType().isPrimitive()) {
-                    return ARRAY;
-                }
-                return JSON;
-            });
-        }
-
     }
 
+    @Getter
+    @AllArgsConstructor
+    static class ExternalSerializer implements Serializer {
+        private final int code;
+        private final Class<? extends Externalizable> javaType;
+        private final Function<ObjectInput, ? extends Externalizable> newInstance;
+
+        @Override
+        @SneakyThrows
+        public Object deserialize(ObjectInput input) {
+            Externalizable exz = newInstance.apply(input);
+            exz.readExternal(input);
+            return exz;
+        }
+
+        @Override
+        @SneakyThrows
+        public void serialize(Object value, ObjectOutput input) {
+            Externalizable exz = ((Externalizable) value);
+            exz.writeExternal(input);
+        }
+    }
+
+    public interface Serializer {
+        int getCode();
+
+        Class<?> getJavaType();
+
+        Object deserialize(ObjectInput input);
+
+        void serialize(Object value, ObjectOutput input);
+    }
 }
