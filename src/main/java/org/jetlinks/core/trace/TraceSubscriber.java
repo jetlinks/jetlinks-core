@@ -112,6 +112,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         if (!stateSet) {
             span.setStatus(StatusCode.OK);
         }
+        stateSet = true;
         try (Scope scope = span.makeCurrent()) {
             actual.onComplete();
         }

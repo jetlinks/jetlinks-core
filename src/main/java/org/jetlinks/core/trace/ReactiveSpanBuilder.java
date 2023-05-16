@@ -15,7 +15,10 @@ import java.util.function.Supplier;
  * 响应式的span构建器,主要拓展了{@link ReactiveSpanBuilder#setAttributeLazy(AttributeKey, Supplier)}以提升性能
  *
  * @author zhouhao
- * @see 1.2.1
+ * @since 1.2.1
+ * @see SpanBuilder
+ * @see MonoTracer
+ * @see FluxTracer
  */
 public interface ReactiveSpanBuilder extends SpanBuilder {
 
