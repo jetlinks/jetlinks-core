@@ -23,7 +23,7 @@ import java.util.function.Supplier;
 
 class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
-    final static AttributeKey<Long> count = AttributeKey.longKey("count");
+    final static AttributeKey<Long> count = AttributeKey.longKey("flux-next-count");
 
     @SuppressWarnings("all")
     final static AtomicLongFieldUpdater<TraceSubscriber> NEXT_COUNT = AtomicLongFieldUpdater
@@ -87,7 +87,10 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     @Override
     protected void hookOnCancel() {
-        if (!stateSet) {
+        span.setAttribute(count,nextCount);
+        if (nextCount > 0) {
+            span.setStatus(StatusCode.OK, "cancel");
+        } else if (!stateSet) {
             span.setStatus(StatusCode.ERROR, "cancel");
         }
     }
@@ -97,6 +100,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         if (null != onNext) {
             onNext.accept(context, this, value);
         }
+        stateSet = true;
         NEXT_COUNT.incrementAndGet(this);
         try (Scope scope = span.makeCurrent()) {
             actual.onNext(value);
