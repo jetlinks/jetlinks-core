@@ -21,6 +21,7 @@ public enum MetadataFeature implements Feature {
     eventNotModifiable("物模型事件不可修改"),
     eventNotDeletable("物模型事件不可删除"),
 
+    diffMetadataSameProduct("同一个产品,设备物模型数据可能不同")
     ;
 
     private final String name;
