@@ -18,6 +18,7 @@ public class DataTypes {
         supports.put(DoubleType.ID, DoubleType::new);
         supports.put(EnumType.ID, EnumType::new);
         supports.put(FloatType.ID, FloatType::new);
+        supports.put(ShortType.ID, ShortType::new);
         supports.put(IntType.ID, IntType::new);
         supports.put(LongType.ID, LongType::new);
         supports.put(ObjectType.ID, ObjectType::new);
