@@ -16,6 +16,7 @@ import reactor.util.context.Context;
 import reactor.util.context.ContextView;
 
 import javax.annotation.Nonnull;
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.BiConsumer;
@@ -82,7 +83,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     @Override
     protected void hookFinally(@Nonnull SignalType type) {
-        span.end();
+        span.end(Instant.now());
     }
 
     @Override
