@@ -13,6 +13,7 @@ import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
 import javax.annotation.Nonnull;
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -170,7 +171,7 @@ public class TraceMono<T> extends MonoOperator<T, T> {
             }
 
             Span span = builder
-                    .setStartTimestamp(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+                    .setStartTimestamp(Instant.now())
                     .setParent(ctx)
                     .startSpan();
 
