@@ -110,19 +110,6 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
     }
 
     @Override
-    public JSONObject toJson() {
-        JSONObject json = new JSONObject();
-        json.put("id", id);
-        json.put("name", name);
-        json.put("description", description);
-        json.put("properties", getProperties().stream().map(Jsonable::toJson).collect(Collectors.toList()));
-        json.put("functions", getFunctions().stream().map(Jsonable::toJson).collect(Collectors.toList()));
-        json.put("events", getEvents().stream().map(Jsonable::toJson).collect(Collectors.toList()));
-        json.put("expands", expands);
-        return json;
-    }
-
-    @Override
     public void fromJson(JSONObject json) {
 
         this.properties = null;
