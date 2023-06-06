@@ -1,10 +1,12 @@
 package org.jetlinks.core.things;
 
+import com.alibaba.fastjson.JSONObject;
 import org.jetlinks.core.metadata.*;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public interface ThingMetadata extends Metadata, Jsonable {
 
@@ -64,7 +66,21 @@ public interface ThingMetadata extends Metadata, Jsonable {
         return merge(metadata, MergeOption.DEFAULT_OPTIONS);
     }
 
-    default <T extends ThingMetadata>  ThingMetadata merge(T metadata, MergeOption... options) {
+    default <T extends ThingMetadata> ThingMetadata merge(T metadata, MergeOption... options) {
         throw new UnsupportedOperationException("unsupported merge metadata");
+    }
+
+    @Override
+    default JSONObject toJson() {
+        JSONObject json = new JSONObject();
+        json.put("id", getId());
+        json.put("name", getName());
+        json.put("description", getDescription());
+        json.put("properties", getProperties().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        json.put("functions", getFunctions().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        json.put("events", getEvents().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        json.put("tags", getTags().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        json.put("expands", getExpands());
+        return json;
     }
 }
