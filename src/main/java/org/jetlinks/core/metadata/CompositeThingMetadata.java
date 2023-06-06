@@ -5,13 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import org.jetlinks.core.things.ThingMetadata;
 import org.jetlinks.core.utils.CompositeList;
+import org.jetlinks.core.utils.CompositeMap;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @AllArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(of = {"left", "right"})
 public class CompositeThingMetadata implements ThingMetadata {
     protected final ThingMetadata left;
     protected final ThingMetadata right;
@@ -118,7 +119,13 @@ public class CompositeThingMetadata implements ThingMetadata {
 
     @Override
     public Map<String, Object> getExpands() {
-        return left.getExpands();
+        if (left.getExpands() == null) {
+            return right.getExpands();
+        }
+        if (right.getExpands() == null) {
+            return left.getExpands();
+        }
+        return new CompositeMap<>(left.getExpands(), right.getExpands());
     }
 
     @Override
