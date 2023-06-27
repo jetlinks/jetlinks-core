@@ -141,7 +141,7 @@ public class TraceHolder {
      * @return Disposable
      */
     public static Disposable enable(String spanName, String handler) {
-       removeDisabled(spanName,handler);
+        removeDisabled(spanName, handler);
         Topic<String> subTable = enabledSpanName.append(spanName);
         subTable.subscribe(handler);
         return () -> subTable.unsubscribe(handler);
@@ -174,7 +174,7 @@ public class TraceHolder {
         disabledSpanName
                 .append(spanName)
                 .subscribe(handler);
-        removeEnabled(spanName,handler);
+        removeEnabled(spanName, handler);
     }
 
     /**
@@ -238,7 +238,7 @@ public class TraceHolder {
         ContextPropagators propagators = TraceHolder.telemetry().getPropagators();
         TextMapPropagator propagator = propagators.getTextMapPropagator();
 
-        Context context = parent.getOrDefault(Context.class, Context.root());
+        Context context = parent.getOrDefault(Context.class, Context.current());
         if (null != context) {
             context = propagator.extract(context, source, getter);
             return reactor.util.context.Context
@@ -270,7 +270,21 @@ public class TraceHolder {
         }
         ContextPropagators propagators = TraceHolder.telemetry().getPropagators();
         TextMapPropagator propagator = propagators.getTextMapPropagator();
-        Context context = ctx.getOrDefault(Context.class, Context.root());
+        Context context = ctx.getOrDefault(Context.class, Context.current());
+        if (null != context) {
+            propagator.inject(context, carrier, setter::accept);
+        }
+        return carrier;
+    }
+
+    public static <T> T writeTo(T carrier,
+                                Consumer3<T, String, String> setter) {
+        if (isDisabled()) {
+            return carrier;
+        }
+        ContextPropagators propagators = TraceHolder.telemetry().getPropagators();
+        TextMapPropagator propagator = propagators.getTextMapPropagator();
+        Context context = Context.current();
         if (null != context) {
             propagator.inject(context, carrier, setter::accept);
         }
