@@ -3,14 +3,12 @@ package org.jetlinks.core.utils;
 import org.junit.Test;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.*;
 
 public class SerialFluxTest {
 
@@ -19,19 +17,25 @@ public class SerialFluxTest {
     public void test() {
         SerialFlux<Integer> flux = new SerialFlux<>();
 
-        Sinks.Many<Integer> sink = Sinks.many().multicast().directAllOrNothing();
+        Flux<Integer> first = flux.join(Flux.just(1).delayElements(Duration.ofSeconds(1)));
 
-        Schedulers
-                .parallel()
-                .schedule(() -> {
-                    System.out.println("complete");
-                    sink.tryEmitComplete();
-                }, 5, TimeUnit.SECONDS);
+        Flux<Integer> second = flux
+                .join(Flux.create(sink -> {
+                    sink.onCancel(() -> {
+                        System.out.println("cancel");
+                    });
+                }));
+
+        Flux<Integer> third = flux.join(Flux.just(2, 3));
+
+
+        Schedulers.parallel().schedule(() -> {
+            second.subscribe().dispose();
+        }, 2, TimeUnit.SECONDS);
 
         Flux.merge(
-                    flux.join(Flux.just(1).delayElements(Duration.ofSeconds(2))),
-                    flux.join(sink.asFlux()),
-                    flux.join(Flux.just(2, 3).delayElements(Duration.ofSeconds(1)))
+                    first,
+                    third
             )
             .doOnNext(System.out::println)
             .as(StepVerifier::create)

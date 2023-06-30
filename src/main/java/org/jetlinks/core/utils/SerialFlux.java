@@ -2,34 +2,35 @@ package org.jetlinks.core.utils;
 
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
-import reactor.core.publisher.BaseSubscriber;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxOperator;
-import reactor.core.publisher.SignalType;
+import reactor.core.publisher.*;
 import reactor.util.concurrent.Queues;
 import reactor.util.context.Context;
 
 import javax.annotation.Nonnull;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Supplier;
 
 public class SerialFlux<T> {
 
     @SuppressWarnings("all")
-    static final AtomicIntegerFieldUpdater<SerialFlux> WIP =
-            AtomicIntegerFieldUpdater.newUpdater(SerialFlux.class, "wip");
+    static final AtomicReferenceFieldUpdater<SerialFlux, Pending> WIP =
+            AtomicReferenceFieldUpdater.newUpdater(SerialFlux.class, Pending.class, "wip");
 
-    final Queue<Pending> queue;
+    @SuppressWarnings("all")
+    static final AtomicReferenceFieldUpdater<Pending.PendingSubscriber, CoreSubscriber> ACTUAL =
+            AtomicReferenceFieldUpdater.newUpdater(Pending.PendingSubscriber.class, CoreSubscriber.class, "actual");
 
-    volatile int wip;
+    final Queue<Pending<T>> queue;
 
+    volatile Pending<T> wip;
 
     public SerialFlux() {
-        this(Queues.<Pending>small().get());
+        this(Queues.small());
     }
 
-    public SerialFlux(Queue<Pending> queue) {
-        this.queue = queue;
+    public SerialFlux(Supplier<Queue<Pending<T>>> queueSupplier) {
+        this.queue = queueSupplier.get();
     }
 
     public int size() {
@@ -37,7 +38,7 @@ public class SerialFlux<T> {
     }
 
     public Flux<T> join(Flux<T> join) {
-        Pending pending = new Pending(join);
+        Pending<T> pending = new Pending<>(this, join);
         if (!queue.offer(pending)) {
             return Flux.error(new IllegalStateException("pending queue is full"));
         }
@@ -45,89 +46,149 @@ public class SerialFlux<T> {
     }
 
     void drain() {
-        if (WIP.compareAndSet(this, 0, 1)) {
-            Pending pending = queue.poll();
-            if (pending != null) {
-                pending.doSubscribe();
+        if (wip != null) {
+            return;
+        }
+        for (; ; ) {
+            Pending<T> pending;
+            if (WIP.compareAndSet(this, null, pending = queue.poll())) {
+                if (pending != null) {
+                    pending.doSubscribe();
+                }
+                return;
+            } else {
+                if (pending != null) {
+                    if (!queue.offer(pending)) {
+                        pending.doSubscribe();
+                        return;
+                    }
+                }
             }
         }
     }
 
-    class Pending extends FluxOperator<T, T> {
+    static class Pending<T> extends FluxOperator<T, T> {
 
+        private final SerialFlux<T> main;
         private final PendingSubscriber subscriber = new PendingSubscriber();
 
-        protected Pending(Flux<? extends T> source) {
+        protected Pending(SerialFlux<T> main, Flux<? extends T> source) {
             super(source);
+            this.main = main;
+        }
+
+        @Override
+        public Object scanUnsafe(@Nonnull Attr key) {
+            if (key == Attr.TERMINATED) {
+                return subscriber.isDisposed();
+            }
+            return super.scanUnsafe(key);
         }
 
         @Override
         public void subscribe(@Nonnull CoreSubscriber<? super T> actual) {
             subscriber.addSubscriber(actual);
-            drain();
+            main.drain();
         }
 
         void doSubscribe() {
+            if (subscriber.isCompleted()) {
+                WIP.compareAndSet(main, this, null);
+                main.drain();
+                return;
+            }
             source.subscribe(subscriber);
         }
 
         class PendingSubscriber extends BaseSubscriber<T> {
-            private volatile CoreSubscriber<? super T>[] actual;
+            @SuppressWarnings("all")
+            volatile CoreSubscriber<? super T> actual = null;
+
+            long requested = Long.MAX_VALUE;
 
             @Override
             protected void hookFinally(@Nonnull SignalType type) {
-                WIP.set(SerialFlux.this, 0);
-                SerialFlux.this.drain();
+                complete();
+            }
+
+            private boolean isCompleted() {
+                return ACTUAL.get(this) == this;
+            }
+
+            private void complete() {
+                ACTUAL.set(this, this);
+                if (WIP.compareAndSet(main, Pending.this, null)) {
+                    main.drain();
+                }
             }
 
             @Override
             @Nonnull
             public Context currentContext() {
-                Context context = super.currentContext();
-                for (CoreSubscriber<? super T> coreSubscriber : actual) {
-                    context = context.putAll(coreSubscriber.currentContext().readOnly());
-                }
-                return context;
+                return (actual == null || isCompleted()) ? super.currentContext() : actual.currentContext();
             }
 
             @Override
             protected void hookOnNext(@Nonnull T value) {
-                for (CoreSubscriber<? super T> coreSubscriber : actual) {
-                    coreSubscriber.onNext(value);
+                CoreSubscriber<? super T> actual = this.actual;
+                if (isCompleted() || actual == null) {
+                    Operators.onDiscard(value, currentContext());
+                } else {
+                    actual.onNext(value);
                 }
             }
 
             @Override
             protected void hookOnComplete() {
-                for (CoreSubscriber<? super T> coreSubscriber : actual) {
-                    coreSubscriber.onComplete();
+                if (isCompleted()) {
+                    return;
+                }
+                CoreSubscriber<? super T> actual = this.actual;
+                if (actual != null) {
+                    actual.onComplete();
                 }
             }
 
             @Override
             protected void hookOnError(@Nonnull Throwable throwable) {
-                for (CoreSubscriber<? super T> coreSubscriber : actual) {
-                    coreSubscriber.onError(throwable);
+                if (isCompleted()) {
+                    return;
+                }
+                CoreSubscriber<? super T> actual = this.actual;
+                if (actual != null) {
+                    actual.onError(throwable);
                 }
             }
 
             @Override
             protected void hookOnSubscribe(@Nonnull Subscription subscription) {
-                for (CoreSubscriber<? super T> coreSubscriber : actual) {
-                    coreSubscriber.onSubscribe(subscription);
-                }
+                subscription.request(requested);
             }
 
+            @SuppressWarnings("all")
             private synchronized void addSubscriber(CoreSubscriber<? super T> subscriber) {
-                if (actual == null) {
-                    actual = new CoreSubscriber[1];
-                    actual[0] = subscriber;
-                } else {
-                    CoreSubscriber<? super T>[] newActual = new CoreSubscriber[actual.length + 1];
-                    System.arraycopy(actual, 0, newActual, 0, actual.length);
-                    newActual[actual.length] = subscriber;
-                    actual = newActual;
+
+                if (!ACTUAL.compareAndSet(this, null, subscriber)) {
+                    Operators.error(subscriber, new IllegalStateException("SerialFlux allows only a single Subscriber"));
+                    return;
                 }
+                subscriber.onSubscribe(new Subscription() {
+                    @Override
+                    public void request(long n) {
+                        requested = n;
+                    }
+
+                    @Override
+                    public void cancel() {
+                        if (upstream() == null) {
+                            dispose();
+                            complete();
+                        } else {
+                            upstream().cancel();
+                            complete();
+                        }
+                    }
+                });
             }
         }
 

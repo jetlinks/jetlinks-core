@@ -42,5 +42,8 @@ public class SerialDeviceMessageSenderInterceptor implements DeviceMessageSender
                 .join(sender);
     }
 
-
+    @Override
+    public int getOrder() {
+        return Integer.MIN_VALUE;
+    }
 }

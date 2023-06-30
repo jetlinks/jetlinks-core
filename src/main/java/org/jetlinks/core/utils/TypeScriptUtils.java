@@ -125,7 +125,7 @@ public class TypeScriptUtils {
     }
 
 
-    private static String convertType(String owner, DataType type, List<String> declares) {
+    public static String convertType(String owner, DataType type, List<String> declares) {
         if (type == null) {
             return "object";
         }

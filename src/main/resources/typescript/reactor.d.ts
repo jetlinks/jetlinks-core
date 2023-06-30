@@ -56,3 +56,13 @@ declare namespace reactor.core.publisher {
     }
 
 }
+
+declare namespace reactor.core {
+
+    export class Disposable {
+        isDisposed(): boolean;
+
+        dispose(): void
+    }
+
+}

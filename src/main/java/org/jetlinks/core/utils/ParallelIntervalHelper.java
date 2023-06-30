@@ -17,22 +17,18 @@ import java.util.function.BiFunction;
  * 比如在发送设备消息时,设备不支持并行,需要将消息串行执行,
  * 则可以使用此工具计算下一次发送的延迟,然后利用{@link reactor.core.publisher.Mono#delay(Duration)}来延迟发送.
  * <p>
- * <pre>
+ * <pre>{@code
  *  private ParallelIntervalHelper intervalHelper = ParallelIntervalHelper.create(Duration.ofSeconds(1));
  *
  *
- *     public Mono&lt;EncodedMessage&gt; encode(MessageDecodeContext context){
+ *     public Mono<EncodedMessage> encode(MessageDecodeContext context){
  *         //根据设备ID作为key进行计算
- *         long delay = intervalHelper.next(context.getDevice().getDeviceId());
  *
- *         EncodedMessage msg = doEncode(context);
- *
- *         return delay > 0
- *         ? Mono.delay(Duration.ofMillis(delay)).thenReturn(msg)
- *         : Mono.just(msg)
+ *         return intervalHelper
+ *                .delay(context.getDevice().getDeviceId(),Mono.just(doEncode(context)));
  *     }
  *
- * </pre>
+ * }</pre>
  *
  * @author zhouhao
  * @since 1.1.7

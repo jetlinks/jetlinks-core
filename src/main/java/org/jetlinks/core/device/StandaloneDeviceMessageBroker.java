@@ -111,7 +111,12 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
         return replyProcessor
                 .computeIfAbsent(messageId, ignore -> Sinks.many().multicast().onBackpressureBuffer())
                 .asFlux()
-                .timeout(timeout, Mono.error(() -> new DeviceOperationException(ErrorCode.TIME_OUT)))
+                .as(flux -> {
+                    if (timeout.isZero()) {
+                        return flux;
+                    }
+                    return flux.timeout(timeout, Mono.error(() -> new DeviceOperationException(ErrorCode.TIME_OUT)));
+                })
                 .doFinally(signal -> replyProcessor.remove(messageId));
     }
 
