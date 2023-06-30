@@ -241,8 +241,8 @@ public class TraceHolder {
         Context context = parent.getOrDefault(Context.class, Context.current());
         if (null != context) {
             context = propagator.extract(context, source, getter);
-            return reactor.util.context.Context
-                    .of(Context.class, context);
+            return reactor.util.context.Context.of(parent)
+                    .put(Context.class, context);
         }
         return reactor.util.context.Context.of(parent);
     }
