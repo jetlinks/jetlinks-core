@@ -15,33 +15,34 @@ public interface DeviceMessageEncoder {
 
     /**
      * 编码,将消息进行编码,用于发送到设备端.
-     *
+     * <p>
      * 平台在发送指令给设备时,会调用协议包中设置的此方法,将平台消息{@link org.jetlinks.core.message.DeviceMessage}转为设备能理解的消息{@link EncodedMessage}.
-     *
+     * <p>
      * 例如:
-     * <pre>
+     * <pre>{@code
      *
-     * //返回单个消息给设备,多个使用Flux&lt;EncodedMessage&gt;作为返回值
-     * public Mono&lt;EncodedMessage&gt; encode(MessageEncodeContext context){
+     * //返回单个消息给设备,多个使用Flux<EncodedMessage>作为返回值
+     * public Mono<EncodedMessage> encode(MessageEncodeContext context){
      *
      *     return Mono.just(doEncode(context.getMessage()));
      *
      * }
-     *</pre>
      *
-     * <pre>
-     * //忽略发送给设备,直接返回结果给指令发送者
-     * public Mono&lt;EncodedMessage&gt; encode(MessageEncodeContext context){
+     *  //忽略发送给设备,直接返回结果给指令发送者
+     * public Mono<EncodedMessage> encode(MessageEncodeContext context){
      *    DeviceMessage message = (DeviceMessage)context.getMessage();
      *
+     *    // DeviceMessage replyMsg =   ((RepayableDeviceMessage)deviceMessage).newReply(); //构造回复消息
+     *
      *    return context
-     *      .reply(handleMessage(message)) //返回结果给指令发送者
+     *      .reply(replyMsg) //返回结果给指令发送者
      *      .then(Mono.empty())
      * }
      *
-     * </pre>
-     *
+     * }</pre>
+     * <p>
      * 如果要串行发送数据,可以参考使用{@link ParallelIntervalHelper}工具类
+     *
      * @param context 消息上下文
      * @return 编码结果
      * @see MqttMessage
