@@ -47,10 +47,10 @@ public interface DeviceMessageEncoder {
      * @return 编码结果
      * @see MqttMessage
      * @see org.jetlinks.core.message.Message
-     * @see org.jetlinks.core.message.property.ReadPropertyMessage 读取设备属性
-     * @see org.jetlinks.core.message.property.WritePropertyMessage 修改设备属性
-     * @see org.jetlinks.core.message.function.FunctionInvokeMessage 调用设备功能
-     * @see org.jetlinks.core.message.ChildDeviceMessage 子设备消息
+     * @see org.jetlinks.core.message.property.ReadPropertyMessage
+     * @see org.jetlinks.core.message.property.WritePropertyMessage
+     * @see org.jetlinks.core.message.function.FunctionInvokeMessage
+     * @see org.jetlinks.core.message.ChildDeviceMessage
      * @see org.jetlinks.core.message.interceptor.DeviceMessageEncodeInterceptor
      * @see ParallelIntervalHelper
      * @see org.jetlinks.core.trace.DeviceTracer.SpanName#encode(String)

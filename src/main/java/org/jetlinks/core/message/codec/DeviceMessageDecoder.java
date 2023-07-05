@@ -59,6 +59,9 @@ public interface DeviceMessageDecoder {
      * }
      *
      * }</pre>
+     * <p>
+     * ⚠️注意：返回子设备的消息需要统一使用{@link org.jetlinks.core.message.ChildDeviceMessage}或者{@link org.jetlinks.core.message.ChildDeviceMessageReply}
+     * 包装,否则设备会话可能创建错误导致下发指令与预期不符.
      *
      * @param context 消息上下文
      * @return 解码结果
