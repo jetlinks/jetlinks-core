@@ -4,9 +4,11 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jetlinks.core.config.ConfigKey;
 
 import javax.validation.constraints.NotNull;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +29,18 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
 
     public static SimpleFunctionMetadata of(String id, String name, List<PropertyMetadata> inputs, DataType output) {
         return SimpleFunctionMetadata.of(id, name, null, null, inputs, output, false);
+    }
+
+    public <T> SimpleFunctionMetadata expand(ConfigKey<T> key, T value) {
+        return expand(key.getKey(), value);
+    }
+
+    public synchronized SimpleFunctionMetadata expand(String key, Object value) {
+        if (expands == null) {
+            expands = new HashMap<>();
+        }
+        expands.put(key, value);
+        return this;
     }
 
     @Override
