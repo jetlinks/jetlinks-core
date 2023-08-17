@@ -1,5 +1,9 @@
 package org.jetlinks.core.benchmark;
 
+import org.openjdk.jmh.profile.AsyncProfiler;
+import org.openjdk.jmh.profile.GCProfiler;
+import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
+import org.openjdk.jmh.profile.StackProfiler;
 import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -22,9 +26,9 @@ public class BenchmarkRunner {
                 .measurementIterations(3)
                 .measurementTime(TimeValue.seconds(2))
                 .result("./target/benchmark-result.txt")
-//                .addProfiler(GCProfiler.class)
+                .addProfiler(JavaFlightRecorderProfiler.class)
                 .resultFormat(ResultFormatType.TEXT)
-                .jvmArgs("-Xms1g", "-Xmx1g")
+                .jvmArgs("-Xms4g", "-Xmx4g")
                 .build();
         new Runner(opt).run();
     }

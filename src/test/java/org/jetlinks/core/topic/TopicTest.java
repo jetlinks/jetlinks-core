@@ -1,9 +1,11 @@
 package org.jetlinks.core.topic;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Assert;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
@@ -232,6 +234,7 @@ public class TopicTest {
 
 
     @Test
+    @SneakyThrows
     public void testBenchmarks() {
         Topic<String> root = Topic.createRoot();
 
@@ -254,14 +257,20 @@ public class TopicTest {
         log.debug("topics:{}", root.getTotalTopic());
 
         {
-            Duration duration = root
-                    .findTopic("/device/1/2/message/property/read")
-                    .map(Topic::getTopic)
-                    .count()
-                    .as(StepVerifier::create)
-                    .expectNext(1L)
-                    .verifyComplete();
-            log.debug("find 1 use time:{}ms", duration.toMillis());
+            long time = System.currentTimeMillis();
+            for (int x = 0; x < 10; x++) {
+                Duration duration =
+                        Flux.range(0, 10000)
+                            .flatMap(i -> root
+                                    .findTopic("/device/1/" + i + "/message/property/read"))
+                            .count()
+                            .as(StepVerifier::create)
+                            .expectNext(10000L)
+                            .verifyComplete();
+                log.debug("find 10000 use time:{}ms", duration.toMillis());
+            }
+            log.debug("find 10*10000 use time:{}ms", System.currentTimeMillis() - time);
+
         }
 
         {
