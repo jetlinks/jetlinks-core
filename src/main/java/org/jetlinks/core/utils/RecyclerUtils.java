@@ -2,12 +2,22 @@ package org.jetlinks.core.utils;
 
 import io.netty.util.Recycler;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.ConcurrentReferenceHashMap;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
 @Slf4j
 public class RecyclerUtils {
+
+    private static final Map<String, String> sharedString = new ConcurrentReferenceHashMap<>(
+            65535,
+            ConcurrentReferenceHashMap.ReferenceType.SOFT);
+
+    public static String intern(String str) {
+        return sharedString.computeIfAbsent(str, Function.identity());
+    }
 
     public static <T> Recycler<T> newRecycler(Class<T> type, Function<Recycler.Handle<T>, T> objectSupplier, int defaultRatio) {
         int maxCapacityPerThread = getPoolConfig(type, "maxCapacityPerThread")
