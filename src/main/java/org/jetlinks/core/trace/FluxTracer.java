@@ -316,11 +316,8 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
         if (TraceHolder.isDisabled()) {
             return unsupported();
         }
-        return flux -> Flux
-                .deferContextual(ctx -> {
-                    return flux
-                            .contextWrite(TraceHolder.readToContext(ctx, source, getter));
-                });
+        return flux -> flux
+                .contextWrite(ctx -> TraceHolder.readToContext(ctx, source, getter));
     }
 
 

@@ -17,9 +17,9 @@ public interface DeviceMessageDecoder {
      * 在服务器收到设备或者网络组件中发来的消息时，会调用协议包中的此方法来进行解码，
      * 将数据{@link EncodedMessage}转为平台的统一消息{@link org.jetlinks.core.message.DeviceMessage}
      *
-     * <pre>
+     * <pre>{@code
      * //解码并返回一个消息
-     * public Mono&lt;DeviceMessage&gt; decode(MessageDecodeContext context){
+     * public Mono<DeviceMessage> decode(MessageDecodeContext context){
      *
      *  EncodedMessage message = context.getMessage();
      *  byte[] payload = message.payloadAsBytes();//上报的数据
@@ -30,18 +30,18 @@ public interface DeviceMessageDecoder {
      * }
      *
      * //解码并返回多个消息
-     * public Flux&lt;DeviceMessage&gt; decode(MessageDecodeContext context){
+     * public Flux<DeviceMessage> decode(MessageDecodeContext context){
      *
      *  EncodedMessage message = context.getMessage();
      *  byte[] payload = message.payloadAsBytes();//上报的数据
      *
-     *  List&lt;DeviceMessage&gt; messages = doEncode(payload);
+     *  List<DeviceMessage> messages = doEncode(payload);
      *
      *  return Flux.fromIterable(messages);
      * }
      *
      * //解码,回复设备并返回一个消息
-     * public Mono&lt;DeviceMessage&gt; decode(MessageDecodeContext context){
+     * public Mono<DeviceMessage> decode(MessageDecodeContext context){
      *
      *  EncodedMessage message = context.getMessage();
      *  byte[] payload = message.payloadAsBytes();//上报的数据
@@ -58,7 +58,10 @@ public interface DeviceMessageDecoder {
      *     .thenReturn(message);
      * }
      *
-     * </pre>
+     * }</pre>
+     * <p>
+     * ⚠️注意：返回子设备的消息需要统一使用{@link org.jetlinks.core.message.ChildDeviceMessage}或者{@link org.jetlinks.core.message.ChildDeviceMessageReply}
+     * 包装,否则设备会话可能创建错误导致下发指令与预期不符.
      *
      * @param context 消息上下文
      * @return 解码结果

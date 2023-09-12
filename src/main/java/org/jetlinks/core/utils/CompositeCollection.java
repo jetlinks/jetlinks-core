@@ -65,12 +65,12 @@ public class CompositeCollection<E> implements Collection<E>, Serializable {
 
     @Override
     public boolean add(E e) {
-        throw new IllegalStateException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean remove(Object o) {
-        throw new IllegalStateException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -85,22 +85,22 @@ public class CompositeCollection<E> implements Collection<E>, Serializable {
 
     @Override
     public boolean addAll(@Nonnull Collection<? extends E> c) {
-        throw new IllegalStateException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean removeAll(@Nonnull Collection<?> c) {
-        throw new IllegalStateException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean retainAll(@Nonnull Collection<?> c) {
-        throw new IllegalStateException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void clear() {
-        throw new IllegalStateException();
+        throw new UnsupportedOperationException();
     }
 
     @Override

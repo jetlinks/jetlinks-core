@@ -21,7 +21,9 @@ import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.message.state.DeviceStateCheckMessage;
 import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
+import org.jetlinks.core.metadata.CompositeDeviceMetadata;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.metadata.SimpleDeviceMetadata;
 import org.jetlinks.core.things.ThingMetadata;
 import org.jetlinks.core.things.ThingRpcSupport;
 import org.jetlinks.core.things.ThingRpcSupportChain;
@@ -49,6 +51,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
             AtomicReferenceFieldUpdater.newUpdater(DefaultDeviceOperator.class, DeviceMetadata.class, "metadataCache");
     private static final AtomicLongFieldUpdater<DefaultDeviceOperator> METADATA_TIME_UPDATER =
             AtomicLongFieldUpdater.newUpdater(DefaultDeviceOperator.class, "lastMetadataTime");
+
+    private static final DeviceMetadata NON_METADATA = new SimpleDeviceMetadata();
 
     @Getter
     private final String id;
@@ -122,7 +126,21 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 .switchIfEmpty(this.parent.flatMap(DeviceProductOperator::getProtocol));
 
         this.stateChecker = deviceStateChecker;
-        this.metadataMono = this
+
+        this.metadataMono = Mono
+                .zip(productMetadata(),
+                     selfMetadata().defaultIfEmpty(NON_METADATA),
+                     (product, self) -> {
+                         if (self == NON_METADATA) {
+                             return product;
+                         }
+                         //组合产品和设备的物模型
+                         return new CompositeDeviceMetadata(product, self);
+                     });
+    }
+
+    private Mono<DeviceMetadata> selfMetadata() {
+        return this
                 //获取最后更新物模型的时间
                 .getSelfConfig(lastMetadataTimeKey)
                 .flatMap(i -> {
@@ -142,13 +160,15 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                                     .decode(tp2.getT1())
                                     .doOnNext(metadata -> METADATA_UPDATER.set(this, metadata)));
 
-                })
-                //如果上游为空,则使用产品的物模型
-                .switchIfEmpty(
-                        Mono.defer(() -> this.getParent()
-                                             .switchIfEmpty(Mono.defer(this::onProductNonexistent))
-                                             .flatMap(DeviceProductOperator::getMetadata))
-                );
+                });
+    }
+
+
+    private Mono<DeviceMetadata> productMetadata() {
+        return this
+                .getParent()
+                .switchIfEmpty(Mono.defer(this::onProductNonexistent))
+                .flatMap(DeviceProductOperator::getMetadata);
     }
 
     private Mono<DeviceProductOperator> onProductNonexistent() {

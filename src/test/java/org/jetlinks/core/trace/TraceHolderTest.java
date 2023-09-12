@@ -12,6 +12,7 @@ import lombok.SneakyThrows;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -30,7 +31,7 @@ public class TraceHolderTest {
 
 
         TraceMono.trace(Mono.just(1).name("test123"))
-                 .onNext((span, integer) -> span.setAttributeLazy(AttributeKey.stringKey("test"), ()->"123"))
+                 .onNext((span, integer) -> span.setAttributeLazy(AttributeKey.stringKey("test"), () -> "123"))
                  .subscribe(System.out::println);
 
 
@@ -57,13 +58,11 @@ public class TraceHolderTest {
     public void testFlux() {
 
         Map<String, String> map = new HashMap<>();
-        map.put("traceparent","00-1c7639bf41f3291edccd49ae7a1235c6-498329cea58d365a-01");
+        map.put("traceparent", "00-1c7639bf41f3291edccd49ae7a1235c6-498329cea58d365a-01");
 
         TraceHolder
                 .writeContextTo(map, Map::put)
-                .thenMany(
-                        Flux.range(1, 10)
-                )
+                .thenMany(Flux.range(1, 10))
                 //.doOnNext(System.out::println)
                 .delayElements(Duration.ofMillis(100))
                 .map(i -> i + 10)
@@ -86,6 +85,22 @@ public class TraceHolderTest {
         System.out.println(map);
         Thread.sleep(2000);
 
+    }
+
+    @Test
+    public void testCreate() {
+        Map<String, String> map = new HashMap<>();
+        map.put("traceparent", "00-1c7639bf41f3291edccd49ae7a1235c6-498329cea58d365a-01");
+
+        Mono.just(1)
+            .as(MonoTracer.create("test", (
+                    (span, data) -> {
+                        System.out.println(span.getSpanContext().getTraceId());
+                    }
+            )))
+            .as(StepVerifier::create)
+            .expectNext(1)
+            .verifyComplete();
     }
 
 

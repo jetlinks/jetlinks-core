@@ -1,7 +1,5 @@
 package org.jetlinks.core.trace;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import org.apache.commons.collections.MapUtils;
 import reactor.core.publisher.Mono;
@@ -319,11 +317,8 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
         if (TraceHolder.isDisabled()) {
             return unsupported();
         }
-        return mono -> Mono
-                .deferContextual(ctx -> {
-                    return mono
-                            .contextWrite(TraceHolder.readToContext(ctx, source, getter));
-                });
+        return mono -> mono
+                .contextWrite(ctx -> TraceHolder.readToContext(ctx, source, getter));
     }
 
 

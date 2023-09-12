@@ -22,6 +22,9 @@ public interface CommandSupport extends Wrapper {
      * <p>
      * 建议使用{@link CommandSupport#createCommand(String)}来动态创建命令,
      * 然后通过{@link Command#with(Map)}来设置命令参数.
+     * <p>
+     * 在不明确Command的具体类型时,请使用 {@link CommandSupport#executeToFlux(Command)} }
+     * 或者{@link CommandSupport#executeToMono(Command)}
      *
      * @param command 命令
      * @param <R>     结果类型
@@ -32,15 +35,72 @@ public interface CommandSupport extends Wrapper {
     <R> R execute(@Nonnull Command<R> command);
 
     /**
+     * 执行命令,并将结果转为Flux
+     *
+     * @param command 命令
+     * @return Flux
+     */
+    default Flux<Object> executeToFlux(Command<?> command) {
+        return CommandUtils.convertResponseToFlux(execute(command));
+    }
+
+    /**
+     * 执行命令,并将结果转为Flux
+     *
+     * @param commandId  命令ID
+     * @param parameters 参数
+     * @return Flux
+     */
+    default Flux<Object> executeToFlux(String commandId, Map<String, Object> parameters) {
+        return createCommandAsync(commandId)
+                .flatMapMany(cmd -> this.executeToFlux(cmd.with(parameters)));
+    }
+
+    /**
+     * 执行命令,并将结果转为Mono
+     *
+     * @param command 命令
+     * @return Mono
+     */
+    default Mono<Object> executeToMono(Command<?> command) {
+        return CommandUtils.convertResponseToMono(execute(command));
+    }
+
+    /**
+     * 执行命令,并将结果转为Mono
+     *
+     * @param commandId  命令ID
+     * @param parameters 参数
+     * @return Mono
+     */
+    default Mono<Object> executeToMono(String commandId, Map<String, Object> parameters) {
+        return createCommandAsync(commandId)
+                .flatMap(cmd -> this.executeToMono(cmd.with(parameters)));
+    }
+
+    /**
      * 基于命令ID来创建命令,可通过{@link CommandSupport#getCommandMetadata()}来获取命令的定义信息.
      *
      * @param commandId 命令ID
      * @param <R>       命令结果类型
      * @param <C>       命令类型
      * @return 命令
+     * @see CommandSupport#createCommandAsync(String)
      */
     default <R, C extends Command<R>> C createCommand(String commandId) {
         throw new CommandException(this, null, "error.unsupported_command", null, commandId);
+    }
+
+    /**
+     * 基于命令ID一步创建命令
+     *
+     * @param commandId 命令ID
+     * @param <R>       命令结果类型
+     * @param <C>       命令类型
+     * @return Mono
+     */
+    default <R, C extends Command<R>> Mono<C> createCommandAsync(String commandId) {
+        return Mono.just(this.<R, C>createCommand(commandId));
     }
 
     /**

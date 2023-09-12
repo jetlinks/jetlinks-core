@@ -16,6 +16,7 @@ import reactor.util.context.Context;
 import reactor.util.context.ContextView;
 
 import javax.annotation.Nonnull;
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.BiConsumer;
@@ -82,12 +83,12 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     @Override
     protected void hookFinally(@Nonnull SignalType type) {
-        span.end();
+        span.end(Instant.now());
     }
 
     @Override
     protected void hookOnCancel() {
-        span.setAttribute(count,nextCount);
+        span.setAttribute(count, nextCount);
         if (nextCount > 0) {
             span.setStatus(StatusCode.OK, "cancel");
         } else if (!stateSet) {
@@ -226,5 +227,10 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
     @Override
     public boolean isRecording() {
         return span.isRecording();
+    }
+
+    @Override
+    public io.opentelemetry.context.Context storeInContext(@Nonnull io.opentelemetry.context.Context context) {
+        return span.storeInContext(context);
     }
 }

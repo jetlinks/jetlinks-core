@@ -78,4 +78,9 @@ public interface ClusterCounter {
      */
     Mono<Double> getAndSet(double value);
 
+    /**
+     * 删除计数器
+     * @return 值
+     */
+    Mono<Double> remove();
 }

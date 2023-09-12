@@ -2,10 +2,12 @@ package org.jetlinks.core.utils;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -30,8 +32,15 @@ class SimpleCyclicDependencyChecker<T, ID, R> implements CyclicDependencyChecker
             return action.apply(checked);
         }
         ID parentId = parentIdGetter.apply(target);
-        if (StringUtils.isEmpty(parentId)) {
+        if (ObjectUtils.isEmpty(parentId)) {
             return Mono.empty();
+        }
+        //id和parentId相同
+        if(Objects.equals(id,parentId)){
+            checked.add(id);
+            checked.add(parentId);
+            log(target.getClass(), checked);
+            return action.apply(checked);
         }
         checked.add(id);
         return dataGetter

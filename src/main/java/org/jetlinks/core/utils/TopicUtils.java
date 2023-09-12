@@ -1,21 +1,21 @@
 package org.jetlinks.core.utils;
 
+import io.netty.util.concurrent.FastThreadLocal;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.ConcurrentReferenceHashMap;
 import org.springframework.util.PathMatcher;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentMap;
 
 public class TopicUtils {
     public static final char PATH_SPLITTER = '/';
 
     private final static PathMatcher pathMatcher = new AntPathMatcher();
 
-    private final static ConcurrentMap<String, String[]> splitCache;
+    private final static Map<String, String[]> splitCache;
 
     static {
-        splitCache = new ConcurrentReferenceHashMap<>(65535, ConcurrentReferenceHashMap.ReferenceType.SOFT);
+        splitCache = new ConcurrentReferenceHashMap<>();
     }
 
     /**
@@ -107,8 +107,78 @@ public class TopicUtils {
         return split(topic, false);
     }
 
+    public static String[] split(String topic, boolean cache, boolean intern) {
+
+        if (!cache) {
+            return doSplit(topic);
+        }
+
+        if (intern) {
+            return splitCache.computeIfAbsent(
+                    topic,
+                    t -> {
+                        String[] arr = doSplit(t);
+                        for (int i = 0; i < arr.length; i++) {
+                            arr[i] = RecyclerUtils.intern(arr[i]);
+                        }
+                        return arr;
+                    });
+        }
+
+        return splitCache.computeIfAbsent(topic, TopicUtils::doSplit);
+    }
+
+    private static final FastThreadLocal<List<String>> SHARE_SPLIT = new FastThreadLocal<List<String>>() {
+        @Override
+        protected List<String> initialValue() {
+            return new ArrayList<>(8);
+        }
+    };
+
+    private static final FastThreadLocal<StringBuilder> SHARE_BUILDER = new FastThreadLocal<StringBuilder>() {
+        @Override
+        protected StringBuilder initialValue() {
+            return new StringBuilder(8);
+        }
+    };
+
+    private static String[] doSplit(String topic) {
+        return split(topic, PATH_SPLITTER);
+    }
+
+    public static String[] split(String topic, char pattern) {
+        List<String> list = SHARE_SPLIT.get();
+        StringBuilder builder = SHARE_BUILDER.get();
+        try {
+            int len = topic.length();
+            int total = 0;
+
+            for (int i = 0; i < len; i++) {
+                char ch = topic.charAt(i);
+                if (ch == pattern) {
+                    list.add(builder.toString());
+                    builder.setLength(0);
+                    total++;
+                } else {
+                    builder.append(ch);
+                }
+            }
+
+            if (builder.length() > 0) {
+                list.add(builder.toString());
+                total++;
+            }
+
+            return list.toArray(new String[total]);
+        } finally {
+            builder.setLength(0);
+            list.clear();
+        }
+    }
+
+
     public static String[] split(String topic, boolean cache) {
-        return cache ? splitCache.computeIfAbsent(topic, t -> t.split("/")) : topic.split("/");
+        return split(topic, cache, true);
     }
 
     private static boolean matchStrings(String str, String pattern) {

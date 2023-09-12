@@ -170,6 +170,18 @@ declare interface double extends java.lang.Double {
 
 declare module java.util {
 
+    module stream {
+
+        class Stream<E>{
+
+        }
+
+        class Collectors{
+            static toList(): any;
+
+        }
+    }
+
     class Map<K, V> {
         get(key: K): V | null;
 
@@ -186,7 +198,32 @@ declare module java.util {
 
     }
 
-    class List<E> {
+    class List<E> extends Array<E> {
+
+        private concat(...items): E[] ;
+
+        private copyWithin(target: number, start: number, end?: number): this;
+
+        // @ts-ignore
+        private entries(): IterableIterator<[number, E]>;
+
+        private every<S extends E>(predicate: (value: E, index: number, array: E[]) => value is S, thisArg?: any): this is S[];
+
+        private find(predicate: (value: E, index: number, obj: E[]) => boolean, thisArg?: any): E | undefined;
+
+        private findIndex(predicate: (value: E, index: number, obj: E[]) => boolean, thisArg?: any): number;
+
+        // @ts-ignore
+        private keys(): IterableIterator<number>;
+
+        private fill(value: E, start?: number, end?: number): this;
+
+        private filter<S extends E>(predicate: (value: E, index: number, array: E[]) => value is S, thisArg?: any): S[];
+
+        private indexOf(searchElement: E, fromIndex?: number): number;
+
+        private lastIndexOf(searchElement: E, fromIndex?: number): number;
+
         size(): number;
 
         add(element: E): void;
@@ -195,6 +232,7 @@ declare module java.util {
 
         remove(element: E): void;
 
+        // @ts-ignore
         forEach(callback: (element: E) => void): void;
     }
 

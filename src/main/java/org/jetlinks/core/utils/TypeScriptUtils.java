@@ -12,10 +12,7 @@ import org.springframework.core.io.ClassPathResource;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class TypeScriptUtils {
@@ -104,9 +101,30 @@ public class TypeScriptUtils {
                                      String comment,
                                      List<PropertyMetadata> properties,
                                      StringBuilder builder,
-                                     List<String> declares) {
+                                     Collection<String> declares) {
         appendComments(builder, comment);
         builder.append("declare class ").append(name).append("{\n");
+        for (PropertyMetadata property : properties) {
+            String id = property.getId();
+            if (id.contains("-")) {
+                continue;
+            }
+
+            appendComments(builder, property.getValueType(), property.getName());
+            builder.append("declare ");
+            builder.append(id)
+                   .append(":")
+                   .append(convertType(name + "_" + id, property.getValueType(), declares))
+                   .append(";")
+                   .append("\n");
+        }
+        builder.append("\n}\n");
+    }
+
+    private static void declareClassAsMap(List<PropertyMetadata> properties,
+                                          StringBuilder builder,
+                                          Collection<String> declares) {
+        builder.append("{\n");
         for (PropertyMetadata property : properties) {
             String id = property.getId();
             if (id.contains("-")) {
@@ -118,16 +136,19 @@ public class TypeScriptUtils {
             builder.append(id)
                    .append(":")
                    .append(convertType(id, property.getValueType(), declares))
-                   .append(";")
+                   .append(",")
                    .append("\n");
         }
         builder.append("\n}\n");
     }
 
 
-    private static String convertType(String owner, DataType type, List<String> declares) {
+    public static String convertType(String owner, DataType type, Collection<String> declares) {
         if (type == null) {
             return "object";
+        }
+        if (type instanceof StringType) {
+            return "string";
         }
         if (type instanceof NumberType) {
             return type.getId();
@@ -149,8 +170,8 @@ public class TypeScriptUtils {
                     .collect(Collectors.joining("'|'", "'", "'"));
         }
         if (type instanceof ObjectType) {
-            ObjectType objectType = ((ObjectType) type);
             String name = owner + "_Properties";
+            ObjectType objectType = ((ObjectType) type);
             StringBuilder builder = new StringBuilder();
             declareClass(name, owner + "对象属性", objectType.getProperties(), builder, declares);
             declares.add(builder.toString());

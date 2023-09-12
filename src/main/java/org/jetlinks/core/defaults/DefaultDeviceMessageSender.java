@@ -218,6 +218,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
      * @see DeviceMessageSender#send(Publisher)
      */
     public <R extends DeviceMessage> Flux<R> send(Publisher<? extends DeviceMessage> message, Function<Object, R> replyMapping) {
+        // FIXME: 2023/6/29 重构...
         return Mono
                 .zip(
                         //当前设备连接的服务器ID
@@ -266,8 +267,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                 //监听来自其他服务的回复
                                                 .handleReply(msg.getDeviceId(),
                                                              msg.getMessageId(),
-                                                             Duration.ofMillis(msg.getHeader(Headers.timeout)
-                                                                                  .orElse(defaultTimeout)))
+                                                             Duration.ZERO)
                                                 .map(replyMapping)
                                                 .onErrorResume(DeviceOperationException.class, error -> {
                                                     if (error.getCode() == ErrorCode.CLIENT_OFFLINE) {
@@ -278,7 +278,6 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                     }
                                                     return Mono.error(error);
                                                 })
-                                                .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
                                                 .as(flux -> this.logReply(msg, flux));
 
                                         //发送消息到设备连接的服务器
@@ -322,12 +321,15 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                     }
                                                     log.debug("send device[{}] message complete", operator.getDeviceId());
                                                     return interceptor.afterSent(operator, msg, replyStream);
-                                                })
-                                                ;
+                                                });
                                     })
                                     .as(flux -> interceptor
                                             .doSend(operator, msg, flux.cast(DeviceMessage.class))
-                                            .map(_resp -> (R) _resp)));
+                                            .map(_resp -> (R) _resp))
+                                    .timeout(Duration.ofMillis(msg.getHeader(Headers.timeout).orElse(defaultTimeout)),
+                                             Mono.error(() -> new DeviceOperationException(ErrorCode.TIME_OUT)))
+                                    .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
+                            );
                 });
 
     }

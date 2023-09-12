@@ -222,20 +222,27 @@ declare module org.jetlinks.core.message {
     }
 }
 
-declare module org.jetlinks.metadata.types{
+declare module org.jetlinks.metadata {
 
-    class GeoPoint{
+    class DataType {
+        getType(): string;
+    }
+
+}
+declare module org.jetlinks.metadata.types {
+
+    class GeoPoint extends DataType {
         /**
          * 经度
          */
-        //@ts-ignore
-        lat:float;
+            //@ts-ignore
+        lat: float;
 
         /**
          * 纬度
          */
-        //@ts-ignore
-        lon:float;
+            //@ts-ignore
+        lon: float;
 
     }
 }
