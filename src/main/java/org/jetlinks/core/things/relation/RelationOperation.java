@@ -9,7 +9,9 @@ import java.util.Collection;
  * 关系操作接口
  *
  * @author zhouhao
- * @see 1.2
+ * @since  1.2
+ * @see RelationObject
+ * @see RelatedObject
  */
 public interface RelationOperation {
 
