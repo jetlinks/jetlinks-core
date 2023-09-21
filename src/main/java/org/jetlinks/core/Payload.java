@@ -49,7 +49,6 @@ public interface Payload extends ReferenceCounted {
         return decode(decoder, true);
     }
 
-    @Deprecated
     default <T> T decode(Class<T> decoder) {
         return decode(decoder, true);
     }
@@ -150,6 +149,7 @@ public interface Payload extends ReferenceCounted {
         }
     }
 
+    @Deprecated
     default JSONObject bodyToJson(boolean release) {
         return decode(JSONObject.class,release);
     }

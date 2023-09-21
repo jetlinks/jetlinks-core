@@ -77,6 +77,21 @@ public class NativePayload<T> implements Payload {
         return Payload.super.decode(decoder, release);
     }
 
+    @SuppressWarnings("all")
+    @Override
+    public <T> T decode(Class<T> type) {
+        if (type.isInstance(nativeObject)) {
+            return (T) nativeObject;
+        }
+        if (type == JSONObject.class || type == Map.class) {
+            return (T) bodyToJson();
+        }
+        if (Map.class.isAssignableFrom(type)) {
+            return bodyToJson().toJavaObject(type);
+        }
+        return FastBeanCopier.copy(nativeObject,type);
+    }
+
     @Override
     public Object decode() {
         return decode(true);

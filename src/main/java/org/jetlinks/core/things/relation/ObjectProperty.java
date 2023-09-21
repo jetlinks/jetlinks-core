@@ -2,9 +2,10 @@ package org.jetlinks.core.things.relation;
 
 import org.jetlinks.core.config.ConfigKey;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public interface ObjectProperty {
+public interface ObjectProperty extends Serializable {
 
     ConfigKey<String> name = ConfigKey.of("name");
     ConfigKey<String> description = ConfigKey.of("description");
