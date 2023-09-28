@@ -68,7 +68,7 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
             return null;
         }
         Number val = convertScaleNumber(value,
-                                        this.getScale(),
+                                        this.getScale(defaultScale()),
                                         getRound(),
                                         Function.identity());
         if (val == null) {
