@@ -88,6 +88,11 @@ public class LocalRpcManager implements RpcManager {
         return Flux.empty();
     }
 
+    @Override
+    public Flux<RpcService<?>> getServices() {
+        return Flux.fromIterable(services.values());
+    }
+
     @AllArgsConstructor
     static class RpcServiceInfo<T> implements RpcService<T> {
         private final String id;

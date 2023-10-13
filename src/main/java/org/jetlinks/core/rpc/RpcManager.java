@@ -99,5 +99,10 @@ public interface RpcManager {
      */
     <I> Flux<ServiceEvent> listen(Class<I> service);
 
+    /**
+     * 获取全部服务
+     * @return 全部服务
+     */
+    Flux<RpcService<?>> getServices();
 
 }

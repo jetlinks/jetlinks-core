@@ -41,9 +41,10 @@ import static org.jetlinks.core.device.DeviceConfigKey.*;
 public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurable {
     public static final DeviceStateChecker DEFAULT_STATE_CHECKER = device -> checkState0(((DefaultDeviceOperator) device));
 
-    private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time");
-
-    private static final ConfigKey<Byte> stateKey = ConfigKey.of("state", "状态");
+    private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time", "最后物模型更新时间", Long.class);
+    private static final ConfigKey<Byte> stateKey = ConfigKey.of("state", "状态", Byte.class);
+    private static final ConfigKey<Long> onlineTimeKey = ConfigKey.of("onlineTime", "上线时间", Long.class);
+    private static final ConfigKey<Long> offlineTimeKey = ConfigKey.of("offlineTime", "离线时间", Long.class);
 
     static final List<String> productIdAndVersionKey = Arrays.asList(productId.getKey(), productVersion.getKey());
 
@@ -202,14 +203,13 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<String> getAddress() {
-        return getConfig("address")
+        return getSelfConfig("address")
                 .map(Value::asString);
     }
 
     @Override
     public Mono<Void> setAddress(String address) {
-        return setConfig("address", address)
-                .then();
+        return setConfig("address", address).then();
     }
 
     @Override
@@ -402,8 +402,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<Long> getOnlineTime() {
         return this
-                .getSelfConfig("onlineTime")
-                .map(val -> val.as(Long.class))
+                .getSelfConfig(onlineTimeKey)
                 .switchIfEmpty(Mono.defer(() -> this
                         .getSelfConfig(parentGatewayId)
                         .flatMap(registry::getDevice)
@@ -413,8 +412,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<Long> getOfflineTime() {
         return this
-                .getSelfConfig("offlineTime")
-                .map(val -> val.as(Long.class))
+                .getSelfConfig(offlineTimeKey)
                 .switchIfEmpty(Mono.defer(() -> this
                         .getSelfConfig(parentGatewayId)
                         .flatMap(registry::getDevice)
@@ -429,7 +427,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                         connectionServerId.value(""),
                         sessionId.value(""),
                         ConfigKey.of("offlineTime").value(System.currentTimeMillis()),
-                        ConfigKey.of("state").value(DeviceState.offline)
+                        stateKey.value(DeviceState.offline)
                 )
                 .doOnError(err -> log.error("offline device error", err));
     }

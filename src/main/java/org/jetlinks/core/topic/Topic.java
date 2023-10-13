@@ -82,15 +82,15 @@ public final class Topic<T> {
 
     public String getTopic() {
         return StringBuilderUtils
-                .buildString(getParent(), (_parent, builder) -> {
-                    if (_parent != null) {
-                        String parentTopic = _parent.getTopic();
-                        builder.append(parentTopic).append(parentTopic.equals("/") ? "" : "/");
-                    } else {
-                        builder.append("/");
-                    }
-                    builder.append(part);
-                });
+            .buildString(getParent(), (_parent, builder) -> {
+                if (_parent != null) {
+                    String parentTopic = _parent.getTopic();
+                    builder.append(parentTopic).append(parentTopic.equals("/") ? "" : "/");
+                } else {
+                    builder.append("/");
+                }
+                builder.append(part);
+            });
     }
 
     public T getSubscriberOrSubscribe(Supplier<T> supplier) {
@@ -250,21 +250,21 @@ public final class Topic<T> {
     @Override
     public String toString() {
         return "topic: " + getTopic()
-                + ", subscribers: " + (subscribers == null ? 0 : subscribers.size())
-                + ", children: " + (child == null ? 0 : child.size());
+            + ", subscribers: " + (subscribers == null ? 0 : subscribers.size())
+            + ", children: " + (child == null ? 0 : child.size());
     }
 
     private boolean match(String[] pars) {
         return TopicUtils.match(getTopics(), pars)
-                || TopicUtils.match(pars, getTopics());
+            || TopicUtils.match(pars, getTopics());
     }
 
     public static <T, ARG0, ARG1, ARG2, ARG3> void find(
-            String[] topicParts,
-            Topic<T> topicPart,
-            ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
-            Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
-            Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        String[] topicParts,
+        Topic<T> topicPart,
+        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
 
         RecyclableDequeue<Topic<T>> cache = RecyclerUtils.dequeue();
         try {
@@ -326,8 +326,8 @@ public final class Topic<T> {
                 }
             }
 
-            end.accept(arg0, arg1, arg2, arg3);
         } finally {
+            end.accept(arg0, arg1, arg2, arg3);
             cache.recycle();
         }
     }
