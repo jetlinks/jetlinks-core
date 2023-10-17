@@ -44,8 +44,6 @@ public class ChildDeviceMessage extends CommonDeviceMessage<ChildDeviceMessage> 
         ChildDeviceMessageReply reply = new ChildDeviceMessageReply();
         if (childDeviceMessage instanceof RepayableDeviceMessage) {
             reply.setChildDeviceMessage(((RepayableDeviceMessage<?>) childDeviceMessage).newReply());
-        } else if (childDeviceMessage instanceof DeviceMessageReply) {
-            reply.setChildDeviceMessage(childDeviceMessage);
         }
         reply.messageId(getMessageId());
         reply.deviceId(getDeviceId());
