@@ -10,6 +10,7 @@ import org.jetlinks.core.utils.StringBuilderUtils;
 import org.jetlinks.core.utils.TopicUtils;
 import org.springframework.util.ObjectUtils;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.function.Consumer4;
 import reactor.function.Consumer5;
 
@@ -44,7 +45,7 @@ public final class Topic<T> {
     }
 
     public Topic<T> append(String topic) {
-        if (topic.equals("/") || topic.isEmpty()) {
+        if (topic == null || topic.equals("/") || topic.isEmpty()) {
             return this;
         }
         return getOrDefault(topic, Topic::new);
@@ -349,14 +350,20 @@ public final class Topic<T> {
     }
 
     public Flux<Topic<T>> getAllSubscriber() {
-        List<Flux<Topic<T>>> all = new ArrayList<>();
+        return Flux.create(sink -> {
+            walkChildren(sink);
+            sink.complete();
+        });
+    }
 
-        all.add(Flux.fromIterable(this.getChildren()));
-
-        for (Topic<T> tTopic : getChildren()) {
-            all.add(tTopic.getAllSubscriber());
+    private void walkChildren(FluxSink<Topic<T>> sink) {
+        for (Topic<T> tTopic : this.getChildren()) {
+            if (sink.isCancelled()) {
+                break;
+            }
+            sink.next(tTopic);
+            tTopic.walkChildren(sink);
         }
-        return Flux.concat(all);
     }
 
     public void clean() {
