@@ -25,6 +25,8 @@ public class SpanDataInfo implements Externalizable {
     private String app;
     private String name;
     private String traceId;
+    private String spanId;
+    private String parentSpanId;
     private long startWithNanos;
     private long endWithNanos;
     private Map<String, Object> attributes;
@@ -38,6 +40,8 @@ public class SpanDataInfo implements Externalizable {
         this.app = data.getInstrumentationScopeInfo().getName();
         this.name = data.getName();
         this.traceId = data.getTraceId();
+        this.spanId = data.getSpanId();
+        this.parentSpanId = data.getParentSpanId();
         this.startWithNanos = data.getStartEpochNanos();
         this.endWithNanos = data.getEndEpochNanos();
 
@@ -87,9 +91,13 @@ public class SpanDataInfo implements Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
+        out.writeByte(0x02);
+
         out.writeUTF(app);
         out.writeUTF(name);
         out.writeUTF(traceId);
+        out.writeUTF(spanId);
+        out.writeUTF(parentSpanId);
         out.writeLong(startWithNanos);
         out.writeLong(endWithNanos);
         SerializeUtils.writeKeyValue(attributes, out);
@@ -105,9 +113,13 @@ public class SpanDataInfo implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        int version =  in.readUnsignedByte();
+
         this.app = in.readUTF();
         this.name = in.readUTF();
         this.traceId = in.readUTF();
+        this.spanId = in.readUTF();
+        this.parentSpanId = in.readUTF();
         this.startWithNanos = in.readLong();
         this.endWithNanos = in.readLong();
         this.attributes = SerializeUtils.readMap(in, Maps::newHashMapWithExpectedSize);
