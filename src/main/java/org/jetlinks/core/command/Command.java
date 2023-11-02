@@ -17,6 +17,10 @@ import java.util.Map;
  */
 public interface Command<Response> extends Wrapper, Serializable {
 
+    default String getCommandId(){
+        return CommandUtils.getCommandIdByType(this.getClass());
+    }
+
     /**
      * 设置命令的单个参数
      *

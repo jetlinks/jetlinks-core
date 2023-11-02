@@ -6,6 +6,7 @@ import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class AbstractCommandSupport implements CommandSupport {
@@ -14,7 +15,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
 
     @SuppressWarnings("all")
     protected final <C extends Command<R>, R> void registerHandler(CommandHandler<C, R> handler) {
-        registerHandler((Class) handler.createCommand().getClass(), handler);
+        registerHandler(handler.createCommand().getCommandId(), handler);
     }
 
     @SuppressWarnings("unchecked")
@@ -25,8 +26,14 @@ public abstract class AbstractCommandSupport implements CommandSupport {
         handlers.put(type, (CommandHandler<Command<?>, ?>) handler);
 
         if (null != metadata) {
-            handlers.put(metadata.getId(), (CommandHandler<Command<?>, ?>) handler);
+           registerHandler(metadata.getId(),  handler);
         }
+    }
+
+    @SuppressWarnings("all")
+    protected final <C extends Command<R>, R> void registerHandler(String id,
+                                                                   CommandHandler<C, R> handler) {
+        handlers.put(id, (CommandHandler<Command<?>, ?>) handler);
     }
 
     @Nonnull
@@ -39,7 +46,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
         }
 
         //从注册的执行器中获取处理器进行执行
-        CommandHandler<Command<?>, ?> handler = handlers.get(command.getClass());
+        CommandHandler<Command<?>, ?> handler = handlers.get(command.getCommandId());
 
         if (null != handler) {
             @SuppressWarnings("unchecked")
@@ -65,18 +72,22 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     @Override
     public final Flux<FunctionMetadata> getCommandMetadata() {
         return Flux
-                .fromIterable(handlers.values())
-                .distinct()
-                .mapNotNull(CommandHandler::getMetadata);
+            .fromIterable(handlers.values())
+            .distinct()
+            .mapNotNull(CommandHandler::getMetadata);
     }
 
     @Override
     public final Mono<FunctionMetadata> getCommandMetadata(String commandId) {
+        return Mono.justOrEmpty(getRegisteredMetadata(commandId));
+    }
+
+    public Optional<FunctionMetadata> getRegisteredMetadata(String commandId) {
         CommandHandler<Command<?>, ?> handler = handlers.get(commandId);
         if (handler != null) {
-            return Mono.justOrEmpty(handler.getMetadata());
+            return Optional.ofNullable(handler.getMetadata());
         }
-        return Mono.empty();
+        return Optional.empty();
     }
 
     protected <R, C extends Command<R>> C createUndefinedCommand(String commandId) {
