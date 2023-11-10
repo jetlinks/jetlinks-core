@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class AbstractCommandSupport implements CommandSupport {
 
-    private final Map<Object, CommandHandler<Command<?>, ?>> handlers = new ConcurrentHashMap<>();
+    protected final Map<Object, CommandHandler<Command<?>, ?>> handlers = new ConcurrentHashMap<>();
 
     @SuppressWarnings("all")
     protected final <C extends Command<R>, R> void registerHandler(CommandHandler<C, R> handler) {
