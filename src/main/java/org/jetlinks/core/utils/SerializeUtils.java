@@ -15,6 +15,7 @@ import org.hswebframework.web.bean.FastBeanCopier;
 import org.hswebframework.web.dict.EnumDict;
 import org.jetlinks.core.message.Message;
 import org.jetlinks.core.message.MessageType;
+import org.jetlinks.core.metadata.Jsonable;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
@@ -74,6 +75,10 @@ public class SerializeUtils {
             value instanceof Date ||
             value instanceof TemporalAccessor) {
             return value;
+        }
+
+        if(value instanceof Jsonable){
+            return ((Jsonable) value).toJson();
         }
 
         if (value instanceof Map) {
