@@ -53,7 +53,7 @@ public interface CommandSupport extends Wrapper {
      */
     default Flux<Object> executeToFlux(String commandId, Map<String, Object> parameters) {
         return createCommandAsync(commandId)
-                .flatMapMany(cmd -> this.executeToFlux(cmd.with(parameters)));
+            .flatMapMany(cmd -> this.executeToFlux(cmd.with(parameters)));
     }
 
     /**
@@ -75,7 +75,7 @@ public interface CommandSupport extends Wrapper {
      */
     default Mono<Object> executeToMono(String commandId, Map<String, Object> parameters) {
         return createCommandAsync(commandId)
-                .flatMap(cmd -> this.executeToMono(cmd.with(parameters)));
+            .flatMap(cmd -> this.executeToMono(cmd.with(parameters)));
     }
 
     /**
@@ -100,7 +100,7 @@ public interface CommandSupport extends Wrapper {
      * @return Mono
      */
     default <R, C extends Command<R>> Mono<C> createCommandAsync(String commandId) {
-        return Mono.just(this.<R, C>createCommand(commandId));
+        return Mono.fromSupplier(() -> this.<R, C>createCommand(commandId));
     }
 
     /**
@@ -120,7 +120,7 @@ public interface CommandSupport extends Wrapper {
      */
     default Mono<FunctionMetadata> getCommandMetadata(String commandId) {
         return getCommandMetadata()
-                .filter(cmd -> Objects.equals(cmd.getId(), commandId))
-                .singleOrEmpty();
+            .filter(cmd -> Objects.equals(cmd.getId(), commandId))
+            .singleOrEmpty();
     }
 }

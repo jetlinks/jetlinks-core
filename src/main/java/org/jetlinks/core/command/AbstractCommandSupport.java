@@ -26,7 +26,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
         handlers.put(type, (CommandHandler<Command<?>, ?>) handler);
 
         if (null != metadata) {
-           registerHandler(metadata.getId(),  handler);
+            registerHandler(metadata.getId(), handler);
         }
     }
 
@@ -94,7 +94,21 @@ public abstract class AbstractCommandSupport implements CommandSupport {
         throw new CommandException(this, null, "error.unsupported_create_command", null, commandId);
     }
 
+    @SuppressWarnings("all")
     protected <R> R executeUndefinedCommand(@Nonnull Command<R> command) {
-        throw new CommandException(this, command, "error.unsupported_execute_command", null, CommandUtils.getCommandIdByType(command.getClass()));
+        CommandException error = new CommandException(
+            this,
+            command,
+            "error.unsupported_execute_command",
+            null,
+            CommandUtils.getCommandIdByType(command.getClass()));
+
+        if (CommandUtils.commandResponseFlux(command)) {
+            return (R) Flux.error(error);
+        }
+        if (CommandUtils.commandResponseMono(command)) {
+            return (R) Mono.error(error);
+        }
+        throw error;
     }
 }
