@@ -28,6 +28,14 @@ public class SerializeUtilsTest {
 
 
     @Test
+    public void testConvertToSafelySerializable() {
+        assertEquals(1, SerializeUtils.convertToSafelySerializable(1));
+
+    }
+
+
+
+    @Test
     public void testPrimitive() {
         assertEquals(Byte.MAX_VALUE, codec(Byte.MAX_VALUE));
         assertEquals(Byte.MIN_VALUE, codec(Byte.MIN_VALUE));
@@ -154,17 +162,17 @@ public class SerializeUtilsTest {
             {
                 DeviceMessage msg = value.forDevice();
                 if (msg != null) {
-                    DeviceMessage decode= (DeviceMessage)codec(msg);
+                    DeviceMessage decode = (DeviceMessage) codec(msg);
 
-                    assertEquals(msg.getTimestamp(),decode.getTimestamp());
+                    assertEquals(msg.getTimestamp(), decode.getTimestamp());
                 }
             }
             {
-                ThingMessage msg = value.forThing("test","test1");
+                ThingMessage msg = value.forThing("test", "test1");
                 if (msg != null) {
-                    ThingMessage decode = (ThingMessage)codec(msg);
-                    assertEquals(msg.getThingType(),decode.getThingType());
-                    assertEquals(msg.getTimestamp(),decode.getTimestamp());
+                    ThingMessage decode = (ThingMessage) codec(msg);
+                    assertEquals(msg.getThingType(), decode.getThingType());
+                    assertEquals(msg.getTimestamp(), decode.getTimestamp());
                 }
             }
         }
@@ -174,8 +182,8 @@ public class SerializeUtilsTest {
     public void testByteBuf() {
 
         ByteBuf buf = ByteBufAllocator.DEFAULT
-                .buffer()
-                .writeInt(100);
+            .buffer()
+            .writeInt(100);
 
         ByteBuf decode = (ByteBuf) codec(buf);
 

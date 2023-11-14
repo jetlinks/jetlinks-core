@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Primitives;
@@ -10,8 +11,13 @@ import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.SneakyThrows;
+import org.hswebframework.web.bean.FastBeanCopier;
+import org.hswebframework.web.dict.EnumDict;
 import org.jetlinks.core.message.Message;
 import org.jetlinks.core.message.MessageType;
+import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
 import org.springframework.util.ConcurrentReferenceHashMap;
 
 import java.io.Externalizable;
@@ -22,12 +28,12 @@ import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class SerializeUtils {
 
@@ -39,6 +45,68 @@ public class SerializeUtils {
             registerSerializer(value);
         }
     }
+
+    private static final Set<Class<?>> safelySerializable = ConcurrentHashMap.newKeySet();
+
+    static {
+        addSafelySerializable(DateTime.class,
+                              LocalDateTime.class,
+                              LocalDate.class);
+    }
+
+    public static void addSafelySerializable(Class<?>... type) {
+        safelySerializable.addAll(Arrays.asList(type));
+    }
+
+    /**
+     * 将对象转换为可安全序列化的对象,如果对象是java bean将会转为Map.
+     *
+     * @param value 对象
+     * @return 转换后的对象
+     */
+    public static Object convertToSafelySerializable(Object value) {
+
+        if (value == null ||
+            value instanceof CharSequence ||
+            value instanceof Character ||
+            value instanceof Number ||
+            value instanceof Boolean ||
+            value instanceof Date ||
+            value instanceof TemporalAccessor) {
+            return value;
+        }
+
+        if (value instanceof Map) {
+            return Maps.transformValues(((Map<?, ?>) value), SerializeUtils::convertToSafelySerializable);
+        }
+
+        if (value instanceof Collection) {
+            return Collections2.transform(((Collection<?>) value), SerializeUtils::convertToSafelySerializable);
+        }
+        if (value instanceof EnumDict) {
+            return ((EnumDict<?>) value).getWriteJSONObject();
+        }
+        if (value instanceof Enum) {
+            return ((Enum<?>) value).name();
+        }
+
+        Class<?> clazz = value.getClass();
+
+        if (clazz.isArray()) {
+            return Arrays.stream(((Object[]) value)).map(SerializeUtils::convertToSafelySerializable).toArray();
+        }
+
+        if (clazz.getName().startsWith("java.")) {
+            return true;
+        }
+        if (safelySerializable.contains(value.getClass())) {
+            return value;
+        }
+
+        return convertToSafelySerializable(FastBeanCopier.copy(value, new LinkedHashMap<>()));
+
+    }
+
 
     public static synchronized void registerSerializer(Serializer serializer) {
         if (serializer.getCode() > 255) {
