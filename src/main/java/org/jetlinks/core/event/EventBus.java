@@ -51,6 +51,7 @@ public interface EventBus {
      * @param <T>          解码后结果类型
      * @return 事件流
      */
+    @Deprecated
     <T> Flux<T> subscribe(Subscription subscription, Decoder<T> decoder);
 
     /**
@@ -73,6 +74,7 @@ public interface EventBus {
      * @param <T>         类型
      * @return 订阅者数量
      */
+    @Deprecated
     <T> Mono<Long> publish(String topic, Encoder<T> encoder, Publisher<? extends T> eventStream);
 
     /**
@@ -111,10 +113,12 @@ public interface EventBus {
      * @param <T>     事件类型
      * @return 订阅者数量
      */
+    @Deprecated
     default <T> Mono<Long> publish(String topic, Encoder<T> encoder, T event) {
         return publish(topic, encoder, Mono.just(event));
     }
 
+    @Deprecated
     default <T> Mono<Long> publish(String topic, Encoder<T> encoder, T event, Scheduler scheduler) {
         return publish(topic, encoder, Mono.just(event), scheduler);
     }
