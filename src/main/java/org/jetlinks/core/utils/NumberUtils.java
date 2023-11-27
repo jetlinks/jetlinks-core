@@ -20,9 +20,9 @@ public class NumberUtils {
         int digDiff = length - len;
 
         if (digDiff > 0) {
-            value *= Math.pow(10, digDiff);
+            value *= (long) Math.pow(10, digDiff);
         } else if (digDiff < 0) {
-            value /= Math.pow(10, Math.abs(digDiff));
+            value /= (long) Math.pow(10, Math.abs(digDiff));
         }
         return value;
     }

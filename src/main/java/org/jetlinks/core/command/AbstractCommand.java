@@ -45,12 +45,11 @@ public abstract class AbstractCommand<Response, Self extends AbstractCommand<Res
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        SerializeUtils.writeObject(properties, out);
+        SerializeUtils.writeKeyValue(properties, out);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        properties = (Map<String, Object>) SerializeUtils.readObject(in);
+        SerializeUtils.readKeyValue(in,writable()::put);
     }
 }
