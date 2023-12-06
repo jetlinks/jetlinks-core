@@ -119,8 +119,45 @@ public interface CommandSupport extends Wrapper {
      * @return 命令元数据信息
      */
     default Mono<FunctionMetadata> getCommandMetadata(String commandId) {
-        return getCommandMetadata()
+        return this
+            .getCommandMetadata()
             .filter(cmd -> Objects.equals(cmd.getId(), commandId))
             .singleOrEmpty();
+    }
+
+    /**
+     * 判断是否支持此命令
+     *
+     * @param cmd 命令
+     * @return 是否支持
+     */
+    default Mono<Boolean> commandIsSupported(Command<?> cmd) {
+        return this
+            .getCommandMetadata(cmd.getCommandId())
+            .hasElement();
+    }
+
+    /**
+     * 判断是否支持此命令
+     *
+     * @param cmd 命令类型
+     * @return 是否支持
+     */
+    default Mono<Boolean> commandIsSupported(Class<? extends Command<?>> cmd) {
+        return this
+            .getCommandMetadata(CommandUtils.getCommandIdByType(cmd))
+            .hasElement();
+    }
+
+    /**
+     * 判断是否支持此命令
+     *
+     * @param commandId 命令ID
+     * @return 是否支持
+     */
+    default Mono<Boolean> commandIsSupported(String commandId) {
+        return this
+            .getCommandMetadata(commandId)
+            .hasElement();
     }
 }
