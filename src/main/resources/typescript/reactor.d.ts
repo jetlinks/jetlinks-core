@@ -1,3 +1,6 @@
+// @ts-ignore
+import {java} from "java";
+
 declare namespace reactor.core.publisher {
 
     export class Publisher<T> {
@@ -49,6 +52,8 @@ declare namespace reactor.core.publisher {
         filterWhen(predicate: (val: T) => Mono<boolean>): Flux<T>;
 
         hasElements(): Mono<boolean>;
+
+        collectList(): Mono<java.util.List<T>>;
 
         then(): Mono<void>;
 
