@@ -4,8 +4,10 @@ import {java} from "java";
 declare module io.netty.buffer {
 
     class Unpooled {
-        static buffer(): ByteBuf;
 
+        static buffer(): ByteBuf;
+        // @ts-ignore
+        static wrappedBuffer(byteArray: byte[]): ByteBuf;
     }
 
     class ByteBuf {
