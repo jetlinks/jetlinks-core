@@ -8,14 +8,39 @@ declare namespace reactor.core.publisher {
 
     export class Signal<T> {
 
+        /**
+         * 检查当前序列是否包含错误。
+         *
+         * @returns {boolean} - 如果序列包含错误，则返回 true；否则返回 false。
+         */
         hasError(): boolean;
 
+        /**
+         * 检查当前序列是否包含值。
+         *
+         * @returns {boolean} - 如果序列包含值，则返回 true；否则返回 false。
+         */
         hasValue(): boolean;
 
+        /**
+         * 获取当前序列的值。
+         *
+         * @returns {T} - 当前序列的值。
+         */
         get(): T;
 
+        /**
+         * 获取当前序列的上下文视图。
+         *
+         * @returns {reactor.util.context.ContextView} - 当前序列的上下文视图。
+         */
         getContextView(): reactor.util.context.ContextView;
 
+        /**
+         * 获取当前序列中的错误对象。
+         *
+         * @returns {Error} - 当前序列中的错误对象，如果没有错误，则返回 null。
+         */
         getThrowable(): Error;
 
     }
@@ -282,7 +307,30 @@ declare namespace reactor.core.publisher {
          * @param {...any} args - 要包含在 Flux 中的元素。
          * @returns {Flux<T>} - 包含指定元素的 Flux 实例。
          */
-        static just<T>(...args: any): Flux<T>;
+        static just<T>(...args: T[]): Flux<T>;
+
+        /**
+         * 基于一个Publisher创建Flux.
+         * @param publisher Publisher
+         */
+        static from<T>(publisher: Publisher<T>): Flux<T>;
+
+        /**
+         * 创建一个包含指定范围内连续整数的 Flux。
+         *
+         * @param {number} start - 起始整数。
+         * @param {number} count - 生成的整数的数量。
+         * @returns {Flux<java.lang.Long>} - 一个包含指定范围内连续整数的 Flux。
+         */
+        static range(start: number, count: number): Flux<java.lang.Long>;
+
+        /**
+         * 创建一个定期发射递增的长整数的 Flux，初始延迟为零。
+         *
+         * @param {java.time.Duration} duration - 两次发射之间的时间间隔。
+         * @returns {Flux<java.lang.Long>} - 一个定期发射递增的长整数的 Flux。
+         */
+        static interval(duration: java.time.Duration): Flux<java.lang.Long>;
 
         /**
          * 从数组中创建一个 Flux。
@@ -303,14 +351,14 @@ declare namespace reactor.core.publisher {
          * @param {...Flux<any>} args - 要合并的 Flux 实例。
          * @returns {Flux<any>} - 合并后的 Flux 实例。
          */
-        static merge(...args: Flux<any>[]): Flux<any>;
+        static merge<T>(...args: Flux<T>[]): Flux<T>;
 
         /**
          * 连接多个 Flux，返回包含所有元素的 Flux。
          * @param {...Flux<any>} args - 要连接的 Flux 实例。
          * @returns {Flux<any>} - 连接后的 Flux 实例。
          */
-        static concat(...args: Flux<any>[]): Flux<any>;
+        static concat<T>(...args: Flux<T>[]): Flux<T>;
 
         /**
          * 创建一个Flux,并手动控制流的行为.
@@ -326,6 +374,36 @@ declare namespace reactor.core.publisher {
          * @param callback - 用于创建 Flux 的回调函数。
          */
         static create<T>(callback: (sink: FluxSink<T>) => void): Flux<T>;
+
+        /**
+         * 当背压发生时，丢弃被丢弃的元素，继续发射新元素的 Flux。
+         *
+         * @returns {Flux<T>} - 一个处理背压策略为丢弃被丢弃元素的 Flux。
+         */
+        onBackpressureDrop(): Flux<T>;
+
+        /**
+         * 当背压发生时，使用提供的回调处理被丢弃的元素，继续发射新元素的 Flux。
+         *
+         * @param {function} callback - 处理被丢弃元素的回调函数。
+         * @returns {Flux<T>} - 一个处理背压策略为使用回调处理被丢弃元素的 Flux。
+         */
+        onBackpressureDrop(callback: (dropped: T) => void): Flux<T>;
+
+        /**
+         * 当背压发生时，使用缓冲区来存储被丢弃的元素，继续发射新元素的 Flux。
+         *
+         * @returns {Flux<T>} - 一个处理背压策略为使用缓冲区存储被丢弃元素的 Flux。
+         */
+        onBackpressureBuffer(): Flux<T>;
+
+        /**
+         * 当背压发生时，使用缓冲区来存储被丢弃的元素，且缓冲区的最大容量受限，继续发射新元素的 Flux。
+         *
+         * @param {number} maxSize - 缓冲区的最大容量。
+         * @returns {Flux<T>} - 一个处理背压策略为使用有限缓冲区存储被丢弃元素的 Flux。
+         */
+        onBackpressureBuffer(maxSize: number): Flux<T>;
 
         /**
          * 映射每个元素并返回新的 Flux。
@@ -365,6 +443,12 @@ declare namespace reactor.core.publisher {
          * @returns {Flux<T>} - 包含跳过前 n 个元素的新 Flux。
          */
         skip(n: number): Flux<T>;
+
+        /**
+         * 获取第一个元素并返回新的 Mono.
+         * 注意: 流中元素只能有0-1个,否则会抛出异常.
+         */
+        singleOrEmpty(): Mono<T>;
 
         /**
          * 筛选元素并返回新的 Flux，只包含满足条件的元素。
@@ -633,38 +717,126 @@ declare namespace reactor.util.context {
 
     export class Context extends ContextView {
 
+        /**
+         * 创建一个包含单个键值对的上下文。
+         *
+         * @param {any} key - 键的名称。
+         * @param {any} value - 与键关联的值。
+         * @returns {Context} - 包含单个键值对的上下文。
+         */
         static of(key: any, value: any): Context;
 
-        static of(key: any, value: any,
-                  key2: any, value2: any): Context;
+        /**
+         * 创建一个包含两个键值对的上下文。
+         *
+         * @param {any} key - 第一个键的名称。
+         * @param {any} value - 与第一个键关联的值。
+         * @param {any} key2 - 第二个键的名称。
+         * @param {any} value2 - 与第二个键关联的值。
+         * @returns {Context} - 包含两个键值对的上下文。
+         */
+        static of(key: any, value: any, key2: any, value2: any): Context;
 
-        static of(key: any, value: any,
-                  key2: any, value2: any,
-                  key3: any, value3: any): Context;
+        /**
+         * 创建一个包含三个键值对的上下文。
+         *
+         * @param {any} key - 第一个键的名称。
+         * @param {any} value - 与第一个键关联的值。
+         * @param {any} key2 - 第二个键的名称。
+         * @param {any} value2 - 与第二个键关联的值。
+         * @param {any} key3 - 第三个键的名称。
+         * @param {any} value3 - 与第三个键关联的值。
+         * @returns {Context} - 包含三个键值对的上下文。
+         */
+        static of(key: any, value: any, key2: any, value2: any, key3: any, value3: any): Context;
 
-        static of(key: any, value: any,
-                  key2: any, value2: any,
-                  key4: any, value4: any): Context;
+        /**
+         * 创建一个包含四个键值对的上下文。
+         *
+         * @param {any} key - 第一个键的名称。
+         * @param {any} value - 与第一个键关联的值。
+         * @param {any} key2 - 第二个键的名称。
+         * @param {any} value2 - 与第二个键关联的值。
+         * @param {any} key4 - 第三个键的名称。
+         * @param {any} value4 - 与第三个键关联的值。
+         * @returns {Context} - 包含四个键值对的上下文。
+         */
+        static of(key: any, value: any, key2: any, value2: any, key4: any, value4: any): Context;
 
-
+        /**
+         * 将指定的键值对添加到上下文中。
+         *
+         * @param {string} key - 要添加的键的名称。
+         * @param {T} value - 与键关联的值。
+         * @returns {Context} - 更新后的上下文。
+         */
         put<T>(key: string, value: T): Context;
 
+        /**
+         * 将指定的键值对添加到上下文中，如果值非空。
+         *
+         * @param {string} key - 要添加的键的名称。
+         * @param {T} value - 与键关联的值。
+         * @returns {Context} - 更新后的上下文。
+         */
         putNonNull<T>(key: string, value: T): Context;
 
+        /**
+         * 从上下文中删除指定键的键值对。
+         *
+         * @param {string} key - 要删除的键的名称。
+         * @returns {Context} - 更新后的上下文。
+         */
         delete(key: string): Context;
     }
 
+
     export class ContextView {
+        /**
+         * 获取上下文中指定键的值。
+         *
+         * @param {string} key - 要获取值的键的名称。
+         * @returns {T} - 上下文中指定键的值。
+         */
         get<T>(key: string): T;
 
+        /**
+         * 获取上下文中指定键的值，如果键不存在，则返回空的 Optional。
+         *
+         * @param {string} key - 要获取值的键的名称。
+         * @returns {java.util.Optional<T>} - 包含上下文中指定键的值的 Optional。
+         */
         getOrEmpty<T>(key: string): java.util.Optional<T>;
 
+        /**
+         * 获取上下文中指定键的值，如果键不存在，则返回默认值。
+         *
+         * @param {string} key - 要获取值的键的名称。
+         * @param {T} defaultValue - 默认值，当键不存在时返回。
+         * @returns {T} - 上下文中指定键的值，或者默认值。
+         */
         getOrDefault<T>(key: string, defaultValue: T): T;
 
+        /**
+         * 检查上下文中是否包含指定的键。
+         *
+         * @param {string} key - 要检查的键的名称。
+         * @returns {boolean} - 如果上下文中包含指定的键，则返回 true；否则返回 false。
+         */
         hasKey(key: string): boolean;
 
+        /**
+         * 检查上下文是否为空。
+         *
+         * @returns {boolean} - 如果上下文为空，则返回 true；否则返回 false。
+         */
         isEmpty(): boolean;
 
+        /**
+         * 获取上下文中键值对的数量。
+         *
+         * @returns {number} - 上下文中键值对的数量。
+         */
         size(): number;
     }
 

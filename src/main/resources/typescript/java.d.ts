@@ -1,37 +1,108 @@
 declare module java.lang {
     class JavaNumber extends Number {
+
+        private readonly NaN: number;
+
+        private readonly NEGATIVE_INFINITY: number;
+
+        private readonly POSITIVE_INFINITY: number;
+
+        /**
+         * 获取基本类型 byte 表示的值。
+         *
+         * @returns {byte} - 基本类型 byte 表示的值。
+         */
         byteValue(): byte;
 
+        /**
+         * 获取基本类型 short 表示的值。
+         *
+         * @returns {short} - 基本类型 short 表示的值。
+         */
         shortValue(): short;
 
+        /**
+         * 获取基本类型 int 表示的值。
+         *
+         * @returns {int} - 基本类型 int 表示的值。
+         */
         intValue(): int;
 
+        /**
+         * 获取基本类型 long 表示的值。
+         *
+         * @returns {long} - 基本类型 long 表示的值。
+         */
         longValue(): long;
 
+        /**
+         * 获取基本类型 float 表示的值。
+         *
+         * @returns {float} - 基本类型 float 表示的值。
+         */
         floatValue(): float;
 
+        /**
+         * 获取基本类型 double 表示的值。
+         *
+         * @returns {double} - 基本类型 double 表示的值。
+         */
         doubleValue(): double;
     }
 
     class Character {
+        // @ts-ignore
+        public static readonly MAX_VALUE :char;
+        // @ts-ignore
+        public static readonly MIN_VALUE :char;
     }
 
+    // @ts-ignore
     class Byte extends JavaNumber {
+        // @ts-ignore
+        public static readonly MAX_VALUE :byte;
+        // @ts-ignore
+        public static readonly MIN_VALUE :byte;
     }
 
+    // @ts-ignore
     class Short extends JavaNumber {
+        // @ts-ignore
+        public static readonly MAX_VALUE :short;
+        // @ts-ignore
+        public static readonly MIN_VALUE :short;
     }
 
+    // @ts-ignore
     class Integer extends JavaNumber {
+        // @ts-ignore
+        public static readonly MAX_VALUE :int;
+        // @ts-ignore
+        public static readonly MIN_VALUE :int;
     }
 
+    // @ts-ignore
     class Long extends JavaNumber {
+        // @ts-ignore
+        public static MAX_VALUE :long;
+        // @ts-ignore
+        public static MIN_VALUE :long;
     }
 
+    // @ts-ignore
     class Double extends JavaNumber {
+        // @ts-ignore
+        public static readonly MAX_VALUE :double;
+        // @ts-ignore
+        public static readonly MIN_VALUE :double;
     }
 
+    // @ts-ignore
     class Float extends JavaNumber {
+        // @ts-ignore
+        public static readonly MAX_VALUE :float;
+        // @ts-ignore
+        public static readonly MIN_VALUE :float;
     }
 
 
