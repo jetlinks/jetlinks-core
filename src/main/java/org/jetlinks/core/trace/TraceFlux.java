@@ -3,6 +3,7 @@ package org.jetlinks.core.trace;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
 import reactor.core.CoreSubscriber;
@@ -54,7 +55,7 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
         this.onSubscription = builderConsumer;
         this.onComplete = onComplete;
         this.onError = onError;
-        this.fastSubscribe=fastSubscribe;
+        this.fastSubscribe = fastSubscribe;
     }
 
     public TraceFlux<T> onNext(BiConsumer<ReactiveSpan, T> onNext) {
@@ -65,13 +66,13 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
         Consumer3<ContextView, ReactiveSpan, T> that = this.onNext;
 
         Consumer3<ContextView, ReactiveSpan, T> onNext = that == null
-                ?
-                callback
-                :
-                (contextView, span, r) -> {
-                    that.accept(contextView, span, r);
-                    callback.accept(contextView, span, r);
-                };
+            ?
+            callback
+            :
+            (contextView, span, r) -> {
+                that.accept(contextView, span, r);
+                callback.accept(contextView, span, r);
+            };
         return new TraceFlux<>(this.source,
                                this.spanName,
                                this.tracer,
@@ -86,13 +87,13 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
         Consumer3<ContextView, ReactiveSpan, Long> that = this.onComplete;
 
         Consumer3<ContextView, ReactiveSpan, Long> onComplete = that == null
-                ?
-                callback
-                :
-                (contextView, span, r) -> {
-                    that.accept(contextView, span, r);
-                    callback.accept(contextView, span, r);
-                };
+            ?
+            callback
+            :
+            (contextView, span, r) -> {
+                that.accept(contextView, span, r);
+                callback.accept(contextView, span, r);
+            };
 
         return new TraceFlux<>(this.source,
                                this.spanName,
@@ -158,20 +159,24 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
             ReactiveSpanBuilder builder = new ReactiveSpanBuilderWrapper(tracer.spanBuilder(name));
 
             Context ctx = context
-                    .<Context>getOrEmpty(Context.class)
-                    .orElseGet(Context::current);
+                .<Context>getOrEmpty(Context.class)
+                .orElseGet(Context::current);
 
             if (null != onSubscription) {
                 this.onSubscription.accept(context, builder);
             }
 
             Span span = builder
-                    .setStartTimestamp(Instant.now())
-                    .setParent(ctx)
-                    .startSpan();
-
-            this.source.subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, onError, ctx));
-
+                .setStartTimestamp(Instant.now())
+                .setParent(ctx)
+                .startSpan();
+            try (Scope ignored = span.makeCurrent()) {
+                this.source.subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, onError, ctx));
+            } catch (Throwable e) {
+                actual.onError(e);
+                span.recordException(e);
+                span.end();
+            }
         } catch (Throwable e) {
             actual.onError(e);
         }

@@ -1,7 +1,10 @@
 package org.jetlinks.core.trace;
 
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
@@ -13,7 +16,11 @@ import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * 基于<a href="https://github.com/open-telemetry/opentelemetry-java/">OpenTelemetry</a>链路追踪工具类，
@@ -86,17 +93,17 @@ public class TraceHolder {
         AtomicReference<Boolean> enabled = new AtomicReference<>();
         //获取启用的span
         enabledSpanName
-                .findTopic(name,
-                           topic -> enabled.set(true),
-                           () -> {
-                           });
+            .findTopic(name,
+                       topic -> enabled.set(true),
+                       () -> {
+                       });
         if (enabled.get() == null) {
             //获取禁用的span
             disabledSpanName
-                    .findTopic(name,
-                               topic -> enabled.set(false),
-                               () -> {
-                               });
+                .findTopic(name,
+                           topic -> enabled.set(false),
+                           () -> {
+                           });
         }
         if (enabled.get() == null) {
             return true;
@@ -149,14 +156,14 @@ public class TraceHolder {
 
     public static void removeEnabled(String spanName, String handler) {
         enabledSpanName
-                .getTopic(spanName)
-                .ifPresent(topic -> topic.unsubscribe(handler));
+            .getTopic(spanName)
+            .ifPresent(topic -> topic.unsubscribe(handler));
     }
 
     public static void removeDisabled(String spanName, String handler) {
         disabledSpanName
-                .getTopic(spanName)
-                .ifPresent(topic -> topic.unsubscribe(handler));
+            .getTopic(spanName)
+            .ifPresent(topic -> topic.unsubscribe(handler));
     }
 
 
@@ -172,8 +179,8 @@ public class TraceHolder {
      */
     public static void disable(String spanName, String handler) {
         disabledSpanName
-                .append(spanName)
-                .subscribe(handler);
+            .append(spanName)
+            .subscribe(handler);
         removeEnabled(spanName, handler);
     }
 
@@ -242,7 +249,7 @@ public class TraceHolder {
         if (null != context) {
             context = propagator.extract(context, source, getter);
             return reactor.util.context.Context.of(parent)
-                    .put(Context.class, context);
+                                               .put(Context.class, context);
         }
         return reactor.util.context.Context.of(parent);
     }
@@ -320,7 +327,7 @@ public class TraceHolder {
             return Mono.just(carrier);
         }
         return Mono
-                .deferContextual(ctx -> Mono.just(writeContextTo(ctx, carrier, setter)));
+            .deferContextual(ctx -> Mono.just(writeContextTo(ctx, carrier, setter)));
     }
 
     /**
@@ -345,10 +352,39 @@ public class TraceHolder {
             return carrier;
         }
         return TraceHolder.writeContextTo(
-                TraceHolder.readToContext(reactor.util.context.Context.empty(), source),
-                carrier,
-                setter);
+            TraceHolder.readToContext(reactor.util.context.Context.empty(), source),
+            carrier,
+            setter);
     }
 
+    public static void traceBlocking(String operation, Consumer<Span> task) {
+        traceBlocking(operation, span -> {
+            task.accept(span);
+            return null;
+        });
+    }
+
+    public static <R> R traceBlocking(String operation, Function<Span, R> function) {
+        return traceBlocking(Context.current(), operation, function);
+    }
+
+    public static <R> R traceBlocking(Context context, String operation, Function<Span, R> function) {
+        if (isDisabled(operation)) {
+            return function.apply(Span.getInvalid());
+        }
+        Span span = telemetry
+            .getTracer(appName())
+            .spanBuilder(operation)
+            .setParent(context)
+            .startSpan();
+        try (Scope ignored = span.makeCurrent()) {
+            return function.apply(span);
+        } catch (Throwable e) {
+            span.recordException(e);
+            throw e;
+        } finally {
+            span.end();
+        }
+    }
 
 }
