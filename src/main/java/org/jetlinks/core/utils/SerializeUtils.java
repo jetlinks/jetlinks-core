@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -107,8 +108,15 @@ public class SerializeUtils {
         if (safelySerializable.contains(value.getClass())) {
             return value;
         }
+        Map<String, Object> copied;
+        try {
+            copied = FastBeanCopier.copy(value, new LinkedHashMap<>());
+        } catch (Exception e) {
+            // 动态加载的类暂时无法copy
+            copied = JSONObject.parseObject(JSONObject.toJSONString(value));
+        }
 
-        return convertToSafelySerializable(FastBeanCopier.copy(value, new LinkedHashMap<>()));
+        return convertToSafelySerializable(copied);
 
     }
 
