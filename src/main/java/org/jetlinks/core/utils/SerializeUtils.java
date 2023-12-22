@@ -220,11 +220,12 @@ public class SerializeUtils {
         if (readyToSer instanceof Map) {
             return InternalSerializers.MAP;
         }
-        if (readyToSer instanceof List) {
-            return InternalSerializers.LIST;
-        }
         if (readyToSer instanceof Set) {
             return InternalSerializers.SET;
+        }
+        //fixme Collection转List?
+        if (readyToSer instanceof Collection) {
+            return InternalSerializers.LIST;
         }
         if (readyToSer instanceof ByteBuf) {
             return InternalSerializers.Netty;
@@ -626,7 +627,7 @@ public class SerializeUtils {
             @Override
             @SneakyThrows
             void write(Object value, ObjectOutput input) {
-                List<?> list = ((List<?>) value);
+                Collection<?> list = ((Collection<?>) value);
 
                 int len = list.size();
                 input.writeInt(len);
@@ -636,7 +637,6 @@ public class SerializeUtils {
                 }
             }
         },
-
         SET(0x13, Set.class) {
             @Override
             @SneakyThrows
