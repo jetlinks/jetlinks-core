@@ -2,6 +2,7 @@ package org.jetlinks.core.trace;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Context;
 import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
@@ -9,6 +10,7 @@ import javax.annotation.Nonnull;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * 响应式跟踪构造器
@@ -112,6 +114,8 @@ public interface ReactiveTracerBuilder<T, E> {
      * @return this
      */
     ReactiveTracerBuilder<T, E> onSubscription(Consumer<ReactiveSpanBuilder> callback);
+
+    ReactiveTracerBuilder<T,E> defaultContext(Supplier<Context> defaultContext);
 
     /**
      * 构造跟踪器

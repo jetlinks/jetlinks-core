@@ -1,5 +1,6 @@
 package org.jetlinks.core.trace;
 
+import io.opentelemetry.context.Context;
 import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
@@ -7,6 +8,7 @@ import javax.annotation.Nonnull;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuilder<T, R> {
     String scopeName = TraceHolder.appName();
@@ -15,6 +17,8 @@ abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuil
     Consumer3<ContextView, ReactiveSpan, Long> onComplete;
     BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription;
     BiConsumer<ContextView, Throwable> onError;
+
+    Supplier<Context> defaultContext = Context::current;
 
     @Override
     public ReactiveTracerBuilder<T, R> scopeName(@Nonnull String name) {
@@ -94,6 +98,13 @@ abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuil
     public ReactiveTracerBuilder<T, R> onSubscription(Consumer<ReactiveSpanBuilder> callback) {
 
         return callback == null ? this : onSubscription((contextView, spanBuilder) -> callback.accept(spanBuilder));
+    }
+
+    public ReactiveTracerBuilder<T,R> defaultContext(Supplier<Context> defaultContext){
+        if(defaultContext!=null){
+            this.defaultContext = defaultContext;
+        }
+        return this;
     }
 
     @Override
