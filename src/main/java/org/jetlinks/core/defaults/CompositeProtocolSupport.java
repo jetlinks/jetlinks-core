@@ -317,14 +317,14 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     /**
      * 监听客户端连接,只有部分协议支持此操作,如:
-     * <pre>
+     * <pre>{@code
      * support.doOnClientConnect(TCP,(connection,context)->{
      *  //客户端创建连接时,发送消息给客户端
      *  return connection
      *   .sendMessage(createHelloMessage())
      *    .then();
      *  })
-     * </pre>
+     * }</pre>
      *
      * @param transport 通信协议,如: {@link org.jetlinks.core.message.codec.DefaultTransport#TCP}
      * @param handler   处理器
