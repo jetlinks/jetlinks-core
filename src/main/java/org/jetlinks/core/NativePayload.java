@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 @Getter
 @Setter
 @Slf4j
+@Deprecated
 public class NativePayload<T> implements Payload {
 
     private T nativeObject;
@@ -89,7 +90,7 @@ public class NativePayload<T> implements Payload {
         if (Map.class.isAssignableFrom(type)) {
             return bodyToJson().toJavaObject(type);
         }
-        return FastBeanCopier.copy(nativeObject,type);
+        return FastBeanCopier.copy(nativeObject, type);
     }
 
     @Override
@@ -191,6 +192,7 @@ public class NativePayload<T> implements Payload {
     }
 
     @Override
+    @SuppressWarnings("all")
     public JSONObject bodyToJson(boolean release) {
         try {
             if (nativeObject == null) {
@@ -198,6 +200,12 @@ public class NativePayload<T> implements Payload {
             }
             if (nativeObject instanceof Jsonable) {
                 return ((Jsonable) nativeObject).toJson();
+            }
+            if (nativeObject instanceof JSONObject) {
+                return ((JSONObject) nativeObject);
+            }
+            if (nativeObject instanceof Map) {
+                return new JSONObject(((Map) nativeObject));
             }
             return FastBeanCopier.copy(nativeObject, JSONObject::new);
         } finally {
