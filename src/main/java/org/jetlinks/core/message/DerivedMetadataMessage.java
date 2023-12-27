@@ -12,7 +12,7 @@ import java.io.ObjectOutput;
 @Setter
 public class DerivedMetadataMessage extends CommonDeviceMessage<DerivedMetadataMessage> {
 
-    //元数据
+    //物模型数据
     private String metadata;
 
     //是否是全量数据

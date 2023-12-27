@@ -9,9 +9,15 @@ import javax.annotation.Nullable;
 @AllArgsConstructor
 public class JsonValueUnit implements ValueUnit {
 
+    private final String id;
+
     private final String symbol;
 
     private final String name;
+
+    public JsonValueUnit(String symbol, String name) {
+        this(symbol, symbol, name);
+    }
 
     @Nullable
     public static JsonValueUnit of(String jsonStr) {
@@ -23,7 +29,9 @@ public class JsonValueUnit implements ValueUnit {
             return null;
         }
 
-        return new JsonValueUnit(symbol,(String) json.getOrDefault("name",symbol));
+        return new JsonValueUnit(String.valueOf(json.getOrDefault("id", symbol)),
+                                 symbol,
+                                 (String) json.getOrDefault("name", symbol));
     }
 
     @Override
@@ -36,12 +44,12 @@ public class JsonValueUnit implements ValueUnit {
         if (value == null) {
             return null;
         }
-        return value + "" + symbol;
+        return value + symbol;
     }
 
     @Override
     public String getId() {
-        return "custom_" + symbol;
+        return id;
     }
 
     @Override
