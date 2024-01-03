@@ -147,12 +147,40 @@ declare namespace reactor.core.publisher {
         static zip<A, B, T>(left: Mono<A>, right: Mono<B>, converter: (a: A, b: B) => T): Mono<T>;
 
         /**
-         * 映射每个元素并返回新的 Mono。
+         * 筛选元素并返回新的 Mono，只包含满足条件的元素。
+         * @param {(val: T) => boolean} predicate - 用于筛选的条件函数。
+         * @returns {Flux<T>} - 包含满足条件元素的新 Flux。
+         */
+        filter(predicate: (val: T) => boolean): Mono<T>;
+
+
+        /**
+         * 映射元素并返回新的 Mono。
          * @template U - 映射后的元素类型。
          * @param {(val: T) => U} transfer - 用于映射的函数。
          * @returns {Mono<U>} - 包含映射后元素的新 Mono。
          */
         map<U>(transfer: (val: T) => U): Mono<U>;
+
+        /**
+         * 映射元素并返回新的 Mono。
+         * @template U - 映射后的元素类型。
+         * @param {(val: T) => U} transfer - 用于映射的函数。
+         * @returns {Mono<U>} - 包含映射后元素的新 Mono。
+         */
+        flatMap<U>(transfer: (val: T) => Mono<U>): Mono<U>;
+
+        /**
+         * 当上游为空时切换到另一个 Mono。
+         * @param other
+         */
+        switchIfEmpty<U>(other: Mono<U>): Mono<U>;
+
+        /**
+         * 当上游为空时返回默认值
+         * @param value
+         */
+        defaultIfEmpty<U>(value: U): Mono<U>;
 
         // ... 其他方法的注释
 
@@ -443,6 +471,29 @@ declare namespace reactor.core.publisher {
          * @returns {Flux<T>} - 包含跳过前 n 个元素的新 Flux。
          */
         skip(n: number): Flux<T>;
+
+        /**
+         * 当上游为空时切换到另一个 Flux。
+         * @param other
+         */
+        switchIfEmpty<U>(other: Publisher<U>): Flux<U>;
+
+        /**
+         * 当收到第一个元素后切换到另一个 Flux。
+         * ```js
+         * flux
+         *   .switchOnFirst((signal,flux)=>{
+         *       if(signal.hasValue()){
+         *          let val = signal.get();
+         *
+         *          return flux.....;
+         *       }
+         *      return flux;
+         *   })
+         * ```
+         * @param transformer 转换器
+         */
+        switchOnFirst<U>(transformer: (firstSignal: Signal<T>, source: Flux<T>) => Publisher<U>): Flux<U>;
 
         /**
          * 获取第一个元素并返回新的 Mono.
