@@ -8,7 +8,7 @@ import lombok.Setter;
 @SuppressWarnings("all")
 public class DoubleType extends NumberType<Double> {
     public static final String ID = "double";
-    private static final int SCALE = Integer.getInteger("jetlinks.type.int.scale", 2);
+    private static final int SCALE = Integer.getInteger("jetlinks.type.double.scale", 2);
 
     public static final DoubleType GLOBAL = new DoubleType();
 
