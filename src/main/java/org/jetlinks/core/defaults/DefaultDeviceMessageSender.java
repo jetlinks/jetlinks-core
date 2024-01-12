@@ -10,6 +10,7 @@ import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.reactivestreams.Publisher;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -240,7 +241,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                     String server = serverAndInterceptor.getT1();
                     String parentGatewayId = serverAndInterceptor.getT3();
                     //有上级网关设备则通过父级设备发送消息
-                    if (StringUtils.isEmpty(server) && StringUtils.hasText(parentGatewayId)) {
+                    if (!StringUtils.hasText(server) && StringUtils.hasText(parentGatewayId)) {
                         return Flux
                                 .from(message)
                                 .flatMap(msg -> interceptor.preSend(operator, msg))
@@ -256,7 +257,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                             .concatMap(msg -> Flux
                                     .defer(() -> {
                                         //缓存中没有serverId,说明当前设备并未连接到平台.
-                                        if (StringUtils.isEmpty(server)) {
+                                        if (ObjectUtils.isEmpty(server)) {
                                             return interceptor.afterSent(operator, msg, Flux.error(new DeviceOperationException(ErrorCode.CLIENT_OFFLINE)));
                                         }
                                         boolean forget = msg.getHeader(Headers.sendAndForget).orElse(false);
@@ -265,9 +266,7 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                 ? Flux.empty()
                                                 : handler
                                                 //监听来自其他服务的回复
-                                                .handleReply(msg.getDeviceId(),
-                                                             msg.getMessageId(),
-                                                             Duration.ZERO)
+                                                .handleReply(msg.getDeviceId(), msg.getMessageId(), Duration.ZERO)
                                                 .map(replyMapping)
                                                 .onErrorResume(DeviceOperationException.class, error -> {
                                                     if (error.getCode() == ErrorCode.CLIENT_OFFLINE) {
@@ -323,12 +322,11 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
                                                     return interceptor.afterSent(operator, msg, replyStream);
                                                 });
                                     })
-                                    .as(flux -> interceptor
-                                            .doSend(operator, msg, flux.cast(DeviceMessage.class))
-                                            .map(_resp -> (R) _resp))
                                     .timeout(Duration.ofMillis(msg.getHeader(Headers.timeout).orElse(defaultTimeout)),
                                              Mono.error(() -> new DeviceOperationException(ErrorCode.TIME_OUT)))
                                     .onErrorMap(TimeoutException.class, timeout -> new DeviceOperationException(ErrorCode.TIME_OUT, timeout))
+                                    .as(flux -> interceptor.doSend(operator, msg, flux.cast(DeviceMessage.class)).map(_resp -> (R) _resp))
+
                             );
                 });
 
