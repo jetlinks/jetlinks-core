@@ -37,14 +37,16 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class SerializeUtils {
-
     static final Serializer[] all = new Serializer[256];
     private static final Map<Class<?>, Serializer> cache = new ConcurrentHashMap<>();
+    private static final Map<String, Class<?>> clazzCache = new ConcurrentReferenceHashMap<>();
 
     static {
         for (InternalSerializers value : InternalSerializers.values()) {
             registerSerializer(value);
         }
+        registerSerializer(new TypedMapSerializer());
+        registerSerializer(new TypedCollectionSerializer());
     }
 
     private static final Set<Class<?>> safelySerializable = ConcurrentHashMap.newKeySet();
@@ -77,7 +79,7 @@ public class SerializeUtils {
             return value;
         }
 
-        if(value instanceof Jsonable){
+        if (value instanceof Jsonable) {
             return ((Jsonable) value).toJson();
         }
 
@@ -218,14 +220,13 @@ public class SerializeUtils {
             return InternalSerializers.C_SET;
         }
         if (readyToSer instanceof Map) {
-            return InternalSerializers.MAP;
+            return all[TypedMapSerializer.CODE];
         }
-        if (readyToSer instanceof Set) {
-            return InternalSerializers.SET;
-        }
-        //fixme Collection转List?
+//        if (readyToSer instanceof Set) {
+//            return InternalSerializers.SET;
+//        }
         if (readyToSer instanceof Collection) {
-            return InternalSerializers.LIST;
+            return all[TypedCollectionSerializer.CODE];
         }
         if (readyToSer instanceof ByteBuf) {
             return InternalSerializers.Netty;
@@ -315,6 +316,18 @@ public class SerializeUtils {
         }
     }
 
+    @SneakyThrows
+    private static Class<?> loadClass(String name) {
+        return SerializeUtils.class.getClassLoader().loadClass(name);
+    }
+
+    @SneakyThrows
+    @SuppressWarnings("all")
+    static <T> Class<T> getClass(String name) {
+        return (Class<T>) clazzCache.computeIfAbsent(name, SerializeUtils::loadClass);
+    }
+
+    @Getter
     @AllArgsConstructor
     private enum InternalSerializers implements Serializer {
         NULL(0x00, Void.class) {
@@ -762,18 +775,11 @@ public class SerializeUtils {
         },
 
         JSON(0x10, Object.class) {
-            private final Map<String, Class<?>> clazzCache = new ConcurrentReferenceHashMap<>();
-
-            @SneakyThrows
-            private Class<?> loadClass(String name) {
-                return SerializeUtils.class.getClassLoader().loadClass(name);
-            }
-
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
                 String clazz = input.readUTF();
-                Class<?> tClass = clazzCache.computeIfAbsent(clazz, this::loadClass);
+                Class<?> tClass =SerializeUtils.getClass(clazz);
                 int len = input.readInt();
                 byte[] jsonByte = new byte[len];
                 input.readFully(jsonByte);
@@ -790,9 +796,7 @@ public class SerializeUtils {
             }
         };
 
-        @Getter
         public final int code;
-        @Getter
         public final Class<?> javaType;
 
         abstract Object read(ObjectInput input);
@@ -840,6 +844,6 @@ public class SerializeUtils {
 
         Object deserialize(ObjectInput input);
 
-        void serialize(Object value, ObjectOutput input);
+        void serialize(Object value, ObjectOutput output);
     }
 }

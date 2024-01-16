@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import com.google.common.collect.Maps;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import lombok.*;
@@ -16,10 +17,7 @@ import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.Assert.*;
@@ -32,7 +30,6 @@ public class SerializeUtilsTest {
         assertEquals(1, SerializeUtils.convertToSafelySerializable(1));
 
     }
-
 
 
     @Test
@@ -177,6 +174,32 @@ public class SerializeUtilsTest {
             }
         }
     }
+
+    @Test
+    public void testGuavaMap() {
+        Object res = codec(Maps.filterEntries(Collections.emptyMap(), entry -> true));
+        assertNotNull(res);
+        assertTrue(res instanceof Map);
+    }
+
+
+    @Test
+    public void testEmptyMap() {
+        Object res = codec(Collections.emptyMap());
+        assertNotNull(res);
+        assertTrue(res instanceof Map);
+    }
+
+    @Test
+    public void testCustomMap() {
+        Object res = codec(new CustomMap());
+        assertNotNull(res);
+        assertTrue(res instanceof CustomMap);
+    }
+
+    public static class CustomMap extends HashMap<String, Object> {
+    }
+
 
     @Test
     public void testByteBuf() {
