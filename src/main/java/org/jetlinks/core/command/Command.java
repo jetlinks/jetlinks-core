@@ -2,8 +2,10 @@ package org.jetlinks.core.command;
 
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.Wrapper;
+import org.jetlinks.core.utils.ConverterUtils;
 
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.Map;
 
@@ -13,11 +15,19 @@ import java.util.Map;
  * @param <Response> 命令对应的响应类型
  * @author zhouhao
  * @see ExecutableCommand
+ * @see AbstractCommand
+ * @see CommandSupport
+ * @see CommandSupport#createCommand(String)
  * @since 1.2.1
  */
 public interface Command<Response> extends Wrapper, Serializable {
 
-    default String getCommandId(){
+    /**
+     * 返回命令ID
+     *
+     * @return 命令ID
+     */
+    default String getCommandId() {
         return CommandUtils.getCommandIdByType(this.getClass());
     }
 
@@ -45,6 +55,31 @@ public interface Command<Response> extends Wrapper, Serializable {
         }
         return this;
     }
+
+    /**
+     * 获取命令的参数,当参数不存在时返回null.
+     *
+     * @param key  参数Key
+     * @param type 期望类型
+     * @param <T>  参数值类型
+     * @return 参数值
+     */
+    default <T> T getOrNull(String key, Type type) {
+        return ConverterUtils.convert(FastBeanCopier.getProperty(this, key), type);
+    }
+
+    /**
+     * 获取命令的参数,当参数不存在时返回null.
+     *
+     * @param key  参数Key
+     * @param type 期望类型
+     * @param <T>  参数值类型
+     * @return 参数值
+     */
+    default <T> T getOrNull(String key, Class<T> type) {
+        return getOrNull(key, (Type) type);
+    }
+
 
     /**
      * 校验命令是否合法,如果不合法将抛出异常
