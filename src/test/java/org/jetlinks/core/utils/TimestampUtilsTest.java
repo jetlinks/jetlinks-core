@@ -23,15 +23,15 @@ public class TimestampUtilsTest {
 
     @Test
     public void testToNanos() {
-        long ts = System.nanoTime();
+        long ts = System.currentTimeMillis();
 
-        assertEquals(TimestampUtils.toNanos(ts), ts);
+        System.out.println(TimestampUtils.toNanos(ts));
+        assertEquals(ts, TimestampUtils.toMillis(TimestampUtils.toNanos(ts)));
 
-        ts = System.nanoTime() / 1000;
-        assertEquals(TimestampUtils.toNanos(ts), ts * 1000);
+        assertEquals(ts / 1000 * 1000, TimestampUtils.toMillis(TimestampUtils.toNanos(ts / 1000)));
 
-        ts = System.nanoTime() * 1000;
-        assertEquals(TimestampUtils.toNanos(ts), ts / 1000);
+        assertEquals(ts, TimestampUtils.toMillis(TimestampUtils.toNanos(ts * 1000)));
+
 
     }
 }
