@@ -69,16 +69,18 @@ class TypedCollectionSerializer implements SerializeUtils.Serializer {
         Class<?> clazz = value.getClass();
         CollectionType type = CollectionType.findOrNull(clazz);
         if (type == null) {
-            if (c instanceof Serializable) {
+            if (value instanceof Serializable) {
                 output.writeByte(-2);
-                output.writeObject(c);
+                output.writeObject(value);
                 return;
             }
-            output.writeByte(-1);
-            output.writeUTF(clazz.getName());
-        } else {
-            output.writeByte(type.ordinal());
+            if (value instanceof Set) {
+                type = CollectionType.hashSet;
+            } else {
+                type = CollectionType.arrayList;
+            }
         }
+        output.writeByte(type.ordinal());
         output.writeInt(c.size());
         for (Object o : c) {
             SerializeUtils.writeObject(o, output);
