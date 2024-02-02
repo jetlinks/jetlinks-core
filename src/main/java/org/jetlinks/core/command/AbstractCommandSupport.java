@@ -90,6 +90,11 @@ public abstract class AbstractCommandSupport implements CommandSupport {
         return Optional.empty();
     }
 
+    boolean commandIsSupported0(String commandId) {
+        return handlers.containsKey(commandId);
+    }
+
+
     protected <R, C extends Command<R>> C createUndefinedCommand(String commandId) {
         throw new CommandException(this, null, "error.unsupported_create_command", null, commandId);
     }
