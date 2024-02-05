@@ -116,6 +116,7 @@ public enum MessageType {
     WRITE_COLLECTOR_DATA(WriteCollectorDataMessage::new),
     WRITE_COLLECTOR_DATA_REPLY(WriteCollectorDataMessageReply::new),
 
+    BATCH(BatchMessage::new),
     //未知消息
     UNKNOWN(null) {
         @Override
