@@ -31,6 +31,25 @@ public interface ObjectType extends Metadata {
     List<Relation> getRelations(String type);
 
     /**
+     * 获取是否与另外一个类型的对象成立某种关系
+     *
+     * @param type 对象类型
+     * @return 关系定义
+     */
+    default boolean hasRelation(String type, String relation) {
+        List<Relation> rels = getRelations(type);
+        if (rels.isEmpty()) {
+            return false;
+        }
+        for (Relation re : rels) {
+            if (re.getId().equals(relation)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @return 获取全部关系信息
      */
     default Map<String, List<Relation>> getRelations() {
