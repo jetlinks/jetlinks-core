@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -69,6 +70,18 @@ public class SerializeUtils {
      */
     public static Object convertToSafelySerializable(Object value) {
 
+        return convertToSafelySerializable(value, false);
+
+    }
+
+    /**
+     * 将对象转换为可安全序列化的对象,如果对象是java bean将会转为Map.
+     *
+     * @param value 对象
+     * @param copy  是否赋值对象
+     * @return 转换后的对象
+     */
+    public static Object convertToSafelySerializable(Object value, boolean copy) {
         if (value == null ||
             value instanceof CharSequence ||
             value instanceof Character ||
@@ -84,11 +97,19 @@ public class SerializeUtils {
         }
 
         if (value instanceof Map) {
-            return Maps.transformValues(((Map<?, ?>) value), SerializeUtils::convertToSafelySerializable);
+            Map<?, ?> m = Maps.transformValues(((Map<?, ?>) value), map -> convertToSafelySerializable(map, copy));
+            return copy ? new HashMap<>(m) : m;
         }
 
         if (value instanceof Collection) {
-            return Collections2.transform(((Collection<?>) value), SerializeUtils::convertToSafelySerializable);
+            Collection<?> c = Collections2.transform(((Collection<?>) value), conn -> convertToSafelySerializable(conn, copy));
+            if (!copy) {
+                return c;
+            }
+            if (value instanceof Set) {
+                return new HashSet<>(c);
+            }
+            return new ArrayList<>(c);
         }
         if (value instanceof EnumDict) {
             return ((EnumDict<?>) value).getWriteJSONObject();
@@ -100,7 +121,7 @@ public class SerializeUtils {
         Class<?> clazz = value.getClass();
 
         if (clazz.isArray()) {
-            return Arrays.stream(((Object[]) value)).map(SerializeUtils::convertToSafelySerializable).toArray();
+            return Arrays.stream(((Object[]) value)).map(val -> convertToSafelySerializable(val, copy)).toArray();
         }
 
         if (clazz.getName().startsWith("java.")) {
@@ -110,10 +131,8 @@ public class SerializeUtils {
             return value;
         }
 
-        return convertToSafelySerializable(FastBeanCopier.copy(value, new LinkedHashMap<>()));
-
+        return convertToSafelySerializable(FastBeanCopier.copy(value, new LinkedHashMap<>()), copy);
     }
-
 
     public static synchronized void registerSerializer(Serializer serializer) {
         if (serializer.getCode() > 255) {
@@ -779,7 +798,7 @@ public class SerializeUtils {
             @SneakyThrows
             Object read(ObjectInput input) {
                 String clazz = input.readUTF();
-                Class<?> tClass =SerializeUtils.getClass(clazz);
+                Class<?> tClass = SerializeUtils.getClass(clazz);
                 int len = input.readInt();
                 byte[] jsonByte = new byte[len];
                 input.readFully(jsonByte);
