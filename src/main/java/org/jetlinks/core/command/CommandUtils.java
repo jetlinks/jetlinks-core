@@ -1,10 +1,12 @@
 package org.jetlinks.core.command;
 
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,8 +36,8 @@ public class CommandUtils {
         }
         if (response instanceof Publisher) {
             return Flux
-                    .from(((Publisher) response))
-                    .collectList();
+                .from(((Publisher) response))
+                .collectList();
         }
         return Mono.justOrEmpty(response);
     }
@@ -44,9 +46,38 @@ public class CommandUtils {
 
     public static ResolvableType getCommandResponseType(Command<?> cmd) {
         return commandResponseType
-                .computeIfAbsent(cmd.getClass(), clazz -> ResolvableType
-                        .forClass(Command.class,clazz)
-                        .getGeneric(0));
+            .computeIfAbsent(cmd.getClass(), clazz -> ResolvableType
+                .forClass(Command.class, clazz)
+                .getGeneric(0));
+    }
+
+    public static ResolvableType getCommandResponseDataType(Command<?> cmd) {
+        ResolvableType type = CommandUtils.getCommandResponseType(cmd);
+        Class<?> typeClazz = type.toClass();
+        if (Publisher.class.isAssignableFrom(typeClazz) ||
+            Collection.class.isAssignableFrom(typeClazz)) {
+            return type.getGeneric(0);
+        }
+        return type;
+    }
+
+    public static Object convertData(ResolvableType type, Object value) {
+        if (type.isInstance(value)) {
+            return value;
+        }
+        ResolvableType[] genType = type.getGenerics();
+
+        Class<?>[] genClazz;
+        if (genType.length == 0) {
+            genClazz = FastBeanCopier.EMPTY_CLASS_ARRAY;
+        } else {
+            genClazz = new Class[genType.length];
+            for (int i = 0; i < genType.length; i++) {
+                genClazz[i] = genType[i].toClass();
+            }
+        }
+        return FastBeanCopier.DEFAULT_CONVERT
+            .convert(value, type.toClass(), genClazz);
     }
 
     public static boolean commandResponsePublisher(Command<?> command) {

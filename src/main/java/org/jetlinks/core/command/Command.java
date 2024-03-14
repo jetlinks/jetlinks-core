@@ -1,12 +1,16 @@
 package org.jetlinks.core.command;
 
+import lombok.SneakyThrows;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.utils.ConverterUtils;
+import org.reactivestreams.Publisher;
+import org.springframework.core.ResolvableType;
 
 import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -86,6 +90,30 @@ public interface Command<Response> extends Wrapper, Serializable {
      */
     default void validate() {
 
+    }
+
+    /**
+     * 创建一个新的响应结果数据,用于在一些动态调用的场景下,进行结果类型转换.
+     *
+     * @return 响应结果数据
+     */
+    @SneakyThrows
+    default Object createResponseData() {
+        return CommandUtils
+            .getCommandResponseDataType(this)
+            .toClass()
+            .newInstance();
+    }
+
+    /**
+     * 创建一个新的响应结果数据,并将指定的数据复制到新的结果数据中.
+     *
+     * @return 响应结果数据
+     */
+    default Object createResponseData(Object value) {
+        return CommandUtils.convertData(
+            CommandUtils.getCommandResponseDataType(this),
+            value);
     }
 
 }
