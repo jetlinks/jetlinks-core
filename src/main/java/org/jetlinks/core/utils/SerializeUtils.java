@@ -118,6 +118,15 @@ public class SerializeUtils {
             return ((Enum<?>) value).name();
         }
 
+        {
+            if (value instanceof ByteBuffer) {
+                value = Unpooled.wrappedBuffer(((ByteBuffer) value));
+            }
+            if (value instanceof ByteBuf) {
+                return ByteBufUtil.getBytes(((ByteBuf) value));
+            }
+        }
+
         Class<?> clazz = value.getClass();
 
         if (clazz.isArray()) {

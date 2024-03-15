@@ -3,6 +3,7 @@ package org.jetlinks.core.utils;
 import com.google.common.collect.Maps;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import lombok.*;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.Message;
@@ -28,6 +29,9 @@ public class SerializeUtilsTest {
     @Test
     public void testConvertToSafelySerializable() {
         assertEquals(1, SerializeUtils.convertToSafelySerializable(1));
+
+        assertArrayEquals(new byte[]{0x01}, (byte[]) SerializeUtils
+            .convertToSafelySerializable(Unpooled.buffer().writeByte(0x01)));
 
     }
 
