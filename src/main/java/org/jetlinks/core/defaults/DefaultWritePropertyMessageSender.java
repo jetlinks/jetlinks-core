@@ -36,7 +36,7 @@ public class DefaultWritePropertyMessageSender implements WritePropertyMessageSe
      * 添加消息头
      *
      * @param header 消息头标识
-     * @param value 消息头存储的值
+     * @param value  消息头存储的值
      * @return 修改设备属性消息发送器
      */
     @Override
@@ -74,16 +74,20 @@ public class DefaultWritePropertyMessageSender implements WritePropertyMessageSe
         Map<String, Object> properties = message.getProperties();
 
         return operator
-                .getMetadata()
-                .doOnNext(metadata -> {
-                    for (PropertyMetadata meta : metadata.getProperties()) {
-                        Object property = properties.get(meta.getId());
-                        if (property == null) {
-                            continue;
-                        }
-                        properties.put(meta.getId(), meta.getValueType().validate(property).assertSuccess());
+            .getMetadata()
+            .doOnNext(metadata -> {
+                for (Map.Entry<String, Object> entry : properties.entrySet()) {
+                    PropertyMetadata meta = metadata.getPropertyOrNull(entry.getKey());
+                    if (meta == null || entry.getValue() == null) {
+                        continue;
                     }
-                }).thenReturn(this);
+                    properties.put(meta.getId(), meta
+                        .getValueType()
+                        .validate(entry.getValue())
+                        .assertSuccess());
+                }
+            })
+            .thenReturn(this);
     }
 
     /**
