@@ -13,7 +13,11 @@ public class CompositeDeviceMessageSenderInterceptor implements DeviceMessageSen
     private final List<DeviceMessageSenderInterceptor> interceptors = new CopyOnWriteArrayList<>();
 
     public void addInterceptor(DeviceMessageSenderInterceptor interceptor) {
-        interceptors.add(interceptor);
+        if (interceptor instanceof CompositeDeviceMessageSenderInterceptor) {
+            interceptors.addAll(((CompositeDeviceMessageSenderInterceptor) interceptor).interceptors);
+        } else {
+            interceptors.add(interceptor);
+        }
         //重新排序
         interceptors.sort(Comparator.comparingInt(DeviceMessageSenderInterceptor::getOrder));
     }

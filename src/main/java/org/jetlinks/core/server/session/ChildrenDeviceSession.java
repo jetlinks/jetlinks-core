@@ -87,6 +87,12 @@ public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSe
     }
 
     @Override
+    public void keepAlive() {
+        parent.keepAlive();
+        this.lastKeepAliveTime = System.currentTimeMillis();
+    }
+
+    @Override
     public boolean isAlive() {
         return aliveByKeepAlive() && parent.isAlive();
     }
