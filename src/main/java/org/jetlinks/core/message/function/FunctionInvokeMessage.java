@@ -19,8 +19,8 @@ import java.util.Map;
 @Getter
 @Setter
 public class FunctionInvokeMessage extends CommonDeviceMessage<FunctionInvokeMessage>
-        implements RepayableDeviceMessage<FunctionInvokeMessageReply>,
-        ThingFunctionInvokeMessage<FunctionInvokeMessageReply> {
+    implements RepayableDeviceMessage<FunctionInvokeMessageReply>,
+    ThingFunctionInvokeMessage<FunctionInvokeMessageReply> {
 
     private String functionId;
 
@@ -36,8 +36,21 @@ public class FunctionInvokeMessage extends CommonDeviceMessage<FunctionInvokeMes
         return this;
     }
 
+    @Override
     public FunctionInvokeMessage addInput(FunctionParameter parameter) {
         inputs.add(parameter);
+        return this;
+    }
+
+    @Override
+    public FunctionInvokeMessage addInput(String name, Object value) {
+        ThingFunctionInvokeMessage.super.addInput(name, value);
+        return this;
+    }
+
+    @Override
+    public FunctionInvokeMessage addInputs(Map<String, Object> parameters) {
+        ThingFunctionInvokeMessage.super.addInputs(parameters);
         return this;
     }
 
@@ -51,8 +64,8 @@ public class FunctionInvokeMessage extends CommonDeviceMessage<FunctionInvokeMes
         if (inputs instanceof Map) {
 
             super.fromJson(new JSONObject(
-                    Maps.filterKeys(jsonObject, key -> !"inputs".equals(key)
-                    )));
+                Maps.filterKeys(jsonObject, key -> !"inputs".equals(key)
+                )));
 
             Map<String, Object> inputMap = (Map<String, Object>) inputs;
             inputMap.forEach(this::addInput);

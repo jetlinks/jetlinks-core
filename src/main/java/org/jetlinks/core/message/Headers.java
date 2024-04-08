@@ -166,6 +166,11 @@ public interface Headers {
 //    HeaderKey<Boolean> throwWhenReplyError = HeaderKey.of("throwWhenReplyError", false, Boolean.class);
 
     /**
+     * 消息是否支持来自多个接入网关,某些网关会过滤掉不属于自己网关的数据,设置此header为true以忽略过滤.
+     */
+    HeaderKey<Boolean> multiGateway = HeaderKey.of("multiGateway", false, Boolean.class);
+
+    /**
      * copy有意义的header到新到消息中,比如标记异步,超时等信息
      *
      * @param from from

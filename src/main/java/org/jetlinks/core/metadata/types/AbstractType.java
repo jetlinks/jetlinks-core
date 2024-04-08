@@ -61,4 +61,9 @@ public abstract class AbstractType<Self extends AbstractType<Self>> implements D
     protected Self castSelf() {
         return (Self) this;
     }
+
+    @Override
+    public String toString() {
+        return getType();
+    }
 }

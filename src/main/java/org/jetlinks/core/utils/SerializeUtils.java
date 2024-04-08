@@ -1,5 +1,7 @@
 package org.jetlinks.core.utils;
 
+import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Primitives;
@@ -10,8 +12,14 @@ import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.SneakyThrows;
+import org.hswebframework.web.bean.FastBeanCopier;
+import org.hswebframework.web.dict.EnumDict;
 import org.jetlinks.core.message.Message;
 import org.jetlinks.core.message.MessageType;
+import org.jetlinks.core.metadata.Jsonable;
+import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
 import org.springframework.util.ConcurrentReferenceHashMap;
 
 import java.io.Externalizable;
@@ -22,22 +30,117 @@ import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class SerializeUtils {
-
     static final Serializer[] all = new Serializer[256];
     private static final Map<Class<?>, Serializer> cache = new ConcurrentHashMap<>();
+    private static final Map<String, Class<?>> clazzCache = new ConcurrentReferenceHashMap<>();
 
     static {
         for (InternalSerializers value : InternalSerializers.values()) {
             registerSerializer(value);
         }
+        registerSerializer(new TypedMapSerializer());
+        registerSerializer(new TypedCollectionSerializer());
+    }
+
+    private static final Set<Class<?>> safelySerializable = ConcurrentHashMap.newKeySet();
+
+    static {
+        addSafelySerializable(DateTime.class,
+                              LocalDateTime.class,
+                              LocalDate.class);
+    }
+
+    public static void addSafelySerializable(Class<?>... type) {
+        safelySerializable.addAll(Arrays.asList(type));
+    }
+
+    /**
+     * 将对象转换为可安全序列化的对象,如果对象是java bean将会转为Map.
+     *
+     * @param value 对象
+     * @return 转换后的对象
+     */
+    public static Object convertToSafelySerializable(Object value) {
+
+        return convertToSafelySerializable(value, false);
+
+    }
+
+    /**
+     * 将对象转换为可安全序列化的对象,如果对象是java bean将会转为Map.
+     *
+     * @param value 对象
+     * @param copy  是否赋值对象
+     * @return 转换后的对象
+     */
+    public static Object convertToSafelySerializable(Object value, boolean copy) {
+        if (value == null ||
+            value instanceof CharSequence ||
+            value instanceof Character ||
+            value instanceof Number ||
+            value instanceof Boolean ||
+            value instanceof Date ||
+            value instanceof TemporalAccessor) {
+            return value;
+        }
+
+        if (value instanceof Jsonable) {
+            return ((Jsonable) value).toJson();
+        }
+
+        if (value instanceof Map) {
+            Map<?, ?> m = Maps.transformValues(((Map<?, ?>) value), map -> convertToSafelySerializable(map, copy));
+            return copy ? new HashMap<>(m) : m;
+        }
+
+        if (value instanceof Collection) {
+            Collection<?> c = Collections2.transform(((Collection<?>) value), conn -> convertToSafelySerializable(conn, copy));
+            if (!copy) {
+                return c;
+            }
+            if (value instanceof Set) {
+                return new HashSet<>(c);
+            }
+            return new ArrayList<>(c);
+        }
+        if (value instanceof EnumDict) {
+            return ((EnumDict<?>) value).getWriteJSONObject();
+        }
+        if (value instanceof Enum) {
+            return ((Enum<?>) value).name();
+        }
+
+        {
+            if (value instanceof ByteBuffer) {
+                value = Unpooled.wrappedBuffer(((ByteBuffer) value));
+            }
+            if (value instanceof ByteBuf) {
+                return ByteBufUtil.getBytes(((ByteBuf) value));
+            }
+        }
+
+        Class<?> clazz = value.getClass();
+
+        if (clazz.isArray()) {
+            return Arrays.stream(((Object[]) value)).map(val -> convertToSafelySerializable(val, copy)).toArray();
+        }
+
+        if (clazz.getName().startsWith("java.")) {
+            return true;
+        }
+        if (safelySerializable.contains(value.getClass())) {
+            return value;
+        }
+
+        return convertToSafelySerializable(FastBeanCopier.copy(value, new LinkedHashMap<>()), copy);
     }
 
     public static synchronized void registerSerializer(Serializer serializer) {
@@ -145,13 +248,13 @@ public class SerializeUtils {
             return InternalSerializers.C_SET;
         }
         if (readyToSer instanceof Map) {
-            return InternalSerializers.MAP;
+            return all[TypedMapSerializer.CODE];
         }
-        if (readyToSer instanceof List) {
-            return InternalSerializers.LIST;
-        }
-        if (readyToSer instanceof Set) {
-            return InternalSerializers.SET;
+//        if (readyToSer instanceof Set) {
+//            return InternalSerializers.SET;
+//        }
+        if (readyToSer instanceof Collection) {
+            return all[TypedCollectionSerializer.CODE];
         }
         if (readyToSer instanceof ByteBuf) {
             return InternalSerializers.Netty;
@@ -241,6 +344,18 @@ public class SerializeUtils {
         }
     }
 
+    @SneakyThrows
+    private static Class<?> loadClass(String name) {
+        return SerializeUtils.class.getClassLoader().loadClass(name);
+    }
+
+    @SneakyThrows
+    @SuppressWarnings("all")
+    static <T> Class<T> getClass(String name) {
+        return (Class<T>) clazzCache.computeIfAbsent(name, SerializeUtils::loadClass);
+    }
+
+    @Getter
     @AllArgsConstructor
     private enum InternalSerializers implements Serializer {
         NULL(0x00, Void.class) {
@@ -553,7 +668,7 @@ public class SerializeUtils {
             @Override
             @SneakyThrows
             void write(Object value, ObjectOutput input) {
-                List<?> list = ((List<?>) value);
+                Collection<?> list = ((Collection<?>) value);
 
                 int len = list.size();
                 input.writeInt(len);
@@ -563,7 +678,6 @@ public class SerializeUtils {
                 }
             }
         },
-
         SET(0x13, Set.class) {
             @Override
             @SneakyThrows
@@ -689,18 +803,11 @@ public class SerializeUtils {
         },
 
         JSON(0x10, Object.class) {
-            private final Map<String, Class<?>> clazzCache = new ConcurrentReferenceHashMap<>();
-
-            @SneakyThrows
-            private Class<?> loadClass(String name) {
-                return SerializeUtils.class.getClassLoader().loadClass(name);
-            }
-
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
                 String clazz = input.readUTF();
-                Class<?> tClass = clazzCache.computeIfAbsent(clazz, this::loadClass);
+                Class<?> tClass = SerializeUtils.getClass(clazz);
                 int len = input.readInt();
                 byte[] jsonByte = new byte[len];
                 input.readFully(jsonByte);
@@ -717,9 +824,7 @@ public class SerializeUtils {
             }
         };
 
-        @Getter
         public final int code;
-        @Getter
         public final Class<?> javaType;
 
         abstract Object read(ObjectInput input);
@@ -767,6 +872,6 @@ public class SerializeUtils {
 
         Object deserialize(ObjectInput input);
 
-        void serialize(Object value, ObjectOutput input);
+        void serialize(Object value, ObjectOutput output);
     }
 }

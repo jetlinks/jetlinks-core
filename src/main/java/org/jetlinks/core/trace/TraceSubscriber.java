@@ -59,7 +59,9 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     @Override
     protected void hookOnSubscribe(@Nonnull Subscription subscription) {
-        actual.onSubscribe(this);
+        try (Scope ignored = span.makeCurrent()) {
+            actual.onSubscribe(this);
+        }
     }
 
     @Override
@@ -70,7 +72,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         } else {
             span.recordException(throwable);
         }
-        try (Scope scope = span.makeCurrent()) {
+        try (Scope ignored = span.makeCurrent()) {
             actual.onError(throwable);
         }
     }
@@ -103,7 +105,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         }
         stateSet = true;
         NEXT_COUNT.incrementAndGet(this);
-        try (Scope scope = span.makeCurrent()) {
+        try (Scope ignored = span.makeCurrent()) {
             actual.onNext(value);
         }
     }
@@ -118,7 +120,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
             span.setStatus(StatusCode.OK);
         }
         stateSet = true;
-        try (Scope scope = span.makeCurrent()) {
+        try (Scope ignored = span.makeCurrent()) {
             actual.onComplete();
         }
     }

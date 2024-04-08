@@ -97,11 +97,11 @@ public class TypeScriptUtils {
         }
     }
 
-    private static void declareClass(String name,
-                                     String comment,
-                                     List<PropertyMetadata> properties,
-                                     StringBuilder builder,
-                                     Collection<String> declares) {
+    public static void declareClass(String name,
+                                    String comment,
+                                    List<PropertyMetadata> properties,
+                                    StringBuilder builder,
+                                    Collection<String> declares) {
         appendComments(builder, comment);
         builder.append("declare class ").append(name).append("{\n");
         for (PropertyMetadata property : properties) {
@@ -164,18 +164,19 @@ public class TypeScriptUtils {
         }
         if (type instanceof EnumType) {
             return ((EnumType) type)
-                    .getElements()
-                    .stream()
-                    .map(EnumType.Element::getValue)
-                    .collect(Collectors.joining("'|'", "'", "'"));
+                .getElements()
+                .stream()
+                .map(EnumType.Element::getValue)
+                .collect(Collectors.joining("'|'", "'", "'"));
         }
         if (type instanceof ObjectType) {
-            String name = owner + "_Properties";
+            // String name = owner + "_Properties";
             ObjectType objectType = ((ObjectType) type);
             StringBuilder builder = new StringBuilder();
-            declareClass(name, owner + "对象属性", objectType.getProperties(), builder, declares);
-            declares.add(builder.toString());
-            return name;
+//            declareClass(name, owner + "对象属性", objectType.getProperties(), builder, declares);
+//            declares.add(builder.toString());
+            declareClassAsMap(objectType.getProperties(), builder, declares);
+            return builder.toString();
         }
         return "object";
 
@@ -183,7 +184,7 @@ public class TypeScriptUtils {
 
     private static void appendComments(StringBuilder builder, DataType type, String comments) {
         builder.append("/**\n");
-        builder.append("* ").append(comments.replace("\n", "\n* "))
+        builder.append("* ").append(comments == null ? "" : comments.replace("\n", "\n* "))
                .append("\n*");
         if (type instanceof EnumType) {
             for (EnumType.Element element : ((EnumType) type).getElements()) {
@@ -200,7 +201,7 @@ public class TypeScriptUtils {
 
     private static void appendComments(StringBuilder builder, String comments) {
         builder.append("/**\n");
-        builder.append("* ").append(comments).append("\n");
+        builder.append("* ").append(comments==null?"": comments).append("\n");
         builder.append("*/\n");
     }
 

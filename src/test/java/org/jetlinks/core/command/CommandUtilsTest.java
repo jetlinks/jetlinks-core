@@ -16,6 +16,13 @@ public class CommandUtilsTest {
         assertFalse(CommandUtils.commandResponseMono(new TestCommand()));
 
 
+        assertEquals(String.class,CommandUtils.getCommandResponseDataType(new TestCommand()).toClass());
+
+        TestCommand cmd = new  TestCommand();
+
+        assertEquals("test", cmd.createResponseData("test"));
+        assertEquals("123", cmd.createResponseData(123));
+
     }
 
 

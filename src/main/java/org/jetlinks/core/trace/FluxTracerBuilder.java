@@ -18,6 +18,7 @@ class FluxTracerBuilder<T> extends AbstractReactiveTracerBuilder<FluxTracer<T>,T
                                 onComplete,
                                 onSubscription,
                                 onError,
-                                fastSubscribe);
+                                fastSubscribe,
+                                defaultContext);
     }
 }

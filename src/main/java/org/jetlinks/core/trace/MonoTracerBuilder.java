@@ -18,6 +18,7 @@ class MonoTracerBuilder<T> extends AbstractReactiveTracerBuilder<MonoTracer<T>, 
                                 onComplete,
                                 onSubscription,
                                 onError,
-                                fastSubscribe);
+                                fastSubscribe,
+                                defaultContext);
     }
 }

@@ -22,7 +22,7 @@ import java.util.Map;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface ProtocolSupport extends Disposable, Ordered, Comparable<ProtocolSupport> {
+public interface ProtocolSupport extends Disposable, Ordered, Comparable<ProtocolSupport>, Wrapper {
     /**
      * @return 协议ID
      */
@@ -102,8 +102,8 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      */
     @Nonnull
     Mono<AuthenticationResponse> authenticate(
-            @Nonnull AuthenticationRequest request,
-            @Nonnull DeviceOperator deviceOperation);
+        @Nonnull AuthenticationRequest request,
+        @Nonnull DeviceOperator deviceOperation);
 
     /**
      * 对不明确的设备进行认证
@@ -114,8 +114,8 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      */
     @Nonnull
     default Mono<AuthenticationResponse> authenticate(
-            @Nonnull AuthenticationRequest request,
-            @Nonnull DeviceRegistry registry) {
+        @Nonnull AuthenticationRequest request,
+        @Nonnull DeviceRegistry registry) {
         return Mono.error(new UnsupportedOperationException());
     }
 

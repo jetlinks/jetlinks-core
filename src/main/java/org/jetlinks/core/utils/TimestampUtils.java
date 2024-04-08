@@ -1,5 +1,7 @@
 package org.jetlinks.core.utils;
 
+import java.util.concurrent.TimeUnit;
+
 public class TimestampUtils {
 
     public static long toMillis(long timestamp) {
@@ -7,8 +9,8 @@ public class TimestampUtils {
     }
 
     public static long toNanos(long timestamp) {
-        return NumberUtils.fixLength(timestamp,  (int) Math.log10(System.nanoTime()) + 1);
-    }
 
+        return TimeUnit.MILLISECONDS.toNanos(toMillis(timestamp))  ;
+    }
 
 }

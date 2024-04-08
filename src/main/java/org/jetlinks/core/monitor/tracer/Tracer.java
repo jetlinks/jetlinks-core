@@ -1,16 +1,13 @@
 package org.jetlinks.core.monitor.tracer;
 
-import io.opentelemetry.api.trace.SpanBuilder;
 import org.jetlinks.core.trace.FluxTracer;
 import org.jetlinks.core.trace.MonoTracer;
 import org.jetlinks.core.trace.ReactiveSpanBuilder;
 import org.jetlinks.core.trace.ReactiveTracerBuilder;
-import reactor.core.publisher.Flux;
 import reactor.util.context.ContextView;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -66,6 +63,25 @@ public interface Tracer {
     <E> FluxTracer<E> traceFlux(String operation,
                                 Consumer<ReactiveTracerBuilder<FluxTracer<E>, E>> consumer);
 
+
+    /**
+     * 对Flux进行追踪
+     * <pre>{@code
+     *
+     *  flux.as(tracer()
+     *      .traceFlux("request"))
+     *
+     * }</pre>
+     *
+     * @param operation 操作标识
+     * @param <E>       E
+     * @return MonoTracer
+     */
+    default <E> FluxTracer<E> traceFlux(String operation) {
+        return traceFlux(operation, ignore -> {
+        });
+    }
+
     /**
      * 对Flux进行追踪
      * <pre>{@code
@@ -109,9 +125,27 @@ public interface Tracer {
      * @param <E>       元素类型
      * @return FluxTracer
      */
-
     <E> MonoTracer<E> traceMono(String operation,
                                 Consumer<ReactiveTracerBuilder<MonoTracer<E>, E>> consumer);
+
+
+    /**
+     * 对Mono进行追踪
+     * <pre>{@code
+     *
+     *  mono.as(tracer()
+     *      .traceMono("request"))
+     *
+     * }</pre>
+     *
+     * @param operation 操作标识
+     * @param <E>       E
+     * @return MonoTracer
+     */
+    default <E> MonoTracer<E> traceMono(String operation) {
+        return traceMono(operation, ignore -> {
+        });
+    }
 
     /**
      * 对Mono进行追踪

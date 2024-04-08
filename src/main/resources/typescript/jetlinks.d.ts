@@ -122,6 +122,7 @@ declare module org.jetlinks.core.message {
     }
 
     interface PropertyMessage {
+
         getProperties(): java.util.Map<string, any>;
 
         properties(properties: java.util.Map<string, any>): void;

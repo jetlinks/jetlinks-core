@@ -3,6 +3,7 @@ package org.jetlinks.core.trace;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
 import reactor.core.CoreSubscriber;
@@ -17,6 +18,7 @@ import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * @param <T>
@@ -30,6 +32,7 @@ public class TraceMono<T> extends MonoOperator<T, T> {
     private final BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription;
     private final BiConsumer<ContextView, Throwable> onError;
     private final boolean fastSubscribe;
+    private final Supplier<Context> defaultContext;
 
     public static <T> TraceMono<T> trace(Publisher<T> source) {
 
@@ -40,7 +43,8 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                null,
                                null,
                                null,
-                               false);
+                               false,
+                               Context::current);
     }
 
     TraceMono(Mono<? extends T> source,
@@ -50,7 +54,8 @@ public class TraceMono<T> extends MonoOperator<T, T> {
               Consumer3<ContextView, ReactiveSpan, Long> onComplete,
               BiConsumer<ContextView, ReactiveSpanBuilder> builderConsumer,
               BiConsumer<ContextView, Throwable> onError,
-              boolean fastSubscribe) {
+              boolean fastSubscribe,
+              Supplier<Context> defaultContext) {
         super(source);
         this.spanName = name == null ? (ctx) -> this.name() : name;
         this.tracer = tracer == null ? TraceHolder.telemetry().getTracer(TraceHolder.appName()) : tracer;
@@ -59,6 +64,7 @@ public class TraceMono<T> extends MonoOperator<T, T> {
         this.onComplete = onComplete;
         this.onError = onError;
         this.fastSubscribe = fastSubscribe;
+        this.defaultContext = defaultContext;
     }
 
     public TraceMono<T> onNext(BiConsumer<ReactiveSpan, T> onNext) {
@@ -69,13 +75,13 @@ public class TraceMono<T> extends MonoOperator<T, T> {
         Consumer3<ContextView, ReactiveSpan, T> that = this.onNext;
 
         Consumer3<ContextView, ReactiveSpan, T> onNext = that == null
-                ?
-                callback
-                :
-                (contextView, span, r) -> {
-                    that.accept(contextView, span, r);
-                    callback.accept(contextView, span, r);
-                };
+            ?
+            callback
+            :
+            (contextView, span, r) -> {
+                that.accept(contextView, span, r);
+                callback.accept(contextView, span, r);
+            };
         return new TraceMono<>(this.source,
                                this.spanName,
                                this.tracer,
@@ -83,20 +89,21 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                this.onComplete,
                                this.onSubscription,
                                this.onError,
-                               this.fastSubscribe);
+                               this.fastSubscribe,
+                               this.defaultContext);
     }
 
     public TraceMono<T> onComplete(Consumer3<ContextView, ReactiveSpan, Long> callback) {
         Consumer3<ContextView, ReactiveSpan, Long> that = this.onComplete;
 
         Consumer3<ContextView, ReactiveSpan, Long> onComplete = that == null
-                ?
-                callback
-                :
-                (contextView, span, r) -> {
-                    that.accept(contextView, span, r);
-                    callback.accept(contextView, span, r);
-                };
+            ?
+            callback
+            :
+            (contextView, span, r) -> {
+                that.accept(contextView, span, r);
+                callback.accept(contextView, span, r);
+            };
 
         return new TraceMono<>(this.source,
                                this.spanName,
@@ -105,7 +112,8 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                onComplete,
                                this.onSubscription,
                                this.onError,
-                               this.fastSubscribe);
+                               this.fastSubscribe,
+                               this.defaultContext);
     }
 
     public TraceMono<T> onComplete(BiConsumer<ReactiveSpan, Long> onComplete) {
@@ -120,7 +128,8 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                this.onComplete,
                                this.onSubscription,
                                this.onError,
-                               this.fastSubscribe);
+                               this.fastSubscribe,
+                               this.defaultContext);
     }
 
     public TraceMono<T> scopeName(String scopeName) {
@@ -131,7 +140,8 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                this.onComplete,
                                this.onSubscription,
                                this.onError,
-                               this.fastSubscribe);
+                               this.fastSubscribe,
+                               this.defaultContext);
     }
 
     public TraceMono<T> onSubscription(BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription) {
@@ -145,7 +155,8 @@ public class TraceMono<T> extends MonoOperator<T, T> {
                                this.onComplete,
                                onSubscription,
                                onError,
-                               this.fastSubscribe);
+                               this.fastSubscribe,
+                               this.defaultContext);
     }
 
 
@@ -163,20 +174,24 @@ public class TraceMono<T> extends MonoOperator<T, T> {
             ReactiveSpanBuilder builder = new ReactiveSpanBuilderWrapper(tracer.spanBuilder(name));
 
             Context ctx = context
-                    .<Context>getOrEmpty(Context.class)
-                    .orElseGet(Context::current);
+                .<Context>getOrEmpty(Context.class)
+                .orElseGet(defaultContext);
 
             if (null != onSubscription) {
                 this.onSubscription.accept(context, builder);
             }
 
             Span span = builder
-                    .setStartTimestamp(Instant.now())
-                    .setParent(ctx)
-                    .startSpan();
-
-            this.source.subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, onError, ctx));
-
+                .setStartTimestamp(Instant.now())
+                .setParent(ctx)
+                .startSpan();
+            try (Scope ignored = span.makeCurrent()) {
+                this.source.subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, onError, ctx));
+            } catch (Throwable e) {
+                actual.onError(e);
+                span.recordException(e);
+                span.end();
+            }
         } catch (Throwable e) {
             actual.onError(e);
         }

@@ -43,4 +43,14 @@ public interface ClientConnection {
      * 连接是否还存活
      */
     boolean isAlive();
+
+    /**
+     * 监听连接断开,当连接断开时,将执行回调{@link Runnable#run()}
+     *
+     * @param callback callback
+     * @since 1.2.2
+     */
+    default void onDisconnect(Runnable callback) {
+
+    }
 }

@@ -1,7 +1,9 @@
 package org.jetlinks.core.utils;
 
+import com.google.common.collect.Maps;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import lombok.*;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.Message;
@@ -16,15 +18,22 @@ import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.Assert.*;
 
 public class SerializeUtilsTest {
+
+
+    @Test
+    public void testConvertToSafelySerializable() {
+        assertEquals(1, SerializeUtils.convertToSafelySerializable(1));
+
+        assertArrayEquals(new byte[]{0x01}, (byte[]) SerializeUtils
+            .convertToSafelySerializable(Unpooled.buffer().writeByte(0x01)));
+
+    }
 
 
     @Test
@@ -154,28 +163,54 @@ public class SerializeUtilsTest {
             {
                 DeviceMessage msg = value.forDevice();
                 if (msg != null) {
-                    DeviceMessage decode= (DeviceMessage)codec(msg);
+                    DeviceMessage decode = (DeviceMessage) codec(msg);
 
-                    assertEquals(msg.getTimestamp(),decode.getTimestamp());
+                    assertEquals(msg.getTimestamp(), decode.getTimestamp());
                 }
             }
             {
-                ThingMessage msg = value.forThing("test","test1");
+                ThingMessage msg = value.forThing("test", "test1");
                 if (msg != null) {
-                    ThingMessage decode = (ThingMessage)codec(msg);
-                    assertEquals(msg.getThingType(),decode.getThingType());
-                    assertEquals(msg.getTimestamp(),decode.getTimestamp());
+                    ThingMessage decode = (ThingMessage) codec(msg);
+                    assertEquals(msg.getThingType(), decode.getThingType());
+                    assertEquals(msg.getTimestamp(), decode.getTimestamp());
                 }
             }
         }
     }
 
     @Test
+    public void testGuavaMap() {
+        Object res = codec(Maps.filterEntries(Collections.emptyMap(), entry -> true));
+        assertNotNull(res);
+        assertTrue(res instanceof Map);
+    }
+
+
+    @Test
+    public void testEmptyMap() {
+        Object res = codec(Collections.emptyMap());
+        assertNotNull(res);
+        assertTrue(res instanceof Map);
+    }
+
+    @Test
+    public void testCustomMap() {
+        Object res = codec(new CustomMap());
+        assertNotNull(res);
+        assertTrue(res instanceof CustomMap);
+    }
+
+    public static class CustomMap extends HashMap<String, Object> {
+    }
+
+
+    @Test
     public void testByteBuf() {
 
         ByteBuf buf = ByteBufAllocator.DEFAULT
-                .buffer()
-                .writeInt(100);
+            .buffer()
+            .writeInt(100);
 
         ByteBuf decode = (ByteBuf) codec(buf);
 

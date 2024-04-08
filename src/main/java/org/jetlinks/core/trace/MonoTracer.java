@@ -47,7 +47,7 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
      * @return 构造器
      */
     static <T> ReactiveTracerBuilder<MonoTracer<T>, T> builder() {
-        return new MonoTracerBuilder<>();
+        return MonoTracerBuilder.create(true);
     }
 
     /**

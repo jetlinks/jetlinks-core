@@ -54,6 +54,11 @@ public interface DeviceMessageSenderInterceptor {
         return reply;
     }
 
+    /**
+     * 组合多个拦截器
+     * @param interceptor interceptor
+     * @return 新的拦截器
+     */
     default DeviceMessageSenderInterceptor andThen(DeviceMessageSenderInterceptor interceptor) {
         if (this == DO_NOTING) {
             return interceptor;

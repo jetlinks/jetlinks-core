@@ -5,13 +5,11 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Getter
 @Setter
@@ -21,6 +19,11 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
     private volatile List<Element> elements;
 
     private boolean multi;
+
+    /**
+     * 值类型
+     */
+    private DataType valueType;
 
     @Override
     public String getId() {
@@ -42,12 +45,17 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
         if (elements == null) {
             return ValidateResult.fail("值[" + value + "]不在枚举中");
         }
-        return elements
-                .stream()
-                .filter(ele -> match(value, ele))
-                .findFirst()
-                .map(e -> ValidateResult.success(e.value))
-                .orElseGet(() -> ValidateResult.fail("值[" + value + "]不在枚举中"));
+        for (Element ele : elements) {
+            if (match(value, ele)) {
+                //类型完全相同,则使用原始值作为对象.
+                Object actValue = String.valueOf(value).equals(ele.value) ? value : ele.value;
+                if (valueType instanceof Converter) {
+                    actValue = ((Converter<?>) valueType).convert(actValue);
+                }
+                return ValidateResult.success(actValue);
+            }
+        }
+        return ValidateResult.fail("值[" + value + "]不在枚举中");
     }
 
     private boolean match(Object value, Element ele) {
@@ -57,7 +65,9 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
             Map<Object, Object> mapVal = ((Map<Object, Object>) value);
             return match(mapVal.getOrDefault("value", mapVal.get("id")), ele);
         }
-        return ele.value.equals(String.valueOf(value)) || ele.text.equals(String.valueOf(value));
+        String strVal = String.valueOf(value);
+
+        return Objects.equals(ele.value, strVal) || Objects.equals(ele.text, strVal);
     }
 
     @Override
@@ -67,11 +77,11 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
             return stringVal;
         }
         return elements
-                .stream()
-                .filter(ele -> ele.value.equals(String.valueOf(value)))
-                .findFirst()
-                .map(Element::getText)
-                .orElse(stringVal);
+            .stream()
+            .filter(ele -> String.valueOf(value).equals(ele.value))
+            .findFirst()
+            .map(Element::getText)
+            .orElse(stringVal);
     }
 
     public EnumType addElement(Element element) {

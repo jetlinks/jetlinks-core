@@ -20,6 +20,10 @@ public interface ServiceContext {
 
     <T> Optional<T> getService(Class<T> service);
 
+    default <T> Optional<T> getService(String service,Class<T> type){
+        return getService(service);
+    }
+
     <T> Optional<T> getService(String service);
 
     <T> List<T> getServices(Class<T> service);

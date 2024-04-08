@@ -169,4 +169,13 @@ public interface Logger {
      */
     void log(Level level, String message, Object... args);
 
+
+    /**
+     * 转为Slf4j Logger
+     *
+     * @return slf4j Logger
+     */
+    default org.slf4j.Logger slf4j() {
+        return new BridgeLoggerSlf4j(this);
+    }
 }

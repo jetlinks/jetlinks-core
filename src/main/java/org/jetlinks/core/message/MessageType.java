@@ -116,6 +116,7 @@ public enum MessageType {
     WRITE_COLLECTOR_DATA(WriteCollectorDataMessage::new),
     WRITE_COLLECTOR_DATA_REPLY(WriteCollectorDataMessageReply::new),
 
+    BATCH(BatchMessage::new),
     //未知消息
     UNKNOWN(null) {
         @Override
@@ -217,7 +218,7 @@ public enum MessageType {
 
     public static <T extends Message> Optional<T> convertMessage(Map<String, Object> map) {
         return of(map)
-                .map(type -> type.convert(map));
+            .map(type -> type.convert(map));
     }
 
     public static Optional<MessageType> of(String name) {
@@ -257,6 +258,9 @@ public enum MessageType {
     @SneakyThrows
     public static Message readExternal(ObjectInput input) {
         int type = input.readByte();
+        if (type >= types.length) {
+            return null;
+        }
         MessageType messageType = types[type];
         boolean isDevice = input.readBoolean();
         Message message;

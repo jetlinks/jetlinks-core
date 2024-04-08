@@ -2,7 +2,11 @@ package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.Setter;
+import org.jetlinks.core.utils.SerializeUtils;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,5 +49,17 @@ public class DefaultUpdateTingTagsMessage extends CommonThingMessage<DefaultUpda
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
         this.tags = jsonObject.getJSONObject("tags");
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        UpdateTingTagsMessage.super.writeExternal(out);
+        SerializeUtils.writeKeyValue(tags,out);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        UpdateTingTagsMessage.super.readExternal(in);
+        SerializeUtils.readKeyValue(in,this::tag);
     }
 }

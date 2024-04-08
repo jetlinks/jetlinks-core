@@ -18,7 +18,7 @@ import java.util.Map;
 @Getter
 @Setter
 public class DefaultFunctionInvokeMessage extends CommonThingMessage<DefaultFunctionInvokeMessage>
-        implements ThingFunctionInvokeMessage<DefaultFunctionInvokeMessageReply> {
+    implements ThingFunctionInvokeMessage<DefaultFunctionInvokeMessageReply> {
 
     private String functionId;
 
@@ -37,9 +37,22 @@ public class DefaultFunctionInvokeMessage extends CommonThingMessage<DefaultFunc
         inputs.add(parameter);
         return this;
     }
+
     @Override
     public DefaultFunctionInvokeMessage functionId(String id) {
-        this.functionId=id;
+        this.functionId = id;
+        return this;
+    }
+
+    @Override
+    public DefaultFunctionInvokeMessage addInput(String name, Object value) {
+        ThingFunctionInvokeMessage.super.addInput(name, value);
+        return this;
+    }
+
+    @Override
+    public DefaultFunctionInvokeMessage addInputs(Map<String, Object> parameters) {
+        ThingFunctionInvokeMessage.super.addInputs(parameters);
         return this;
     }
 

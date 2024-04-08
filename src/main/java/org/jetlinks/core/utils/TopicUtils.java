@@ -15,7 +15,9 @@ public class TopicUtils {
     private final static Map<String, String[]> splitCache;
 
     static {
-        splitCache = new ConcurrentReferenceHashMap<>();
+        splitCache = new ConcurrentReferenceHashMap<>(
+            20480,
+            ConcurrentReferenceHashMap.ReferenceType.WEAK);
     }
 
     /**
@@ -68,8 +70,8 @@ public class TopicUtils {
         }
 
         if (!pattern.contains("*")
-                && !pattern.contains("#") && !pattern.contains("+")
-                && !pattern.contains("{")) {
+            && !pattern.contains("#") && !pattern.contains("+")
+            && !pattern.contains("{")) {
             return false;
         }
 
@@ -115,14 +117,14 @@ public class TopicUtils {
 
         if (intern) {
             return splitCache.computeIfAbsent(
-                    topic,
-                    t -> {
-                        String[] arr = doSplit(t);
-                        for (int i = 0; i < arr.length; i++) {
-                            arr[i] = RecyclerUtils.intern(arr[i]);
-                        }
-                        return arr;
-                    });
+                topic,
+                t -> {
+                    String[] arr = doSplit(t);
+                    for (int i = 0; i < arr.length; i++) {
+                        arr[i] = RecyclerUtils.intern(arr[i]);
+                    }
+                    return arr;
+                });
         }
 
         return splitCache.computeIfAbsent(topic, TopicUtils::doSplit);
@@ -183,8 +185,8 @@ public class TopicUtils {
 
     private static boolean matchStrings(String str, String pattern) {
         return str.equals(pattern)
-                || "*".equals(pattern)
-                || "*".equals(str);
+            || "*".equals(pattern)
+            || "*".equals(str);
     }
 
     public static boolean match(String[] pattern, String[] topicParts) {
