@@ -68,14 +68,14 @@ public class TraceHolder {
      * @return 是否全局开启
      */
     public static boolean isEnabled() {
-        return traceEnabled;
+        return traceEnabled && telemetry != null;
     }
 
     /**
      * @return 是否全局禁用
      */
     public static boolean isDisabled() {
-        return !isEnabled();
+        return telemetry == null || !isEnabled();
     }
 
     /**
@@ -119,7 +119,7 @@ public class TraceHolder {
      * @return 是否开启
      */
     public static boolean isDisabled(String name) {
-        return !isEnabled(name);
+        return telemetry == null || !isEnabled(name);
     }
 
     /**
