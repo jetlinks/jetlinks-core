@@ -165,4 +165,20 @@ public interface ThingsDataManager {
                                           long baseTime) {
         return Mono.empty();
     }
+
+    /**
+     * 获取基准时间前最新的标签数据,缓存的数据量由具体的实现决定,只能获取最近的n条数据.
+     *
+     * @param thingType 物类型
+     * @param thingId   物ID
+     * @param tag       物模型标签
+     * @param baseTime  基准时间
+     * @return 标签数据
+     */
+    default Mono<ThingTag> getLastTag(String thingType,
+                                        String thingId,
+                                        String tag,
+                                        long baseTime) {
+        return Mono.empty();
+    }
 }

@@ -59,11 +59,15 @@ public class TypeScriptUtils {
 
     public static void createMetadataVar(ThingMetadata metadata, StringBuilder main) {
         List<PropertyMetadata> properties = metadata.getProperties();
+        List<PropertyMetadata> tags = metadata.getTags();
         List<String> declares = new ArrayList<>();
         StringBuilder builder = new StringBuilder();
 
         if (CollectionUtils.isNotEmpty(properties)) {
             declareVar(properties, builder, declares);
+        }
+        if (CollectionUtils.isNotEmpty(tags)) {
+            declareVar(tags, builder, declares);
         }
 
         for (String declare : declares) {
