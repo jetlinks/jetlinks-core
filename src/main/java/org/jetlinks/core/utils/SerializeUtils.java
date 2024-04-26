@@ -123,7 +123,11 @@ public class SerializeUtils {
                 value = Unpooled.wrappedBuffer(((ByteBuffer) value));
             }
             if (value instanceof ByteBuf) {
-                return ByteBufUtil.getBytes(((ByteBuf) value));
+                try {
+                    return ByteBufUtil.getBytes(((ByteBuf) value));
+                } finally {
+                    ReferenceCountUtil.safeRelease(value);
+                }
             }
         }
 
