@@ -9,6 +9,7 @@ import reactor.core.publisher.Mono;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 public class CommandUtils {
 
@@ -59,6 +60,14 @@ public class CommandUtils {
             return type.getGeneric(0);
         }
         return type;
+    }
+
+    @SuppressWarnings("all")
+    public static <T> Function<Object, T> createConverter(ResolvableType type) {
+        if (type.isAssignableFrom(Void.class)) {
+            return val -> (T) val;
+        }
+        return value -> (T) convertData(type, value);
     }
 
     public static Object convertData(ResolvableType type, Object value) {
