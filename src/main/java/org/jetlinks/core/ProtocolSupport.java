@@ -8,6 +8,7 @@ import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.route.Route;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.DeviceGatewayContext;
+import org.jetlinks.core.things.ThingRpcSupportChain;
 import org.springframework.core.Ordered;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -327,6 +328,17 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      */
     default Flux<Route> getRoutes(Transport transport) {
         return Flux.empty();
+    }
+
+    /**
+     * 获取自定义设备RPC调用责任链
+     *
+     * @return ThingRpcSupportChain
+     * @since 1.2.2
+     * @see DeviceOperator#rpc()
+     */
+    default ThingRpcSupportChain getRpcChain() {
+        return null;
     }
 
     @Override

@@ -13,6 +13,7 @@ import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.route.Route;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.DeviceGatewayContext;
+import org.jetlinks.core.things.ThingRpcSupportChain;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.util.StreamUtils;
@@ -97,6 +98,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     private Map<String, List<Route>> routes = new ConcurrentHashMap<>();
     private Map<String, Supplier<String>> docFiles = new ConcurrentHashMap<>();
+
+    private ThingRpcSupportChain rpcChain;
 
     private int order = Integer.MAX_VALUE;
 
