@@ -6,10 +6,12 @@ import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.utils.ConverterUtils;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
+import reactor.core.publisher.Flux;
 
 import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -116,4 +118,16 @@ public interface Command<Response> extends Wrapper, Serializable {
             value);
     }
 
+    /**
+     * 转换当前对象为map
+     *
+     * @return void
+     * @see CommandSupport#executeToFlux(String, Map)
+     * @see CommandSupport#executeToMono(String, Map)
+     * @see Command#with(Map)
+     * @since 1.2.2
+     */
+    default Map<String, Object> asMap() {
+        return FastBeanCopier.copy(this, new HashMap<>());
+    }
 }

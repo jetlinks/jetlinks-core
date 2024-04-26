@@ -52,6 +52,11 @@ public abstract class AbstractCommand<Response, Self extends AbstractCommand<Res
     }
 
     @Override
+    public Map<String, Object> asMap() {
+        return readable();
+    }
+
+    @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         SerializeUtils.writeKeyValue(properties, out);
     }
