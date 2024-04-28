@@ -33,6 +33,9 @@ public class SerializeUtilsTest {
         assertArrayEquals(new byte[]{0x01}, (byte[]) SerializeUtils
             .convertToSafelySerializable(Unpooled.buffer().writeByte(0x01)));
 
+        assertArrayEquals(new byte[]{0x01}, (byte[]) SerializeUtils
+            .convertToSafelySerializable(new byte[]{0x01}));
+
     }
 
 
