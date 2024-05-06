@@ -54,6 +54,25 @@ public class UpgradeFirmwareProgressMessage extends CommonDeviceMessage<UpgradeF
      */
     private String firmwareId;
 
+
+    public UpgradeFirmwareProgressMessage success(int progress) {
+        setProgress(progress);
+        return this;
+    }
+
+    public UpgradeFirmwareProgressMessage error(Throwable e) {
+        setSuccess(false);
+        setErrorReason(e.getMessage());
+        return this;
+    }
+
+    public UpgradeFirmwareProgressMessage error(String reason) {
+        setSuccess(false);
+
+        setErrorReason(reason);
+        return this;
+    }
+
     @Override
     public MessageType getMessageType() {
         return MessageType.UPGRADE_FIRMWARE_PROGRESS;
