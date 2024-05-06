@@ -56,8 +56,14 @@ public class UpgradeFirmwareProgressMessage extends CommonDeviceMessage<UpgradeF
 
 
     public UpgradeFirmwareProgressMessage success(int progress) {
+        setSuccess(true);
         setProgress(progress);
         return this;
+    }
+
+    public UpgradeFirmwareProgressMessage complete() {
+        setComplete(true);
+        return success(100);
     }
 
     public UpgradeFirmwareProgressMessage error(Throwable e) {
