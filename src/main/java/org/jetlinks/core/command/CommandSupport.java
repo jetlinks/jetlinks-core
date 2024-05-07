@@ -57,6 +57,30 @@ public interface CommandSupport extends Wrapper {
     }
 
     /**
+     * 执行流式命令
+     *
+     * @param commandId  命令ID
+     * @param parameters 参数
+     * @return Flux
+     */
+    default Flux<Object> executeToFlux(String commandId,
+                                       Map<String, Object> parameters,
+                                       Flux<Object> stream) {
+        return this
+            .createCommandAsync(commandId)
+            .flatMapMany(cmd -> {
+                if (cmd.isWrapperFor(StreamCommand.class)) {
+                    @SuppressWarnings("all")
+                    StreamCommand<Object, Object> command = cmd.unwrap(StreamCommand.class);
+                    command.withStream(stream.mapNotNull(command::convertStreamValue));
+                } else {
+                    return Flux.error(new UnsupportedOperationException("unsupported stream command " + cmd.getCommandId()));
+                }
+                return this.executeToFlux(cmd.with(parameters));
+            });
+    }
+
+    /**
      * 执行命令,并将结果转为Mono
      *
      * @param command 命令

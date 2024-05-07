@@ -4,17 +4,23 @@ import lombok.SneakyThrows;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.utils.ConverterUtils;
-import org.reactivestreams.Publisher;
-import org.springframework.core.ResolvableType;
+import reactor.core.publisher.Flux;
 
 import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 命令接口,用于定义一个命令,参数可以通过{@link #with(String, Object)}方法进行设置
+ * 命令接口,用于定义一个命令,参数可以通过{@link #with(String, Object)}方法进行设置.
+ * <p>
+ * 注意⚠️： 在分布式调用命令时，参数和响应结果将进行序列化：
+ * 对于参数，将会使用{@link Command#asMap()}转换为Map后进行序列化。
+ * 对于响应结果，为了保证序列化正确，请根据实际情况实现方法{@link Command#createResponseData(Object)}，
+ * 特别是响应结果类型是接口的情况。
+ * <p>
+ * 建议继承{@link AbstractCommand}类，返回结果使用{@link Flux}或者{@link reactor.core.publisher.Mono}
  *
  * @param <Response> 命令对应的响应类型
  * @author zhouhao
@@ -22,6 +28,8 @@ import java.util.Map;
  * @see AbstractCommand
  * @see CommandSupport
  * @see CommandSupport#createCommand(String)
+ * @see AbstractConvertCommand
+ * @see StreamCommand
  * @since 1.2.1
  */
 public interface Command<Response> extends Wrapper, Serializable {
@@ -116,4 +124,16 @@ public interface Command<Response> extends Wrapper, Serializable {
             value);
     }
 
+    /**
+     * 转换当前对象为map
+     *
+     * @return void
+     * @see CommandSupport#executeToFlux(String, Map)
+     * @see CommandSupport#executeToMono(String, Map)
+     * @see Command#with(Map)
+     * @since 1.2.2
+     */
+    default Map<String, Object> asMap() {
+        return FastBeanCopier.copy(this, new HashMap<>());
+    }
 }

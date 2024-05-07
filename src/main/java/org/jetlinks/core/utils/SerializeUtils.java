@@ -123,14 +123,27 @@ public class SerializeUtils {
                 value = Unpooled.wrappedBuffer(((ByteBuffer) value));
             }
             if (value instanceof ByteBuf) {
-                return ByteBufUtil.getBytes(((ByteBuf) value));
+                try {
+                    return ByteBufUtil.getBytes(((ByteBuf) value));
+                } finally {
+                    ReferenceCountUtil.safeRelease(value);
+                }
             }
         }
 
         Class<?> clazz = value.getClass();
 
         if (clazz.isArray()) {
-            return Arrays.stream(((Object[]) value)).map(val -> convertToSafelySerializable(val, copy)).toArray();
+            Class<?> ctype = clazz.getComponentType();
+            if(ctype.isPrimitive() || safelySerializable.contains(ctype)){
+                return value;
+            }
+            int len =  Array.getLength(value);
+            Object[] val = new Object[len];
+            for (int i = 0; i < len; i++) {
+                val[i] = convertToSafelySerializable(Array.get(value,i), copy);
+            }
+            return val;
         }
 
         if (clazz.getName().startsWith("java.")) {

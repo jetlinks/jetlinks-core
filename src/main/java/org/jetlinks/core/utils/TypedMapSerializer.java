@@ -1,9 +1,12 @@
 package org.jetlinks.core.utils;
 
+import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Maps;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.util.LinkedMultiValueMap;
 
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -85,7 +88,11 @@ class TypedMapSerializer implements SerializeUtils.Serializer {
         identityHashMap(IdentityHashMap::new,IdentityHashMap.class),
         treeMap(ignore -> new TreeMap<>(), TreeMap.class),
         concurrentSkipListMap(ignore -> new ConcurrentSkipListMap<>(), ConcurrentSkipListMap.class),
-        hashTable(ignore -> new Hashtable<>(), Hashtable.class)
+        hashTable(ignore -> new Hashtable<>(), Hashtable.class),
+        httpHeaders(ignore->new HttpHeaders(), HttpHeaders.class),
+        multiValueMap(ignore->new LinkedMultiValueMap<>(), LinkedMultiValueMap.class),
+        fastJson(ignore->new JSONObject(), JSONObject.class)
+
 
         //
         ;
@@ -105,6 +112,10 @@ class TypedMapSerializer implements SerializeUtils.Serializer {
             if (clazzName.startsWith("java.util.Collections") ||
                 clazzName.startsWith("com.google")) {
                 return hashMap;
+            }
+
+            if(HttpHeaders.class.isAssignableFrom(clazz)){
+                return httpHeaders;
             }
 
             return null;
