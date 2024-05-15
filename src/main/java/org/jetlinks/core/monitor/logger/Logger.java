@@ -161,6 +161,15 @@ public interface Logger {
     }
 
     /**
+     * 获取日志名称
+     *
+     * @return 日志名称
+     */
+    default String getName() {
+        return this.toString();
+    }
+
+    /**
      * 打印日志
      *
      * @param level   日志级别
@@ -174,8 +183,9 @@ public interface Logger {
      * 转为Slf4j Logger
      *
      * @return slf4j Logger
+     * @see org.slf4j.Logger
      */
     default org.slf4j.Logger slf4j() {
-        return new BridgeLoggerSlf4j(this);
+        return new BridgeLoggerSlf4j(getName(), this);
     }
 }

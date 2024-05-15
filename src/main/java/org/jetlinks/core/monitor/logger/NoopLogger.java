@@ -15,4 +15,9 @@ class NoopLogger implements Logger {
     public void log(Level level, String message, Object... args) {
 
     }
+
+    @Override
+    public org.slf4j.Logger slf4j() {
+        return NoopSlf4jLogger.INSTANCE;
+    }
 }
