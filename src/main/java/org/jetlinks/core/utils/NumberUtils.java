@@ -2,8 +2,50 @@ package org.jetlinks.core.utils;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 
 public class NumberUtils {
+
+    /**
+     * 转换为有效精度的浮点数
+     * <ul>
+     *     <li>convertEffectiveScale(0.001234,2) -> 0.0012</li>
+     *     <li>convertEffectiveScale(1.2132,2) -> 1.21</li>
+     * </ul>
+     *
+     * @param origin 原始数字
+     * @param scale  有效精度
+     * @return 转换后的值
+     */
+    public static double convertEffectiveScale(double origin, int scale) {
+        if (origin > 1) {
+            return BigDecimal
+                .valueOf(origin)
+                .setScale(scale, RoundingMode.HALF_UP)
+                .doubleValue();
+        }
+        if (origin == 0) {
+            return origin;
+        }
+        // 取整数部分
+        double integerPart = Math.floor(origin);
+        // 取小数部分
+        double decimalPart = origin - integerPart;
+
+        if (decimalPart == 0) {
+            return new BigDecimal(origin)
+                .setScale(scale, RoundingMode.HALF_UP)
+                .doubleValue();
+        }
+        int n = scale;
+        double temp = decimalPart;
+        for (; temp < 1; n++) {
+            temp *= 10;
+        }
+        return new BigDecimal(decimalPart)
+            .setScale(n - 1, RoundingMode.HALF_UP)
+            .doubleValue();
+    }
 
     /**
      * 将数字转为固定长度,超过长度截断,不足长度补0.
@@ -56,9 +98,9 @@ public class NumberUtils {
      */
     public static boolean isIntNumber(Number number) {
         return number instanceof Integer ||
-                number instanceof Long ||
-                number instanceof Byte ||
-                number instanceof Short ||
-                number instanceof BigInteger;
+            number instanceof Long ||
+            number instanceof Byte ||
+            number instanceof Short ||
+            number instanceof BigInteger;
     }
 }
