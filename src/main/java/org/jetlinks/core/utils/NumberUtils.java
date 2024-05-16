@@ -18,12 +18,6 @@ public class NumberUtils {
      * @return 转换后的值
      */
     public static double convertEffectiveScale(double origin, int scale) {
-        if (origin > 1) {
-            return BigDecimal
-                .valueOf(origin)
-                .setScale(scale, RoundingMode.HALF_UP)
-                .doubleValue();
-        }
         if (origin == 0) {
             return origin;
         }
@@ -31,9 +25,14 @@ public class NumberUtils {
         double integerPart = Math.floor(origin);
         // 取小数部分
         double decimalPart = origin - integerPart;
-
+        // 小数部分为0直接返回
         if (decimalPart == 0) {
-            return new BigDecimal(origin)
+            return origin;
+        }
+        //原始值大于1,不用计算有效精度.
+        if (origin > 1) {
+            return BigDecimal
+                .valueOf(origin)
                 .setScale(scale, RoundingMode.HALF_UP)
                 .doubleValue();
         }

@@ -35,5 +35,11 @@ public class NumberUtilsTest {
             NumberUtils.convertEffectiveScale(0.003216, 3),
             0
         );
+
+        assertEquals(
+            2.0,
+            NumberUtils.convertEffectiveScale(2.0, 3),
+            0
+        );
     }
 }
