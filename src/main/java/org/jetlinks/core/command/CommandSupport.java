@@ -156,9 +156,7 @@ public interface CommandSupport extends Wrapper {
      * @return 是否支持
      */
     default Mono<Boolean> commandIsSupported(Command<?> cmd) {
-        return this
-            .getCommandMetadata(cmd.getCommandId())
-            .hasElement();
+        return commandIsSupported(cmd.getCommandId());
     }
 
     /**
@@ -168,9 +166,7 @@ public interface CommandSupport extends Wrapper {
      * @return 是否支持
      */
     default Mono<Boolean> commandIsSupported(Class<? extends Command<?>> cmd) {
-        return this
-            .getCommandMetadata(CommandUtils.getCommandIdByType(cmd))
-            .hasElement();
+        return commandIsSupported(CommandUtils.getCommandIdByType(cmd));
     }
 
     /**

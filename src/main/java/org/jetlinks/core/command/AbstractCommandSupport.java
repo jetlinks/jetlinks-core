@@ -1,6 +1,7 @@
 package org.jetlinks.core.command;
 
 import org.jetlinks.core.metadata.FunctionMetadata;
+import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -70,7 +71,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     }
 
     @Override
-    public final Flux<FunctionMetadata> getCommandMetadata() {
+    public Flux<FunctionMetadata> getCommandMetadata() {
         return Flux
             .fromIterable(handlers.values())
             .distinct()
@@ -78,7 +79,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     }
 
     @Override
-    public final Mono<FunctionMetadata> getCommandMetadata(String commandId) {
+    public Mono<FunctionMetadata> getCommandMetadata(String commandId) {
         return Mono.justOrEmpty(getRegisteredMetadata(commandId));
     }
 
@@ -88,6 +89,11 @@ public abstract class AbstractCommandSupport implements CommandSupport {
             return Optional.ofNullable(handler.getMetadata());
         }
         return Optional.empty();
+    }
+
+    @Override
+    public Mono<Boolean> commandIsSupported(String commandId) {
+        return commandIsSupported0(commandId) ? Reactors.ALWAYS_TRUE : Reactors.ALWAYS_FALSE;
     }
 
     boolean commandIsSupported0(String commandId) {
