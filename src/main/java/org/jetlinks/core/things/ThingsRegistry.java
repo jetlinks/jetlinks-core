@@ -74,6 +74,10 @@ public interface ThingsRegistry {
                                   @Nonnull String templateId);
 
 
+    default Mono<Thing> getThing(@Nonnull ThingId thingId) {
+        return getThing(thingId.getType(), thingId.getId());
+    }
+
     default Mono<Thing> getThing(@Nonnull ThingType thingType,
                                  @Nonnull String thingId) {
         return getThing(thingType.getId(), thingId);

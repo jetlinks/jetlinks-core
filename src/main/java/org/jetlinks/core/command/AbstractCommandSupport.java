@@ -102,12 +102,12 @@ public abstract class AbstractCommandSupport implements CommandSupport {
 
 
     protected <R, C extends Command<R>> C createUndefinedCommand(String commandId) {
-        throw new CommandException(this, null, "error.unsupported_create_command", null, commandId);
+        throw new CommandException.NoStackTrace(this, null, "error.unsupported_create_command", null, commandId);
     }
 
     @SuppressWarnings("all")
     protected <R> R executeUndefinedCommand(@Nonnull Command<R> command) {
-        CommandException error = new CommandException(
+        CommandException error = new CommandException.NoStackTrace(
             this,
             command,
             "error.unsupported_execute_command",

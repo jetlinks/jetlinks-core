@@ -112,7 +112,7 @@ public interface CommandSupport extends Wrapper {
      * @see CommandSupport#createCommandAsync(String)
      */
     default <R, C extends Command<R>> C createCommand(String commandId) {
-        throw new CommandException(this, null, "error.unsupported_command", null, commandId);
+        throw new CommandException.NoStackTrace(this, null, "error.unsupported_command", null, commandId);
     }
 
     /**
