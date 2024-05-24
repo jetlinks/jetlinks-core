@@ -119,10 +119,14 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
             return String.valueOf(value);
         }
         if (multi) {
-            return toArray(value)
+            List<String> _format = toArray(value)
                     .stream()
                     .map(this::format0)
                     .collect(Collectors.toList());
+            if (value instanceof String) {
+                return String.join(",", _format);
+            }
+            return _format;
         }
         return format0(value);
     }
