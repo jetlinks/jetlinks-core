@@ -64,6 +64,10 @@ public class CommandMetadataResolver {
         );
     }
 
+    public static FunctionMetadata resolve(Class<?> commandClazz) {
+        return resolve(ResolvableType.forClass(commandClazz));
+    }
+
     public static FunctionMetadata resolve(ResolvableType commandClazz) {
         SimpleFunctionMetadata metadata = new SimpleFunctionMetadata();
         Class<?> clazz = commandClazz.toClass();
@@ -98,7 +102,7 @@ public class CommandMetadataResolver {
         }
 
         char[] propertyName = name.substring(nameIndex).toCharArray();
-        propertyName[0] = Character.toLowerCase(propertyName[1]);
+        propertyName[0] = Character.toLowerCase(propertyName[0]);
         name = new String(propertyName);
 
         SimplePropertyMetadata prop = new SimplePropertyMetadata();
