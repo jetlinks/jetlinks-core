@@ -15,12 +15,12 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     protected final Map<Object, CommandHandler<Command<?>, ?>> handlers = new ConcurrentHashMap<>();
 
     @SuppressWarnings("all")
-    protected final <C extends Command<R>, R> void registerHandler(CommandHandler<C, R> handler) {
+    protected <C extends Command<R>, R> void registerHandler(CommandHandler<C, R> handler) {
         registerHandler(handler.createCommand().getCommandId(), handler);
     }
 
     @SuppressWarnings("unchecked")
-    protected final <C extends Command<R>, R> void registerHandler(Class<C> type,
+    protected <C extends Command<R>, R> void registerHandler(Class<C> type,
                                                                    CommandHandler<C, R> handler) {
         FunctionMetadata metadata = handler.getMetadata();
 
@@ -32,7 +32,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     }
 
     @SuppressWarnings("all")
-    protected final <C extends Command<R>, R> void registerHandler(String id,
+    protected <C extends Command<R>, R> void registerHandler(String id,
                                                                    CommandHandler<C, R> handler) {
         handlers.put(id, (CommandHandler<Command<?>, ?>) handler);
     }
