@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 发送消息到边缘端命令
+ * 发送消息命令
  *
  * @author zhouhao
  * @see org.jetlinks.core.command.CommandSupport

@@ -93,7 +93,8 @@ public class SerializeUtils {
         }
 
         if (value instanceof Jsonable) {
-            return ((Jsonable) value).toJson();
+            Map<?, ?> m = Maps.transformValues(((Jsonable) value).toJson(), val -> convertToSafelySerializable(val, copy));
+            return copy ? new HashMap<>(m) : m;
         }
 
         if (value instanceof Map) {
