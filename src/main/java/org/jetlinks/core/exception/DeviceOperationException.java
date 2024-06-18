@@ -35,4 +35,24 @@ public class DeviceOperationException extends RuntimeException {
     public String getLocalizedMessage() {
         return LocaleUtils.resolveMessage(getMessage());
     }
+
+    public static class NoStackTrace extends DeviceOperationException{
+
+        public NoStackTrace(ErrorCode errorCode) {
+            super(errorCode);
+        }
+
+        public NoStackTrace(ErrorCode errorCode, Throwable cause) {
+            super(errorCode, cause);
+        }
+
+        public NoStackTrace(ErrorCode code, String message) {
+            super(code, message);
+        }
+
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return this;
+        }
+    }
 }
