@@ -1,6 +1,8 @@
 package org.jetlinks.core.command;
 
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import lombok.EqualsAndHashCode;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.utils.ConverterUtils;
@@ -22,6 +24,7 @@ public abstract class AbstractCommand<Response, Self extends AbstractCommand<Res
     private Map<String, Object> properties;
 
     @Override
+    @JsonAnySetter
     public final Self with(String key, Object value) {
         writable().put(key, value);
         return castSelf();
@@ -38,6 +41,7 @@ public abstract class AbstractCommand<Response, Self extends AbstractCommand<Res
         return ConverterUtils.convert(readable().get(key), type);
     }
 
+    @JsonAnyGetter
     public Map<String, Object> readable() {
         return properties == null ? Collections.emptyMap() : properties;
     }

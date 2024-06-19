@@ -30,6 +30,10 @@ public interface CommandSupport extends Wrapper {
      * @param <R>     结果类型
      * @return 执行结果
      * @see AbstractCommand
+     * @see CommandSupport#executeToFlux(Command)
+     * @see CommandSupport#executeToFlux(String, Map)
+     * @see CommandSupport#executeToMono(String, Map)
+     * @see CommandSupport#executeToMono(Command)
      */
     @Nonnull
     <R> R execute(@Nonnull Command<R> command);
@@ -57,11 +61,12 @@ public interface CommandSupport extends Wrapper {
     }
 
     /**
-     * 执行流式命令
+     * 执行流式命令，通过响应式传递参数，通常用于传递大量数据的场景。
      *
      * @param commandId  命令ID
      * @param parameters 参数
      * @return Flux
+     * @see StreamCommand
      */
     default Flux<Object> executeToFlux(String commandId,
                                        Map<String, Object> parameters,

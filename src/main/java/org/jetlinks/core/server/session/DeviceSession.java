@@ -64,6 +64,7 @@ public interface DeviceSession {
 
 
     @Nonnull
+    @Deprecated
     default <V> Mono<V> execute(@Nonnull Command<V> command) {
         return Mono.error(UnsupportedOperationException::new);
     }

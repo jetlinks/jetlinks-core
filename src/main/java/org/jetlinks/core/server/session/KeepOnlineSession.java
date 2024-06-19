@@ -76,7 +76,7 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
                         return parent.send(encodedMessage);
                     }
                     return Mono
-                            .<Boolean>error(new DeviceOperationException(ErrorCode.CONNECTION_LOST))
+                            .<Boolean>error(new DeviceOperationException.NoStackTrace(ErrorCode.CONNECTION_LOST))
                             .doAfterTerminate(() -> ReferenceCountUtil.safeRelease(encodedMessage.getPayload()));
                 });
     }
