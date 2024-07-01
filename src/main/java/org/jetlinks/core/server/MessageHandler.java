@@ -28,6 +28,18 @@ public interface MessageHandler {
     Flux<Message> handleSendToDeviceMessage(String serverId);
 
     /**
+     * 监听发往设备的指令
+     *
+     * @param serverId 服务ID,在集群时,不同的节点serverId不同 {@link ServerNode#getId()}
+     * @return 发往设备的消息指令流
+     */
+    default Disposable handleSendToDeviceMessage(String serverId, Function<Message, Mono<Void>> handler) {
+        return handleSendToDeviceMessage(serverId)
+            .flatMap(handler)
+            .subscribe();
+    }
+
+    /**
      * 监听获取设备真实状态请求,并响应状态结果
      *
      * @param serverId    服务ID,在集群时,不同的节点serverId不同
