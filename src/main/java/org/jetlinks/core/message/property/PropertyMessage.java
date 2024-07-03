@@ -152,19 +152,19 @@ public interface PropertyMessage extends Externalizable {
      * @return 合并后的消息
      */
     default PropertyMessage mergeProperties(Map<String, Object> properties) {
-        Map<String, Object> old = getProperties();
-        if (old == null) {
-            return properties(properties);
-        }
-        //直接快速合并
-        if (old instanceof HashMap
-            || old instanceof ConcurrentHashMap
-            || old instanceof TreeMap
-            || old instanceof Hashtable) {
-            old.putAll(properties);
-            return this;
-        }
         synchronized (this) {
+            Map<String, Object> old = getProperties();
+            if (old == null) {
+                return properties(properties);
+            }
+            //直接快速合并
+            if (old instanceof HashMap
+                || old instanceof ConcurrentHashMap
+                || old instanceof TreeMap
+                || old instanceof Hashtable) {
+                old.putAll(properties);
+                return this;
+            }
             Map<String, Object> copy = new HashMap<>(old);
             copy.putAll(properties);
             return properties(copy);
