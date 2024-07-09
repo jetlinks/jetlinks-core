@@ -3,8 +3,8 @@ package org.jetlinks.core.message;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.utils.SerializeUtils;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -44,26 +44,26 @@ public interface ThingMessageReply extends ThingMessage {
     ThingMessageReply success(boolean success);
 
     //设置业务码
-    ThingMessageReply code(@NotNull String code);
+    ThingMessageReply code(@Nonnull String code);
 
     //设置消息
-    ThingMessageReply message(@NotNull String message);
+    ThingMessageReply message(@Nonnull String message);
 
     //根据另外的消息填充对应属性
-    ThingMessageReply from(@NotNull Message message);
+    ThingMessageReply from(@Nonnull Message message);
 
     //设置消息ID
-    ThingMessageReply messageId(@NotNull String messageId);
+    ThingMessageReply messageId(@Nonnull String messageId);
 
     //设置时间戳
-    ThingMessageReply timestamp(@NotNull long timestamp);
+    ThingMessageReply timestamp(@Nonnull long timestamp);
 
     //添加头
     @Override
-    ThingMessageReply addHeader(@NotNull String header, @NotNull Object value);
+    ThingMessageReply addHeader(@Nonnull String header, @Nonnull Object value);
 
     @Override
-    default <T> ThingMessageReply addHeader(@NotNull HeaderKey<T> header, @NotNull T value) {
+    default <T> ThingMessageReply addHeader(@Nonnull HeaderKey<T> header, @Nonnull T value) {
         addHeader(header.getKey(), value);
         return this;
     }

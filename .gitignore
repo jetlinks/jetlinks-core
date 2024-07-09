@@ -24,3 +24,5 @@ hs_err_pid*
 /static/
 /upload
 /ui/upload/
+node_modules
+src/main/nodejs/dist

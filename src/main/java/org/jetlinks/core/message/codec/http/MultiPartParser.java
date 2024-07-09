@@ -10,42 +10,48 @@ import org.springframework.core.io.buffer.NettyDataBuffer;
 import org.springframework.core.io.buffer.NettyDataBufferFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ReactiveHttpInputMessage;
+import org.springframework.http.codec.multipart.DefaultPartHttpMessageReader;
 import org.springframework.http.codec.multipart.FilePart;
-import org.springframework.http.codec.multipart.SynchronossPartHttpMessageReader;
+import org.springframework.http.codec.multipart.MultipartHttpMessageReader;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.util.Collections;
+import java.util.Map;
 
 class MultiPartParser {
 
-    private static final SynchronossPartHttpMessageReader reader = new SynchronossPartHttpMessageReader();
+    private static final MultipartHttpMessageReader reader;
 
     private static final NettyDataBufferFactory factory = new NettyDataBufferFactory(UnpooledByteBufAllocator.DEFAULT);
 
     private static final ResolvableType type = ResolvableType.forType(Part.class);
 
     static {
-        reader.setMaxInMemorySize(-1);
+        DefaultPartHttpMessageReader messageReader = new DefaultPartHttpMessageReader();
+        messageReader.setMaxInMemorySize(-1);
+        reader = new MultipartHttpMessageReader(messageReader);
     }
 
     static Mono<MultiPart> parser(HttpHeaders httpHeaders, Flux<ByteBuf> data) {
 
         return reader
-                .read(type, new MultiPartParserReactiveHttpInputMessage(data, httpHeaders), Collections.emptyMap())
-                .flatMap(part -> part
-                        .content()
-                        .map(buf -> factory.wrap(buf.asByteBuffer()))
-                        .collectList()
-                        .filter(CollectionUtils::isNotEmpty)
-                        .map(factory::join)
-                        .cast(NettyDataBuffer.class)
-                        .map(buffer -> convertPart(part,buffer.getNativeBuffer()))
-                )
+            .read(type, new MultiPartParserReactiveHttpInputMessage(data, httpHeaders), Collections.emptyMap())
+            .flatMapIterable(Map::entrySet)
+            .flatMapIterable(Map.Entry::getValue)
+            .flatMap(part -> part
+                .content()
+                .map(buf -> factory.wrap(buf.asByteBuffer()))
                 .collectList()
                 .filter(CollectionUtils::isNotEmpty)
-                .map(MultiPart::of);
+                .map(factory::join)
+                .cast(NettyDataBuffer.class)
+                .map(buffer -> convertPart(part, buffer.getNativeBuffer()))
+            )
+            .collectList()
+            .filter(CollectionUtils::isNotEmpty)
+            .map(MultiPart::of);
 
     }
 
@@ -53,10 +59,10 @@ class MultiPartParser {
         if (part instanceof FilePart) {
             FilePart filePart = ((FilePart) part);
             return org.jetlinks.core.message.codec.http.FilePart.of(
-                    filePart.name(),
-                    filePart.filename(),
-                    filePart.headers(),
-                    byteBuf
+                filePart.name(),
+                filePart.filename(),
+                filePart.headers(),
+                byteBuf
             );
         }
         if (part instanceof org.springframework.http.codec.multipart.FormFieldPart) {

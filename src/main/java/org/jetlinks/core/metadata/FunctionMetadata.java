@@ -1,7 +1,7 @@
 package org.jetlinks.core.metadata;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
 /**
@@ -13,7 +13,7 @@ public interface FunctionMetadata extends Metadata, Jsonable {
     /**
      * @return 输入参数定义
      */
-    @NotNull
+    @Nonnull
     List<PropertyMetadata> getInputs();
 
     /**
