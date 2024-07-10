@@ -106,4 +106,9 @@ public class TraceDeviceSession implements DeviceSession {
     public Mono<Boolean> isAliveAsync() {
         return target.isAliveAsync();
     }
+
+    @Override
+    public Mono<Boolean> send(ToDeviceMessageContext context) {
+        return target.send(context);
+    }
 }

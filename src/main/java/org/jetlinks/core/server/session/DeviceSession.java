@@ -2,10 +2,15 @@ package org.jetlinks.core.server.session;
 
 import org.jetlinks.core.command.Command;
 import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.codec.EncodedMessage;
+import org.jetlinks.core.message.codec.ToDeviceMessageContext;
 import org.jetlinks.core.message.codec.TraceDeviceSession;
 import org.jetlinks.core.message.codec.Transport;
+import org.jetlinks.core.trace.DeviceTracer;
+import org.jetlinks.core.trace.DeviceTracer.SpanName;
 import org.jetlinks.core.trace.TraceHolder;
+import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
@@ -13,6 +18,9 @@ import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Optional;
+
+import static org.jetlinks.core.trace.DeviceTracer.SpanName.*;
+import static org.jetlinks.core.trace.FluxTracer.create;
 
 /**
  * 设备会话,通常对应一个设备连接
@@ -172,6 +180,30 @@ public interface DeviceSession {
      */
     default boolean isChanged(DeviceSession another) {
         return !this.equals(another);
+    }
+
+    /**
+     * 发送消息给设备
+     *
+     * @param context 消息上下文
+     * @return 是否成功
+     * @since 1.2.2
+     */
+    default Mono<Boolean> send(ToDeviceMessageContext context) {
+        DeviceOperator device = context.getDevice();
+        if (device == null) {
+            return Reactors.ALWAYS_FALSE;
+        }
+        //获取设备使用的协议包,对消息进行编解码,然后发送到设备.
+        return device
+            .getProtocol()
+            .flatMap(protocol -> protocol.getMessageCodec(getTransport()))
+            .flatMapMany(codec -> codec.encode(context))
+            .as(create(encode(device.getDeviceId()),
+                       (span, msg) -> span.setAttribute(DeviceTracer.SpanKey.message, msg.toString())))
+            //使用上下文中的send,因为可能经过了代理.
+            .concatMap(context.getSession()::send)
+            .reduce(Boolean::logicalAnd);
     }
 
     static DeviceSession trace(DeviceSession target) {

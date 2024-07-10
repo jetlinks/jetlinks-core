@@ -8,6 +8,7 @@ import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.message.codec.EncodedMessage;
+import org.jetlinks.core.message.codec.ToDeviceMessageContext;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Mono;
@@ -183,5 +184,10 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     @Override
     public String toString() {
         return "keepOnline[" + keepAliveTimeOutMs + "ms]:" + parent;
+    }
+
+    @Override
+    public Mono<Boolean> send(ToDeviceMessageContext context) {
+        return parent.send(context);
     }
 }
