@@ -19,7 +19,11 @@ import java.util.function.Function;
 @Setter
 public abstract class NumberType<N extends Number> extends AbstractType<NumberType<N>> implements UnitSupported, DataType, Converter<N> {
 
-    static boolean ORIGINAL = Boolean.parseBoolean(System.getProperty("jetlinks.type.number.convert.original", "true"));
+    static boolean ORIGINAL = Boolean.parseBoolean(System.getProperty(
+        "jetlinks.type.number.convert.original", "true"));
+
+    static boolean FORMAT_STRIP_TRAILING_ZEROS = Boolean.parseBoolean(System.getProperty(
+        "jetlinks.type.number.format.stripTrailingZeros", "false"));
 
     //最大值
     private Number max;
@@ -76,6 +80,9 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
         }
         String str;
         if (val instanceof BigDecimal) {
+            if (FORMAT_STRIP_TRAILING_ZEROS) {
+                val = ((BigDecimal) val).stripTrailingZeros();
+            }
             str = ((BigDecimal) val).toPlainString();
         } else {
             str = String.valueOf(val);
@@ -142,30 +149,30 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
 
     public final long getMax(long defaultVal) {
         return Optional
-                .ofNullable(getMax())
-                .map(Number::longValue)
-                .orElse(defaultVal);
+            .ofNullable(getMax())
+            .map(Number::longValue)
+            .orElse(defaultVal);
     }
 
     public final long getMin(long defaultVal) {
         return Optional
-                .ofNullable(getMin())
-                .map(Number::longValue)
-                .orElse(defaultVal);
+            .ofNullable(getMin())
+            .map(Number::longValue)
+            .orElse(defaultVal);
     }
 
     public final double getMax(double defaultVal) {
         return Optional
-                .ofNullable(getMax())
-                .map(Number::doubleValue)
-                .orElse(defaultVal);
+            .ofNullable(getMax())
+            .map(Number::doubleValue)
+            .orElse(defaultVal);
     }
 
     public final double getMin(double defaultVal) {
         return Optional
-                .ofNullable(getMin())
-                .map(Number::doubleValue)
-                .orElse(defaultVal);
+            .ofNullable(getMin())
+            .map(Number::doubleValue)
+            .orElse(defaultVal);
     }
 
     protected abstract N castNumber(Number number);
