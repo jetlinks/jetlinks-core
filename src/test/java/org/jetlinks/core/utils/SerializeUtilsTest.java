@@ -5,16 +5,13 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import lombok.*;
+import org.hswebframework.web.proxy.Proxy;
 import org.jetlinks.core.message.DeviceMessage;
-import org.jetlinks.core.message.Message;
 import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.ThingMessage;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -202,6 +199,43 @@ public class SerializeUtilsTest {
         Object res = codec(new CustomMap());
         assertNotNull(res);
         assertTrue(res instanceof CustomMap);
+    }
+
+    @Test
+    public void testCrossClassLoader() {
+
+        Object obj = Proxy.create(Serializable.class)
+                          .addField("private int code;")
+                          .addMethod("public int getCode(){return code;}")
+                          .addMethod("public void setCode(int code){this.code = code;}")
+                          .newInstance();
+        assertNotNull(obj);
+        System.out.println(obj);
+        Object res = codec(obj);
+        assertNotNull(res);
+        assertTrue(res instanceof Map);
+        assertEquals(0, ((Map<?, ?>) res).get("code"));
+
+        //to map
+        assertNotNull(SerializeUtils.convertToSafelySerializable(obj));
+
+        //array
+        Object arr = codec(new Object[]{obj, obj, obj});
+        assertNotNull(arr);
+
+        //list
+        Object list = codec(Arrays.asList(obj, obj, obj));
+        assertTrue(list instanceof List);
+        assertEquals(3, ((List<?>) list).size());
+
+        //map
+        Object map = codec(Collections.singletonMap("test", obj));
+        assertNotNull(map);
+
+        //deepMap
+        Object deepMap = codec(Collections.singletonMap("1",Collections.singletonMap("2", obj)));
+        assertNotNull(deepMap);
+        System.out.println(deepMap);
     }
 
     public static class CustomMap extends HashMap<String, Object> {

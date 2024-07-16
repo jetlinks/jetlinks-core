@@ -54,13 +54,13 @@ public interface ThingModuleMessage extends ThingMessage {
     default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         ThingMessage.super.readExternal(in);
         module(SerializeUtils.readNullableUTF(in));
-        message(MessageType.readExternal(in));
+        message((Message) SerializeUtils.readObject(in));
     }
 
     @Override
     default void writeExternal(ObjectOutput out) throws IOException {
         ThingMessage.super.writeExternal(out);
         SerializeUtils.writeNullableUTF(getModule(), out);
-        MessageType.writeExternal(getMessage(), out);
+        SerializeUtils.writeObject(getMessage(), out);
     }
 }
