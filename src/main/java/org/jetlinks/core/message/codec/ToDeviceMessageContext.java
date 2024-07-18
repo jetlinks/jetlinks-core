@@ -5,12 +5,14 @@ import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.Message;
 import org.jetlinks.core.server.session.DeviceSession;
 import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -28,6 +30,21 @@ public interface ToDeviceMessageContext extends MessageEncodeContext {
      * @return 是否成功
      */
     Mono<Boolean> sendToDevice(@Nonnull EncodedMessage message);
+
+    /**
+     * 发送多条消息给设备,消息使用串行发送.
+     *
+     * @param message 消息流
+     * @return 是否成功
+     */
+    default Mono<Boolean> sendToDevice(@Nonnull Publisher<? extends EncodedMessage> message) {
+        Objects.requireNonNull(message, "message must not be null");
+        return Flux
+            .from(message)
+            .concatMap(this::sendToDevice)
+            //使用reduce不会因为发送某条消息返回false而停止发送.
+            .reduce(Boolean::logicalAnd);
+    }
 
     /**
      * 断开设备与平台的连接
@@ -52,8 +69,8 @@ public interface ToDeviceMessageContext extends MessageEncodeContext {
 
     default Mono<Boolean> sessionIsAlive(String deviceId) {
         return this
-                .getSession(deviceId)
-                .hasElement();
+            .getSession(deviceId)
+            .hasElement();
     }
 
     /**

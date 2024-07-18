@@ -3,10 +3,7 @@ package org.jetlinks.core.server.session;
 import org.jetlinks.core.command.Command;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.DeviceMessage;
-import org.jetlinks.core.message.codec.EncodedMessage;
-import org.jetlinks.core.message.codec.ToDeviceMessageContext;
-import org.jetlinks.core.message.codec.TraceDeviceSession;
-import org.jetlinks.core.message.codec.Transport;
+import org.jetlinks.core.message.codec.*;
 import org.jetlinks.core.trace.DeviceTracer;
 import org.jetlinks.core.trace.DeviceTracer.SpanName;
 import org.jetlinks.core.trace.TraceHolder;
@@ -183,7 +180,7 @@ public interface DeviceSession {
     }
 
     /**
-     * 发送消息给设备
+     * 发送消息给设备,请勿在协议包的{@link DeviceMessageCodec#encode(MessageEncodeContext)}方法中调用此方法.
      *
      * @param context 消息上下文
      * @return 是否成功
@@ -201,9 +198,7 @@ public interface DeviceSession {
             .flatMapMany(codec -> codec.encode(context))
             .as(create(encode(device.getDeviceId()),
                        (span, msg) -> span.setAttribute(DeviceTracer.SpanKey.message, msg.toString())))
-            //使用上下文中的send,因为可能经过了代理.
-            .concatMap(context.getSession()::send)
-            .reduce(Boolean::logicalAnd);
+            .as(context::sendToDevice);
     }
 
     static DeviceSession trace(DeviceSession target) {
