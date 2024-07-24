@@ -1,11 +1,12 @@
-import {CommandSupportProviders} from "../../src/command/CommandSupportProviders";
-import {SimpleCommandSupport} from "../../src/command/CommandSupport";
-import {FunctionMetadata} from "../../src/metadata/FunctionMetadata";
-import {Command} from "../../src/command/Command";
-import {DataTypeId, ObjectType} from "../../src/metadata/DataType";
+import {CommandSupportProviders} from "../../command/CommandSupportProviders";
+import {SimpleCommandSupport} from "../../command/CommandSupport";
+import {FunctionMetadata} from "../../metadata/FunctionMetadata";
+import {Command} from "../../command/Command";
+import {DataTypeId, ObjectType} from "../../metadata/DataType";
+import {Observable} from 'rxjs'
 
 
-test('Test CommandSupportProviders', () => {
+test('Test CommandSupportProviders', async () => {
 
     CommandSupportProviders
         .register("testService",
@@ -20,27 +21,27 @@ test('Test CommandSupportProviders', () => {
                             inputs: []
                         }
                     },
-                    execute(command: Command<any>): any {
+                    execute(inputs: { [key: string]: any }): Observable<any> {
 
-                        let name = command.inputs['name'];
+                        let name = inputs['name'];
 
-                        return name?.toUpperCase();
+                        return new Observable(ob => {
+                            ob.next(name.toUpperCase());
+                            ob.complete();
+                        });
 
                     },
 
                 }
             ]));
 
-    let support = CommandSupportProviders.get("testService");
+    let result = await CommandSupportProviders
+        .execute<string>(
+            "testService",
+            "test",
+            {"name": "test"})
+        .toPromise();
 
-    let result = support.execute({
-        "id": "test",
-        inputs: {
-            "name": "test"
-        }
-    });
-
-    console.log(JSON.stringify(support.getCommandMetadata("test")))
 
     expect(result).toEqual("TEST")
 })
