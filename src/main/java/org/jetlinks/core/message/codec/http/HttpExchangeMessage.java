@@ -34,8 +34,8 @@ public interface HttpExchangeMessage extends HttpRequestMessage {
      * @param responseHandler 响应处理器
      * @return HttpExchangeMessage
      */
-    default HttpExchangeMessage create(HttpRequestMessage request,
-                                       Function<HttpResponseMessage, Mono<Void>> responseHandler) {
+    static HttpExchangeMessage create(HttpRequestMessage request,
+                                      Function<HttpResponseMessage, Mono<Void>> responseHandler) {
         return new SimpleHttpExchangeMessage(request, responseHandler);
     }
 
