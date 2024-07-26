@@ -32,6 +32,11 @@ class SimpleHttpExchangeMessage implements HttpExchangeMessage {
     }
 
     @Nonnull
+    public String getPath() {
+        return request.getPath();
+    }
+
+    @Nonnull
     @Override
     public String getUrl() {
         return request.getUrl();
