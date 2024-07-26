@@ -6,6 +6,7 @@ import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.util.Optional;
+import java.util.function.Function;
 
 
 /**
@@ -25,6 +26,18 @@ import java.util.Optional;
  * @since 1.0.2
  */
 public interface HttpExchangeMessage extends HttpRequestMessage {
+
+    /**
+     * 创建一个HttpExchangeMessage,当请求体读取完成时,会调用responseHandler进行响应.
+     *
+     * @param request         请求
+     * @param responseHandler 响应处理器
+     * @return HttpExchangeMessage
+     */
+    default HttpExchangeMessage create(HttpRequestMessage request,
+                                       Function<HttpResponseMessage, Mono<Void>> responseHandler) {
+        return new SimpleHttpExchangeMessage(request, responseHandler);
+    }
 
     /**
      * 异步获取请求体内容. 大部分场景都需要对http请求进行合法性校验.
@@ -54,7 +67,7 @@ public interface HttpExchangeMessage extends HttpRequestMessage {
      */
     default Mono<MultiPart> multiPartAsync() {
         return payload()
-                .then(Mono.defer(() -> Mono.justOrEmpty(HttpRequestMessage.super.multiPart())));
+            .then(Mono.defer(() -> Mono.justOrEmpty(HttpRequestMessage.super.multiPart())));
     }
 
     /**
@@ -85,12 +98,12 @@ public interface HttpExchangeMessage extends HttpRequestMessage {
 
     default Mono<Void> ok(@Nonnull String message) {
         return response(
-                SimpleHttpResponseMessage
-                        .builder()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .status(200)
-                        .body(message)
-                        .build()
+            SimpleHttpResponseMessage
+                .builder()
+                .contentType(MediaType.APPLICATION_JSON)
+                .status(200)
+                .body(message)
+                .build()
         );
     }
 
