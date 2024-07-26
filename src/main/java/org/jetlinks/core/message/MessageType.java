@@ -12,6 +12,8 @@ import org.jetlinks.core.message.function.DefaultFunctionInvokeMessage;
 import org.jetlinks.core.message.function.DefaultFunctionInvokeMessageReply;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
+import org.jetlinks.core.message.module.DefaultThingModuleMessage;
+import org.jetlinks.core.message.module.DeviceModuleMessage;
 import org.jetlinks.core.message.property.*;
 import org.jetlinks.core.message.state.DeviceStateCheckMessage;
 import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
@@ -117,6 +119,7 @@ public enum MessageType {
     WRITE_COLLECTOR_DATA_REPLY(WriteCollectorDataMessageReply::new),
 
     BATCH(BatchMessage::new),
+    MODULE(DeviceModuleMessage::new, DefaultThingModuleMessage::new),
     //未知消息
     UNKNOWN(null) {
         @Override

@@ -1,6 +1,7 @@
 package org.jetlinks.core.command;
 
 import org.jetlinks.core.metadata.FunctionMetadata;
+import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -14,12 +15,12 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     protected final Map<Object, CommandHandler<Command<?>, ?>> handlers = new ConcurrentHashMap<>();
 
     @SuppressWarnings("all")
-    protected final <C extends Command<R>, R> void registerHandler(CommandHandler<C, R> handler) {
+    protected <C extends Command<R>, R> void registerHandler(CommandHandler<C, R> handler) {
         registerHandler(handler.createCommand().getCommandId(), handler);
     }
 
     @SuppressWarnings("unchecked")
-    protected final <C extends Command<R>, R> void registerHandler(Class<C> type,
+    protected <C extends Command<R>, R> void registerHandler(Class<C> type,
                                                                    CommandHandler<C, R> handler) {
         FunctionMetadata metadata = handler.getMetadata();
 
@@ -31,7 +32,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     }
 
     @SuppressWarnings("all")
-    protected final <C extends Command<R>, R> void registerHandler(String id,
+    protected <C extends Command<R>, R> void registerHandler(String id,
                                                                    CommandHandler<C, R> handler) {
         handlers.put(id, (CommandHandler<Command<?>, ?>) handler);
     }
@@ -70,7 +71,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     }
 
     @Override
-    public final Flux<FunctionMetadata> getCommandMetadata() {
+    public Flux<FunctionMetadata> getCommandMetadata() {
         return Flux
             .fromIterable(handlers.values())
             .distinct()
@@ -78,7 +79,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     }
 
     @Override
-    public final Mono<FunctionMetadata> getCommandMetadata(String commandId) {
+    public Mono<FunctionMetadata> getCommandMetadata(String commandId) {
         return Mono.justOrEmpty(getRegisteredMetadata(commandId));
     }
 
@@ -90,18 +91,23 @@ public abstract class AbstractCommandSupport implements CommandSupport {
         return Optional.empty();
     }
 
+    @Override
+    public Mono<Boolean> commandIsSupported(String commandId) {
+        return commandIsSupported0(commandId) ? Reactors.ALWAYS_TRUE : Reactors.ALWAYS_FALSE;
+    }
+
     boolean commandIsSupported0(String commandId) {
         return handlers.containsKey(commandId);
     }
 
 
     protected <R, C extends Command<R>> C createUndefinedCommand(String commandId) {
-        throw new CommandException(this, null, "error.unsupported_create_command", null, commandId);
+        throw new CommandException.NoStackTrace(this, null, "error.unsupported_create_command", null, commandId);
     }
 
     @SuppressWarnings("all")
     protected <R> R executeUndefinedCommand(@Nonnull Command<R> command) {
-        CommandException error = new CommandException(
+        CommandException error = new CommandException.NoStackTrace(
             this,
             command,
             "error.unsupported_execute_command",

@@ -44,4 +44,9 @@ public class Slf4jLogger implements Logger {
                 return;
         }
     }
+
+    @Override
+    public org.slf4j.Logger slf4j() {
+        return logger;
+    }
 }

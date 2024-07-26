@@ -3,14 +3,17 @@ import {java} from "java";
 
 declare module io.netty.buffer {
 
-    class Unpooled {
+    class Unpooled extends java.lang.Object{
+        private static prototype: any;
 
         static buffer(): ByteBuf;
+
         // @ts-ignore
         static wrappedBuffer(byteArray: byte[]): ByteBuf;
     }
 
-    class ByteBuf {
+    class ByteBuf extends java.lang.Object {
+        private static prototype: any;
 
         /**
          * 当前读到的索引
@@ -432,4 +435,24 @@ declare module io.netty.buffer {
         writeDoubleLE(value: double): ByteBuf;
     }
 
+    class ByteBufUtil extends java.lang.Object{
+        private static prototype: any;
+        /**
+         * 解码16进制字符串为字节数组
+         * @param str 字符串
+         */
+        // @ts-ignore
+        static decodeHexDump(str: string): byte[];
+
+        /**
+         * 解码16进制字符串为字节数组
+         * @param str 字符串
+         * @param fromIndex 从指定的下标开始
+         * @param length 字符串长度
+         */
+        // @ts-ignore
+        static decodeHexDump(str: string, fromIndex: int, length: int): byte[];
+
+
+    }
 }

@@ -1,11 +1,43 @@
 declare module java.lang {
+
+    // @ts-ignore
+    class Object extends Function{
+
+        private static arguments: any;
+        private static caller: any;
+        private static length: any;
+        private static prototype: any;
+        private static name: any;
+
+        private static toString(): string;
+
+        private static apply<T>(this: new () => T, thisArg: T): void;
+        private static apply<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, args: A): void;
+
+        private static call<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, ...args: A): void;
+
+        private static bind<T>(this: T, thisArg: any): T;
+        private static bind<A extends any[], B extends any[], R>(this: new (...args: [...A, ...B]) => R, thisArg: any, ...args: A): new (...args: B) => R;
+
+    }
+
+    // @ts-ignore
     class JavaNumber extends Number {
 
-        private readonly NaN: number;
+        private static arguments: any;
+        private static caller: any;
+        private static length: any;
+        private static prototype: any;
+        private static name: any;
 
-        private readonly NEGATIVE_INFINITY: number;
+        private static EPSILON: number;
+        private static MAX_SAFE_INTEGER:number;
+        private static MIN_SAFE_INTEGER:number;
 
-        private readonly POSITIVE_INFINITY: number;
+        private static NaN:number;
+        private static NEGATIVE_INFINITY: number;
+
+        private static POSITIVE_INFINITY: number;
 
         /**
          * 获取基本类型 byte 表示的值。
@@ -48,65 +80,82 @@ declare module java.lang {
          * @returns {double} - 基本类型 double 表示的值。
          */
         doubleValue(): double;
+
+        private static apply<T>(this: new () => T, thisArg: T): void;
+        private static apply<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, args: A): void;
+
+        private static call<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, ...args: A): void;
+
+        private static bind<T>(this: T, thisArg: any): T;
+        private static bind<A extends any[], B extends any[], R>(this: new (...args: [...A, ...B]) => R, thisArg: any, ...args: A): new (...args: B) => R;
+
     }
 
-    class Character {
+    class Character extends java.lang.Object {
+        private static prototype: any;
+
         // @ts-ignore
-        public static readonly MAX_VALUE :char;
+        public static readonly MAX_VALUE: char;
         // @ts-ignore
-        public static readonly MIN_VALUE :char;
+        public static readonly MIN_VALUE: char;
     }
 
     // @ts-ignore
     class Byte extends JavaNumber {
+        private static prototype: any;
         // @ts-ignore
-        public static readonly MAX_VALUE :byte;
+        public static readonly MAX_VALUE: byte;
         // @ts-ignore
-        public static readonly MIN_VALUE :byte;
+        public static readonly MIN_VALUE: byte;
     }
 
     // @ts-ignore
     class Short extends JavaNumber {
+        private static prototype: any;
         // @ts-ignore
-        public static readonly MAX_VALUE :short;
+        public static readonly MAX_VALUE: short;
         // @ts-ignore
-        public static readonly MIN_VALUE :short;
+        public static readonly MIN_VALUE: short;
     }
 
     // @ts-ignore
     class Integer extends JavaNumber {
+        private static prototype: any;
         // @ts-ignore
-        public static readonly MAX_VALUE :int;
+        public static readonly MAX_VALUE: int;
         // @ts-ignore
-        public static readonly MIN_VALUE :int;
+        public static readonly MIN_VALUE: int;
     }
 
     // @ts-ignore
     class Long extends JavaNumber {
+        private static prototype: any;
         // @ts-ignore
-        public static MAX_VALUE :long;
+        public static MAX_VALUE: long;
         // @ts-ignore
-        public static MIN_VALUE :long;
+        public static MIN_VALUE: long;
     }
 
     // @ts-ignore
     class Double extends JavaNumber {
+        private static prototype: any;
         // @ts-ignore
-        public static readonly MAX_VALUE :double;
+        public static readonly MAX_VALUE: double;
         // @ts-ignore
-        public static readonly MIN_VALUE :double;
+        public static readonly MIN_VALUE: double;
     }
 
     // @ts-ignore
     class Float extends JavaNumber {
+        private static prototype: any;
         // @ts-ignore
-        public static readonly MAX_VALUE :float;
+        public static readonly MAX_VALUE: float;
         // @ts-ignore
-        public static readonly MIN_VALUE :float;
+        public static readonly MIN_VALUE: float;
     }
 
 
-    interface Iterable<E> {
+    interface Iterable<E> extends java.lang.Object{
 
         forEach(action: (element: E) => void): void;
 
@@ -132,6 +181,7 @@ declare module java.math {
      * 高精度数字类
      */
     class BigDecimal extends java.lang.JavaNumber {
+        private static prototype: any;
 
         /**
          * 创建一个新的BigDecimal
@@ -253,7 +303,7 @@ declare module java.util {
 
     module stream {
 
-        interface Stream<E> {
+        interface Stream<E> extends java.lang.Object{
 
             /**
              * 过滤流中的元素，仅保留满足给定条件的元素。
@@ -366,7 +416,7 @@ declare module java.util {
         /**
          * @see java.stream.Collectors
          */
-        interface Collector<T, A, R> {
+        interface Collector<T, A, R> extends java.lang.Object{
 
             supplier(): () => A;
 
@@ -381,7 +431,7 @@ declare module java.util {
         /**
          * 提供用于收集流元素的静态工具类 Collectors。
          */
-        class Collectors {
+        class Collectors extends java.lang.Object{
 
             /**
              * 创建一个收集器，将流元素收集到列表中。
@@ -430,7 +480,7 @@ declare module java.util {
     }
 
     namespace Map {
-        interface Entry<K, V> {
+        interface Entry<K, V> extends java.lang.Object{
 
             getKey(): K;
 
@@ -441,7 +491,7 @@ declare module java.util {
         }
     }
 
-    export class Map<K, V> {
+    export class Map<K, V> extends java.lang.Object{
 
         /**
          * 根据键获取映射中的值。
@@ -553,6 +603,7 @@ declare module java.util {
         values(): java.util.Collection<V>;
     }
 
+    // @ts-ignore
     export class Collection<E> extends Array<E> implements java.lang.Iterable<E> {
 
         private length: number;
@@ -595,6 +646,25 @@ declare module java.util {
         private reduce(callbackfn: (previousValue: E, currentValue: E, currentIndex: number, array: E[]) => E): E;
 
         private reduceRight(callbackfn: (previousValue: E, currentValue: E, currentIndex: number, array: E[]) => E): E;
+        private static arguments: any;
+        private static caller: any;
+        private static length: any;
+        private static prototype: any;
+        private static name: any;
+
+        private static from(): any;
+        private static isArray(): any;
+        private static of(): any;
+
+        private static toString(): string;
+
+        private static apply<T>(this: new () => T, thisArg: T): void;
+        private static apply<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, args: A): void;
+
+        private static call<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, ...args: A): void;
+
+        private static bind<T>(this: T, thisArg: any): T;
+        private static bind<A extends any[], B extends any[], R>(this: new (...args: [...A, ...B]) => R, thisArg: any, ...args: A): new (...args: B) => R;
 
         /**
          * 返回集合中的元素数量。

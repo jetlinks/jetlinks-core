@@ -21,4 +21,25 @@ public class NumberUtilsTest {
 
         assertEquals(0,NumberUtils.numberOfPlace(new BigDecimal("1.0")));
     }
+
+    @Test
+    public void testScale(){
+       assertEquals(
+           1.232,
+           NumberUtils.convertEffectiveScale(1.23221, 3),
+           0
+       );
+
+        assertEquals(
+            0.00322,
+            NumberUtils.convertEffectiveScale(0.003216, 3),
+            0
+        );
+
+        assertEquals(
+            2.0,
+            NumberUtils.convertEffectiveScale(2.0, 3),
+            0
+        );
+    }
 }

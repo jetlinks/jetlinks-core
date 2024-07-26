@@ -30,6 +30,10 @@ public interface CommandSupport extends Wrapper {
      * @param <R>     结果类型
      * @return 执行结果
      * @see AbstractCommand
+     * @see CommandSupport#executeToFlux(Command)
+     * @see CommandSupport#executeToFlux(String, Map)
+     * @see CommandSupport#executeToMono(String, Map)
+     * @see CommandSupport#executeToMono(Command)
      */
     @Nonnull
     <R> R execute(@Nonnull Command<R> command);
@@ -57,11 +61,12 @@ public interface CommandSupport extends Wrapper {
     }
 
     /**
-     * 执行流式命令
+     * 执行流式命令，通过响应式传递参数，通常用于传递大量数据的场景。
      *
      * @param commandId  命令ID
      * @param parameters 参数
      * @return Flux
+     * @see StreamCommand
      */
     default Flux<Object> executeToFlux(String commandId,
                                        Map<String, Object> parameters,
@@ -112,7 +117,7 @@ public interface CommandSupport extends Wrapper {
      * @see CommandSupport#createCommandAsync(String)
      */
     default <R, C extends Command<R>> C createCommand(String commandId) {
-        throw new CommandException(this, null, "error.unsupported_command", null, commandId);
+        throw new CommandException.NoStackTrace(this, null, "error.unsupported_command", null, commandId);
     }
 
     /**
@@ -156,9 +161,7 @@ public interface CommandSupport extends Wrapper {
      * @return 是否支持
      */
     default Mono<Boolean> commandIsSupported(Command<?> cmd) {
-        return this
-            .getCommandMetadata(cmd.getCommandId())
-            .hasElement();
+        return commandIsSupported(cmd.getCommandId());
     }
 
     /**
@@ -168,9 +171,7 @@ public interface CommandSupport extends Wrapper {
      * @return 是否支持
      */
     default Mono<Boolean> commandIsSupported(Class<? extends Command<?>> cmd) {
-        return this
-            .getCommandMetadata(CommandUtils.getCommandIdByType(cmd))
-            .hasElement();
+        return commandIsSupported(CommandUtils.getCommandIdByType(cmd));
     }
 
     /**

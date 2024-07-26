@@ -2,7 +2,7 @@ package org.jetlinks.core.device;
 
 import reactor.core.publisher.Mono;
 
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 
 /**
  * 设备状态检查器,用于自定义设备状态检查
@@ -18,8 +18,8 @@ public interface DeviceStateChecker {
      * @return 设备状态 {@link DeviceState}
      * @see DeviceState
      */
-    @NotNull
-    Mono<Byte> checkState(@NotNull DeviceOperator device);
+    @Nonnull
+    Mono<Byte> checkState(@Nonnull DeviceOperator device);
 
     /**
      * 排序需要，值越小优先级越高

@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "ES6",
+        "noImplicitAny": false,
+        "noEmitOnError": true,
+        "removeComments": false,
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "outDir": "dist",
+        "esModuleInterop": true,
+        "types": ["node", "jest"],
+        "resolveJsonModule": true,
+        "downlevelIteration": true
+    },
+    "include": [
+        "*.ts",
+        "scripts/**/*",
+        "scripts/*.ts"
+    ],
+    "exclude": ["node_modules", "scripts/**/*.test.ts"]
+}

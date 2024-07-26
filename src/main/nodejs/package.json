@@ -1,0 +1,52 @@
+{
+    "name": "@jetlinks/jetlinks-core",
+    "version": "1.0.1",
+    "description": "JetLinks Core",
+    "main": "index.js",
+    "scripts": {
+        "build": "tsc --build",
+        "test": "jest"
+    },
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jetlinks/jetlinks-core.git"
+    },
+    "exports": {
+        "./Commands": {
+            "types": "./scripts/Commands.ts",
+            "node": "./dist/Commands.js"
+        },
+        "./Metadata": {
+            "types": "./scripts/Metadata.ts",
+            "node": "./dist/Metadata.js"
+        },
+        "./Monitor": {
+            "types": "./scripts/Monitor.ts",
+            "node": "./dist/Monitor.js"
+        }
+    },
+    "keywords": [
+        "JetLinks",
+        "IoT",
+        "IoT",
+        "Platform"
+    ],
+    "author": "zhouhao",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/jetlinks/jetlinks-core/issues"
+    },
+    "homepage": "https://github.com/jetlinks/jetlinks-core#readme",
+    "devDependencies": {
+        "@types/jest": "^29.5.12",
+        "jest": "^29.7.0",
+        "ts-jest": "^29.1.5",
+        "typescript": "^5.5.3"
+    },
+    "dependencies": {
+        "rxjs": "^7.8.1"
+    }
+}

@@ -6,11 +6,12 @@ import org.slf4j.Marker;
 
 @AllArgsConstructor
 class BridgeLoggerSlf4j implements Logger {
+    private final String name;
     private final org.jetlinks.core.monitor.logger.Logger logger;
 
     @Override
     public String getName() {
-        return logger.toString();
+        return name;
     }
 
     @Override

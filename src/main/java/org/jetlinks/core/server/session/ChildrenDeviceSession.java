@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.codec.EncodedMessage;
+import org.jetlinks.core.message.codec.ToDeviceMessageContext;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Mono;
@@ -178,5 +179,10 @@ public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSe
         if (parentChanged != null) {
             parentChanged.accept(old, this.parent);
         }
+    }
+
+    @Override
+    public Mono<Boolean> send(ToDeviceMessageContext context) {
+        return parent.send(context);
     }
 }

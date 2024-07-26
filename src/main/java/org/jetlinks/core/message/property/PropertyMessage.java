@@ -4,6 +4,7 @@ import com.alibaba.fastjson.annotation.JSONField;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.Maps;
 import org.jetlinks.core.metadata.PropertyMetadata;
+import org.jetlinks.core.utils.CompositeMap;
 import org.jetlinks.core.utils.SerializeUtils;
 import org.springframework.util.CollectionUtils;
 
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 定义属性相关消息操作接口
@@ -95,8 +97,8 @@ public interface PropertyMessage extends Externalizable {
      */
     default Optional<Object> getProperty(String property) {
         return Optional
-                .ofNullable(getProperties())
-                .map(props -> props.get(property));
+            .ofNullable(getProperties())
+            .map(props -> props.get(property));
     }
 
     /**
@@ -108,12 +110,12 @@ public interface PropertyMessage extends Externalizable {
      */
     default Optional<Property> getCompleteProperty(String property) {
         return this
-                .getProperty(property)
-                .map(value -> {
-                    long ts = getPropertySourceTime(property).orElse(getTimestamp());
-                    String state = getPropertyState(property).orElse(null);
-                    return SimplePropertyValue.of(property, value, ts, state);
-                });
+            .getProperty(property)
+            .map(value -> {
+                long ts = getPropertySourceTime(property).orElse(getTimestamp());
+                String state = getPropertyState(property).orElse(null);
+                return SimplePropertyValue.of(property, value, ts, state);
+            });
     }
 
     /**
@@ -143,6 +145,31 @@ public interface PropertyMessage extends Externalizable {
 
     PropertyMessage propertyStates(Map<String, String> states);
 
+    /**
+     * 合并属性
+     *
+     * @param properties 属性信息
+     * @return 合并后的消息
+     */
+    default PropertyMessage mergeProperties(Map<String, Object> properties) {
+        synchronized (this) {
+            Map<String, Object> old = getProperties();
+            if (old == null) {
+                return properties(properties);
+            }
+            //直接快速合并
+            if (old instanceof HashMap
+                || old instanceof ConcurrentHashMap
+                || old instanceof TreeMap
+                || old instanceof Hashtable) {
+                old.putAll(properties);
+                return this;
+            }
+            Map<String, Object> copy = new HashMap<>(old);
+            copy.putAll(properties);
+            return properties(copy);
+        }
+    }
 
     @Override
     default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {

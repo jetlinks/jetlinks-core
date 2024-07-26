@@ -24,10 +24,13 @@ public class ServerNode implements Serializable {
 
     private Map<String, Object> tags;
 
+    @Deprecated
     private boolean leader;
 
+    @Deprecated
     private long uptime;
 
+    @Deprecated
     private long lastKeepAlive;
 
     public boolean hasTag(String tag) {

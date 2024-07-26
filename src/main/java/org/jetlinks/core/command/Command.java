@@ -30,6 +30,8 @@ import java.util.Map;
  * @see CommandSupport#createCommand(String)
  * @see AbstractConvertCommand
  * @see StreamCommand
+ * @see CommandUtils
+ * @see CommandMetadataResolver
  * @since 1.2.1
  */
 public interface Command<Response> extends Wrapper, Serializable {

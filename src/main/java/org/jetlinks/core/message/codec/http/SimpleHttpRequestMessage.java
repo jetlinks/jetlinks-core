@@ -60,7 +60,7 @@ public class SimpleHttpRequestMessage implements HttpRequestMessage {
                                       .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1], (a, b) -> String.join(",", a, b)))
                         );
                     }
-                    request.setMethod(HttpMethod.resolve(method));
+                    request.setMethod(HttpMethod.valueOf(method));
                     request.setPath(HttpUtils.getUrlPath(url));
                     request.setUrl(url);
                 },

@@ -10,6 +10,7 @@ public interface PersistentSession extends DeviceSession {
 
     /**
      * @return 会话提供者
+     * @see DeviceSessionProvider
      */
     String getProvider();
 

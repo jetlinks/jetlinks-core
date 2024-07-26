@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.jetlinks.core.config.ConfigKey;
 
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -44,7 +44,7 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
     }
 
     @Override
-    public @NotNull List<PropertyMetadata> getInputs() {
+    public @Nonnull List<PropertyMetadata> getInputs() {
         if (inputs == null) {
             return Collections.emptyList();
         }

@@ -33,39 +33,48 @@ class KeepOnlineDeviceSessionProvider implements DeviceSessionProvider {
         JSONObject data = JSON.parseObject(sessionData, JSONObject.class);
         String deviceId = data.getString("deviceId");
         return registry
-                .getDevice(deviceId)
-                .flatMap(device -> {
-                    String id = data.getString("id");
-                    String transport = data.getString("transport");
-                    long timeout = data.getLongValue("timeout");
-                    long lstTime = data.getLongValue("lstTime");
-                    boolean children = data.getBooleanValue("children");
+            .getDevice(deviceId)
+            .flatMap(device -> {
+                String id = data.getString("id");
+                String transport = data.getString("transport");
+                long timeout = data.getLongValue("timeout");
+                long lstTime = data.getLongValue("lstTime");
+                //子设备
+                boolean children = data.getBooleanValue("children");
 
-                    Mono<DeviceSession> sessionMono = Mono.just(new LostDeviceSession(
-                            id,
-                            device,
-                            Transport.of(transport)));
-                    //子设备会话
-                    if (children) {
-                        sessionMono = device
-                                .getSelfConfig(DeviceConfigKey.parentGatewayId)
-                                .flatMap(registry::getDevice)
-                                .map(parentDevice -> new ChildrenDeviceSession(
-                                        id,
-                                        new LostDeviceSession(id,
-                                                              parentDevice,
-                                                              Transport.of(transport)),
-                                        parentDevice));
-                    }
+                Mono<DeviceSession> sessionMono;
 
-                    return sessionMono
-                            .map(parent -> {
-                                KeepOnlineSession session = new KeepOnlineSession(parent, Duration.ofMillis(timeout));
-                                session.setLastKeepAliveTime(lstTime);
-                                session.setIgnoreParent(data.getBooleanValue("ignoreParent"));
-                                return session;
-                            });
-                });
+                String parentProvider = data.getString("parentProvider");
+                byte[] parent = data.getBytes("parent");
+                //尝试反序列化父设备会话
+                if (parentProvider != null && parent != null) {
+                    sessionMono = Mono
+                        .justOrEmpty(DeviceSessionProvider.lookup(parentProvider))
+                        .flatMap(provider -> provider.deserialize(parent, registry));
+                }
+                //其他会话则认为已丢失
+                else {
+                    sessionMono = Mono.empty();
+                }
+
+                //子设备会话
+                if (children) {
+                    sessionMono = sessionMono
+                        .flatMap(session -> device
+                            .getSelfConfig(DeviceConfigKey.parentGatewayId)
+                            .flatMap(registry::getDevice)
+                            .map(parentDevice -> new ChildrenDeviceSession(id, session, parentDevice)));
+                }
+
+                return sessionMono
+                    .switchIfEmpty(Mono.fromSupplier(() -> new LostDeviceSession(id, device, Transport.of(transport))))
+                    .map(_parent -> {
+                        KeepOnlineSession session = new KeepOnlineSession(_parent, Duration.ofMillis(timeout));
+                        session.setLastKeepAliveTime(lstTime);
+                        session.setIgnoreParent(data.getBooleanValue("ignoreParent"));
+                        return session;
+                    });
+            });
     }
 
     @Override
@@ -79,6 +88,22 @@ class KeepOnlineDeviceSessionProvider implements DeviceSessionProvider {
         data.put("transport", session.getTransport().getId());
         data.put("ignoreParent", keepOnlineSession.isIgnoreParent());
         data.put("children", session.isWrapFrom(ChildrenDeviceSession.class));
+        DeviceSession parent = keepOnlineSession.getParent();
+
+        //父设备会话也是可序列化的
+        if (parent.isWrapFrom(PersistentSession.class)) {
+            PersistentSession persistentSession = parent.unwrap(PersistentSession.class);
+            return Mono
+                .justOrEmpty(DeviceSessionProvider.lookup(persistentSession.getProvider()))
+                .flatMap(provider -> provider
+                    .serialize(persistentSession, registry)
+                    .doOnNext(bytes -> {
+                        data.put("parentProvider", provider.getId());
+                        data.put("parent", bytes);
+                    }))
+                .then(Mono.fromCallable(() -> JSON.toJSONBytes(data)));
+        }
+
         return Mono.just(JSON.toJSONBytes(data));
     }
 }

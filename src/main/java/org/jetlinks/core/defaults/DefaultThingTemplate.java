@@ -39,7 +39,7 @@ class DefaultThingTemplate implements ThingTemplate, StorageConfigurable {
                 .getConfig(ThingsConfigKeys.lastMetadataTimeKey)
                 .flatMap(i -> {
                     //如果时间一致,则直接返回物模型缓存.
-                    if (i.equals(lastMetadataTime) && metadataCache != null) {
+                    if (i.equals(lastMetadataTime) && i != -1 && metadataCache != null) {
                         return Mono.just(metadataCache);
                     }
                     lastMetadataTime = i;

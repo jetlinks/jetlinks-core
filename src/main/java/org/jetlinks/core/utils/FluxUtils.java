@@ -1,6 +1,9 @@
 package org.jetlinks.core.utils;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Expiry;
+import lombok.NonNull;
+import org.checkerframework.checker.index.qual.NonNegative;
 import org.reactivestreams.Subscription;
 import reactor.core.Disposable;
 import reactor.core.publisher.BaseSubscriber;
@@ -41,7 +44,25 @@ public class FluxUtils {
                           () -> Caffeine
                                   .newBuilder()
                                   //有效期内去重
-                                  .expireAfterWrite(duration)
+                                  .expireAfter(new Expiry<Object, Object>() {
+                                      @Override
+                                      public long expireAfterCreate(@NonNull Object key, @NonNull Object value, long currentTime) {
+                                          //创建后设置有效期
+                                          return duration.toNanos();
+                                      }
+
+                                      @Override
+                                      public long expireAfterUpdate(@NonNull Object key, @NonNull Object value, long currentTime, @NonNegative long currentDuration) {
+                                          //不修改有效期
+                                          return currentDuration;
+                                      }
+
+                                      @Override
+                                      public long expireAfterRead(@NonNull Object key, @NonNull Object value, long currentTime, @NonNegative long currentDuration) {
+                                          //不修改有效期
+                                          return currentDuration;
+                                      }
+                                  })
                                   .build()
                                   .asMap(),
                           (cache, id) -> cache.put(id, 1) == null,

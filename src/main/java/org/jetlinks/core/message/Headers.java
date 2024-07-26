@@ -121,6 +121,14 @@ public interface Headers {
     HeaderKey<Boolean> ignoreSession = HeaderKey.of("ignoreSession", false, Boolean.class);
 
     /**
+     * 当设备已经离线时，忽略离线消息。
+     *
+     * @see DeviceOfflineMessage
+     * @since 1.2.2
+     */
+    HeaderKey<Boolean> ignoreIfOffline = HeaderKey.of("ignoreIfOffline", false, Boolean.class);
+
+    /**
      * 产品ID
      */
     HeaderKey<String> productId = HeaderKey.of("productId", null, String.class);

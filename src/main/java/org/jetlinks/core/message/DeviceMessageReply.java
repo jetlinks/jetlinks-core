@@ -2,8 +2,8 @@ package org.jetlinks.core.message;
 
 import org.jetlinks.core.enums.ErrorCode;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.validation.constraints.NotNull;
 
 
 /**
@@ -38,23 +38,23 @@ public interface DeviceMessageReply extends DeviceMessage, ThingMessageReply {
     DeviceMessageReply success();
 
     //设置业务码
-    DeviceMessageReply code(@NotNull String code);
+    DeviceMessageReply code(@Nonnull String code);
 
     //设置消息
-    DeviceMessageReply message(@NotNull String message);
+    DeviceMessageReply message(@Nonnull String message);
 
     //根据另外的消息填充对应属性
-    DeviceMessageReply from(@NotNull Message message);
+    DeviceMessageReply from(@Nonnull Message message);
 
     //设置消息ID
-    DeviceMessageReply messageId(@NotNull String messageId);
+    DeviceMessageReply messageId(@Nonnull String messageId);
 
     @Override
     DeviceMessageReply timestamp(long timestamp);
 
     //添加头
     @Override
-    DeviceMessageReply addHeader(@NotNull String header, @NotNull Object value);
+    DeviceMessageReply addHeader(@Nonnull String header, @Nonnull Object value);
 
     @Override
     default DeviceMessageReply thingId(String type, String thingId) {
@@ -63,7 +63,7 @@ public interface DeviceMessageReply extends DeviceMessage, ThingMessageReply {
     }
 
     @Override
-    default <T> DeviceMessageReply addHeader(@NotNull HeaderKey<T> header, @NotNull T value) {
+    default <T> DeviceMessageReply addHeader(@Nonnull HeaderKey<T> header, @Nonnull T value) {
         addHeader(header.getKey(), value);
         return this;
     }

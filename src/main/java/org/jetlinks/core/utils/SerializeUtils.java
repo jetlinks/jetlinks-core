@@ -1,6 +1,5 @@
 package org.jetlinks.core.utils;
 
-import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -20,6 +19,7 @@ import org.jetlinks.core.metadata.Jsonable;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.ConcurrentReferenceHashMap;
 
 import java.io.Externalizable;
@@ -93,7 +93,8 @@ public class SerializeUtils {
         }
 
         if (value instanceof Jsonable) {
-            return ((Jsonable) value).toJson();
+            Map<?, ?> m = Maps.transformValues(((Jsonable) value).toJson(), val -> convertToSafelySerializable(val, copy));
+            return copy ? new HashMap<>(m) : m;
         }
 
         if (value instanceof Map) {
@@ -135,13 +136,13 @@ public class SerializeUtils {
 
         if (clazz.isArray()) {
             Class<?> ctype = clazz.getComponentType();
-            if(ctype.isPrimitive() || safelySerializable.contains(ctype)){
+            if (ctype.isPrimitive() || safelySerializable.contains(ctype)) {
                 return value;
             }
-            int len =  Array.getLength(value);
+            int len = Array.getLength(value);
             Object[] val = new Object[len];
             for (int i = 0; i < len; i++) {
-                val[i] = convertToSafelySerializable(Array.get(value,i), copy);
+                val[i] = convertToSafelySerializable(Array.get(value, i), copy);
             }
             return val;
         }
@@ -283,6 +284,11 @@ public class SerializeUtils {
             if (t.isPrimitive()) {
                 t = Primitives.wrap(t);
             }
+            //不是同一个classLoader.使用json序列化.
+            if (t.getClassLoader() != null && t.getClassLoader() != ClassUtils.getDefaultClassLoader()) {
+                return InternalSerializers.JSON;
+            }
+
             for (Serializer type : all) {
                 if (type == null) {
                     continue;
@@ -830,7 +836,16 @@ public class SerializeUtils {
             @Override
             @SneakyThrows
             void write(Object value, ObjectOutput output) {
-                output.writeUTF(value.getClass().getName());
+                Class<?> clazz = ClassUtils.getUserClass(value);
+                String className;
+                //跨classloader,序列化为Object
+                if (clazz.getClassLoader() != null
+                    && clazz.getClassLoader() != ClassUtils.getDefaultClassLoader()) {
+                    className = Object.class.getName();
+                } else {
+                    className = clazz.getName();
+                }
+                output.writeUTF(className);
                 byte[] jsonBytes = com.alibaba.fastjson.JSON.toJSONBytes(value);
                 output.writeInt(jsonBytes.length);
                 output.write(jsonBytes);

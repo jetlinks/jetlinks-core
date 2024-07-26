@@ -9,6 +9,7 @@ import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.message.Message;
 import org.jetlinks.core.server.MessageHandler;
+import org.jetlinks.core.utils.Reactors;
 import org.reactivestreams.Publisher;
 import org.springframework.util.StringUtils;
 import reactor.core.Disposable;
@@ -16,8 +17,10 @@ import reactor.core.publisher.*;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -30,14 +33,15 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
 
     private final Map<String, AtomicInteger> partCache = new ConcurrentHashMap<>();
 
+    private final List<Function<Message, Mono<Void>>> handlers = new CopyOnWriteArrayList<>();
+
     @Setter
-    private ReplyFailureHandler replyFailureHandler = (error, message) -> StandaloneDeviceMessageBroker.log.warn("unhandled reply message:{}", message, error);
+    private ReplyFailureHandler replyFailureHandler = (error, message) -> StandaloneDeviceMessageBroker.log.info("unhandled reply message:{}", message, error);
 
     private Function<Publisher<String>, Flux<DeviceStateInfo>> stateHandler;
 
     public StandaloneDeviceMessageBroker() {
         this(Sinks.many().multicast().onBackpressureBuffer());
-
     }
 
     public StandaloneDeviceMessageBroker(Sinks.Many<Message> processor) {
@@ -53,6 +57,12 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
     public Disposable handleGetDeviceState(String serverId, Function<Publisher<String>, Flux<DeviceStateInfo>> stateMapper) {
         this.stateHandler = stateMapper;
         return () -> this.stateHandler = null;
+    }
+
+    @Override
+    public Disposable handleSendToDeviceMessage(String serverId, Function<Message, Mono<Void>> handler) {
+        handlers.add(handler);
+        return () -> handlers.remove(handler);
     }
 
     @Override
@@ -97,7 +107,9 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
             Sinks.EmitResult result = processor.tryEmitNext(message);
             if (result.isFailure()) {
                 replyProcessor.remove(messageId);
-                replyFailureHandler.handle(new NullPointerException("no reply handler " + result.name()), message);
+                replyFailureHandler.handle(new DeviceOperationException.NoStackTrace(
+                    ErrorCode.SYSTEM_ERROR,
+                    "no reply handler " + result.name()), message);
                 return Mono.just(false);
             }
             processor.tryEmitComplete();
@@ -109,26 +121,49 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
     public Flux<DeviceMessageReply> handleReply(String deviceId, String messageId, Duration timeout) {
 
         return replyProcessor
-                .computeIfAbsent(messageId, ignore -> Sinks.many().multicast().onBackpressureBuffer())
-                .asFlux()
-                .as(flux -> {
-                    if (timeout.isZero()) {
-                        return flux;
-                    }
-                    return flux.timeout(timeout, Mono.error(() -> new DeviceOperationException(ErrorCode.TIME_OUT)));
-                })
-                .doFinally(signal -> replyProcessor.remove(messageId));
+            .computeIfAbsent(messageId, ignore -> Sinks.many().multicast().onBackpressureBuffer())
+            .asFlux()
+            .as(flux -> {
+                if (timeout.isZero()) {
+                    return flux;
+                }
+                return flux.timeout(timeout, Mono.error(() -> new DeviceOperationException(ErrorCode.TIME_OUT)));
+            })
+            .doFinally(signal -> replyProcessor.remove(messageId));
     }
 
     @Override
     public Mono<Integer> send(String serverId, Publisher<? extends Message> message) {
-        if (messageEmitterProcessor.currentSubscriberCount() == 0) {
-            return Mono.just(0);
+        if (messageEmitterProcessor.currentSubscriberCount() == 0 && handlers.isEmpty()) {
+            return Reactors.ALWAYS_ZERO;
         }
 
-        return Flux.from(message)
-                   .doOnNext(messageEmitterProcessor::tryEmitNext)
-                   .then(Mono.just(Long.valueOf(messageEmitterProcessor.currentSubscriberCount()).intValue()));
+        return Flux
+            .from(message)
+            .flatMap(this::send)
+            .then(Reactors.ALWAYS_ONE);
+    }
+
+    private Mono<Void> send(Message msg) {
+
+        if (messageEmitterProcessor.currentSubscriberCount() > 0) {
+            messageEmitterProcessor.emitNext(msg, Reactors.emitFailureHandler());
+        }
+
+        int size = handlers.size();
+
+        if (size == 0) {
+            return Mono.empty();
+        }
+
+        if (size == 1) {
+            return handlers.get(0).apply(msg);
+        }
+
+        return Flux
+            .fromIterable(handlers)
+            .flatMap(handler -> handler.apply(msg))
+            .then();
     }
 
     @Override
