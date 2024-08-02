@@ -154,7 +154,7 @@ public class CommandUtils {
      * @return 转换后的数据
      */
     public static Object convertData(ResolvableType type, Object value) {
-        if (type.isInstance(value)) {
+        if (type.isInstance(value) || value == null || type.toClass() == Void.class) {
             return value;
         }
         ResolvableType[] genType = type.getGenerics();
