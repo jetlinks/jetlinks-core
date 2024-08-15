@@ -1,6 +1,7 @@
 package org.jetlinks.core.message;
 
 import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.utils.SerializeUtils;
 
 import javax.annotation.Nonnull;
@@ -25,8 +26,8 @@ public interface ThingMessageReply extends ThingMessage {
     //设置失败
     default ThingMessageReply error(String errorCode, String msg) {
         return success(false)
-                .code(errorCode)
-                .message(msg);
+            .code(errorCode)
+            .message(msg);
     }
 
     //设置失败
@@ -87,5 +88,18 @@ public interface ThingMessageReply extends ThingMessage {
         this.success(in.readBoolean());
         this.code(SerializeUtils.readNullableUTF(in));
         this.message(SerializeUtils.readNullableUTF(in));
+    }
+
+    /**
+     * 断言请求是否成功,如果失败则抛出异常
+     *
+     * @throws DeviceOperationException error
+     * @since 1.2.2
+     */
+    default void assertSuccess() throws DeviceOperationException {
+        if (!isSuccess()) {
+            throw new DeviceOperationException
+                .NoStackTrace(ErrorCode.of(getCode()).orElse(ErrorCode.UNKNOWN), getMessage());
+        }
     }
 }
