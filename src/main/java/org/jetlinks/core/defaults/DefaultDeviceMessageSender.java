@@ -111,16 +111,18 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
             DeviceMessageReply reply = ((DeviceMessageReply) obj);
             if (!reply.isSuccess()) {
                 //如果是可识别的错误则直接抛出异常
-                ErrorCode.of(reply.getCode())
-                         .map(code -> {
-                             String msg = reply.getHeader("errorMessage")
-                                               .map(String::valueOf)
-                                               .orElse(code.getText());
-                             return new DeviceOperationException(code, msg);
-                         })
-                         .ifPresent(err -> {
-                             throw err;
-                         });
+                ErrorCode
+                    .of(reply.getCode())
+                    .map(code -> {
+                        String msg = reply
+                            .getHeader("errorMessage")
+                            .map(String::valueOf)
+                            .orElse(code.getText());
+                        return new DeviceOperationException(code, msg);
+                    })
+                    .ifPresent(err -> {
+                        throw err;
+                    });
             }
             result = reply;
         } else if (obj instanceof DeviceMessage) {
@@ -129,7 +131,9 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
             result = (DeviceMessage) MessageType.convertMessage(((Map) obj)).orElse(null);
         }
         if (result == null) {
-            throw new DeviceOperationException(ErrorCode.SYSTEM_ERROR, new ClassCastException("can not cast " + obj + " to DeviceMessageReply"));
+            throw new DeviceOperationException.NoStackTrace(
+                ErrorCode.SYSTEM_ERROR,
+                new ClassCastException("can not cast " + obj + " to DeviceMessageReply"));
         }
         return (T) result;
     }
@@ -195,14 +199,14 @@ public class DefaultDeviceMessageSender implements DeviceMessageSender {
         if (parentId.equals(operator.getDeviceId())) {
             return Flux
                 .error(
-                    new DeviceOperationException(ErrorCode.CYCLIC_DEPENDENCE, "validation.parent_id_and_id_can_not_be_same")
+                    new DeviceOperationException.NoStackTrace(ErrorCode.CYCLIC_DEPENDENCE, "validation.parent_id_and_id_can_not_be_same")
                 );
         }
 
         ChildDeviceMessage children = createChildDeviceMessage(parentId, message);
         return registry
             .getDevice(parentId)
-            .switchIfEmpty(Mono.error(() -> new DeviceOperationException(ErrorCode.UNKNOWN_PARENT_DEVICE)))
+            .switchIfEmpty(Mono.error(() -> new DeviceOperationException.NoStackTrace(ErrorCode.UNKNOWN_PARENT_DEVICE)))
             .flatMapMany(parent -> parent
                 .messageSender()
                 .send(Mono.just(children), resp -> this.convertReply(message, resp)))

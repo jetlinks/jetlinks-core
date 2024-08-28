@@ -1,5 +1,6 @@
 package org.jetlinks.core.message;
 
+import org.hswebframework.web.exception.ValidationException;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.utils.SerializeUtils;
@@ -34,7 +35,13 @@ public interface ThingMessageReply extends ThingMessage {
     ThingMessageReply error(ErrorCode errorCode);
 
     //设置失败
-    ThingMessageReply error(Throwable err);
+    default ThingMessageReply error(Throwable e) {
+        return success(false)
+            .error(ErrorCode.of(e))
+            .message(e.getMessage())
+            .addHeader("errorType", e.getClass().getName())
+            .addHeader("errorMessage", e.getMessage());
+    }
 
     //设置物类型和物ID
     ThingMessageReply thingId(String type, String thingId);

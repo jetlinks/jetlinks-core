@@ -29,7 +29,10 @@ public interface DeviceMessageReply extends DeviceMessage, ThingMessageReply {
     DeviceMessageReply error(ErrorCode errorCode);
 
     //设置失败
-    DeviceMessageReply error(Throwable err);
+    default DeviceMessageReply error(Throwable err) {
+        ThingMessageReply.super.error(err);
+        return this;
+    }
 
     //设置设备ID
     DeviceMessageReply deviceId(String deviceId);
