@@ -219,13 +219,6 @@ public class CommandUtils {
             return metadata;
         }
 
-        Map<String, Object> expands = metadata.getExpands() == null ? new HashMap<>() : metadata.getExpands();
-        if (commandResponseFlux(command)) {
-            expands.put(CommandConstant.responseFlux.getKey(), true);
-        } else {
-            expands.put(CommandConstant.responseFlux.getKey(), false);
-        }
-        metadata.setExpands(expands);
-        return metadata;
+        return metadata.expand(CommandConstant.responseFlux, commandResponseFlux(command));
     }
 }

@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata;
 
+import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.things.ThingMetadata;
 
 import java.util.List;
@@ -54,5 +55,17 @@ public interface DeviceMetadata extends ThingMetadata {
 
     default  <T extends ThingMetadata> DeviceMetadata merge(T metadata, MergeOption... options) {
         throw new UnsupportedOperationException("unsupported merge metadata");
+    }
+
+    @Override
+    default DeviceMetadata expand(String key, Object value) {
+          ThingMetadata.super.expand(key, value);
+          return this;
+    }
+
+    @Override
+    default <T> DeviceMetadata expand(ConfigKey<T> key, T value) {
+          ThingMetadata.super.expand(key, value);
+          return this;
     }
 }

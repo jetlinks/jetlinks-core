@@ -3,6 +3,7 @@ package org.jetlinks.core.metadata;
 import org.jetlinks.core.config.ConfigKey;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -48,15 +49,15 @@ public interface Metadata extends Serializable {
      */
     default Optional<Object> getExpand(String key) {
         return Optional
-                .ofNullable(getExpands())
-                .map(map -> map.get(key));
+            .ofNullable(getExpands())
+            .map(map -> map.get(key));
     }
 
     default <T> Optional<T> getExpand(ConfigKey<T> key) {
         return Optional
-                .ofNullable(getExpands())
-                .map(map -> map.get(key.getKey()))
-                .map(key::convertValue);
+            .ofNullable(getExpands())
+            .map(map -> map.get(key.getKey()))
+            .map(key::convertValue);
     }
 
 
@@ -86,4 +87,34 @@ public interface Metadata extends Serializable {
 
     }
 
+    /**
+     * 设置expand
+     *
+     * @param key   key
+     * @param value value
+     * @return this
+     */
+    default Metadata expand(String key, Object value) {
+        synchronized (this) {
+            Map<String, Object> expands = getExpands();
+            if (expands == null) {
+                expands = new HashMap<>();
+            }
+            expands.put(key, value);
+            setExpands(expands);
+        }
+        return this;
+    }
+
+    /**
+     * 设置expand
+     *
+     * @param key   key
+     * @param value value
+     * @param <T>   T
+     * @return this
+     */
+    default <T> Metadata expand(ConfigKey<T> key, T value) {
+        return expand(key.getKey(), value);
+    }
 }

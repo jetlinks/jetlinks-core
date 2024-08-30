@@ -1,6 +1,7 @@
 package org.jetlinks.core.things;
 
 import com.alibaba.fastjson.JSONObject;
+import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.metadata.*;
 
 import java.util.Collections;
@@ -91,6 +92,18 @@ public interface ThingMetadata extends Metadata, Jsonable {
 
     default <T extends ThingMetadata> ThingMetadata merge(T metadata, MergeOption... options) {
         throw new UnsupportedOperationException("unsupported merge metadata");
+    }
+
+    @Override
+    default ThingMetadata expand(String key, Object value) {
+        Metadata.super.expand(key, value);
+        return this;
+    }
+
+    @Override
+    default <T> ThingMetadata expand(ConfigKey<T> key, T value) {
+        Metadata.super.expand(key, value);
+        return this;
     }
 
     @Override
