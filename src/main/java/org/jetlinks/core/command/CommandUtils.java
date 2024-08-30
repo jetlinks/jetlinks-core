@@ -1,12 +1,14 @@
 package org.jetlinks.core.command;
 
 import org.hswebframework.web.bean.FastBeanCopier;
+import org.jetlinks.core.metadata.FunctionMetadata;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -204,4 +206,21 @@ public class CommandUtils {
         return Mono.class.isAssignableFrom(getCommandResponseType(command).toClass());
     }
 
+    /**
+     * 根据命令返回类型是否为Flux设置扩展标识
+     *
+     * @param command  命令对象
+     * @param metadata 命令参数
+     * @return FunctionMetadata
+     */
+    public static FunctionMetadata setResponseFlagByCommand(Command<?> command, FunctionMetadata metadata) {
+        Map<String, Object> expands = metadata.getExpands() == null ? new HashMap<>() : metadata.getExpands();
+        if (commandResponseFlux(command) && !metadata.getExpand(CommandConstant.responseFlux).isPresent()) {
+            expands.put(CommandConstant.responseFlux.getKey(), true);
+        } else {
+            expands.put(CommandConstant.responseFlux.getKey(), false);
+        }
+        metadata.setExpands(expands);
+        return metadata;
+    }
 }
