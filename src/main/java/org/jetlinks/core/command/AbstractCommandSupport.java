@@ -75,7 +75,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
         return Flux
                 .fromIterable(handlers.values())
                 .distinct()
-                .mapNotNull(handler -> CommandUtils.setResponseFlagByCommand(handler.createCommand(), handler.getMetadata()));
+                .mapNotNull(handler -> CommandUtils.wrapMetadata(handler.createCommand(), handler.getMetadata()));
     }
 
     @Override

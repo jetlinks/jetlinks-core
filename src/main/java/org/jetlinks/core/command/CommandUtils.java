@@ -213,12 +213,17 @@ public class CommandUtils {
      * @param metadata 命令参数
      * @return FunctionMetadata
      */
-    public static FunctionMetadata setResponseFlagByCommand(Command<?> command, FunctionMetadata metadata) {
+    public static FunctionMetadata wrapMetadata(Command<?> command, FunctionMetadata metadata) {
+
+        if (metadata.getExpand(CommandConstant.responseFlux).isPresent()) {
+            return metadata;
+        }
+
         Map<String, Object> expands = metadata.getExpands() == null ? new HashMap<>() : metadata.getExpands();
         if (commandResponseFlux(command)) {
             expands.put(CommandConstant.responseFlux.getKey(), true);
         } else {
-            expands.putIfAbsent(CommandConstant.responseFlux.getKey(), false);
+            expands.put(CommandConstant.responseFlux.getKey(), false);
         }
         metadata.setExpands(expands);
         return metadata;
