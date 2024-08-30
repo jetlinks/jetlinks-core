@@ -215,10 +215,10 @@ public class CommandUtils {
      */
     public static FunctionMetadata setResponseFlagByCommand(Command<?> command, FunctionMetadata metadata) {
         Map<String, Object> expands = metadata.getExpands() == null ? new HashMap<>() : metadata.getExpands();
-        if (commandResponseFlux(command) && !metadata.getExpand(CommandConstant.responseFlux).isPresent()) {
+        if (commandResponseFlux(command)) {
             expands.put(CommandConstant.responseFlux.getKey(), true);
         } else {
-            expands.put(CommandConstant.responseFlux.getKey(), false);
+            expands.putIfAbsent(CommandConstant.responseFlux.getKey(), false);
         }
         metadata.setExpands(expands);
         return metadata;
