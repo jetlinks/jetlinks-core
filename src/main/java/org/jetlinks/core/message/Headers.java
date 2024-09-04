@@ -1,5 +1,7 @@
 package org.jetlinks.core.message;
 
+import org.jetlinks.core.Routable;
+
 import java.util.concurrent.TimeUnit;
 
 public interface Headers {
@@ -177,6 +179,19 @@ public interface Headers {
      * 消息是否支持来自多个接入网关,某些网关会过滤掉不属于自己网关的数据,设置此header为true以忽略过滤.
      */
     HeaderKey<Boolean> multiGateway = HeaderKey.of("multiGateway", false, Boolean.class);
+
+    /**
+     * 声明路由key
+     * <p>
+     * 应用场景:
+     * <ul>
+     *     <li>在集群环境下,相同的key将会被路由到同一个节点.</li>
+     *     <li>{@link org.jetlinks.core.event.EventBus}共享订阅时,相同的key将会被路由到同一个订阅者.</li>
+     * </ul>
+     *
+     * @see Routable#routeKey()
+     */
+    HeaderKey<Object> routeKey = HeaderKey.of("_routeKey", null, Object.class);
 
     /**
      * copy有意义的header到新到消息中,比如标记异步,超时等信息

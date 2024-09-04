@@ -1,5 +1,6 @@
 package org.jetlinks.core.message;
 
+import org.jetlinks.core.Routable;
 import org.jetlinks.core.things.ThingId;
 import org.jetlinks.core.things.ThingType;
 import org.jetlinks.core.utils.SerializeUtils;
@@ -13,7 +14,7 @@ import java.io.ObjectOutput;
  *
  * @since 1.1.9
  */
-public interface ThingMessage extends Message {
+public interface ThingMessage extends Message, Routable {
 
     /**
      * @return 物类型
@@ -93,5 +94,12 @@ public interface ThingMessage extends Message {
         SerializeUtils.writeNullableUTF(getThingId(), out);
         SerializeUtils.writeNullableUTF(getMessageId(), out);
         out.writeLong(getTimestamp());
+    }
+
+    @Override
+    default Object routeKey() {
+        return getHeaderOrElse(
+            Headers.routeKey,
+            this::getThingId);
     }
 }
