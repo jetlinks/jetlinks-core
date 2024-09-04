@@ -75,7 +75,10 @@ public abstract class AbstractCommandSupport implements CommandSupport {
         return Flux
                 .fromIterable(handlers.values())
                 .distinct()
-                .mapNotNull(handler -> CommandUtils.wrapMetadata(handler.createCommand(), handler.getMetadata()));
+                .mapNotNull(handler -> Optional
+                        .ofNullable(handler.getMetadata())
+                        .map(m-> CommandUtils.wrapMetadata(handler.createCommand(), m))
+                        .orElse(null));
     }
 
     @Override
@@ -86,7 +89,9 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     public Optional<FunctionMetadata> getRegisteredMetadata(String commandId) {
         CommandHandler<Command<?>, ?> handler = handlers.get(commandId);
         if (handler != null) {
-            return Optional.ofNullable(handler.getMetadata());
+            return Optional
+                    .ofNullable(handler.getMetadata())
+                    .map(m-> CommandUtils.wrapMetadata(handler.createCommand(), m));
         }
         return Optional.empty();
     }
