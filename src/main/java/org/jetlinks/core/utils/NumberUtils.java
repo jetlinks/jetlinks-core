@@ -43,7 +43,7 @@ public class NumberUtils {
         }
         return new BigDecimal(decimalPart)
             .setScale(n - 1, RoundingMode.HALF_UP)
-            .doubleValue();
+            .doubleValue() + integerPart;
     }
 
     /**
