@@ -60,6 +60,7 @@ class SPIFileQueueBuilder<T> implements FileQueue.Builder<T> {
     }
 
     @Override
+    @Deprecated
     public FileQueue.Builder<T> codec(Codec<T> codec) {
         return builder.codec(codec);
     }
