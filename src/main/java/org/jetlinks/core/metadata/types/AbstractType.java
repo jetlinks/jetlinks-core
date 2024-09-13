@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.config.ConfigKey;
@@ -25,6 +26,7 @@ public abstract class AbstractType<Self extends AbstractType<Self>> implements D
         if (this.expands == null) {
             this.expands = new HashMap<>();
         }
+        this.expands = Maps.newHashMap(this.expands);
         this.expands.putAll(expands);
         return castSelf();
     }
@@ -48,6 +50,7 @@ public abstract class AbstractType<Self extends AbstractType<Self>> implements D
         if (expands == null) {
             expands = new HashMap<>();
         }
+        expands = Maps.newHashMap(expands);
         expands.put(configKey, value);
         return castSelf();
     }

@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata;
 
+import com.google.common.collect.Maps;
 import org.jetlinks.core.config.ConfigKey;
 
 import java.io.Serializable;
@@ -100,6 +101,7 @@ public interface Metadata extends Serializable {
             if (expands == null) {
                 expands = new HashMap<>();
             }
+            expands = Maps.newHashMap(expands);
             expands.put(key, value);
             setExpands(expands);
         }
