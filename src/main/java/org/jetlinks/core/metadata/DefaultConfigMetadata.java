@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata;
 
+import com.google.common.collect.Maps;
 import lombok.*;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigKeyValue;
@@ -9,10 +10,7 @@ import org.springframework.util.StreamUtils;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -159,6 +157,8 @@ public class DefaultConfigMetadata implements ConfigMetadata {
             }
             if (this.expands == null) {
                 this.expands = new HashMap<>();
+            } else if (!(this.expands instanceof HashMap)) {
+                this.expands = Maps.newHashMap(this.expands);
             }
             this.expands.putAll(expands);
             return this;
@@ -181,6 +181,8 @@ public class DefaultConfigMetadata implements ConfigMetadata {
             }
             if (expands == null) {
                 expands = new HashMap<>();
+            } else if (!(this.expands instanceof HashMap)) {
+                this.expands = Maps.newHashMap(this.expands);
             }
             expands.put(configKey, value);
             return this;

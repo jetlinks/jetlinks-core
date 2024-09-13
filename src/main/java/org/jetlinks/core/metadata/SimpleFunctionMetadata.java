@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata;
 
+import com.google.common.collect.Maps;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,6 +39,8 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
     public synchronized SimpleFunctionMetadata expand(String key, Object value) {
         if (expands == null) {
             expands = new HashMap<>();
+        } else if (!(expands instanceof HashMap)) {
+            expands = Maps.newHashMap(expands);
         }
         expands.put(key, value);
         return this;
