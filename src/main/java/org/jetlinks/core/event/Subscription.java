@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.hswebframework.web.dict.Dict;
 import org.hswebframework.web.dict.EnumDict;
+import org.jetlinks.core.Routable;
 import org.jetlinks.core.utils.TopicUtils;
 import org.springframework.util.Assert;
 
@@ -120,7 +121,13 @@ public class Subscription implements Externalizable {
     @Dict("subscription-feature")
     public enum Feature implements EnumDict<String> {
 
-        //如果相同的订阅者,只有一个订阅者收到消息
+        /**
+         * 如果相同的订阅者,只有一个订阅者收到消息.
+         *
+         * @see Routable#routeKey()
+         * @see Feature#sharedOldest
+         * @see Feature#sharedLocalFirst
+         */
         shared("shared"),
         //订阅本地消息
         local("订阅本地消息"),

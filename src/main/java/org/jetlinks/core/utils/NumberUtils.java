@@ -22,15 +22,20 @@ public class NumberUtils {
             return origin;
         }
         // 取整数部分
-        double integerPart = Math.floor(origin);
+        double integerPart;
+        if (origin > 0) {
+            integerPart = Math.floor(origin);
+        } else {
+            integerPart = Math.ceil(origin);
+        }
         // 取小数部分
         double decimalPart = origin - integerPart;
         // 小数部分为0直接返回
         if (decimalPart == 0) {
             return origin;
         }
-        //原始值大于1,不用计算有效精度.
-        if (origin > 1) {
+        //原始值小于-1或者大于1,不用计算有效精度.
+        if (integerPart != 0) {
             return BigDecimal
                 .valueOf(origin)
                 .setScale(scale, RoundingMode.HALF_UP)
@@ -38,8 +43,14 @@ public class NumberUtils {
         }
         int n = scale;
         double temp = decimalPart;
-        for (; temp < 1; n++) {
-            temp *= 10;
+        if (temp < 0) {
+            for (; temp > -1 ; n++) {
+                temp *= 10;
+            }
+        } else {
+            for (;temp < 1 ; n++) {
+                temp *= 10;
+            }
         }
         return new BigDecimal(decimalPart)
             .setScale(n - 1, RoundingMode.HALF_UP)

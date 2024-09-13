@@ -1,5 +1,7 @@
 package org.jetlinks.core.metadata;
 
+import org.jetlinks.core.config.ConfigKey;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
@@ -27,7 +29,19 @@ public interface FunctionMetadata extends Metadata, Jsonable {
      */
     boolean isAsync();
 
-    default FunctionMetadata merge(FunctionMetadata another, MergeOption... option){
+    default FunctionMetadata merge(FunctionMetadata another, MergeOption... option) {
         throw new UnsupportedOperationException("不支持功能物模型合并");
+    }
+
+    @Override
+    default <T> FunctionMetadata expand(ConfigKey<T> key, T value) {
+        Metadata.super.expand(key, value);
+        return this;
+    }
+
+    @Override
+    default FunctionMetadata expand(String key, Object value) {
+        Metadata.super.expand(key, value);
+        return this;
     }
 }

@@ -1,6 +1,7 @@
 package org.jetlinks.core.message;
 
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Maps;
 import lombok.Setter;
 import org.jetlinks.core.utils.SerializeUtils;
 
@@ -9,6 +10,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateTagMessage extends CommonDeviceMessage<UpdateTagMessage> implements UpdateTingTagsMessage {
@@ -21,6 +23,9 @@ public class UpdateTagMessage extends CommonDeviceMessage<UpdateTagMessage> impl
     }
 
     public synchronized UpdateTagMessage tag(String tag, Object value) {
+        if (value == null) {
+            return this;
+        }
         if (tags == null) {
             tags = new ConcurrentHashMap<>();
         }
@@ -33,7 +38,7 @@ public class UpdateTagMessage extends CommonDeviceMessage<UpdateTagMessage> impl
             return this;
         }
         if (this.tags == null) {
-            this.tags = new ConcurrentHashMap<>(tags);
+            this.tags = new ConcurrentHashMap<>(Maps.filterValues(tags, Objects::nonNull));
             return this;
         }
         this.tags.putAll(tags);
@@ -48,18 +53,18 @@ public class UpdateTagMessage extends CommonDeviceMessage<UpdateTagMessage> impl
     @Override
     public void fromJson(JSONObject jsonObject) {
         super.fromJson(jsonObject);
-        this.tags = jsonObject.getJSONObject("tags");
+        tags(jsonObject.getJSONObject("tags"));
     }
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         UpdateTingTagsMessage.super.writeExternal(out);
-        SerializeUtils.writeKeyValue(tags,out);
+        SerializeUtils.writeKeyValue(tags, out);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         UpdateTingTagsMessage.super.readExternal(in);
-        SerializeUtils.readKeyValue(in,this::tag);
+        SerializeUtils.readKeyValue(in, this::tag);
     }
 }

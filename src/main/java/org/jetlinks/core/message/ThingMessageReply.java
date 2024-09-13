@@ -1,6 +1,8 @@
 package org.jetlinks.core.message;
 
+import org.hswebframework.web.exception.ValidationException;
 import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.utils.SerializeUtils;
 
 import javax.annotation.Nonnull;
@@ -25,15 +27,21 @@ public interface ThingMessageReply extends ThingMessage {
     //设置失败
     default ThingMessageReply error(String errorCode, String msg) {
         return success(false)
-                .code(errorCode)
-                .message(msg);
+            .code(errorCode)
+            .message(msg);
     }
 
     //设置失败
     ThingMessageReply error(ErrorCode errorCode);
 
     //设置失败
-    ThingMessageReply error(Throwable err);
+    default ThingMessageReply error(Throwable e) {
+        return success(false)
+            .error(ErrorCode.of(e))
+            .message(e.getMessage())
+            .addHeader("errorType", e.getClass().getName())
+            .addHeader("errorMessage", e.getMessage());
+    }
 
     //设置物类型和物ID
     ThingMessageReply thingId(String type, String thingId);
@@ -87,5 +95,18 @@ public interface ThingMessageReply extends ThingMessage {
         this.success(in.readBoolean());
         this.code(SerializeUtils.readNullableUTF(in));
         this.message(SerializeUtils.readNullableUTF(in));
+    }
+
+    /**
+     * 断言请求是否成功,如果失败则抛出异常
+     *
+     * @throws DeviceOperationException error
+     * @since 1.2.2
+     */
+    default void assertSuccess() throws DeviceOperationException {
+        if (!isSuccess()) {
+            throw new DeviceOperationException
+                .NoStackTrace(ErrorCode.of(getCode()).orElse(ErrorCode.UNKNOWN), getMessage());
+        }
     }
 }

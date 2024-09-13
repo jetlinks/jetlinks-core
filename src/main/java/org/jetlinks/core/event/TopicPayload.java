@@ -6,8 +6,11 @@ import io.netty.buffer.ByteBuf;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.jetlinks.core.NativePayload;
 import org.jetlinks.core.Payload;
+import org.jetlinks.core.Routable;
 import org.jetlinks.core.codec.Decoder;
+import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.utils.TopicUtils;
 
 import javax.annotation.Nonnull;
@@ -17,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Getter
 @AllArgsConstructor(staticName = "of")
 @Slf4j
-public class TopicPayload implements Payload {
+public class TopicPayload implements Payload, Routable {
 
     private String topic;
 
@@ -33,7 +36,7 @@ public class TopicPayload implements Payload {
         return headers != null ? headers : (headers = new ConcurrentHashMap<>());
     }
 
-    public  Map<String, Object> writableHeaders(){
+    public Map<String, Object> writableHeaders() {
         return getOrCreateHeader();
     }
 
@@ -64,12 +67,12 @@ public class TopicPayload implements Payload {
 
     @Override
     public boolean release() {
-       return true;
+        return true;
     }
 
     @Override
     public boolean release(int dec) {
-      return true;
+        return true;
     }
 
     protected boolean handleRelease(boolean success) {
@@ -113,9 +116,9 @@ public class TopicPayload implements Payload {
     @Override
     public String toString() {
         return "{" +
-                "topic='" + topic + '\'' +
-                ", payload=" + payload +
-                '}';
+            "topic='" + topic + '\'' +
+            ", payload=" + payload +
+            '}';
     }
 
     @Override
@@ -170,5 +173,36 @@ public class TopicPayload implements Payload {
 
     public Map<String, String> getTopicVars(String pattern) {
         return TopicUtils.getPathVariables(pattern, getTopic());
+    }
+
+    @Override
+    @SuppressWarnings("all")
+    public long hash(Object... objects) {
+        if (payload instanceof NativePayload) {
+            if (((NativePayload<?>) payload).getNativeObject() instanceof Routable) {
+                return ((Routable) ((NativePayload<?>) payload).getNativeObject()).hash(objects);
+            }
+        }
+        return Routable.super.hash(objects);
+    }
+
+    @SuppressWarnings("all")
+    public void copyRouteKeyToHeader() {
+        if (payload instanceof NativePayload) {
+            if (((NativePayload<?>) payload).getNativeObject() instanceof Routable) {
+                addHeader(Headers.routeKey.getKey(), ((Routable) ((NativePayload<?>) payload).getNativeObject()).routeKey());
+            }
+        }
+    }
+
+    @SuppressWarnings("all")
+    @Override
+    public Object routeKey() {
+        if (payload instanceof NativePayload) {
+            if (((NativePayload<?>) payload).getNativeObject() instanceof Routable) {
+                return ((Routable) ((NativePayload<?>) payload).getNativeObject()).routeKey();
+            }
+        }
+        return headers.get(Headers.routeKey.getKey());
     }
 }

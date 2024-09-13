@@ -7,7 +7,6 @@ import lombok.*;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.GenericHeaderSupport;
 import org.jetlinks.core.enums.ErrorCode;
-import org.jetlinks.core.exception.DeviceOperationException;
 
 /**
  * @author zhouhao
@@ -79,16 +78,7 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
     }
 
     public Self error(Throwable e) {
-        success = false;
-        if (e instanceof DeviceOperationException) {
-            error(((DeviceOperationException) e).getCode());
-        } else {
-            error(ErrorCode.SYSTEM_ERROR);
-        }
-        setMessage(e.getMessage());
-        addHeader("errorType", e.getClass().getName());
-        addHeader("errorMessage", e.getMessage());
-
+        DeviceMessageReply.super.error(e);
         return (castSelf());
     }
 
@@ -102,7 +92,6 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
         success = false;
         code = errorCode;
         message = msg;
-        timestamp = System.currentTimeMillis();
         return castSelf();
     }
 

@@ -29,40 +29,40 @@ public class CompositeThingMetadata implements ThingMetadata {
     public List<PropertyMetadata> getProperties() {
 
         return new CompositeList<>(
-                left.getProperties(),
-                new ArrayList<>(Collections2.filter(
-                        right.getProperties(),
-                        prop -> left.getPropertyOrNull(prop.getId()) == null))
+            left.getProperties(),
+            new ArrayList<>(Collections2.filter(
+                right.getProperties(),
+                prop -> left.getPropertyOrNull(prop.getId()) == null))
         );
     }
 
     @Override
     public List<FunctionMetadata> getFunctions() {
         return new CompositeList<>(
-                left.getFunctions(),
-                new ArrayList<>(Collections2.filter(
-                        right.getFunctions(),
-                        prop -> left.getFunctionOrNull(prop.getId()) == null))
+            left.getFunctions(),
+            new ArrayList<>(Collections2.filter(
+                right.getFunctions(),
+                prop -> left.getFunctionOrNull(prop.getId()) == null))
         );
     }
 
     @Override
     public List<EventMetadata> getEvents() {
         return new CompositeList<>(
-                left.getEvents(),
-                new ArrayList<>(Collections2.filter(
-                        right.getEvents(),
-                        prop -> left.getEventOrNull(prop.getId()) == null))
+            left.getEvents(),
+            new ArrayList<>(Collections2.filter(
+                right.getEvents(),
+                prop -> left.getEventOrNull(prop.getId()) == null))
         );
     }
 
     @Override
     public List<PropertyMetadata> getTags() {
         return new CompositeList<>(
-                left.getTags(),
-                new ArrayList<>(Collections2.filter(
-                        right.getTags(),
-                        prop -> left.getTagOrNull(prop.getId()) == null))
+            left.getTags(),
+            new ArrayList<>(Collections2.filter(
+                right.getTags(),
+                prop -> left.getTagOrNull(prop.getId()) == null))
         );
     }
 

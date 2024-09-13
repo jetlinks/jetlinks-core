@@ -3,6 +3,7 @@ package org.jetlinks.core.message.collector;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
+import org.jetlinks.core.message.HeaderKey;
 import org.jetlinks.core.message.MessageType;
 import org.springframework.util.CollectionUtils;
 
@@ -21,6 +22,18 @@ import java.util.List;
 @Getter
 @Setter
 public final class ReportCollectorDataMessage extends CommonDeviceMessage<ReportCollectorDataMessage> {
+
+    /**
+     * 采集器地址信息,通过在消息头中设置此信息,可以指定数据来源地址,如: /modbus/1/0/1.
+     *
+     * <pre>{@code
+     *  //当设置了此header为'/modbus/1/0/1'时,平台将推送到以下topic.
+     *  /device/{productId}/{deviceId}/message/collector/report/modbus/1/0/1
+     * }</pre>
+     * <p>
+     * 在平台订阅时,需要指定对应的地址,或者使用/**通配符.
+     */
+    public static final HeaderKey<String> ADDRESS = HeaderKey.of("_address", null, String.class);
 
     /**
      * 数据列表

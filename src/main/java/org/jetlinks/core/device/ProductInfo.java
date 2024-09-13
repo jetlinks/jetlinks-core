@@ -53,9 +53,6 @@ public class ProductInfo implements Serializable {
     }
 
     public ProductInfo addConfig(String key, Object value) {
-        if (StringUtils.isEmpty(value)) {
-            return this;
-        }
         if (configuration == null) {
             configuration = new HashMap<>();
         }

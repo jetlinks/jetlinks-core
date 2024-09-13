@@ -41,5 +41,35 @@ public class NumberUtilsTest {
             NumberUtils.convertEffectiveScale(2.0, 3),
             0
         );
+
+        assertEquals(
+            -2.702,
+            NumberUtils.convertEffectiveScale(-2.70183,3),
+            0
+        );
+
+        assertEquals(
+            -2.312,
+            NumberUtils.convertEffectiveScale(-2.3121,3),
+            0
+        );
+
+        assertEquals(
+            -0.00789,
+            NumberUtils.convertEffectiveScale(-0.007892,3),
+            0
+        );
+
+        assertEquals(
+            -0.00777,
+            NumberUtils.convertEffectiveScale(-0.007769,3),
+            0
+        );
+
+        assertEquals(
+            -0.001,
+            NumberUtils.convertEffectiveScale(-0.001,1),
+            0
+        );
     }
 }
