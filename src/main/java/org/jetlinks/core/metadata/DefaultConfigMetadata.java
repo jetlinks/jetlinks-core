@@ -157,7 +157,7 @@ public class DefaultConfigMetadata implements ConfigMetadata {
             }
             if (this.expands == null) {
                 this.expands = new HashMap<>();
-            } else {
+            } else if (!(this.expands instanceof HashMap)) {
                 this.expands = Maps.newHashMap(this.expands);
             }
             this.expands.putAll(expands);
@@ -181,7 +181,7 @@ public class DefaultConfigMetadata implements ConfigMetadata {
             }
             if (expands == null) {
                 expands = new HashMap<>();
-            } else {
+            } else if (!(this.expands instanceof HashMap)) {
                 this.expands = Maps.newHashMap(this.expands);
             }
             expands.put(configKey, value);

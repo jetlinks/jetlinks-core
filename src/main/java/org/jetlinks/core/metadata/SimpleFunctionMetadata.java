@@ -39,7 +39,7 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
     public synchronized SimpleFunctionMetadata expand(String key, Object value) {
         if (expands == null) {
             expands = new HashMap<>();
-        } else {
+        } else if (!(expands instanceof HashMap)) {
             expands = Maps.newHashMap(expands);
         }
         expands.put(key, value);
