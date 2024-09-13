@@ -100,8 +100,9 @@ public interface Metadata extends Serializable {
             Map<String, Object> expands = getExpands();
             if (expands == null) {
                 expands = new HashMap<>();
+            } else {
+                expands = Maps.newHashMap(expands);
             }
-            expands = Maps.newHashMap(expands);
             expands.put(key, value);
             setExpands(expands);
         }

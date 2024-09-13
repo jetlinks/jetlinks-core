@@ -25,8 +25,9 @@ public abstract class AbstractType<Self extends AbstractType<Self>> implements D
         }
         if (this.expands == null) {
             this.expands = new HashMap<>();
+        } else {
+            this.expands = Maps.newHashMap(this.expands);
         }
-        this.expands = Maps.newHashMap(this.expands);
         this.expands.putAll(expands);
         return castSelf();
     }
@@ -49,8 +50,9 @@ public abstract class AbstractType<Self extends AbstractType<Self>> implements D
         }
         if (expands == null) {
             expands = new HashMap<>();
+        } else {
+            expands = Maps.newHashMap(expands);
         }
-        expands = Maps.newHashMap(expands);
         expands.put(configKey, value);
         return castSelf();
     }
