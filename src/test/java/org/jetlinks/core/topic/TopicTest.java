@@ -260,13 +260,13 @@ public class TopicTest {
             long time = System.currentTimeMillis();
             for (int x = 0; x < 10; x++) {
                 Duration duration =
-                        Flux.range(0, 10000)
-                            .flatMap(i -> root
-                                    .findTopic("/device/1/" + i + "/message/property/read"))
-                            .count()
-                            .as(StepVerifier::create)
-                            .expectNext(10000L)
-                            .verifyComplete();
+                    Flux.range(0, 10000)
+                        .flatMap(i -> root
+                            .findTopic("/device/1/" + i + "/message/property/read"))
+                        .count()
+                        .as(StepVerifier::create)
+                        .expectNext(10000L)
+                        .verifyComplete();
                 log.debug("find 10000 use time:{}ms", duration.toMillis());
             }
             log.debug("find 10*10000 use time:{}ms", System.currentTimeMillis() - time);
@@ -275,35 +275,43 @@ public class TopicTest {
 
         {
             Duration duration = root
-                    .findTopic("/device/1/*/message/property/read")
-                    .map(Topic::getTopic)
-                    .count()
-                    .as(StepVerifier::create)
-                    .expectNext(10000L)
-                    .verifyComplete();
+                .findTopic("/device/1/*/message/property/read")
+                .map(Topic::getTopic)
+                .count()
+                .as(StepVerifier::create)
+                .expectNext(10000L)
+                .verifyComplete();
             log.debug("find device use time:{}ms", duration.toMillis());
         }
         {
             Duration duration =
-                    Flux.range(0, 100000)
-                        .flatMap(ignore -> root
-                                .findTopic("/device/1/2/message/property/read"))
-                        .map(Topic::getTopic)
-                        .count()
-                        .as(StepVerifier::create)
-                        .expectNext(100000L)
-                        .verifyComplete();
+                Flux.range(0, 100000)
+                    .flatMap(ignore -> root
+                        .findTopic("/device/1/2/message/property/read"))
+                    .map(Topic::getTopic)
+                    .count()
+                    .as(StepVerifier::create)
+                    .expectNext(100000L)
+                    .verifyComplete();
             log.debug("find 100000 time:{}ms", duration.toMillis());
         }
         {
             Duration duration = root
-                    .findTopic("/device/**")
-                    .map(Topic::getTopic)
-                    .count()
-                    .as(StepVerifier::create)
-                    .expectNext(root.getTotalTopic())
-                    .verifyComplete();
+                .findTopic("/device/**")
+                .map(Topic::getTopic)
+                .count()
+                .as(StepVerifier::create)
+                .expectNext(root.getTotalTopic())
+                .verifyComplete();
             log.debug("find all use time:{}ms", duration.toMillis());
         }
+
+        root.append("/device/*/*/message/property/read")
+            .subscribe("testId");
+
+        root.cleanup();
+
+        log.debug("topics:{}", root.getTotalTopic());
+
     }
 }

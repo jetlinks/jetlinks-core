@@ -8,6 +8,7 @@ import org.jetlinks.core.utils.RecyclableDequeue;
 import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.StringBuilderUtils;
 import org.jetlinks.core.utils.TopicUtils;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
@@ -94,6 +95,7 @@ public final class Topic<T> {
             });
     }
 
+    @Deprecated
     public T getSubscriberOrSubscribe(Supplier<T> supplier) {
         if (!subscribers().isEmpty()) {
             return subscribers().keySet().iterator().next();
@@ -113,7 +115,7 @@ public final class Topic<T> {
     }
 
     public boolean subscribed(T subscriber) {
-        return subscribers().containsKey(subscriber);
+        return subscribers != null && subscribers().containsKey(subscriber);
     }
 
     @SafeVarargs
@@ -172,7 +174,7 @@ public final class Topic<T> {
         if (child == null) {
             synchronized (this) {
                 if (child == null) {
-                    child = new ConcurrentHashMap<>();
+                    child = new ConcurrentHashMap<>(1);
                 }
             }
         }
@@ -183,7 +185,7 @@ public final class Topic<T> {
         if (subscribers == null) {
             synchronized (this) {
                 if (subscribers == null) {
-                    subscribers = new ConcurrentHashMap<>();
+                    subscribers = new ConcurrentHashMap<>(1);
                 }
             }
         }
@@ -334,7 +336,8 @@ public final class Topic<T> {
     }
 
     public long getTotalTopic() {
-        long total = child == null ? 0 : child().size();
+        Map<?, ?> child = this.child;
+        long total = child == null ? 0 : child.size();
         for (Topic<T> tTopic : getChildren()) {
             total += tTopic.getTotalTopic();
         }
@@ -342,9 +345,10 @@ public final class Topic<T> {
     }
 
     public long getTotalSubscriber() {
-        long total = subscribers == null ? 0 : subscribers().size();
+        Map<?, ?> subscribers = this.subscribers;
+        long total = subscribers == null ? 0 : subscribers.size();
         for (Topic<T> tTopic : getChildren()) {
-            total += tTopic.getTotalTopic();
+            total += tTopic.getTotalSubscriber();
         }
         return total;
     }
@@ -364,6 +368,37 @@ public final class Topic<T> {
             sink.next(tTopic);
             tTopic.walkChildren(sink);
         }
+    }
+
+    //清理无订阅信息的节点
+    public boolean cleanup() {
+        //清理订阅者
+        if (subscribers != null && subscribers.isEmpty()) {
+            synchronized (this) {
+                if (subscribers.isEmpty()) {
+                    subscribers = null;
+                }
+            }
+        }
+        //清理子节点
+        if (child != null) {
+            for (Map.Entry<String, Topic<T>> children : child.entrySet()) {
+                Topic<T> topic = children.getValue();
+                if (topic.cleanup()) {
+                    child.remove(children.getKey());
+                }
+            }
+
+            if (child != null && child.isEmpty()) {
+                synchronized (this) {
+                    if (child.isEmpty()) {
+                        child = null;
+                    }
+                }
+            }
+        }
+        return CollectionUtils.isEmpty(subscribers) &&
+            CollectionUtils.isEmpty(child);
     }
 
     public void clean() {
