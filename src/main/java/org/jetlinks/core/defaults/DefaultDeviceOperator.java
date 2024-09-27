@@ -294,25 +294,40 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                         .map(DeviceStateInfo::getState)
                         .singleOrEmpty()
                         .defaultIfEmpty(state);
+                    
+                    //网关设备ID
+                    String parentGatewayId = values
+                        .getValue(DeviceConfigKey.parentGatewayId)
+                        .orElse(null);
 
-                    //当前缓存中没有server信息?
-                    if (!StringUtils.hasText(server)) {
-                        //网关设备ID
-                        String parentGatewayId = values
-                            .getValue(DeviceConfigKey.parentGatewayId)
-                            .orElse(null);
+                    boolean isSelfManageState = values
+                        .getValue(selfManageState)
+                        .orElse(false);
 
+                    //有网关并且状态自管理
+                    if (StringUtils.hasText(parentGatewayId) && isSelfManageState) {
+                        //防止递归
                         if (getDeviceId().equals(parentGatewayId)) {
                             log.warn(LocaleUtils.resolveMessage("validation.parent_id_and_id_can_not_be_same", parentGatewayId));
                             return Mono.just(state);
                         }
-                        boolean isSelfManageState = values.getValue(selfManageState).orElse(false);
-                        //如果关联了上级网关设备则尝试给网关设备发送指令进行检查
-                        if (StringUtils.hasText(parentGatewayId) && isSelfManageState) {
+                        //当前缓存中没有server信息,则尝试从网关设备获取状态
+                        if (!StringUtils.hasText(server)) {
                             return this
                                 .checkStateFromParent(parentGatewayId, state)
                                 .switchIfEmpty(checker);
                         }
+                        //有serverId，优先获取session状态(更快)。离线时再尝试从网关获取状态.
+                        return checker
+                            .flatMap(_state -> {
+                                //离线?
+                                if (!Objects.equals(_state, DeviceState.online)) {
+                                    return this
+                                        .checkStateFromParent(parentGatewayId, _state)
+                                        .switchIfEmpty(Mono.just(_state));
+                                }
+                                return Mono.just(_state);
+                            });
                     }
 
                     return checker;
