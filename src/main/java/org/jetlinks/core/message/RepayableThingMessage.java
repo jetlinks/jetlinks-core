@@ -21,4 +21,11 @@ public interface RepayableThingMessage<R extends ThingMessageReply> extends Thin
      */
     R newReply();
 
+    /**
+     * 获取回复消息的类型
+     * @return 消息类型
+     */
+    default MessageType getReplyType() {
+        return newReply().getMessageType();
+    }
 }

@@ -105,4 +105,9 @@ public class ChildDeviceMessage extends CommonDeviceMessage<ChildDeviceMessage> 
         this.childDeviceId = SerializeUtils.readNullableUTF(in);
         this.childDeviceMessage = (Message) in.readObject();
     }
+
+    @Override
+    public MessageType getReplyType() {
+        return MessageType.CHILD_REPLY;
+    }
 }

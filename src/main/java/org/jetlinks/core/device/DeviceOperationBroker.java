@@ -2,6 +2,7 @@ package org.jetlinks.core.device;
 
 import org.jetlinks.core.cluster.ServerNode;
 import org.jetlinks.core.message.BroadcastMessage;
+import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.DeviceMessageReply;
 import org.jetlinks.core.message.Message;
 import org.reactivestreams.Publisher;
@@ -39,6 +40,18 @@ public interface DeviceOperationBroker {
      * @return 消息返回
      */
     Flux<DeviceMessageReply> handleReply(String deviceId, String messageId, Duration timeout);
+
+
+    /**
+     * 根据消息ID监听响应
+     *
+     * @param message 消息
+     * @param timeout 超时时间
+     * @return 消息返回
+     */
+    default Flux<DeviceMessageReply> handleReply(DeviceMessage message, Duration timeout) {
+        return handleReply(message.getDeviceId(), message.getMessageId(), timeout);
+    }
 
     /**
      * 发送设备消息到指定到服务

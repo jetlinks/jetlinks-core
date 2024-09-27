@@ -75,6 +75,11 @@ public class UpgradeFirmwareMessage extends CommonDeviceMessage<UpgradeFirmwareM
     }
 
     @Override
+    public MessageType getReplyType() {
+        return MessageType.UPGRADE_FIRMWARE_REPLY;
+    }
+
+    @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         super.writeExternal(out);
         writeNullableUTF(url, out);

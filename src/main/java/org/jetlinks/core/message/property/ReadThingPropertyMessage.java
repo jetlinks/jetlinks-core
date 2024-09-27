@@ -33,6 +33,11 @@ public interface ReadThingPropertyMessage<T extends ReadThingPropertyMessageRepl
         return MessageType.READ_PROPERTY;
     }
 
+    @Override
+    default MessageType getReplyType() {
+        return MessageType.READ_PROPERTY_REPLY;
+    }
+
     static ReadPropertyMessage forDevice(String deviceId) {
         ReadPropertyMessage message = new ReadPropertyMessage();
         message.setDeviceId(deviceId);

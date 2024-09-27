@@ -36,6 +36,11 @@ public final class WriteCollectorDataMessage extends CommonDeviceMessage<WriteCo
     }
 
     @Override
+    public MessageType getReplyType() {
+        return MessageType.WRITE_COLLECTOR_DATA_REPLY;
+    }
+
+    @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         super.writeExternal(out);
 

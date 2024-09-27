@@ -33,6 +33,11 @@ public interface WriteThingPropertyMessage<T extends WriteThingPropertyMessageRe
     }
 
     @Override
+    default MessageType getReplyType() {
+        return MessageType.READ_PROPERTY_REPLY;
+    }
+
+    @Override
     default void writeExternal(ObjectOutput out) throws IOException {
         RepayableThingMessage.super.writeExternal(out);
         SerializeUtils.writeKeyValue(getProperties(), out);

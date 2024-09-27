@@ -20,4 +20,9 @@ public class ReadFirmwareMessage extends CommonDeviceMessage<ReadFirmwareMessage
     public MessageType getMessageType() {
         return MessageType.READ_FIRMWARE;
     }
+
+    @Override
+    public MessageType getReplyType() {
+        return MessageType.READ_FIRMWARE_REPLY;
+    }
 }
