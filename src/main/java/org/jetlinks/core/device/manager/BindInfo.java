@@ -23,13 +23,18 @@ public class BindInfo implements Externalizable {
     public void writeExternal(ObjectOutput out) throws IOException {
         out.writeUTF(key);
         out.writeUTF(deviceId);
-        out.writeUTF(description);
+        out.writeBoolean(description != null);
+        if (description != null) {
+            out.writeUTF(description);
+        }
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         this.key = in.readUTF();
         this.deviceId = in.readUTF();
-        this.description = in.readUTF();
+        if (in.readBoolean()) {
+            this.description = in.readUTF();
+        }
     }
 }
