@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jetlinks.core.utils.SerializeUtils;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -23,18 +24,13 @@ public class BindInfo implements Externalizable {
     public void writeExternal(ObjectOutput out) throws IOException {
         out.writeUTF(key);
         out.writeUTF(deviceId);
-        out.writeBoolean(description != null);
-        if (description != null) {
-            out.writeUTF(description);
-        }
+        SerializeUtils.writeNullableUTF(description,out);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         this.key = in.readUTF();
         this.deviceId = in.readUTF();
-        if (in.readBoolean()) {
-            this.description = in.readUTF();
-        }
+        this.description = SerializeUtils.readNullableUTF(in);
     }
 }
