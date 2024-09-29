@@ -2,6 +2,7 @@ package org.jetlinks.core.event;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.dict.Dict;
 import org.hswebframework.web.dict.EnumDict;
 import org.jetlinks.core.Routable;
@@ -10,10 +11,12 @@ import org.springframework.util.Assert;
 
 import java.io.*;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Getter
+@Slf4j
 public class Subscription implements Externalizable {
     private static final long serialVersionUID = -6849794470754667710L;
 
@@ -30,10 +33,28 @@ public class Subscription implements Externalizable {
 
     private transient Runnable doOnSubscribe;
 
+    private transient Consumer<TopicPayload> onDropped;
+
     //优先级,值越小优先级越高,优先级高的订阅者会先收到消息
     private int priority = Integer.MAX_VALUE;
 
     public Subscription() {
+    }
+
+    public Subscription(String subscriber, String[] topics, Feature[] features, Runnable doOnSubscribe, int priority) {
+        this.subscriber = subscriber;
+        this.topics = topics;
+        this.features = features;
+        this.doOnSubscribe = doOnSubscribe;
+        this.priority = priority;
+    }
+
+    public void dropped(TopicPayload payload) {
+        if (onDropped != null) {
+            onDropped.accept(payload);
+        } else {
+            log.warn("eventbus buffer overflow, drop event:{},subscription:{}", payload.getTopic(), this);
+        }
     }
 
     public static Subscription of(String subscriber, String... topic) {
@@ -66,7 +87,7 @@ public class Subscription implements Externalizable {
     }
 
     public Subscription copy(Feature... newFeatures) {
-        return new Subscription(subscriber, topics, newFeatures, null, priority);
+        return new Subscription(subscriber, topics, newFeatures, null, null, priority);
     }
 
     public Subscription onSubscribe(Runnable sub) {
@@ -167,6 +188,7 @@ public class Subscription implements Externalizable {
         private final Set<Feature> features = new HashSet<>();
 
         private Runnable doOnSubscribe;
+        private Consumer<TopicPayload> onDropped;
         private int priority;
 
         public Builder randomSubscriberId() {
@@ -214,6 +236,15 @@ public class Subscription implements Externalizable {
             return features(Feature.broker);
         }
 
+        public Builder onDropped(Consumer<TopicPayload> consumer) {
+            if (onDropped == null || onDropped == consumer) {
+                onDropped = consumer;
+            } else {
+                onDropped = onDropped.andThen(consumer);
+            }
+            return this;
+        }
+
         public Builder local() {
             return features(Feature.local);
         }
@@ -240,7 +271,13 @@ public class Subscription implements Externalizable {
             }
             Assert.notEmpty(topics, "topic cannot be empty");
             Assert.hasText(subscriber, "subscriber cannot be empty");
-            return new Subscription(subscriber, topics.toArray(new String[0]), features.toArray(new Feature[0]), doOnSubscribe, priority);
+            return new Subscription(
+                subscriber,
+                topics.toArray(new String[0]),
+                features.toArray(new Feature[0]),
+                doOnSubscribe,
+                onDropped,
+                priority);
         }
 
     }

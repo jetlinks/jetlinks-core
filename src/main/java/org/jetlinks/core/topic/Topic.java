@@ -19,10 +19,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 @EqualsAndHashCode(of = "part")
 public final class Topic<T> {
@@ -370,8 +367,7 @@ public final class Topic<T> {
         }
     }
 
-    //清理无订阅信息的节点
-    public boolean cleanup() {
+    public boolean cleanup(BiConsumer<Boolean,Topic<T>> handler) {
         //清理订阅者
         if (subscribers != null && subscribers.isEmpty()) {
             synchronized (this) {
@@ -384,8 +380,12 @@ public final class Topic<T> {
         if (child != null) {
             for (Map.Entry<String, Topic<T>> children : child.entrySet()) {
                 Topic<T> topic = children.getValue();
-                if (topic.cleanup()) {
+                boolean cleaned = topic.cleanup(handler);
+                if (cleaned) {
                     child.remove(children.getKey());
+                }
+                if (handler != null) {
+                    handler.accept(cleaned,topic);
                 }
             }
 
@@ -399,6 +399,10 @@ public final class Topic<T> {
         }
         return CollectionUtils.isEmpty(subscribers) &&
             CollectionUtils.isEmpty(child);
+    }
+
+    public boolean cleanup() {
+        return cleanup(null);
     }
 
     public void clean() {
