@@ -45,7 +45,7 @@ public interface CommandSupport extends Wrapper {
      * @return Flux
      */
     default Flux<Object> executeToFlux(Command<?> command) {
-        return CommandUtils.convertResponseToFlux(execute(command));
+        return CommandUtils.convertResponseToFlux(execute(command), command);
     }
 
     /**
@@ -79,7 +79,8 @@ public interface CommandSupport extends Wrapper {
                     StreamCommand<Object, Object> command = cmd.unwrap(StreamCommand.class);
                     command.withStream(stream.mapNotNull(command::convertStreamValue));
                 } else {
-                    return Flux.error(new UnsupportedOperationException("unsupported stream command " + cmd.getCommandId()));
+                    return Flux.error(new CommandException.NoStackTrace(
+                        this, cmd, "error.unsupported_command", null, cmd.getCommandId()));
                 }
                 return this.executeToFlux(cmd.with(parameters));
             });
@@ -92,7 +93,7 @@ public interface CommandSupport extends Wrapper {
      * @return Mono
      */
     default Mono<Object> executeToMono(Command<?> command) {
-        return CommandUtils.convertResponseToMono(execute(command));
+        return CommandUtils.convertResponseToMono(execute(command), command);
     }
 
     /**

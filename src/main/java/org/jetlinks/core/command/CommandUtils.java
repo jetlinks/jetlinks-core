@@ -54,6 +54,23 @@ public class CommandUtils {
         return response == null ? Flux.empty() : Flux.just(response);
     }
 
+    /**
+     * 转换对象为{@link Flux},当对象是{@link Publisher}时,将使用{@link Flux#from(Publisher)}进行转换,
+     * 否则使用{@link Flux#just(Object)}进行包装.
+     *
+     * @param response response
+     * @return Flux
+     */
+    @SuppressWarnings("all")
+    public static Flux<Object> convertResponseToFlux(Object response, Command<?> cmd) {
+        if (response instanceof Publisher) {
+            return Flux.from(((Publisher) response))
+                       .mapNotNull(cmd::createResponseData);
+        }
+        return response == null
+            ? Flux.empty()
+            : Flux.just(cmd.createResponseData(response));
+    }
 
     /**
      * 转换对象为{@link Mono}
@@ -76,6 +93,31 @@ public class CommandUtils {
                 .collectList();
         }
         return Mono.justOrEmpty(response);
+    }
+
+    /**
+     * 转换对象为{@link Mono}
+     * <p>当对象时{@link Mono}时,直接返回</p>
+     * <p>
+     * 当对象是{@link Publisher}时,将使用{@link Flux#collectList()}收集流中所有元素为{@link java.util.List}后返回{@link Mono},
+     * 否则使用{@link Mono#justOrEmpty(Object)}进行包装.
+     *
+     * @param response response
+     * @return Flux
+     */
+    @SuppressWarnings("all")
+    public static Mono<Object> convertResponseToMono(Object response, Command<?> cmd) {
+        if (response instanceof Mono) {
+            return ((Mono<?>) response)
+                .map(cmd::createResponseData);
+        }
+        if (response instanceof Publisher) {
+            return Flux
+                .from(((Publisher) response))
+                .map(cmd::createResponseData)
+                .collectList();
+        }
+        return Mono.justOrEmpty(cmd.createResponseData(response));
     }
 
     //命令返回类型缓存
