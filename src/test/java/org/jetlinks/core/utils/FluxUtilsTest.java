@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import lombok.SneakyThrows;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -13,6 +14,7 @@ public class FluxUtilsTest {
 
 
     @Test
+    @SneakyThrows
     public void distinct() {
         //1秒发送一次数据（共5次）,4秒去重一次,下游能收到2次数据
         Flux.range(1, 5)
@@ -29,5 +31,7 @@ public class FluxUtilsTest {
             .as(StepVerifier::create)
             .expectNextCount(3)
             .verifyComplete();
+
+        Thread.sleep(10000);
     }
 }
