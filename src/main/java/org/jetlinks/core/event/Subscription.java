@@ -49,6 +49,12 @@ public class Subscription implements Externalizable {
         this.priority = priority;
     }
 
+    public void discard(TopicPayload payload) {
+        if (onDropped != null) {
+            onDropped.accept(payload);
+        }
+    }
+    
     public void dropped(TopicPayload payload) {
         if (onDropped != null) {
             onDropped.accept(payload);
