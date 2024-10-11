@@ -1,17 +1,21 @@
 package org.jetlinks.core.route;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
-class DefaultMqttRoute implements MqttRoute {
+@Setter
+@NoArgsConstructor
+public class DefaultMqttRoute implements MqttRoute {
 
-    private final String topic;
-    private final boolean upstream;
-    private final boolean downstream;
-    private final int qos;
-    private final String group;
-    private final String description;
-    private final String example;
+    private String topic;
+    private boolean upstream;
+    private boolean downstream;
+    private int qos;
+    private String group;
+    private String description;
+    private String example;
 
     DefaultMqttRoute(String topic,
                      boolean upstream,
