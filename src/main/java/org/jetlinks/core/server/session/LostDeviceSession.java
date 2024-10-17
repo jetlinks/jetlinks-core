@@ -24,7 +24,7 @@ public class LostDeviceSession implements DeviceSession {
 
     @Override
     public String getDeviceId() {
-        return operator.getDeviceId();
+        return operator == null ? id : operator.getDeviceId();
     }
 
     @Override
@@ -40,8 +40,8 @@ public class LostDeviceSession implements DeviceSession {
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
         return Mono
-                .<Boolean>error(new DeviceOperationException(ErrorCode.CONNECTION_LOST))
-                .doAfterTerminate(()-> ReferenceCountUtil.safeRelease(encodedMessage.getPayload()));
+            .<Boolean>error(new DeviceOperationException(ErrorCode.CONNECTION_LOST))
+            .doAfterTerminate(() -> ReferenceCountUtil.safeRelease(encodedMessage.getPayload()));
     }
 
     @Override
