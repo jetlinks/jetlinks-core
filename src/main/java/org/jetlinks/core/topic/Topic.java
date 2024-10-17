@@ -235,7 +235,7 @@ public final class Topic<T> {
                                                    ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                    Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                    Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
-        String[] topics = TopicUtils.split(topic, true, false);
+        String[] topics = TopicUtils.split(topic, false, false);
 
         if (topic.charAt(0) != '/') {
             String[] newTopics = new String[topics.length + 1];
