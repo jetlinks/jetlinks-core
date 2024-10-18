@@ -1,5 +1,9 @@
 package org.jetlinks.core.utils;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Expiry;
+import lombok.NonNull;
+import org.checkerframework.checker.index.qual.NonNegative;
 import org.reactivestreams.Subscription;
 import reactor.core.Disposable;
 import reactor.core.publisher.BaseSubscriber;
@@ -14,6 +18,7 @@ import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -34,7 +39,7 @@ public class FluxUtils {
      * @return 去重构造器
      */
     public static <T> Function<Flux<T>, Flux<T>> distinct(Function<T, ?> keySelector, Duration duration) {
-        return flux -> DistinctDurationFlux.create(flux, keySelector, duration);
+           return flux -> DistinctDurationFlux.create(flux,keySelector,duration);
     }
 
     /**

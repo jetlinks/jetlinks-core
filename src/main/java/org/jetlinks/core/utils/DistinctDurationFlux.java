@@ -37,10 +37,12 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
         this.duration = duration;
     }
 
-    public static <T> DistinctDurationFlux<T> create(Flux<? extends T> source,
+    public static <T> Flux<T> create(Flux<? extends T> source,
                                                      Function<T, ?> keySelector,
                                                      Duration duration) {
-        return new DistinctDurationFlux<>(source, keySelector, duration);
+        return new DistinctDurationFlux<>(source, keySelector, duration)
+            //.onBackpressureBuffer()
+            ;
     }
 
     @Override
@@ -132,6 +134,7 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
                     actual.onNext(t);
                 } else {
                     Operators.onDiscard(t, actual.currentContext());
+                    request(1);
                 }
             } catch (Throwable e) {
                 onError(e);
