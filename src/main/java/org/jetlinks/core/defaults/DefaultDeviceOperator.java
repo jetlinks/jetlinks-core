@@ -1,6 +1,7 @@
 package org.jetlinks.core.defaults;
 
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -442,7 +443,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<Boolean> online(String serverId, String address, long onlineTime) {
 
-        Map<String, Object> configs = new HashMap<>();
+        Map<String, Object> configs = Maps.newHashMapWithExpectedSize(4);
         configs.put(connectionServerId.getKey(), serverId);
         configs.put(stateKey.getKey(), DeviceState.online);
 
