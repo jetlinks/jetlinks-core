@@ -85,4 +85,9 @@ class SimpleValues implements Values {
         }
         return ConverterUtils.convert(val, BigDecimal.class);
     }
+
+    @Override
+    public String toString() {
+        return String.valueOf(values);
+    }
 }
