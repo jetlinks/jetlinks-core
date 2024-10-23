@@ -118,4 +118,11 @@ public interface RpcManager {
      */
     Flux<RpcService<?>> getServices();
 
+    /**
+     * @return 是否已经关闭
+     */
+    default boolean isShutdown() {
+        return false;
+    }
+
 }
