@@ -21,12 +21,12 @@ public interface MetadataConstants {
          *
          * @param metadata 模型
          * @param locale   区域
-         * @return
+         * @return 本地化名称
          */
         static String getLocaleName(Metadata metadata, Locale locale) {
             return metadata
                 .getExpand(LOCALE_RESOURCE_KEY)
-                .map(map -> map.getOrDefault(LocaleResource.generateLocaleKey(locale), map.get(locale.getLanguage())))
+                .map(res -> res.getResource(locale))
                 .orElse(metadata.getName());
         }
 

@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.expand;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
@@ -38,6 +39,15 @@ public class LocaleResource extends HashMap<String, String> {
             return locale.getLanguage() + "_" + locale.getCountry();
         }
         return locale.getLanguage();
+    }
+
+    @JsonIgnore
+    public String getResource(Locale locale) {
+        String key = LocaleResource.generateLocaleKey(locale);
+        if (key.equals(locale.getLanguage())) {
+            return this.get(key);
+        }
+        return this.getOrDefault(key, this.get(locale.getLanguage()));
     }
 
 
