@@ -22,6 +22,12 @@ public class LostDeviceSession implements DeviceSession {
     @Getter
     private final Transport transport;
 
+    private final long connectTime;
+
+    public LostDeviceSession(String id, DeviceOperator device, Transport transport) {
+        this(id, device, transport, System.currentTimeMillis());
+    }
+
     @Override
     public String getDeviceId() {
         return operator == null ? id : operator.getDeviceId();
@@ -29,19 +35,18 @@ public class LostDeviceSession implements DeviceSession {
 
     @Override
     public long lastPingTime() {
-        return -1;
+        return connectTime;
     }
 
     @Override
     public long connectTime() {
-        return -1;
+        return connectTime;
     }
 
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
-        return Mono
-            .<Boolean>error(new DeviceOperationException(ErrorCode.CONNECTION_LOST))
-            .doAfterTerminate(() -> ReferenceCountUtil.safeRelease(encodedMessage.getPayload()));
+        ReferenceCountUtil.safeRelease(encodedMessage.getPayload());
+        return Mono.error(new DeviceOperationException.NoStackTrace(ErrorCode.CONNECTION_LOST));
     }
 
     @Override
