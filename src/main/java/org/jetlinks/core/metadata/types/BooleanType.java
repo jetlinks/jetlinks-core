@@ -38,7 +38,7 @@ public class BooleanType extends AbstractType<BooleanType> implements DataType, 
     }
 
     public BooleanType falseValue(String falseValue) {
-        this.falseText = falseValue;
+        this.falseValue = falseValue;
         return this;
     }
 
