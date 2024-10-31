@@ -20,6 +20,7 @@ import java.util.Optional;
 
 public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSession, PersistentSession {
 
+    @Getter
     DeviceSession parent;
 
     @Setter(AccessLevel.PACKAGE)
@@ -65,10 +66,6 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
         return connectTime;
     }
 
-    public DeviceSession getParent() {
-        return parent;
-    }
-
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
         return Mono
@@ -76,9 +73,8 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
                     if (parent.isAlive()) {
                         return parent.send(encodedMessage);
                     }
-                    return Mono
-                            .<Boolean>error(new DeviceOperationException.NoStackTrace(ErrorCode.CONNECTION_LOST))
-                            .doAfterTerminate(() -> ReferenceCountUtil.safeRelease(encodedMessage.getPayload()));
+                    ReferenceCountUtil.safeRelease(encodedMessage.getPayload());
+                    return Mono.error(new DeviceOperationException.NoStackTrace(ErrorCode.CONNECTION_LOST));
                 });
     }
 
