@@ -16,4 +16,8 @@ class SimpleValue implements Value, Serializable {
         return nativeValue;
     }
 
+    @Override
+    public String toString() {
+        return String.valueOf(nativeValue);
+    }
 }

@@ -11,4 +11,8 @@ public class DisconnectDeviceMessage extends CommonDeviceMessage<DisconnectDevic
         return MessageType.DISCONNECT;
     }
 
+    @Override
+    public MessageType getReplyType() {
+        return MessageType.DISCONNECT_REPLY;
+    }
 }

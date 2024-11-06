@@ -30,6 +30,11 @@ public class DeviceStateCheckMessage extends CommonDeviceMessage<DeviceStateChec
     }
 
     @Override
+    public MessageType getReplyType() {
+        return MessageType.STATE_CHECK_REPLY;
+    }
+
+    @Override
     public DeviceStateCheckMessageReply newReply() {
         return new DeviceStateCheckMessageReply().from(this);
     }

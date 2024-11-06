@@ -5,7 +5,6 @@ import org.jetlinks.core.Value;
 import org.jetlinks.core.Values;
 import reactor.core.publisher.Mono;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 
@@ -24,6 +23,19 @@ public interface ConfigStorage {
      * @return Value
      */
     Mono<Value> getConfig(String key);
+
+    /**
+     * 获取配置,如果值不存在,则使用指定的加载器进行加载.
+     *
+     * @param key    key
+     * @param loader 默认值加载器
+     * @return Value
+     */
+    default Mono<Value> getConfig(String key, Mono<Object> loader) {
+        return this
+            .getConfig(key)
+            .switchIfEmpty(loader.map(Value::simple));
+    }
 
     /**
      * 获取多个值,参照{@link ConfigStorage#getConfigs(Collection)}
@@ -79,6 +91,7 @@ public interface ConfigStorage {
 
     /**
      * 根据key删除多个值
+     *
      * @param keys keys
      * @return 是否成功
      */
@@ -86,12 +99,14 @@ public interface ConfigStorage {
 
     /**
      * 清空全部配置
+     *
      * @return 是否成功
      */
     Mono<Boolean> clear();
 
     /**
      * 刷新指定keys缓存信息,通常用于在二级缓存时,进行一级缓存刷新.
+     *
      * @param keys keys
      * @return void
      */
@@ -101,6 +116,7 @@ public interface ConfigStorage {
 
     /**
      * 刷新全部缓存信息,通常用于在二级缓存时,进行一级缓存刷新.
+     *
      * @return void
      */
     default Mono<Void> refresh() {

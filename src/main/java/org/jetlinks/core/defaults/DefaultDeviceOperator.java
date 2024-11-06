@@ -1,6 +1,7 @@
 package org.jetlinks.core.defaults;
 
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -304,29 +305,22 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
                         if (getDeviceId().equals(parentGatewayId)) {
                             log.warn(LocaleUtils.resolveMessage("validation.parent_id_and_id_can_not_be_same", parentGatewayId));
-                            return Mono.just(state);
+                            return checker;
                         }
                         boolean isSelfManageState = values.getValue(selfManageState).orElse(false);
                         //如果关联了上级网关设备则尝试给网关设备发送指令进行检查
                         if (StringUtils.hasText(parentGatewayId) && isSelfManageState) {
                             return this
-                                .checkStateFromParent(parentGatewayId, state)
+                                .checkStateFromParent(parentGatewayId, checker)
                                 .switchIfEmpty(checker);
                         }
                     }
 
                     return checker;
-
-                    //如果是在线状态,则改为离线,否则保持状态不变
-//                            if (state.equals(DeviceState.online)) {
-//                                return Mono.just(DeviceState.offline);
-//                            } else {
-//                                return Mono.just(state);
-//                            }
                 }));
     }
 
-    private Mono<Byte> checkStateFromParent(String parentId, Byte defaultState) {
+    private Mono<Byte> checkStateFromParent(String parentId, Mono<Byte> defaultState) {
 
         return registry
             .getDevice(parentId)
@@ -362,7 +356,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                             }
                         }
                         //发送返回错误,但是配置了状态自管理,直接返回原始状态
-                        return Mono.just(defaultState);
+                        return defaultState;
                     });
             });
     }
@@ -449,7 +443,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public Mono<Boolean> online(String serverId, String address, long onlineTime) {
 
-        Map<String, Object> configs = new HashMap<>();
+        Map<String, Object> configs = Maps.newHashMapWithExpectedSize(4);
         configs.put(connectionServerId.getKey(), serverId);
         configs.put(stateKey.getKey(), DeviceState.online);
 

@@ -41,6 +41,9 @@ public class TopicPayload implements Payload, Routable {
     }
 
     public TopicPayload addHeader(String key, Object value) {
+        if (key == null || value == null) {
+            return this;
+        }
         getOrCreateHeader().put(key, value);
         return this;
     }

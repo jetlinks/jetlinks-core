@@ -86,6 +86,11 @@ public interface ThingFunctionInvokeMessage<R extends ThingFunctionInvokeMessage
         return MessageType.INVOKE_FUNCTION;
     }
 
+    @Override
+    default MessageType getReplyType() {
+        return MessageType.INVOKE_FUNCTION_REPLY;
+    }
+
     default Optional<Object> getInput(String name) {
         for (FunctionParameter input : getInputs()) {
             if (Objects.equals(name, input.getName())) {
@@ -163,4 +168,5 @@ public interface ThingFunctionInvokeMessage<R extends ThingFunctionInvokeMessage
         this.functionId(SerializeUtils.readNullableUTF(in));
         SerializeUtils.readKeyValue(in, this::addInput);
     }
+
 }

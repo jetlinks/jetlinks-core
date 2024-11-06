@@ -1,6 +1,8 @@
 package org.jetlinks.core.message;
 
 import org.jetlinks.core.Routable;
+import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 
 import java.util.concurrent.TimeUnit;
 
@@ -192,6 +194,23 @@ public interface Headers {
      * @see Routable#routeKey()
      */
     HeaderKey<Object> routeKey = HeaderKey.of("_routeKey", null, Object.class);
+
+    /**
+     * 标记下发指令的回复是否包含messageId,
+     * 如果设置为true,当下发指令回复时未携带messageId时,将按下发指令的先后来自动匹配.
+     * 可在下发的消息中设置{@link Message#addHeader(String, Object)}.
+     * <p>
+     * 或者通过在协议包定义
+     * {@link org.jetlinks.core.defaults.CompositeProtocolSupport#addMessageSenderInterceptor(DeviceMessageSenderInterceptor)}
+     * {@link org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor#preSend(DeviceOperator, DeviceMessage)}
+     * 中,设置此header.
+     * <p>
+     * 注意: 集群环境时,此功能需要下发指令的节点和回复的节点在同一个节点.
+     * 如果是通过broker等方式接入,建议使用iphash的方式进行负载均衡.
+     *
+     * @see RepayableDeviceMessage
+     */
+    HeaderKey<Boolean> replyNoMessageId = HeaderKey.of("replyNoMessageId", false, Boolean.class);
 
     /**
      * copy有意义的header到新到消息中,比如标记异步,超时等信息

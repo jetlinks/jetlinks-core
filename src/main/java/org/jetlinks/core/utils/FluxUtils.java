@@ -39,34 +39,7 @@ public class FluxUtils {
      * @return 去重构造器
      */
     public static <T> Function<Flux<T>, Flux<T>> distinct(Function<T, ?> keySelector, Duration duration) {
-        return flux -> flux
-                .distinct(keySelector,
-                          () -> Caffeine
-                                  .newBuilder()
-                                  //有效期内去重
-                                  .expireAfter(new Expiry<Object, Object>() {
-                                      @Override
-                                      public long expireAfterCreate(@NonNull Object key, @NonNull Object value, long currentTime) {
-                                          //创建后设置有效期
-                                          return duration.toNanos();
-                                      }
-
-                                      @Override
-                                      public long expireAfterUpdate(@NonNull Object key, @NonNull Object value, long currentTime, @NonNegative long currentDuration) {
-                                          //不修改有效期
-                                          return currentDuration;
-                                      }
-
-                                      @Override
-                                      public long expireAfterRead(@NonNull Object key, @NonNull Object value, long currentTime, @NonNegative long currentDuration) {
-                                          //不修改有效期
-                                          return currentDuration;
-                                      }
-                                  })
-                                  .build()
-                                  .asMap(),
-                          (cache, id) -> cache.put(id, 1) == null,
-                          Map::clear);
+           return flux -> DistinctDurationFlux.create(flux,keySelector,duration);
     }
 
     /**
@@ -89,7 +62,7 @@ public class FluxUtils {
                                                Duration maxTimeout) {
         return Flux.create(sink -> {
             BufferRateSubscriber<T> subscriber = new BufferRateSubscriber<>(sink, maxSize, rate, maxTimeout, (e, arr) -> arr
-                    .size() >= maxSize);
+                .size() >= maxSize);
 
             flux.elapsed().subscribe(subscriber);
 
@@ -105,7 +78,7 @@ public class FluxUtils {
                                                BiPredicate<T, List<T>> flushCondition) {
         return Flux.create(sink -> {
             BufferRateSubscriber<T> subscriber = new BufferRateSubscriber<>(sink, maxSize, rate, maxTimeout, (e, arr) -> flushCondition
-                    .test(e, arr) || arr.size() >= maxSize);
+                .test(e, arr) || arr.size() >= maxSize);
 
             flux.elapsed().subscribe(subscriber);
 

@@ -8,6 +8,7 @@ import org.jetlinks.core.utils.RecyclableDequeue;
 import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.StringBuilderUtils;
 import org.jetlinks.core.utils.TopicUtils;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
@@ -18,10 +19,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 @EqualsAndHashCode(of = "part")
 public final class Topic<T> {
@@ -94,6 +92,7 @@ public final class Topic<T> {
             });
     }
 
+    @Deprecated
     public T getSubscriberOrSubscribe(Supplier<T> supplier) {
         if (!subscribers().isEmpty()) {
             return subscribers().keySet().iterator().next();
@@ -113,7 +112,7 @@ public final class Topic<T> {
     }
 
     public boolean subscribed(T subscriber) {
-        return subscribers().containsKey(subscriber);
+        return subscribers != null && subscribers().containsKey(subscriber);
     }
 
     @SafeVarargs
@@ -172,7 +171,7 @@ public final class Topic<T> {
         if (child == null) {
             synchronized (this) {
                 if (child == null) {
-                    child = new ConcurrentHashMap<>();
+                    child = new ConcurrentHashMap<>(1);
                 }
             }
         }
@@ -183,7 +182,7 @@ public final class Topic<T> {
         if (subscribers == null) {
             synchronized (this) {
                 if (subscribers == null) {
-                    subscribers = new ConcurrentHashMap<>();
+                    subscribers = new ConcurrentHashMap<>(1);
                 }
             }
         }
@@ -236,7 +235,7 @@ public final class Topic<T> {
                                                    ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                    Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                    Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
-        String[] topics = TopicUtils.split(topic, true, false);
+        String[] topics = TopicUtils.split(topic, false, false);
 
         if (topic.charAt(0) != '/') {
             String[] newTopics = new String[topics.length + 1];
@@ -334,7 +333,8 @@ public final class Topic<T> {
     }
 
     public long getTotalTopic() {
-        long total = child == null ? 0 : child().size();
+        Map<?, ?> child = this.child;
+        long total = child == null ? 0 : child.size();
         for (Topic<T> tTopic : getChildren()) {
             total += tTopic.getTotalTopic();
         }
@@ -342,9 +342,10 @@ public final class Topic<T> {
     }
 
     public long getTotalSubscriber() {
-        long total = subscribers == null ? 0 : subscribers().size();
+        Map<?, ?> subscribers = this.subscribers;
+        long total = subscribers == null ? 0 : subscribers.size();
         for (Topic<T> tTopic : getChildren()) {
-            total += tTopic.getTotalTopic();
+            total += tTopic.getTotalSubscriber();
         }
         return total;
     }
@@ -364,6 +365,44 @@ public final class Topic<T> {
             sink.next(tTopic);
             tTopic.walkChildren(sink);
         }
+    }
+
+    public boolean cleanup(BiConsumer<Boolean,Topic<T>> handler) {
+        //清理订阅者
+        if (subscribers != null && subscribers.isEmpty()) {
+            synchronized (this) {
+                if (subscribers.isEmpty()) {
+                    subscribers = null;
+                }
+            }
+        }
+        //清理子节点
+        if (child != null) {
+            for (Map.Entry<String, Topic<T>> children : child.entrySet()) {
+                Topic<T> topic = children.getValue();
+                boolean cleaned = topic.cleanup(handler);
+                if (cleaned) {
+                    child.remove(children.getKey());
+                }
+                if (handler != null) {
+                    handler.accept(cleaned,topic);
+                }
+            }
+
+            if (child != null && child.isEmpty()) {
+                synchronized (this) {
+                    if (child.isEmpty()) {
+                        child = null;
+                    }
+                }
+            }
+        }
+        return CollectionUtils.isEmpty(subscribers) &&
+            CollectionUtils.isEmpty(child);
+    }
+
+    public boolean cleanup() {
+        return cleanup(null);
     }
 
     public void clean() {

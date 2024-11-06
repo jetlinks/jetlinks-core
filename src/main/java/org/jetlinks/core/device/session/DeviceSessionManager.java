@@ -8,6 +8,7 @@ import reactor.core.publisher.Mono;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * 设备会话管理器.
@@ -127,6 +128,15 @@ public interface DeviceSessionManager {
      */
     Mono<Long> remove(String deviceId, boolean onlyLocal);
 
+    /**
+     * 根据自定义判断逻辑来移除当前服务节点的会话
+     *
+     * @param deviceId  设备ID
+     * @param predicate 判断逻辑
+     * @return 有多少会话被移除 0 or 1
+     * @since 1.2.3
+     */
+    Mono<Long> remove(String deviceId, Predicate<DeviceSession> predicate);
 
     /**
      * 判断会话是否存活，包括本地和集群中的会话
@@ -149,7 +159,8 @@ public interface DeviceSessionManager {
 
     /**
      * 检查会话是否存活,如果存活将同步连接信息到缓存中.
-     * @param deviceId 设备ID
+     *
+     * @param deviceId  设备ID
      * @param onlyLocal 是否只检查本地会话
      * @return 是否存活
      */

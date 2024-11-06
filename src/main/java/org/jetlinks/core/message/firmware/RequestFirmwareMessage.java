@@ -33,6 +33,11 @@ public class RequestFirmwareMessage extends CommonDeviceMessage<RequestFirmwareM
     }
 
     @Override
+    public MessageType getReplyType() {
+        return MessageType.REQUEST_FIRMWARE_REPLY;
+    }
+
+    @Override
     public RequestFirmwareMessageReply newReply() {
         return new RequestFirmwareMessageReply().from(this);
     }
