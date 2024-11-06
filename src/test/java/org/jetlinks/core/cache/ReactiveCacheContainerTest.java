@@ -2,17 +2,44 @@ package org.jetlinks.core.cache;
 
 import org.junit.Test;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
 
 public class ReactiveCacheContainerTest {
 
+
+    @Test
+    public void testParallel() {
+        ReactiveCacheContainer<String, Integer> cache = ReactiveCacheContainer.create();
+
+        AtomicInteger count = new AtomicInteger();
+        int c = 100;
+        Flux.range(0, c)
+            .flatMap(i -> cache
+                .compute(
+                    "test",
+                    (id, old) -> Mono
+                        .delay(Duration.ofMillis(1))
+                        .thenReturn(old == null ? 1 : old + 1)
+                        .doOnNext(ignore -> count.incrementAndGet())
+                )
+                .subscribeOn(Schedulers.boundedElastic())
+            )
+            .as(StepVerifier::create)
+            .expectNextCount(c)
+            .verifyComplete();
+
+        assertEquals(c, count.get());
+
+    }
 
     @Test
     public void testNest() {
