@@ -32,6 +32,8 @@ import java.util.Map;
  * @see StreamCommand
  * @see CommandUtils
  * @see CommandMetadataResolver
+ * @see org.jetlinks.core.annotation.command.CommandHandler
+ * @see CommandHandler
  * @since 1.2.1
  */
 public interface Command<Response> extends Wrapper, Serializable {

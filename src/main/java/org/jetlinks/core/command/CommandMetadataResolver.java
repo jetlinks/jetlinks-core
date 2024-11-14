@@ -94,16 +94,19 @@ public class CommandMetadataResolver {
         if (method.getReturnType() == Void.class || method.getParameterCount() != 0) {
             return null;
         }
-        String name = method.getName();
-
-        int nameIndex = 0;
-        if (name.startsWith("get")) {
-            nameIndex = 3;
+        String name;
+        if (StringUtils.hasText(schema.name())) {
+            name = schema.name();
+        } else {
+            String methodName=method.getName();
+            int nameIndex = 0;
+            if (methodName.startsWith("get")) {
+                nameIndex = 3;
+            }
+            char[] propertyName = methodName.substring(nameIndex).toCharArray();
+            propertyName[0] = Character.toLowerCase(propertyName[0]);
+            name = new String(propertyName);
         }
-
-        char[] propertyName = name.substring(nameIndex).toCharArray();
-        propertyName[0] = Character.toLowerCase(propertyName[0]);
-        name = new String(propertyName);
 
         SimplePropertyMetadata prop = new SimplePropertyMetadata();
         prop.setId(name);

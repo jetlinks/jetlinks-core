@@ -8,7 +8,7 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 @AllArgsConstructor
-class SimpleCommandHandler<C extends Command<R>, R> implements CommandHandler<C, R> {
+class LambdaCommandHandler<C extends Command<R>, R> implements CommandHandler<C, R> {
     private final Supplier<FunctionMetadata> description;
 
     private final BiFunction<C, CommandSupport, R> handler;
@@ -32,4 +32,8 @@ class SimpleCommandHandler<C extends Command<R>, R> implements CommandHandler<C,
     }
 
 
+    @Override
+    public String toString() {
+        return String.valueOf(description.get());
+    }
 }
