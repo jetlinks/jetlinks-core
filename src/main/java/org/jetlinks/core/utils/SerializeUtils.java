@@ -210,6 +210,12 @@ public class SerializeUtils {
     }
 
     @SneakyThrows
+    @SuppressWarnings("unchecked")
+    public static <T> T readObjectAs(ObjectInput input) {
+        return (T)readObject(input);
+    }
+
+    @SneakyThrows
     public static Object readObject(ObjectInput input) {
         Serializer serializer = all[input.readUnsignedByte()];
         if (serializer == null) {
