@@ -95,4 +95,11 @@ public @interface CommandHandler {
      * @see FunctionMetadata#getExpands()
      */
     Attr[] expands() default {};
+
+    /**
+     * 是否忽略此此方法,通常用于重写父类方法时,忽略掉命令支持.
+     *
+     * @return 是否忽略
+     */
+    boolean ignore() default false;
 }

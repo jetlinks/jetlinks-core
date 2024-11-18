@@ -88,6 +88,26 @@ public interface Headers {
     //是否使用时间戳作为数据ID
     HeaderKey<Boolean> useTimestampAsId = HeaderKey.of("useTimestampId", false, Boolean.class);
 
+    /**
+     * 标记数据ID,与{@link Headers#useTimestampAsId}不同,
+     * 如果在消息中指定了这个header,在存储设备属性数据时,将会根据此header的值来生成数据ID.
+     * <p>
+     * 生成规则为:
+     * <p>
+     * 单列模式(行式):<code>md5(deviceId+'-'+property+'-'+dataId)</code>.
+     * <p>
+     * 多列模式(列式):<code>md5(deviceId+'-'+dataId)</code>.
+     * <p>
+     * <b>注意：由于不同数据库的主键策略不同,此表示可能不会在某些存储策略中生效.
+     * </b>
+     * <p>
+     *  已知支持的存储策略: ElasticSearch、TimescaleDB.
+     *
+     * @see org.jetlinks.core.message.property.PropertyMessage
+     * @see Headers#useTimestampAsId
+     */
+    HeaderKey<String> dataId = HeaderKey.of("dataId", null, String.class);
+
     //是否属性为部分属性,如果为true,在列式存储策略下,将会把之前上报的属性合并到一起进行存储.
     HeaderKey<Boolean> partialProperties = HeaderKey.of("partialProperties", false, Boolean.class);
 
