@@ -38,6 +38,8 @@ public class Subscription implements Externalizable {
     //优先级,值越小优先级越高,优先级高的订阅者会先收到消息
     private int priority = Integer.MAX_VALUE;
 
+    private long time;
+
     public Subscription() {
     }
 
@@ -54,7 +56,7 @@ public class Subscription implements Externalizable {
             onDropped.accept(payload);
         }
     }
-    
+
     public void dropped(TopicPayload payload) {
         if (onDropped != null) {
             onDropped.accept(payload);
@@ -93,7 +95,7 @@ public class Subscription implements Externalizable {
     }
 
     public Subscription copy(Feature... newFeatures) {
-        return new Subscription(subscriber, topics, newFeatures, null, null, priority);
+        return new Subscription(subscriber, topics, newFeatures, null, null, priority, time);
     }
 
     public Subscription onSubscribe(Runnable sub) {
@@ -196,6 +198,7 @@ public class Subscription implements Externalizable {
         private Runnable doOnSubscribe;
         private Consumer<TopicPayload> onDropped;
         private int priority;
+        private long time;
 
         public Builder randomSubscriberId() {
             return subscriberId(UUID.randomUUID().toString());
@@ -271,6 +274,11 @@ public class Subscription implements Externalizable {
             return features(Feature.shared, Feature.sharedLocalFirst);
         }
 
+        public Builder time(long time) {
+            this.time = time;
+            return this;
+        }
+
         public Subscription build() {
             if (features.isEmpty()) {
                 local();
@@ -283,7 +291,8 @@ public class Subscription implements Externalizable {
                 features.toArray(new Feature[0]),
                 doOnSubscribe,
                 onDropped,
-                priority);
+                priority,
+                time);
         }
 
     }
