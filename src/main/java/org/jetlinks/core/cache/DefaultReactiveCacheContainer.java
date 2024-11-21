@@ -2,7 +2,6 @@ package org.jetlinks.core.cache;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jctools.maps.NonBlockingHashMap;
-import org.jetlinks.core.server.session.DeviceSession;
 import org.jetlinks.core.utils.Reactors;
 import reactor.core.Disposable;
 import reactor.core.Disposables;
@@ -15,9 +14,6 @@ import reactor.util.context.ContextView;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -192,7 +188,11 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 ((Disposable) loaded).dispose();
             }
             loaded = data;
-            this.await.emitValue(data, Reactors.emitFailureHandler());
+            @SuppressWarnings("unchecked")
+            Sinks.One<T> await = AWAIT.getAndSet(this, null);
+            if (await != null) {
+                await.emitValue(data, Reactors.emitFailureHandler());
+            }
         }
 
 
