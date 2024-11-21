@@ -171,7 +171,18 @@ public class Subscription implements Externalizable {
          *
          * @see org.jetlinks.core.utils.SerializeUtils#convertToSafelySerializable(Object)
          */
-        safetySerialization("安全序列化");
+        safetySerialization("安全序列化"),
+
+        /**
+         * 共享订阅时,数据实现{@link Routable}时根据按{@link Routable#hash(Object...)}进行负载均衡.
+         *
+         */
+        sharedHashed("使用hash方式路由共享订阅"),
+
+        /**
+         * 共享订阅时,路由到最小负载的订阅者.
+         */
+        sharedMinimumLoad("使用最小负载方式路由共享订阅");
 
         private final String text;
 
