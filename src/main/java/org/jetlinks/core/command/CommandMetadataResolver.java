@@ -45,7 +45,7 @@ public class CommandMetadataResolver {
      * <pre>
      * 解析传入对象的属性模型
      * 1.当传入为{@link AbstractCommand}时，解析其所有{@code getxxx()}方法为属性模型
-     * 2.当传入对象为属性类时，解析其所有携带{@link Schema}的{@code getxxx()}方法为属性模型
+     * 2.当传入对象为属性类时，解析其所有携带{@link Schema}的属性为属性模型
      * </pre>
      *
      * @param type 解析对象
