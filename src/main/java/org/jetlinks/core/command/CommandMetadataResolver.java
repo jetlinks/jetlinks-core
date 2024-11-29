@@ -41,6 +41,16 @@ import java.util.List;
 @AllArgsConstructor
 public class CommandMetadataResolver {
 
+    /**
+     * <pre>
+     * 解析传入对象的属性模型
+     * 1.当传入为{@link AbstractCommand}时，解析其所有{@code getxxx()}方法为属性模型
+     * 2.当传入对象为属性类时，解析其所有携带{@link Schema}的属性为属性模型
+     * </pre>
+     *
+     * @param type 解析对象
+     * @return DataType
+     */
     public static List<PropertyMetadata> resolveInputs(ResolvableType type) {
         Class<?> clazz = type.toClass();
         if (AbstractCommand.class.isAssignableFrom(clazz)) {
@@ -58,10 +68,26 @@ public class CommandMetadataResolver {
         }
     }
 
+    /**
+     * <pre>
+     * 解析传入对象为{@code DataType}
+     * 1.当传入对象为{@link Command}时，解析其返回泛型为DataType
+     * 2.当传入对象为属性类时，解析其为{@link ObjectType},所有携带{@link Schema}的属性为属性模型
+     * </pre>
+     *
+     * @param type 解析对象
+     * @return DataType
+     */
     public static DataType resolveOutput(ResolvableType type) {
-        return MetadataUtils.parseType(
-            CommandUtils.getCommandResponseDataType(type.toClass())
-        );
+        Class<?> clazz = type.toClass();
+        if (Command.class.isAssignableFrom(clazz)) {
+            return MetadataUtils.parseType(
+                CommandUtils.getCommandResponseDataType(type.toClass())
+            );
+        } else {
+            return MetadataUtils.parseType(type);
+        }
+
     }
 
     public static FunctionMetadata resolve(Class<?> commandClazz) {
@@ -98,7 +124,7 @@ public class CommandMetadataResolver {
         if (StringUtils.hasText(schema.name())) {
             name = schema.name();
         } else {
-            String methodName=method.getName();
+            String methodName = method.getName();
             int nameIndex = 0;
             if (methodName.startsWith("get")) {
                 nameIndex = 3;
