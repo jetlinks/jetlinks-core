@@ -1,5 +1,7 @@
 package org.jetlinks.core.command;
 
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.*;
@@ -105,7 +107,16 @@ public class CommandMetadataResolver {
         return resolve(ResolvableType.forClass(commandClazz));
     }
 
+    public static FunctionMetadata resolve(Class<?> commandClazz, Class<?> outputClazz) {
+        return resolve(ResolvableType.forClass(commandClazz),
+                       ResolvableType.forClass(outputClazz));
+    }
+
     public static FunctionMetadata resolve(ResolvableType commandClazz) {
+        return resolve(commandClazz, commandClazz);
+    }
+
+    public static FunctionMetadata resolve(ResolvableType commandClazz, ResolvableType outClazz) {
         SimpleFunctionMetadata metadata = new SimpleFunctionMetadata();
         Class<?> clazz = commandClazz.toClass();
 
@@ -118,7 +129,7 @@ public class CommandMetadataResolver {
             metadata.setName(metadata.getId());
         }
         metadata.setInputs(resolveInputs(commandClazz));
-        metadata.setOutput(resolveOutput(commandClazz));
+        metadata.setOutput(resolveOutput(outClazz));
         return metadata;
     }
 
