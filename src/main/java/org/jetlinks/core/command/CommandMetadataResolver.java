@@ -44,8 +44,9 @@ public class CommandMetadataResolver {
     /**
      * <pre>
      * 解析传入对象的属性模型
-     * 1.当传入为{@link AbstractCommand}时，解析其所有{@code getxxx()}方法为属性模型
-     * 2.当传入对象为属性类时，解析其所有携带{@link Schema}的属性为属性模型
+     * 1. 当传入为{@link Command}时，尝试解析其内部类{@code InputSpec}.
+     * 2. 当传入为{@link AbstractCommand}时，解析其所有{@code getxxx()}方法为属性模型
+     * 3. 当传入对象为属性类时，解析其所有携带{@link Schema}的属性为属性模型
      * </pre>
      *
      * @param type 解析对象
@@ -53,19 +54,29 @@ public class CommandMetadataResolver {
      */
     public static List<PropertyMetadata> resolveInputs(ResolvableType type) {
         Class<?> clazz = type.toClass();
-        if (AbstractCommand.class.isAssignableFrom(clazz)) {
-            List<PropertyMetadata> inputs = new ArrayList<>();
-            ReflectionUtils.doWithMethods(clazz, method -> {
-                PropertyMetadata prop = tryResolveProperty(clazz, method);
-                if (prop != null) {
-                    inputs.add(prop);
-                }
-            });
-            return inputs;
-        } else {
-            ObjectType objectType = (ObjectType) MetadataUtils.parseType(type);
-            return objectType.getProperties();
+        if (Command.class.isAssignableFrom(clazz)) {
+            try {
+                //尝试获取内部类的InputSpec
+                Class<?> inputSpec = clazz
+                    .getClassLoader()
+                    .loadClass(clazz.getName() + "$InputSpec");
+                return resolveInputs(ResolvableType.forClass(inputSpec));
+            } catch (ClassNotFoundException ignore) {
+
+            }
+            if (AbstractCommand.class.isAssignableFrom(clazz)) {
+                List<PropertyMetadata> inputs = new ArrayList<>();
+                ReflectionUtils.doWithMethods(clazz, method -> {
+                    PropertyMetadata prop = tryResolveProperty(clazz, method);
+                    if (prop != null) {
+                        inputs.add(prop);
+                    }
+                });
+                return inputs;
+            }
         }
+        ObjectType objectType = (ObjectType) MetadataUtils.parseType(type);
+        return objectType.getProperties();
     }
 
     /**

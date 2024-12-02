@@ -49,6 +49,23 @@ public class CommandMetadataResolverTest {
         assertEquals(2, ((ObjectType) output).getProperties().size());
     }
 
+    @Test
+    public void testInner() {
+        List<PropertyMetadata> inputs = CommandMetadataResolver.resolveInputs(ResolvableType.forClass(TestInnerCommand.class));
+        assertNotNull(inputs);
+
+        assertEquals(2, inputs.size());
+    }
+
+    @Schema(title = "测试2", description = "测试2.")
+    public static class TestInnerCommand extends AbstractCommand<Mono<String>, Test1Command> {
+
+
+        static class InputSpec extends Test2 {
+
+        }
+
+    }
 
     @Schema(title = "测试1", description = "测试1.")
     public static class Test1Command extends AbstractCommand<Mono<String>, Test1Command> {

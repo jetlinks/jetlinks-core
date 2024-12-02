@@ -1,6 +1,9 @@
 package org.jetlinks.core.utils;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.apache.commons.beanutils.BeanUtilsBean;
+import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils.PropertyUtilsBean;
 import org.hswebframework.web.dict.EnumDict;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.PropertyMetadata;
@@ -8,11 +11,15 @@ import org.jetlinks.core.metadata.SimplePropertyMetadata;
 import org.jetlinks.core.metadata.types.*;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 import reactor.util.function.Tuples;
 
+import java.beans.IntrospectionException;
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -61,7 +68,7 @@ public class MetadataUtils {
 
         private PropertyMetadata withField0(Object owner, Field field, ResolvableType type) {
 
-            Schema schema = field.getAnnotation(Schema.class);
+            Schema schema = this.getSchema(type.toClass(), field);
             String id = field.getName();
 
             SimplePropertyMetadata metadata = new SimplePropertyMetadata();
@@ -153,7 +160,7 @@ public class MetadataUtils {
                     objectType.addPropertyMetadata(withField0(fClass, field, ResolvableType.forClass(Map.class)));
                     return;
                 }
-                Schema schema = field.getAnnotation(Schema.class);
+                Schema schema = getSchema(fClass, field);
                 if (schema != null && !schema.hidden()) {
                     objectType.addPropertyMetadata(withField0(fClass, field, ResolvableType.forField(field, fClass)));
                 }
@@ -161,5 +168,21 @@ public class MetadataUtils {
             return objectType;
         }
 
+        private Schema getSchema(Class<?> owner, Field field) {
+            String name = field.getName();
+            try {
+                PropertyDescriptor descriptor = new PropertyDescriptor(name, owner);
+                Method method = descriptor.getReadMethod();
+                if (method != null) {
+                    Schema schema = AnnotatedElementUtils.getMergedAnnotation(field, Schema.class);
+                    if (schema != null) {
+                        return schema;
+                    }
+                }
+            } catch (IntrospectionException ignore) {
+
+            }
+            return AnnotatedElementUtils.getMergedAnnotation(field, Schema.class);
+        }
     }
 }
