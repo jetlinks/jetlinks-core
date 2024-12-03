@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
@@ -11,6 +12,7 @@ import org.jetlinks.core.metadata.ValidateResult;
 public class StringType extends AbstractType<StringType> implements DataType, Converter<String> {
     public static final String ID = "string";
     public static final StringType GLOBAL = new StringType();
+    public static final ConfigKey<Integer> MAX_LENGTH = ConfigKey.of("maxLength");
 
     @Override
     public String getId() {
@@ -29,6 +31,10 @@ public class StringType extends AbstractType<StringType> implements DataType, Co
 
     @Override
     public String format(Object value) {
+        int maxLength = this.getExpand(MAX_LENGTH).orElse(0);
+        if (maxLength > 0) {
+            return String.valueOf(value).substring(0, maxLength);
+        }
         return String.valueOf(value);
     }
 
