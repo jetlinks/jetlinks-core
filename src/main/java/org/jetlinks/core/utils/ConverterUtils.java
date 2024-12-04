@@ -48,10 +48,12 @@ public class ConverterUtils {
 
     @SuppressWarnings("all")
     public static <T> T convert(Object value, Type type) {
-        if (value == null ||
-            type == Object.class ||
-            (type instanceof Class && ((Class) type).isInstance(value))) {
+        if (value == null) {
             return (T) getNullValue(type);
+        }
+        if (type == Object.class ||
+            (type instanceof Class && ((Class) type).isInstance(value))) {
+            return (T) value;
         }
 
         if (type instanceof Class) {
