@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import org.jetlinks.core.metadata.PropertyMetadata;
+import org.jetlinks.core.metadata.types.ArrayType;
 import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.metadata.types.StringType;
 import org.junit.Test;
@@ -56,6 +57,51 @@ public class CommandMetadataResolverTest {
 
         assertEquals(2, inputs.size());
     }
+
+    @Test
+    public void testGeneric() {
+
+        List<PropertyMetadata> inputs = CommandMetadataResolver.resolveInputs(
+            ResolvableType.forClassWithGenerics(TestGenericCommand.class,String.class, Test2.class)
+        );
+        System.out.println(inputs);
+        assertEquals(1, inputs.size());
+        PropertyMetadata metadata = inputs.get(0);
+        assertTrue(metadata.getValueType() instanceof ArrayType);
+
+        ObjectType type = (ObjectType) ((ArrayType) metadata.getValueType()).getElementType();
+        System.out.println(type.getProperties());
+
+    }
+
+    @Test
+    public void testGenericNoSpec() {
+
+        List<PropertyMetadata> inputs = CommandMetadataResolver.resolveInputs(
+            ResolvableType.forClassWithGenerics(TestGenericCommandNoSpec.class,String.class, Test2.class)
+        );
+        System.out.println(inputs);
+        assertEquals(2, inputs.size());
+
+
+    }
+
+    public static class TestGenericCommandNoSpec<R,T>
+        extends AbstractCommand<Mono<String>, TestGenericCommand<R,T>> implements GenericInputCommand<T> {
+
+
+    }
+
+    public static class TestGenericCommand<R,T> extends AbstractCommand<Mono<String>, TestGenericCommand<R,T>> implements GenericInputCommand<T> {
+
+        @Getter
+        @Setter
+        static class InputSpec<T> implements GenericInputCommand.InputSpec<T> {
+            @Schema(title = "Data")
+            private List<T> data;
+        }
+    }
+
 
     @Schema(title = "测试2", description = "测试2.")
     public static class TestInnerCommand extends AbstractCommand<Mono<String>, Test1Command> {

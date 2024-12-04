@@ -1,7 +1,5 @@
 package org.jetlinks.core.command;
 
-import io.swagger.v3.oas.annotations.extensions.Extension;
-import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.*;
@@ -62,10 +60,30 @@ public class CommandMetadataResolver {
                 Class<?> inputSpec = clazz
                     .getClassLoader()
                     .loadClass(clazz.getName() + "$InputSpec");
+
+                if (GenericInputCommand.class.isAssignableFrom(clazz)
+                    && GenericInputCommand.InputSpec.class.isAssignableFrom(inputSpec)) {
+                    ResolvableType inputType = ResolvableType.forClass(inputSpec);
+                    //输入类型有泛型,则使用泛型第一个类型进行解析.
+                    if (inputType.getGenerics().length > 0) {
+                        return resolveInputs(ResolvableType.forClassWithGenerics(
+                            inputSpec,
+                            ResolvableType.forType(GenericInputCommand.class, type).getGeneric(0)));
+                    }
+                }
+
                 return resolveInputs(ResolvableType.forClass(inputSpec));
             } catch (ClassNotFoundException ignore) {
 
             }
+
+            //基于泛型来解析
+            if (GenericInputCommand.class.isAssignableFrom(clazz)) {
+                return resolveInputs(ResolvableType
+                                         .forType(GenericInputCommand.class, type)
+                                         .getGeneric(0));
+            }
+            //AbstractCommand 基于方法来解析
             if (AbstractCommand.class.isAssignableFrom(clazz)) {
                 List<PropertyMetadata> inputs = new ArrayList<>();
                 ReflectionUtils.doWithMethods(clazz, method -> {

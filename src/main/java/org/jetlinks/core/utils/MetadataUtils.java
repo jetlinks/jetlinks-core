@@ -162,7 +162,7 @@ public class MetadataUtils {
                 }
                 Schema schema = getSchema(fClass, field);
                 if (schema != null && !schema.hidden()) {
-                    objectType.addPropertyMetadata(withField0(fClass, field, ResolvableType.forField(field, fClass)));
+                    objectType.addPropertyMetadata(withField0(fClass, field, ResolvableType.forField(field, type)));
                 }
             });
             return objectType;
