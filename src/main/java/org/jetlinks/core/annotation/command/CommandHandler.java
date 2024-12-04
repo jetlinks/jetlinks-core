@@ -8,6 +8,7 @@ import org.jetlinks.core.metadata.FunctionMetadata;
 import org.springframework.core.ResolvableType;
 
 import java.lang.annotation.*;
+import java.lang.reflect.Type;
 
 /**
  * 标记一个方法为命令处理器,用于对外提供命令实现
@@ -20,10 +21,24 @@ import java.lang.annotation.*;
  *     /// .... do something
  *  }
  *
+ *  @CommandHandler(DoSomeThingCommand.class)
+ *  public Mono<Void> doSomeThing(String arg1, int arg2){
+ *
+ *     /// .... do something
+ *  }
+ *
+ *  @CommandHandler(DoSomeThingCommand.class)
+ *  public Mono<Void> doSomeThing(@RequestBody MyEntity cmd){
+ *
+ *     /// .... do something
+ *  }
+ *
  * }</pre>
  *
  * @author zhouhao
  * @see Command
+ * @see Command#as(Type)
+ * @see Command#getOrNull(String, Type)
  * @see org.jetlinks.core.command.CommandSupport
  * @see org.jetlinks.core.command.CommandHandler
  * @since 1.2.3
