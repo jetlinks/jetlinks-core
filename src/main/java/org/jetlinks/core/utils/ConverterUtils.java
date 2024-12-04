@@ -8,7 +8,6 @@ import org.springframework.core.ResolvableType;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.Collection;
 
 public class ConverterUtils {
 
@@ -18,12 +17,41 @@ public class ConverterUtils {
         return convert(value, key.getValueType());
     }
 
+
+    static Object getNullValue(Type type) {
+        if (type == int.class) {
+            return 0;
+        }
+        if (type == long.class) {
+            return 0L;
+        }
+        if (type == short.class) {
+            return (short) 0;
+        }
+        if (type == byte.class) {
+            return (byte) 0;
+        }
+        if (type == float.class) {
+            return 0.0f;
+        }
+        if (type == double.class) {
+            return 0.0d;
+        }
+        if (type == char.class) {
+            return '\u0000';
+        }
+        if (type == boolean.class) {
+            return false;
+        }
+        return null;
+    }
+
     @SuppressWarnings("all")
     public static <T> T convert(Object value, Type type) {
         if (value == null ||
             type == Object.class ||
             (type instanceof Class && ((Class) type).isInstance(value))) {
-            return (T) value;
+            return (T) getNullValue(type);
         }
 
         if (type instanceof Class) {
