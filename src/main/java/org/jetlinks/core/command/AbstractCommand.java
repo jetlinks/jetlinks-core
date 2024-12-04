@@ -4,9 +4,11 @@ import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import lombok.EqualsAndHashCode;
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.utils.ConverterUtils;
 import org.jetlinks.core.utils.SerializeUtils;
+import org.springframework.core.ResolvableType;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -58,6 +60,11 @@ public abstract class AbstractCommand<Response, Self extends AbstractCommand<Res
     @Override
     public Map<String, Object> asMap() {
         return readable();
+    }
+
+    @SuppressWarnings("all")
+    public <T> T as(Type type) {
+        return ConverterUtils.convert(this.readable(), type);
     }
 
     @Override

@@ -1,8 +1,10 @@
 package org.jetlinks.core.cache;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jctools.maps.NonBlockingHashMap;
 import org.jetlinks.core.utils.Reactors;
 import reactor.core.Disposable;
+import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -12,7 +14,6 @@ import reactor.util.context.ContextView;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 @Slf4j
 class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V> {
 
-    private final Map<K, Container<K, V>> cache = new ConcurrentHashMap<>();
+    private final Map<K, Container<K, V>> cache = new NonBlockingHashMap<>();
 
     @Override
     public Mono<V> compute(K key, BiFunction<K, V, Mono<V>> compute) {
@@ -35,7 +36,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                         DefaultReactiveCacheContainer.this,
                         loader);
                 }
-                old.update(compute.apply(k, old.loaded));
+                old.update(loaded -> compute.apply(k, loaded));
                 return old;
             })
             .ref();
@@ -133,42 +134,53 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         @SuppressWarnings("rawtypes")
         private final static AtomicReferenceFieldUpdater<Container, Mono> LOADER
             = AtomicReferenceFieldUpdater.newUpdater(Container.class, Mono.class, "loader");
+        protected volatile Mono<T> loader;
 
+        @SuppressWarnings("rawtypes")
+        private final static AtomicReferenceFieldUpdater<Container, Sinks.One> AWAIT
+            = AtomicReferenceFieldUpdater.newUpdater(Container.class, Sinks.One.class, "await");
+        private volatile Sinks.One<T> await;
+
+        @SuppressWarnings("rawtypes")
+        private final static AtomicReferenceFieldUpdater<Container, Object> LOADED
+            = AtomicReferenceFieldUpdater.newUpdater(Container.class, Object.class, "loaded");
+        public volatile T loaded;
+
+        private final Disposable.Swap disposable = Disposables.swap();
         private final DefaultReactiveCacheContainer<K, T> main;
         private final K key;
-        private Sinks.One<T> await;
-        public volatile T loaded;
-        protected volatile Mono<T> loader;
-        private volatile Disposable disposable;
 
         public Container(K key, DefaultReactiveCacheContainer<K, T> main, Mono<T> loader) {
             this.key = key;
             this.main = main;
-            this.loader = loader;
-            update(loader);
+            update(ignore -> loader);
         }
 
         public Container(K key, DefaultReactiveCacheContainer<K, T> main, T loaded) {
             this.key = key;
             this.main = main;
             this.loaded = loaded;
-            this.loader = Mono.just(loaded);
-            update(this.loader);
+            update(ignore -> Mono.just(loaded));
         }
 
-        public void update(Mono<T> ref) {
-            if (disposable != null && !disposable.isDisposed()) {
-                disposable.dispose();
+        public void update(Function<T, Mono<T>> ref) {
+            synchronized (this) {
+                @SuppressWarnings("all")
+                Mono<T> loader = LOADER.getAndSet(this, null);
+                if (loader != null) {
+                    loader = loader.flatMap(ref);
+                } else {
+                    @SuppressWarnings("all")
+                    Sinks.One<T> await = AWAIT.get(this);
+                    if (await != null) {
+                        loader = await.asMono().flatMap(ref);
+                    } else {
+                        loader = ref.apply(this.loaded);
+                    }
+                }
+                AWAIT.compareAndSet(this, null, Sinks.one());
+                LOADER.set(this, loader);
             }
-            Sinks.One<T> old = this.await;
-            this.await = Sinks.one();
-            if (old != null && old.currentSubscriberCount() > 0) {
-                old.emitEmpty(Reactors.emitFailureHandler());
-            }
-            loader = ref
-                .switchIfEmpty(Mono.fromRunnable(this::loadEmpty))
-                .doOnError(this::loadError)
-                .doOnNext(this::afterLoaded);
         }
 
         private void afterLoaded(T data) {
@@ -176,14 +188,16 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 ((Disposable) loaded).dispose();
             }
             loaded = data;
-            this.await.emitValue(data, Reactors.emitFailureHandler());
+            @SuppressWarnings("unchecked")
+            Sinks.One<T> await = AWAIT.getAndSet(this, null);
+            if (await != null) {
+                await.emitValue(data, Reactors.emitFailureHandler());
+            }
         }
 
 
         public void dispose() {
-            if (disposable != null && !disposable.isDisposed()) {
-                disposable.dispose();
-            }
+            disposable.dispose();
             T loaded = this.loaded;
             if (loaded instanceof Disposable) {
                 ((Disposable) loaded).dispose();
@@ -191,24 +205,54 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         }
 
         private void loadError(Throwable err) {
-
-            await.emitError(err, Reactors.emitFailureHandler());
-            main.remove(key);
+            @SuppressWarnings("all")
+            Sinks.One<T> await = AWAIT.getAndSet(this, null);
+            if (await != null) {
+                await.emitError(err, Reactors.emitFailureHandler());
+            }
+            main.cache.remove(key, this);
         }
 
         private void loadEmpty() {
-            await.emitEmpty(Reactors.emitFailureHandler());
+            @SuppressWarnings("all")
+            Sinks.One<T> await = AWAIT.getAndSet(this, null);
+            if (await != null) {
+                await.emitEmpty(Reactors.emitFailureHandler());
+            }
+            //加载结果为空,移除缓存.
+            main.cache.remove(key, this);
         }
 
-        private void tryLoad(ContextView contextView) {
-            @SuppressWarnings("all")
+        @SuppressWarnings("all")
+        private Mono<T> tryLoad(ContextView contextView) {
             Mono<T> loader = LOADER.getAndSet(this, null);
-
+            //直接load
             if (loader != null) {
-                disposable = loader
-                    .contextWrite(Context.of(contextView).put(DefaultReactiveCacheContainer.class, this))
-                    .subscribe();
+                Sinks.One<T> async = Sinks.one();
+                loader
+                    .switchIfEmpty(Mono.fromRunnable(this::loadEmpty))
+                    .subscribe(
+                        loaded -> {
+                            afterLoaded(loaded);
+                            async.emitValue((T) LOADED.get(this), Reactors.emitFailureHandler());
+                        },
+                        err -> {
+                            loadError(err);
+                            async.emitError(err, Reactors.emitFailureHandler());
+                        },
+                        () -> {
+                            async.emitEmpty(Reactors.emitFailureHandler());
+                        },
+                        Context.of(DefaultReactiveCacheContainer.class, this)
+                    );
+                return async.asMono();
             }
+            Sinks.One<T> sink = AWAIT.get(this);
+            if (sink == null) {
+                return Mono.fromSupplier(() -> loaded);
+            }
+            //等待其他地方load
+            return sink.asMono();
         }
 
         public Mono<T> ref() {
@@ -219,8 +263,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                         log.warn("recursive call reactive cache [{}]", key);
                         return Mono.justOrEmpty(loaded);
                     }
-                    tryLoad(ctx);
-                    return await.asMono();
+                    return tryLoad(ctx);
                 });
         }
     }

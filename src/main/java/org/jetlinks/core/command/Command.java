@@ -4,6 +4,7 @@ import lombok.SneakyThrows;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.utils.ConverterUtils;
+import org.springframework.core.ResolvableType;
 import reactor.core.publisher.Flux;
 
 import java.io.Serializable;
@@ -32,6 +33,8 @@ import java.util.Map;
  * @see StreamCommand
  * @see CommandUtils
  * @see CommandMetadataResolver
+ * @see org.jetlinks.core.annotation.command.CommandHandler
+ * @see CommandHandler
  * @since 1.2.1
  */
 public interface Command<Response> extends Wrapper, Serializable {
@@ -137,5 +140,21 @@ public interface Command<Response> extends Wrapper, Serializable {
      */
     default Map<String, Object> asMap() {
         return FastBeanCopier.copy(this, new HashMap<>());
+    }
+
+    /**
+     * 将当前对象转换为指定类型
+     *
+     * @param type 目标类型
+     * @param <T>  转换后的类型
+     * @return 转换后的对象
+     * @see Class
+     * @see java.lang.reflect.ParameterizedType
+     * @see ResolvableType#toClass()
+     * @since 1.2.3
+     */
+    @SuppressWarnings("all")
+    default <T> T as(Type type) {
+        return ConverterUtils.convert(this, type);
     }
 }

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.apache.commons.collections4.CollectionUtils;
 import org.jetlinks.core.config.ConfigKey;
 
 import javax.annotation.Nonnull;
@@ -57,5 +58,10 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
     @Override
     public FunctionMetadata merge(FunctionMetadata another, MergeOption... option) {
         return another;
+    }
+
+    @Override
+    public String toString() {
+        return (output == null ? "void" : output) + " " + id + "(" + (CollectionUtils.isEmpty(inputs) ? "" : inputs) + ")";
     }
 }

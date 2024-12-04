@@ -1,5 +1,7 @@
 package org.jetlinks.core.command;
 
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.*;
@@ -41,34 +43,80 @@ import java.util.List;
 @AllArgsConstructor
 public class CommandMetadataResolver {
 
+    /**
+     * <pre>
+     * 解析传入对象的属性模型
+     * 1. 当传入为{@link Command}时，尝试解析其内部类{@code InputSpec}.
+     * 2. 当传入为{@link AbstractCommand}时，解析其所有{@code getxxx()}方法为属性模型
+     * 3. 当传入对象为属性类时，解析其所有携带{@link Schema}的属性为属性模型
+     * </pre>
+     *
+     * @param type 解析对象
+     * @return DataType
+     */
     public static List<PropertyMetadata> resolveInputs(ResolvableType type) {
         Class<?> clazz = type.toClass();
-        if (AbstractCommand.class.isAssignableFrom(clazz)) {
-            List<PropertyMetadata> inputs = new ArrayList<>();
-            ReflectionUtils.doWithMethods(clazz, method -> {
-                PropertyMetadata prop = tryResolveProperty(clazz, method);
-                if (prop != null) {
-                    inputs.add(prop);
-                }
-            });
-            return inputs;
-        } else {
-            ObjectType objectType = (ObjectType) MetadataUtils.parseType(type);
-            return objectType.getProperties();
+        if (Command.class.isAssignableFrom(clazz)) {
+            try {
+                //尝试获取内部类的InputSpec
+                Class<?> inputSpec = clazz
+                    .getClassLoader()
+                    .loadClass(clazz.getName() + "$InputSpec");
+                return resolveInputs(ResolvableType.forClass(inputSpec));
+            } catch (ClassNotFoundException ignore) {
+
+            }
+            if (AbstractCommand.class.isAssignableFrom(clazz)) {
+                List<PropertyMetadata> inputs = new ArrayList<>();
+                ReflectionUtils.doWithMethods(clazz, method -> {
+                    PropertyMetadata prop = tryResolveProperty(clazz, method);
+                    if (prop != null) {
+                        inputs.add(prop);
+                    }
+                });
+                return inputs;
+            }
         }
+        ObjectType objectType = (ObjectType) MetadataUtils.parseType(type);
+        return objectType.getProperties();
     }
 
+    /**
+     * <pre>
+     * 解析传入对象为{@code DataType}
+     * 1.当传入对象为{@link Command}时，解析其返回泛型为DataType
+     * 2.当传入对象为属性类时，解析其为{@link ObjectType},所有携带{@link Schema}的属性为属性模型
+     * </pre>
+     *
+     * @param type 解析对象
+     * @return DataType
+     */
     public static DataType resolveOutput(ResolvableType type) {
-        return MetadataUtils.parseType(
-            CommandUtils.getCommandResponseDataType(type.toClass())
-        );
+        Class<?> clazz = type.toClass();
+        if (Command.class.isAssignableFrom(clazz)) {
+            return MetadataUtils.parseType(
+                CommandUtils.getCommandResponseDataType(type.toClass())
+            );
+        } else {
+            return MetadataUtils.parseType(type);
+        }
+
     }
 
     public static FunctionMetadata resolve(Class<?> commandClazz) {
         return resolve(ResolvableType.forClass(commandClazz));
     }
 
+    public static FunctionMetadata resolve(Class<?> commandClazz, Class<?> outputClazz) {
+        return resolve(ResolvableType.forClass(commandClazz),
+                       ResolvableType.forClass(outputClazz));
+    }
+
     public static FunctionMetadata resolve(ResolvableType commandClazz) {
+        return resolve(commandClazz, commandClazz);
+    }
+
+    public static FunctionMetadata resolve(ResolvableType commandClazz, ResolvableType outClazz) {
         SimpleFunctionMetadata metadata = new SimpleFunctionMetadata();
         Class<?> clazz = commandClazz.toClass();
 
@@ -81,7 +129,7 @@ public class CommandMetadataResolver {
             metadata.setName(metadata.getId());
         }
         metadata.setInputs(resolveInputs(commandClazz));
-        metadata.setOutput(resolveOutput(commandClazz));
+        metadata.setOutput(resolveOutput(outClazz));
         return metadata;
     }
 
@@ -94,16 +142,19 @@ public class CommandMetadataResolver {
         if (method.getReturnType() == Void.class || method.getParameterCount() != 0) {
             return null;
         }
-        String name = method.getName();
-
-        int nameIndex = 0;
-        if (name.startsWith("get")) {
-            nameIndex = 3;
+        String name;
+        if (StringUtils.hasText(schema.name())) {
+            name = schema.name();
+        } else {
+            String methodName = method.getName();
+            int nameIndex = 0;
+            if (methodName.startsWith("get")) {
+                nameIndex = 3;
+            }
+            char[] propertyName = methodName.substring(nameIndex).toCharArray();
+            propertyName[0] = Character.toLowerCase(propertyName[0]);
+            name = new String(propertyName);
         }
-
-        char[] propertyName = name.substring(nameIndex).toCharArray();
-        propertyName[0] = Character.toLowerCase(propertyName[0]);
-        name = new String(propertyName);
 
         SimplePropertyMetadata prop = new SimplePropertyMetadata();
         prop.setId(name);

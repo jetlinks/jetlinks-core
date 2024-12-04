@@ -51,4 +51,12 @@ public class SimplePropertyMetadata implements PropertyMetadata {
         }
         return metadata;
     }
+    @Override
+    public String toString() {
+        //  /* 测试 */ int name,
+        return String.join("",
+                           getValueType().getId(), " ", getId(), " /* ", getName(), " */ "
+        );
+
+    }
 }

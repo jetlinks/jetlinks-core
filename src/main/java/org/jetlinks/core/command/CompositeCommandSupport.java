@@ -1,6 +1,5 @@
 package org.jetlinks.core.command;
 
-import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Flux;
@@ -8,17 +7,38 @@ import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
-@AllArgsConstructor
 public class CompositeCommandSupport implements CommandSupport {
 
     public static CommandSupport of(AbstractCommandSupport... commands) {
         return new CompositeCommandSupport(Arrays.asList(commands));
     }
 
-    private final List<AbstractCommandSupport> supports;
+    public static CompositeCommandSupport create() {
+        return new CompositeCommandSupport();
+    }
+
+    private final List<AbstractCommandSupport> supports = new CopyOnWriteArrayList<>();
+
+    public CompositeCommandSupport() {
+
+    }
+
+    public CompositeCommandSupport(List<AbstractCommandSupport> supports) {
+        this.supports.addAll(supports);
+    }
+
+    public List<AbstractCommandSupport> getSupports() {
+        return Collections.unmodifiableList(supports);
+    }
+
+    public void register(AbstractCommandSupport support) {
+        supports.add(support);
+    }
 
     @Override
     public boolean isWrapperFor(Class<?> type) {
