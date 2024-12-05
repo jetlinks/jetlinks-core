@@ -149,6 +149,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
         addMessageCodecSupport(codec.getSupportTransport(), codec);
     }
 
+    public void removeMessageCodecSupport(Transport transport) {
+        messageCodecSupports.remove(transport.getId());
+    }
+
     public void addAuthenticator(Transport transport, Authenticator authenticator) {
         authenticators.put(transport.getId(), authenticator);
     }
