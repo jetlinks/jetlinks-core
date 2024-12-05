@@ -61,8 +61,27 @@ public class CommandMetadataResolverTest {
     @Test
     public void testGeneric() {
 
+        FunctionMetadata metadata = CommandMetadataResolver.resolve(
+            ResolvableType.forClassWithGenerics(TestGenericCommand.class, String.class, Test2.class)
+        );
+        System.out.println(JSON.toJSONString(metadata.toJson(),SerializerFeature.PrettyFormat));
+        {
+            List<PropertyMetadata> inputs = metadata.getInputs();
+
+
+            assertEquals(1, inputs.size());
+            PropertyMetadata prop = inputs.get(0);
+            assertTrue(prop.getValueType() instanceof ArrayType);
+            ObjectType type = (ObjectType) ((ArrayType) prop.getValueType()).getElementType();
+            System.out.println(type.getProperties());
+
+        }
+    }
+
+    @Test
+    public void testGenericSub() {
         List<PropertyMetadata> inputs = CommandMetadataResolver.resolveInputs(
-            ResolvableType.forClassWithGenerics(TestGenericCommand.class,String.class, Test2.class)
+            ResolvableType.forClassWithGenerics(TestGenericCommandSub.class, String.class, Test2.class)
         );
         System.out.println(inputs);
         assertEquals(1, inputs.size());
@@ -71,14 +90,13 @@ public class CommandMetadataResolverTest {
 
         ObjectType type = (ObjectType) ((ArrayType) metadata.getValueType()).getElementType();
         System.out.println(type.getProperties());
-
     }
 
     @Test
     public void testGenericNoSpec() {
 
         List<PropertyMetadata> inputs = CommandMetadataResolver.resolveInputs(
-            ResolvableType.forClassWithGenerics(TestGenericCommandNoSpec.class,String.class, Test2.class)
+            ResolvableType.forClassWithGenerics(TestGenericCommandNoSpec.class, String.class, Test2.class)
         );
         System.out.println(inputs);
         assertEquals(2, inputs.size());
@@ -86,13 +104,19 @@ public class CommandMetadataResolverTest {
 
     }
 
-    public static class TestGenericCommandNoSpec<R,T>
-        extends AbstractCommand<Mono<String>, TestGenericCommand<R,T>> implements GenericInputCommand<T> {
+    public static class TestGenericCommandNoSpec<R, T>
+        extends AbstractCommand<R, TestGenericCommandNoSpec<R, T>> implements GenericInputCommand<T> {
 
 
     }
 
-    public static class TestGenericCommand<R,T> extends AbstractCommand<Mono<String>, TestGenericCommand<R,T>> implements GenericInputCommand<T> {
+    public static class TestGenericCommandSub<R, T> extends TestGenericCommand<R, T>
+        implements GenericInputCommand<T> {
+
+    }
+
+    public static class TestGenericCommand<R, T> extends AbstractCommand<Mono<R>, TestGenericCommand<R, T>>
+        implements GenericInputCommand<T>{
 
         @Getter
         @Setter

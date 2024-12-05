@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -55,12 +56,9 @@ public class CommandMetadataResolver {
     public static List<PropertyMetadata> resolveInputs(ResolvableType type) {
         Class<?> clazz = type.toClass();
         if (Command.class.isAssignableFrom(clazz)) {
-            try {
-                //尝试获取内部类的InputSpec
-                Class<?> inputSpec = clazz
-                    .getClassLoader()
-                    .loadClass(clazz.getName() + "$InputSpec");
-
+            //尝试获取描述类
+            Class<?> inputSpec = findInputSpec(clazz);
+            if (inputSpec != null) {
                 if (GenericInputCommand.class.isAssignableFrom(clazz)
                     && GenericInputCommand.InputSpec.class.isAssignableFrom(inputSpec)) {
                     ResolvableType inputType = ResolvableType.forClass(inputSpec);
@@ -68,19 +66,15 @@ public class CommandMetadataResolver {
                     if (inputType.getGenerics().length > 0) {
                         return resolveInputs(ResolvableType.forClassWithGenerics(
                             inputSpec,
-                            ResolvableType.forType(GenericInputCommand.class, type).getGeneric(0)));
+                            type.as(GenericInputCommand.class).getGeneric(0)));
                     }
                 }
-
                 return resolveInputs(ResolvableType.forClass(inputSpec));
-            } catch (ClassNotFoundException ignore) {
-
             }
 
             //基于泛型来解析
             if (GenericInputCommand.class.isAssignableFrom(clazz)) {
-                return resolveInputs(ResolvableType
-                                         .forType(GenericInputCommand.class, type)
+                return resolveInputs(type.as(GenericInputCommand.class)
                                          .getGeneric(0));
             }
             //AbstractCommand 基于方法来解析
@@ -95,8 +89,11 @@ public class CommandMetadataResolver {
                 return inputs;
             }
         }
-        ObjectType objectType = (ObjectType) MetadataUtils.parseType(type);
-        return objectType.getProperties();
+        DataType objectType = MetadataUtils.parseType(type);
+        if (objectType instanceof ObjectType) {
+            return ((ObjectType) objectType).getProperties();
+        }
+        return Collections.emptyList();
     }
 
     /**
@@ -113,10 +110,12 @@ public class CommandMetadataResolver {
         Class<?> clazz = type.toClass();
         if (Command.class.isAssignableFrom(clazz)) {
             return MetadataUtils.parseType(
-                CommandUtils.getCommandResponseDataType(type.toClass())
+                CommandUtils.getCommandResponseDataType(
+                    type.as(Command.class).getGeneric(0)
+                )
             );
         } else {
-            return MetadataUtils.parseType(type);
+            return MetadataUtils.parseType(CommandUtils.getCommandResponseDataType(type));
         }
 
     }
@@ -180,5 +179,20 @@ public class CommandMetadataResolver {
         prop.setName(StringUtils.hasText(schema.title()) ? schema.title() : prop.getDescription());
         prop.setValueType(MetadataUtils.parseType(ResolvableType.forMethodReturnType(method, clazz)));
         return prop;
+    }
+
+
+    private static Class<?> findInputSpec(Class<?> owner) {
+        while (Command.class.isAssignableFrom(owner)) {
+            //尝试获取内部类的InputSpec
+            try {
+                return owner
+                    .getClassLoader()
+                    .loadClass(owner.getName() + "$InputSpec");
+            } catch (ClassNotFoundException e) {
+                owner = owner.getSuperclass();
+            }
+        }
+        return null;
     }
 }

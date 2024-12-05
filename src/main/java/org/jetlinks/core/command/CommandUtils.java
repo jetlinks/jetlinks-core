@@ -144,7 +144,11 @@ public class CommandUtils {
      * @return 数据类型
      */
     public static ResolvableType getCommandResponseDataType(Class<?> cmd) {
-        ResolvableType type = CommandUtils.getCommandResponseType(cmd);
+
+        return getCommandResponseDataType(CommandUtils.getCommandResponseType(cmd));
+    }
+
+    public static ResolvableType getCommandResponseDataType(ResolvableType type) {
         Class<?> typeClazz = type.toClass();
         if (Publisher.class.isAssignableFrom(typeClazz) ||
             Collection.class.isAssignableFrom(typeClazz)) {
