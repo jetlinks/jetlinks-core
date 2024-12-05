@@ -36,7 +36,9 @@ public interface Headers {
      * @since core-1.2.3
      * @since platform-2.3
      */
-    HeaderKey<Boolean> keepOnlineIgnoreParent = HeaderKey.of("keepOnlineIgnoreParent", false, Boolean.class);
+    HeaderKey<Boolean> keepOnlineIgnoreParent = HeaderKey.of("keepOnlineIgnoreParent",
+                                                             Boolean.getBoolean("device.session.keep-online.ignore-parent"),
+                                                             Boolean.class);
 
     /**
      * 异步消息,当发往设备的消息标记了为异步时,设备网关服务发送消息到设备后将立即回复{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING}到发送端

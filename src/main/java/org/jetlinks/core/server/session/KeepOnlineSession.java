@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
+import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.ToDeviceMessageContext;
 import org.jetlinks.core.message.codec.Transport;
@@ -19,7 +20,6 @@ import java.time.Duration;
 import java.util.Optional;
 
 public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSession, PersistentSession {
-    static final boolean DEFAULT_IGNORE_PARENT = Boolean.getBoolean("device.session.keep-online.ignore-parent");
 
     @Getter
     DeviceSession parent;
@@ -32,7 +32,7 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     //忽略上级会话信息,设置为true后. 设备是否离线以超时时间为准
     @Setter
     @Getter
-    private boolean ignoreParent = DEFAULT_IGNORE_PARENT;
+    private boolean ignoreParent = Headers.keepOnlineIgnoreParent.getDefaultValue();
 
     private long keepAliveTimeOutMs;
 
