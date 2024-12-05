@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.Optional;
 
 public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSession, PersistentSession {
+    static final boolean DEFAULT_IGNORE_PARENT = Boolean.getBoolean("device.session.keep-online.ignore-parent");
 
     @Getter
     DeviceSession parent;
@@ -31,7 +32,7 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     //忽略上级会话信息,设置为true后. 设备是否离线以超时时间为准
     @Setter
     @Getter
-    private boolean ignoreParent = false;
+    private boolean ignoreParent = DEFAULT_IGNORE_PARENT;
 
     private long keepAliveTimeOutMs;
 
@@ -69,13 +70,13 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
         return Mono
-                .defer(() -> {
-                    if (parent.isAlive()) {
-                        return parent.send(encodedMessage);
-                    }
-                    ReferenceCountUtil.safeRelease(encodedMessage.getPayload());
-                    return Mono.error(new DeviceOperationException.NoStackTrace(ErrorCode.CONNECTION_LOST));
-                });
+            .defer(() -> {
+                if (parent.isAlive()) {
+                    return parent.send(encodedMessage);
+                }
+                ReferenceCountUtil.safeRelease(encodedMessage.getPayload());
+                return Mono.error(new DeviceOperationException.NoStackTrace(ErrorCode.CONNECTION_LOST));
+            });
     }
 
     @Override
@@ -109,7 +110,7 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
 
     private boolean aliveByKeepAlive() {
         return keepAliveTimeOutMs <= 0
-                || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs;
+            || System.currentTimeMillis() - lastKeepAliveTime < keepAliveTimeOutMs;
     }
 
     @Override

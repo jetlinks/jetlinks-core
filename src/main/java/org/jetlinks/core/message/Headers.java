@@ -31,6 +31,14 @@ public interface Headers {
     HeaderKey<Integer> keepOnlineTimeoutSeconds = HeaderKey.of("keepOnlineTimeoutSeconds", 600, Integer.class);
 
     /**
+     * 保持在线,忽略父设备状态,强制以心跳超时来决定是否离线.
+     *
+     * @since core-1.2.3
+     * @since platform-2.3
+     */
+    HeaderKey<Boolean> keepOnlineIgnoreParent = HeaderKey.of("keepOnlineIgnoreParent", false, Boolean.class);
+
+    /**
      * 异步消息,当发往设备的消息标记了为异步时,设备网关服务发送消息到设备后将立即回复{@link org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING}到发送端
      *
      * @see org.jetlinks.core.enums.ErrorCode#REQUEST_HANDLING
@@ -101,7 +109,7 @@ public interface Headers {
      * <b>注意：由于不同数据库的主键策略不同,此表示可能不会在某些存储策略中生效.
      * </b>
      * <p>
-     *  已知支持的存储策略: ElasticSearch、TimescaleDB.
+     * 已知支持的存储策略: ElasticSearch、TimescaleDB.
      *
      * @see org.jetlinks.core.message.property.PropertyMessage
      * @see Headers#useTimestampAsId
