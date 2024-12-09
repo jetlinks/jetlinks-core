@@ -10,6 +10,10 @@ import java.util.*;
 public class TopicUtils {
     public static final char PATH_SPLITTER = '/';
 
+    public static final String ANY = "*";
+    public static final String ANY_ALL = "**";
+
+
     private final static PathMatcher pathMatcher = new AntPathMatcher();
 
     private final static Map<String, String[]> splitCache;
@@ -121,7 +125,13 @@ public class TopicUtils {
                 t -> {
                     String[] arr = doSplit(t);
                     for (int i = 0; i < arr.length; i++) {
-                        arr[i] = RecyclerUtils.intern(arr[i]);
+                        if (Objects.equals(arr[i], ANY)) {
+                            arr[i] = ANY;
+                        } else if (Objects.equals(arr[i], ANY_ALL)) {
+                            arr[i] = ANY_ALL;
+                        } else {
+                            arr[i] = RecyclerUtils.intern(arr[i]);
+                        }
                     }
                     return arr;
                 });
