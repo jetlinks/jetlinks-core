@@ -20,7 +20,11 @@ import java.util.stream.Collectors;
 public class Subscription implements Externalizable {
     private static final long serialVersionUID = -6849794470754667710L;
 
-    public static final Feature[] DEFAULT_FEATURES = Subscription.Feature.values();
+    public static final Feature[] DEFAULT_FEATURES = {
+        Feature.local,
+        Feature.broker,
+        Feature.shared
+    };
 
     //订阅者标识
     private String subscriber;
@@ -63,6 +67,10 @@ public class Subscription implements Externalizable {
         } else {
             log.warn("eventbus buffer overflow, drop event:{},subscription:{}", payload.getTopic(), this);
         }
+    }
+
+    public Consumer<TopicPayload> getDropListener() {
+        return onDropped;
     }
 
     public static Subscription of(String subscriber, String... topic) {
@@ -175,7 +183,6 @@ public class Subscription implements Externalizable {
 
         /**
          * 共享订阅时,数据实现{@link Routable}时根据按{@link Routable#hash(Object...)}进行负载均衡.
-         *
          */
         sharedHashed("使用hash方式路由共享订阅"),
 
