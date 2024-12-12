@@ -15,9 +15,16 @@ public class RecyclerUtils {
         65535,
         ConcurrentReferenceHashMap.ReferenceType.SOFT);
 
+    public static final boolean INTERN_ENABLED = "true".equals(
+        System.getProperty("jetlinks.recycler.intern.enabled", "true")
+    );
+
     @SuppressWarnings("all")
-    public static <T> T intern(T str) {
-        return str == null ? null : (T) sharedObjects.computeIfAbsent(str, Function.identity());
+    public static <T> T intern(T obj) {
+        if (!INTERN_ENABLED) {
+            return obj;
+        }
+        return obj == null ? null : (T) sharedObjects.computeIfAbsent(obj, Function.identity());
     }
 
     public static <T> Recycler<T> newRecycler(Class<T> type, Function<Recycler.Handle<T>, T> objectSupplier, int defaultRatio) {

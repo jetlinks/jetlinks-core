@@ -26,14 +26,6 @@ public class SharedSeparatedString extends SeparatedString {
         this.separator = separator;
     }
 
-    public static SharedSeparatedString of(char separator, String string) {
-        String[] arr = TopicUtils.split(string, separator);
-        for (int i = 0; i < arr.length; i++) {
-            arr[i] = RecyclerUtils.intern(arr[i]);
-        }
-        return of(separator, arr);
-    }
-
     public static SharedSeparatedString of(char separator, String[] string) {
         return RecyclerUtils.intern(new SharedSeparatedString(separator, string));
     }

@@ -75,8 +75,7 @@ public class Subscription implements Externalizable {
 
     public static Subscription of(String subscriber, String... topic) {
 
-        return Subscription
-            .builder()
+        return builder()
             .subscriberId(subscriber)
             .topics(topic)
             .build();
@@ -84,8 +83,7 @@ public class Subscription implements Externalizable {
     }
 
     public static Subscription of(String subscriber, String[] topic, Feature... features) {
-        return Subscription
-            .builder()
+        return builder()
             .subscriberId(subscriber)
             .topics(topic)
             .features(features)
@@ -93,8 +91,7 @@ public class Subscription implements Externalizable {
     }
 
     public static Subscription of(String subscriber, String topic, Feature... features) {
-        return Subscription
-            .builder()
+        return builder()
             .subscriberId(subscriber)
             .topics(topic)
             .features(features)
@@ -111,7 +108,7 @@ public class Subscription implements Externalizable {
         return this;
     }
 
-    public boolean hasFeature(Subscription.Feature feature) {
+    public boolean hasFeature(Feature feature) {
         return feature.in(this.features);
     }
 
@@ -159,7 +156,7 @@ public class Subscription implements Externalizable {
     public enum Feature implements EnumDict<String> {
 
         /**
-         * 如果相同的订阅者,只有一个订阅者收到消息.
+         * 如果相同的订阅者{@link Subscription#subscriber},只有一个订阅者收到消息.
          *
          * @see Routable#routeKey()
          * @see Feature#sharedOldest
@@ -192,6 +189,39 @@ public class Subscription implements Externalizable {
         sharedMinimumLoad("使用最小负载方式路由共享订阅");
 
         private final String text;
+
+        //订阅本地和集群的消息
+        public static final Feature[] clusterFeatures = {
+            Feature.local,
+            Feature.broker
+        };
+        //共享订阅本地和集群的消息.
+        public static final Feature[] clusterSharedFeatures = {
+            Feature.local,
+            Feature.broker,
+            Feature.shared
+        };
+        //共享订阅本地和集群的消息,以hash方式负载均衡
+        public static final Feature[] clusterSharedHashFeatures = {
+            Feature.local,
+            Feature.broker,
+            Feature.shared,
+            Feature.sharedHashed
+        };
+        //共享订阅本地和集群的消息,以最小负载方式负载均衡
+        public static final Feature[] clusterSharedMinimumLoadFeatures = {
+            Feature.local,
+            Feature.broker,
+            Feature.shared,
+            Feature.sharedMinimumLoad
+        };
+        //共享订阅本地和集群的消息,最先订阅的订阅者收到消息
+        public static final Feature[] clusterSharedOldestFeatures = {
+            Feature.local,
+            Feature.broker,
+            Feature.shared,
+            Feature.sharedOldest
+        };
 
         @Override
         public String getValue() {
@@ -233,6 +263,10 @@ public class Subscription implements Externalizable {
         }
 
         public Builder topics(String... topics) {
+            if (topics.length == 1) {
+                this.topics.addAll(TopicUtils.expand(topics[0]));
+                return this;
+            }
             return topics(Arrays.asList(topics));
         }
 

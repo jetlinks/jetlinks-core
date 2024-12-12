@@ -212,7 +212,7 @@ public class SerializeUtils {
     @SneakyThrows
     @SuppressWarnings("unchecked")
     public static <T> T readObjectAs(ObjectInput input) {
-        return (T)readObject(input);
+        return (T) readObject(input);
     }
 
     @SneakyThrows
@@ -323,6 +323,24 @@ public class SerializeUtils {
             Object key = readObject(in);
             Object value = readObject(in);
             map.put((K) key, (T) value);
+        }
+        return map;
+    }
+
+    @SneakyThrows
+    public static <K, T> Map<K, T> readMap(ObjectInput in,
+                                           Function<Object, K> keyMapper,
+                                           Function<Object, T> valueMapper,
+                                           Function<Integer, Map<K, T>> mapBuilder) {
+        //header
+        int headerSize = in.readInt();
+
+        Map<K, T> map = mapBuilder.apply(Math.max(8, headerSize));
+
+        for (int i = 0; i < headerSize; i++) {
+            K key = keyMapper.apply(readObject(in));
+            T value = valueMapper.apply(readObject(in));
+            map.put(key, value);
         }
         return map;
     }

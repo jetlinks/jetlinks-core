@@ -13,6 +13,7 @@ public final class RecyclableDequeue<T> extends ArrayDeque<T> {
 
     private static final ObjectPool<RecyclableDequeue<Object>> RECYCLER = ObjectPool.newPool(RecyclableDequeue::new);
 
+    @SuppressWarnings("all")
     public static <T> RecyclableDequeue<T> newInstance() {
         return (RecyclableDequeue<T>) RECYCLER.get();
     }

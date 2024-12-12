@@ -1,12 +1,14 @@
 package org.jetlinks.core.lang;
 
 import lombok.EqualsAndHashCode;
+import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.StringBuilderUtils;
+import org.jetlinks.core.utils.TopicUtils;
 
 import javax.annotation.Nonnull;
 
 @EqualsAndHashCode(of = "separated")
-abstract class SeparatedString implements CharSequence, Comparable<SeparatedString> {
+public abstract class SeparatedString implements CharSequence, Comparable<SeparatedString> {
     protected final String[] separated;
 
     protected abstract char separator();
@@ -31,22 +33,39 @@ abstract class SeparatedString implements CharSequence, Comparable<SeparatedStri
         return separated;
     }
 
+    public static CharSequence of(char separator, String string) {
+        String[] arr = TopicUtils.split(string, separator);
+        for (int i = 0; i < arr.length; i++) {
+            arr[i] = RecyclerUtils.intern(arr[i]);
+        }
+        if (arr.length == 1) {
+            return arr[0];
+        }
+        if (arr.length == 2) {
+            return RecyclerUtils.intern(new SeparatedString2(separator, arr[0], arr[1]));
+        }
+        if (arr.length == 3) {
+            return RecyclerUtils.intern(new SeparatedString3(separator, arr[0], arr[1], arr[2]));
+        }
+        return SharedSeparatedString.of(separator, arr);
+    }
+
     @Override
     public int compareTo(SeparatedString o) {
 
         if (index() != o.index()) {
-            return index() - o.index();
+            return Integer.compare(index(), o.index());
         }
 
         if (separatedLength() != o.separatedLength()) {
-            return separatedLength() - o.separatedLength();
+            return Integer.compare(separatedLength(), o.separatedLength());
         }
 
         if (separator() != o.separator()) {
-            return separator() - o.separator();
+            return Character.compare(separator(), o.separator());
         }
         if (separated.length != o.separated.length) {
-            return separated.length - o.separated.length;
+            return Integer.compare(separated.length, o.separated.length);
         }
         for (int i = 0; i < separated.length; i++) {
             int c = separated[i].compareTo(o.separated[i]);

@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.lang.SharedPathString;
 import org.jetlinks.core.utils.RecyclableDequeue;
 import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.StringBuilderUtils;
@@ -18,7 +19,6 @@ import reactor.function.Consumer5;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.*;
 
 @EqualsAndHashCode(of = "part")
@@ -30,13 +30,13 @@ public final class Topic<T> {
     private String part;
 
     @Setter(AccessLevel.PRIVATE)
-    private volatile String[] topics;
+    private volatile SharedPathString topics;
 
     private final int depth;
 
     private volatile ConcurrentMap<String, Topic<T>> child;
 
-    private volatile ConcurrentMap<T, AtomicInteger> subscribers;
+    private volatile ConcurrentMap<T, Integer> subscribers;
 
     public static <T> Topic<T> createRoot() {
         return new Topic<>(null, "/");
@@ -44,6 +44,13 @@ public final class Topic<T> {
 
     public Topic<T> append(String topic) {
         if (topic == null || topic.equals("/") || topic.isEmpty()) {
+            return this;
+        }
+        return getOrDefault(topic, Topic::new);
+    }
+
+    public Topic<T> append(String[] topic) {
+        if (topic == null || topic.length == 0) {
             return this;
         }
         return getOrDefault(topic, Topic::new);
@@ -73,18 +80,33 @@ public final class Topic<T> {
     }
 
     public String[] getTopics() {
-        if (topics != null) {
-            return topics;
+        if (topics == null) {
+            topics = SharedPathString.of(getTopic0());
         }
-        return topics = TopicUtils.split(getTopic(), true);
+        return topics.separated();
+    }
+
+    private String[] getTopicsUnsafe() {
+        if (topics == null) {
+            topics = SharedPathString.of(getTopic0());
+        }
+        return topics.unsafeSeparated();
     }
 
     public String getTopic() {
+        if (topics != null) {
+            return topics.toString();
+        }
+        return getTopic0();
+    }
+
+    private String getTopic0() {
         return StringBuilderUtils
             .buildString(getParent(), (_parent, builder) -> {
                 if (_parent != null) {
                     String parentTopic = _parent.getTopic();
-                    builder.append(parentTopic).append(parentTopic.equals("/") ? "" : "/");
+                    builder.append(parentTopic)
+                           .append(parentTopic.equals("/") ? "" : "/");
                 } else {
                     builder.append("/");
                 }
@@ -118,39 +140,68 @@ public final class Topic<T> {
     @SafeVarargs
     public final void subscribe(T... subscribers) {
         for (T subscriber : subscribers) {
-            this.subscribers()
-                .computeIfAbsent(subscriber, i -> new AtomicInteger())
-                .incrementAndGet();
+            subscribe0(subscriber);
         }
+    }
+
+
+    public void subscribe0(T subscriber) {
+        this.subscribers()
+            .compute(subscriber, (ignore, i) -> i == null ? 1 : i + 1);
+    }
+
+    public void subscribe0(T subscriber, boolean replace) {
+        if (replace) {
+            this.subscribers().put(subscriber, 1);
+            return;
+        }
+        subscribe0(subscriber);
     }
 
     @SafeVarargs
     public final List<T> unsubscribe(T... subscribers) {
         List<T> unsub = new ArrayList<>(subscribers.length);
         for (T subscriber : subscribers) {
-            this.subscribers()
-                .computeIfPresent(subscriber, (k, v) -> {
-                    if (v.decrementAndGet() <= 0) {
-                        unsub.add(k);
-                        return null;
-                    }
-                    return v;
-                });
+            if (unsubscribe0(subscriber)) {
+                unsub.add(subscriber);
+            }
         }
         return unsub;
     }
 
+    public boolean unsubscribe0(T subscriber, boolean all) {
+        if (all) {
+            return this.subscribers().remove(subscriber) != null;
+        }
+        return unsubscribe0(subscriber);
+    }
+
+    public boolean unsubscribe0(T subscriber) {
+        return this
+            .subscribers()
+            .compute(
+                subscriber,
+                (k, v) -> {
+                    if (v == null || v - 1 <= 0) {
+                        return null;
+                    }
+                    return v - 1;
+                })
+            == null;
+    }
+
     public void unsubscribe(Predicate<T> predicate) {
-        ConcurrentMap<T, AtomicInteger> subscribers = this.subscribers;
+        ConcurrentMap<T, Integer> subscribers = this.subscribers;
         if (subscribers == null) {
             return;
         }
 
-        for (Map.Entry<T, AtomicInteger> entry : subscribers.entrySet()) {
-            if (predicate.test(entry.getKey()) && entry.getValue().decrementAndGet() <= 0) {
-                subscribers.remove(entry.getKey());
+        for (T t : subscribers.keySet()) {
+            if (predicate.test(t)) {
+                unsubscribe0(t);
             }
         }
+
     }
 
     public void unsubscribeAll() {
@@ -178,7 +229,7 @@ public final class Topic<T> {
         return child;
     }
 
-    private ConcurrentMap<T, AtomicInteger> subscribers() {
+    private ConcurrentMap<T, Integer> subscribers() {
         if (subscribers == null) {
             synchronized (this) {
                 if (subscribers == null) {
@@ -198,6 +249,19 @@ public final class Topic<T> {
         }
     }
 
+    private Topic<T> getOrDefault(String[] parts, BiFunction<Topic<T>, String, Topic<T>> mapping) {
+        int index = 0;
+        if (parts[0].isEmpty()) {
+            index = 1;
+        }
+        Topic<T> part = child().computeIfAbsent(parts[index], _topic -> mapping.apply(this, _topic));
+        for (int i = index + 1; i < parts.length && part != null; i++) {
+            Topic<T> parent = part;
+            part = part.child().computeIfAbsent(parts[i], _topic -> mapping.apply(parent, _topic));
+        }
+        return part;
+    }
+
     private Topic<T> getOrDefault(String topic, BiFunction<Topic<T>, String, Topic<T>> mapping) {
         if (topic.charAt(0) == '/') {
             topic = topic.substring(1);
@@ -212,6 +276,10 @@ public final class Topic<T> {
     }
 
     public Optional<Topic<T>> getTopic(String topic) {
+        return Optional.ofNullable(getOrDefault(topic, ((topicPart, s) -> null)));
+    }
+
+    public Optional<Topic<T>> getTopic(String[] topic) {
         return Optional.ofNullable(getOrDefault(topic, ((topicPart, s) -> null)));
     }
 
@@ -255,8 +323,9 @@ public final class Topic<T> {
     }
 
     private boolean match(String[] pars) {
-        return TopicUtils.match(getTopics(), pars)
-            || TopicUtils.match(pars, getTopics());
+        String[] parts = getTopicsUnsafe();
+        return TopicUtils.match(parts, pars)
+            || TopicUtils.match(pars, parts);
     }
 
     public static <T, ARG0, ARG1, ARG2, ARG3> void find(
@@ -367,7 +436,7 @@ public final class Topic<T> {
         }
     }
 
-    public boolean cleanup(BiConsumer<Boolean,Topic<T>> handler) {
+    public boolean cleanup(BiConsumer<Boolean, Topic<T>> handler) {
         //清理订阅者
         if (subscribers != null && subscribers.isEmpty()) {
             synchronized (this) {
@@ -385,7 +454,7 @@ public final class Topic<T> {
                     child.remove(children.getKey());
                 }
                 if (handler != null) {
-                    handler.accept(cleaned,topic);
+                    handler.accept(cleaned, topic);
                 }
             }
 

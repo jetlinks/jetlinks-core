@@ -2,6 +2,7 @@ package org.jetlinks.core.topic;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jetlinks.core.utils.TopicUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
@@ -198,6 +199,7 @@ public class TopicTest {
             .verifyComplete();
 
         Assert.assertNull(root.getTopic("/1/org/5").orElse(null));
+        Assert.assertNull(root.getTopic(TopicUtils.split("/1/org/5")).orElse(null));
 
 
     }
@@ -206,7 +208,7 @@ public class TopicTest {
     public void testSub() {
         Topic<String> root = Topic.createRoot();
 
-        root.append("/device/*").subscribe("testId");
+        root.append(TopicUtils.split("/device/*")).subscribe("testId");
 
         System.out.println(root);
 
