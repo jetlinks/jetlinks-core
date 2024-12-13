@@ -1,7 +1,8 @@
 package org.jetlinks.core.message.module;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessage;
-import org.jetlinks.core.message.CommonThingMessage;
 import org.jetlinks.core.message.Message;
 import org.jetlinks.core.message.MessageType;
 
@@ -12,8 +13,11 @@ import org.jetlinks.core.message.MessageType;
  * @since 1.2.2
  * @see ThingModuleMessage
  */
+@Getter
+@Setter
 public class DeviceModuleMessage extends CommonDeviceMessage<DeviceModuleMessage>
     implements ThingModuleMessage {
+
 
     private String module;
     private Message message;

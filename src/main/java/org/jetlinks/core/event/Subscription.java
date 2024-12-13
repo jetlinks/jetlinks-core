@@ -1,5 +1,6 @@
 package org.jetlinks.core.event;
 
+import com.google.common.collect.Collections2;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -260,6 +261,14 @@ public class Subscription implements Externalizable {
         public Builder subscriberId(String id) {
             this.subscriber = id;
             return this;
+        }
+
+        public Builder topics(CharSequence... topics) {
+            if (topics.length == 1) {
+                this.topics.addAll(TopicUtils.expand(topics[0].toString()));
+                return this;
+            }
+            return topics(Collections2.transform(Arrays.asList(topics), String::valueOf));
         }
 
         public Builder topics(String... topics) {

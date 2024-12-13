@@ -4,15 +4,17 @@ import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.TopicUtils;
 
 /**
- * 共享的路径字符串,与{@link SharedSeparatedString}相同的用途,但是固定使用'/'作为分隔符.
+ * 共享的路径字符串,与{@link SeparatedStringN}相同的用途,但是固定使用'/'作为分隔符.
  *
  * @author zhouhao
  * @see RecyclerUtils#intern(Object)
- * @see SharedSeparatedString
+ * @see SeparatedStringN
  * @see SharedPathString#of(String)
  * @since 1.2.3
  */
 public class SharedPathString extends SeparatedString {
+
+    private static final SharedPathString EMPTY = new SharedPathString(new String[0]);
 
     @Override
     protected final char separator() {
@@ -27,8 +29,31 @@ public class SharedPathString extends SeparatedString {
         this(TopicUtils.split(topic, true, true));
     }
 
+    public static SharedPathString empty() {
+        return EMPTY;
+    }
+
+    public static SharedPathString of(String path, boolean intern) {
+        return intern
+            ? RecyclerUtils.intern(new SharedPathString(path))
+            : new SharedPathString(TopicUtils.split(path));
+    }
+
+    public static SharedPathString of(CharSequence path) {
+        if (path instanceof SharedPathString) {
+            return (SharedPathString) path;
+        }
+        if (path instanceof SeparatedString) {
+            return of(((SeparatedString) path).unsafeSeparated());
+        }
+        if (path instanceof SeparatedCharSequence) {
+            return of(((SeparatedCharSequence) path).asStringArray());
+        }
+        return of(String.valueOf(path));
+    }
+
     public static SharedPathString of(String path) {
-        return RecyclerUtils.intern(new SharedPathString(path));
+        return of(path, true);
     }
 
     public static SharedPathString of(String[] path) {

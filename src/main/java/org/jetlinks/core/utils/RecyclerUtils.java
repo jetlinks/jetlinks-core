@@ -6,10 +6,12 @@ import org.springframework.util.ConcurrentReferenceHashMap;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 @Slf4j
 public class RecyclerUtils {
+    private static final Map<Object, Object> staticSharedObject = new ConcurrentHashMap<>();
 
     private static final Map<Object, Object> sharedObjects = new ConcurrentReferenceHashMap<>(
         65535,
@@ -19,12 +21,33 @@ public class RecyclerUtils {
         System.getProperty("jetlinks.recycler.intern.enabled", "true")
     );
 
+    static {
+        share("");
+        share("device");
+        share("product");
+        share("org");
+        share("*");
+        share("**");
+    }
+
+    public static void clean() {
+        sharedObjects.clear();
+    }
+
     @SuppressWarnings("all")
     public static <T> T intern(T obj) {
-        if (!INTERN_ENABLED) {
+        if (!INTERN_ENABLED || obj == null) {
             return obj;
         }
-        return obj == null ? null : (T) sharedObjects.computeIfAbsent(obj, Function.identity());
+        Object v = staticSharedObject.get(obj);
+        if (v != null) {
+            return (T) v;
+        }
+        return (T) sharedObjects.computeIfAbsent(obj, Function.identity());
+    }
+
+    public static void share(Object object) {
+        staticSharedObject.put(object, object);
     }
 
     public static <T> Recycler<T> newRecycler(Class<T> type, Function<Recycler.Handle<T>, T> objectSupplier, int defaultRatio) {

@@ -39,8 +39,8 @@ public interface EventBus {
     default Disposable subscribe(Subscription subscription,
                                  Function<TopicPayload, Mono<Void>> handler) {
         return subscribe(subscription)
-                .flatMap(handler)
-                .subscribe();
+            .flatMap(handler)
+            .subscribe();
     }
 
     /**
@@ -138,6 +138,22 @@ public interface EventBus {
         }
         return publish(topic, Codecs.lookup(event.getClass()), event);
     }
+
+    /**
+     * 使用CharSequence作为topic进行推送,
+     * 可通过使用{@link org.jetlinks.core.lang.SharedPathString}提前构造topic来提升推送性能.
+     *
+     * @param topic topic
+     * @param event 事件
+     * @param <T>   事件类型
+     * @return 订阅者数量
+     * @see org.jetlinks.core.lang.SharedPathString
+     * @since 1.2.3
+     */
+    default <T> Mono<Long> publish(CharSequence topic, T event) {
+        return publish(topic.toString(), event);
+    }
+
 
     default <T> Mono<Long> publish(String topic, T event, Scheduler scheduler) {
         if (event instanceof Payload) {

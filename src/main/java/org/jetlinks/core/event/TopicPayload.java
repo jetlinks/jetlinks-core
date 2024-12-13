@@ -22,11 +22,23 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class TopicPayload implements Payload, Routable {
 
-    private String topic;
+    private CharSequence topic;
 
     private Payload payload;
 
     private Map<String, Object> headers;
+
+    public String getTopic() {
+        return topic.toString();
+    }
+
+    public CharSequence getTopic0() {
+        return topic;
+    }
+
+    public static TopicPayload of(CharSequence topic, Payload payload) {
+        return TopicPayload.of(topic, payload, null);
+    }
 
     public static TopicPayload of(String topic, Payload payload) {
         return TopicPayload.of(topic, payload, null);

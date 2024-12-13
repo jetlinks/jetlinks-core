@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.lang.SeparatedCharSequence;
 import org.jetlinks.core.lang.SharedPathString;
 import org.jetlinks.core.utils.RecyclableDequeue;
 import org.jetlinks.core.utils.RecyclerUtils;
@@ -22,7 +23,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.*;
 
 @EqualsAndHashCode(of = "part")
-public final class Topic<T> {
+public final class Topic<T> implements SeparatedCharSequence {
 
     @Getter
     private final Topic<T> parent;
@@ -79,25 +80,19 @@ public final class Topic<T> {
         this.part = RecyclerUtils.intern(part);
     }
 
-    public String[] getTopics() {
-        if (topics == null) {
-            topics = SharedPathString.of(getTopic0());
-        }
-        return topics.separated();
-    }
-
     private String[] getTopicsUnsafe() {
-        if (topics == null) {
-            topics = SharedPathString.of(getTopic0());
-        }
-        return topics.unsafeSeparated();
+        return topic().unsafeSeparated();
     }
 
     public String getTopic() {
-        if (topics != null) {
-            return topics.toString();
-        }
         return getTopic0();
+    }
+
+    private SharedPathString topic() {
+        if (topics == null) {
+            topics = SharedPathString.of(getTopic0());
+        }
+        return topics;
     }
 
     private String getTopic0() {
@@ -299,6 +294,30 @@ public final class Topic<T> {
                   (nil, nil2, _end, _sink) -> _end.run());
     }
 
+    public void findTopic(CharSequence topic,
+                          Consumer<Topic<T>> sink,
+                          Runnable end) {
+
+        if (topic instanceof SeparatedCharSequence) {
+            find((SeparatedCharSequence) topic,
+                 this,
+                 null,
+                 null,
+                 end,
+                 sink,
+                 (nil, nil2, _end, _sink, _topic) -> _sink.accept(_topic),
+                 (nil, nil2, _end, _sink) -> _end.run());
+        } else {
+            findTopic(topic.toString(),
+                      null,
+                      null,
+                      end,
+                      sink,
+                      (nil, nil2, _end, _sink, _topic) -> _sink.accept(_topic),
+                      (nil, nil2, _end, _sink) -> _end.run());
+        }
+    }
+
     public <ARG0, ARG1, ARG2, ARG3> void findTopic(String topic,
                                                    ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                    Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
@@ -316,6 +335,74 @@ public final class Topic<T> {
     }
 
     @Override
+    public int size() {
+        return depth + 1;
+    }
+
+    @Override
+    public CharSequence get(int index) {
+        Topic<T> topic = this;
+        while (topic.depth != index) {
+            topic = topic.parent;
+            if (topic == null) {
+                throw new StringIndexOutOfBoundsException(index);
+            }
+        }
+        return topic.part;
+    }
+
+    @Override
+    public SeparatedCharSequence replace(int index, CharSequence newChar) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public SeparatedCharSequence append(char c) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public SeparatedCharSequence append(CharSequence csq) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public SeparatedCharSequence append(CharSequence... csq) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public SeparatedCharSequence append(CharSequence csq, int start, int end) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public SeparatedCharSequence range(int start, int length) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int length() {
+        int len = 0;
+        Topic<T> topic = this;
+        while (topic != null) {
+            len += topic.part.length();
+            topic = topic.parent;
+        }
+        return len;
+    }
+
+    @Override
+    public char charAt(int index) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public CharSequence subSequence(int start, int end) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public String toString() {
         return "topic: " + getTopic()
             + ", subscribers: " + (subscribers == null ? 0 : subscribers.size())
@@ -326,6 +413,11 @@ public final class Topic<T> {
         String[] parts = getTopicsUnsafe();
         return TopicUtils.match(parts, pars)
             || TopicUtils.match(pars, parts);
+    }
+
+    private boolean match(SeparatedCharSequence parts) {
+        return TopicUtils.match(parts, this)
+            || TopicUtils.match(this, parts);
     }
 
     public static <T, ARG0, ARG1, ARG2, ARG3> void find(
@@ -400,6 +492,81 @@ public final class Topic<T> {
             cache.recycle();
         }
     }
+
+    public static <T, ARG0, ARG1, ARG2, ARG3> void find(
+        SeparatedCharSequence topicParts,
+        Topic<T> topicPart,
+        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+
+        RecyclableDequeue<Topic<T>> cache = RecyclerUtils.dequeue();
+        try {
+            cache.add(topicPart);
+
+            String nextPart = null;
+
+            while (!cache.isEmpty()) {
+                Topic<T> part = cache.poll();
+                if (part == null) {
+                    break;
+                }
+
+                if (part.match(topicParts)) {
+                    sink.accept(arg0, arg1, arg2, arg3, part);
+                }
+
+                Map<String, Topic<T>> child = part.child;
+                if (child == null) {
+                    continue;
+                }
+                int partsSize = topicParts.size();
+                //订阅了如 /device/**/event/*
+                if (part.part.equals("**")) {
+                    Topic<T> tmp = null;
+                    for (int i = part.depth; i < partsSize; i++) {
+                        tmp = child.get(topicParts.get(i).toString());
+                        if (tmp != null) {
+                            cache.add(tmp);
+                        }
+                    }
+                    if (null != tmp) {
+                        continue;
+                    }
+                }
+                if ("**".equals(nextPart) || "*".equals(nextPart)) {
+                    cache.addAll(child.values());
+                    continue;
+                }
+                Topic<T> next = child.get("**");
+                if (next != null) {
+                    cache.add(next);
+                }
+                next = child.get("*");
+                if (next != null) {
+                    cache.add(next);
+                }
+
+                if (part.depth + 1 >= partsSize) {
+                    continue;
+                }
+                nextPart = topicParts.get(part.depth + 1).toString();
+                if (nextPart.equals("*") || nextPart.equals("**")) {
+                    cache.addAll(child.values());
+                    continue;
+                }
+                next = child.get(nextPart);
+                if (next != null) {
+                    cache.add(next);
+                }
+            }
+
+        } finally {
+            end.accept(arg0, arg1, arg2, arg3);
+            cache.recycle();
+        }
+    }
+
 
     public long getTotalTopic() {
         Map<?, ?> child = this.child;
@@ -482,4 +649,8 @@ public final class Topic<T> {
         }
     }
 
+    @Override
+    public int compareTo(SeparatedCharSequence o) {
+        return 0;
+    }
 }

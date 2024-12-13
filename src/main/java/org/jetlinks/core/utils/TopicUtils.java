@@ -1,6 +1,7 @@
 package org.jetlinks.core.utils;
 
 import io.netty.util.concurrent.FastThreadLocal;
+import org.jetlinks.core.lang.SeparatedCharSequence;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.ConcurrentReferenceHashMap;
 import org.springframework.util.PathMatcher;
@@ -199,6 +200,124 @@ public class TopicUtils {
             || "*".equals(str);
     }
 
+    private static boolean matchStrings(CharSequence str, CharSequence pattern) {
+        return pattern.equals(str)
+            || pattern.equals("*")
+            || str.equals("*");
+    }
+
+    public static boolean match(SeparatedCharSequence pattern, SeparatedCharSequence topicParts) {
+        int patternSize=pattern.size();
+        int partsSize = topicParts.size();
+        if (patternSize == 0 && partsSize == 0) {
+            return true;
+        }
+        int pattIdxStart = 0;
+        int pattIdxEnd = patternSize - 1;
+        int pathIdxStart = 0;
+        int pathIdxEnd = partsSize- 1;
+        while (pattIdxStart <= pattIdxEnd && pathIdxStart <= pathIdxEnd) {
+            CharSequence pattDir = pattern.get(pattIdxStart);
+            //匹配多层
+            if (pattDir.equals("**")) {
+                break;
+            }
+            if (!matchStrings(pattDir, topicParts.get(pathIdxStart))) {
+                return false;
+            }
+            pattIdxStart++;
+            pathIdxStart++;
+        }
+        if (pathIdxStart > pathIdxEnd) {
+            if (pattIdxStart > pattIdxEnd) {
+                return (pattern.get(patternSize - 1).equals("/") == topicParts.get(partsSize - 1).equals("/"));
+            }
+
+            if (pattIdxStart == pattIdxEnd && pattern.get(pattIdxStart).equals("*") && topicParts.get(partsSize - 1).equals("/")) {
+                return true;
+            }
+            for (int i = pattIdxStart; i <= pattIdxEnd; i++) {
+                if (!pattern.get(i).equals("**")) {
+                    return false;
+                }
+            }
+            return true;
+        } else if (pattIdxStart > pattIdxEnd) {
+            // String not exhausted, but pattern is. Failure.
+            return false;
+        } else if (topicParts.get(pattIdxStart).equals("**")) {
+            // Path start definitely matches due to "**" part in pattern.
+            return true;
+        }
+        // up to last '**'
+        while (pattIdxStart <= pattIdxEnd && pathIdxStart <= pathIdxEnd) {
+            CharSequence pattDir = pattern.get(pattIdxEnd);
+            if (pattDir.equals("**")) {
+                break;
+            }
+            if (!matchStrings(pattDir, topicParts.get(pathIdxEnd))) {
+                return false;
+            }
+            pattIdxEnd--;
+            pathIdxEnd--;
+        }
+        if (pathIdxStart > pathIdxEnd) {
+            // String is exhausted
+            for (int i = pattIdxStart; i <= pattIdxEnd; i++) {
+                if (!pattern.get(i).equals("**")) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        while (pattIdxStart != pattIdxEnd && pathIdxStart <= pathIdxEnd) {
+            int patIdxTmp = -1;
+            for (int i = pattIdxStart + 1; i <= pattIdxEnd; i++) {
+                if (pattern.get(i).equals("**")) {
+                    patIdxTmp = i;
+                    break;
+                }
+            }
+            if (patIdxTmp == pattIdxStart + 1) {
+                // '**/**' situation, so skip one
+                pattIdxStart++;
+                continue;
+            }
+            // Find the pattern between padIdxStart & padIdxTmp in str between
+            // strIdxStart & strIdxEnd
+            int patLength = (patIdxTmp - pattIdxStart - 1);
+            int strLength = (pathIdxEnd - pathIdxStart + 1);
+            int foundIdx = -1;
+
+            strLoop:
+            for (int i = 0; i <= strLength - patLength; i++) {
+                for (int j = 0; j < patLength; j++) {
+                    CharSequence subPat = pattern.get(pattIdxStart + j + 1);
+                    CharSequence subStr = topicParts.get(pathIdxStart + i + j);
+                    if (!matchStrings(subPat, subStr)) {
+                        continue strLoop;
+                    }
+                }
+                foundIdx = pathIdxStart + i;
+                break;
+            }
+
+            if (foundIdx == -1) {
+                return false;
+            }
+
+            pattIdxStart = patIdxTmp;
+            pathIdxStart = foundIdx + patLength;
+        }
+
+        for (int i = pattIdxStart; i <= pattIdxEnd; i++) {
+            if (!pattern.get(i).equals("**")) {
+                return false;
+            }
+        }
+        return true;
+    }
     public static boolean match(String[] pattern, String[] topicParts) {
         if (pattern.length == 0 && topicParts.length == 0) {
             return true;
