@@ -23,6 +23,11 @@ class SeparatedString3 extends AbstractSeparatedCharSequence {
     }
 
     @Override
+    public boolean isEmpty() {
+        return false;
+    }
+
+    @Override
     protected CharSequence get0(int index) {
         if (index == 0) {
             return s1;

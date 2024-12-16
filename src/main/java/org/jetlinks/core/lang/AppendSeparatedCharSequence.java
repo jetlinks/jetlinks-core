@@ -13,6 +13,11 @@ class AppendSeparatedCharSequence extends AbstractSeparatedCharSequence {
     }
 
     @Override
+    public boolean isEmpty() {
+        return false;
+    }
+
+    @Override
     public SeparatedCharSequence internInner() {
         source.internInner();
         return this;

@@ -27,6 +27,15 @@ public interface SeparatedCharSequence extends CharSequence,
     int size();
 
     /**
+     * 是否为空
+     *
+     * @return 是否为空
+     */
+    default boolean isEmpty() {
+        return size() == 0;
+    }
+
+    /**
      * 获取指定位置的字符序列
      *
      * @param index 位置
@@ -52,7 +61,9 @@ public interface SeparatedCharSequence extends CharSequence,
     SeparatedCharSequence append(char c);
 
     /**
-     * 追加字符序列到字符序列尾部,并返回新的字符序列,不会修改原字符序列
+     * 追加字符序列到字符序列尾部,并返回新的字符序列,不会修改原字符序列.
+     * <p>
+     * 注意: 请勿在字符中包含分隔符,要拼接多个请使用{@link #append(CharSequence...)}
      *
      * @param csq 字符序列
      * @return 字符序列
@@ -61,7 +72,9 @@ public interface SeparatedCharSequence extends CharSequence,
     SeparatedCharSequence append(CharSequence csq);
 
     /**
-     * 追加字符序列到字符序列尾部,并返回新的字符序列,不会修改原字符序列
+     * 追加字符序列到字符序列尾部,并返回新的字符序列,不会修改原字符序列.
+     * <p>
+     * 注意: 请勿在字符中包含分隔符
      *
      * @param csq 字符序列
      * @return 字符序列
@@ -80,13 +93,18 @@ public interface SeparatedCharSequence extends CharSequence,
     SeparatedCharSequence append(CharSequence csq, int start, int end);
 
     /**
-     * 获取指定返回的字符序列
+     * 获取指定长度索引的字符序列
      *
-     * @param start  起始位置
-     * @param length 获取长度
+     * <ul>
+     *     <li> ("/1/2/3").range(0,3) => /1/2  </li>
+     *      <li> ("1/2/3").range(0,3) => 1/2/3  </li>
+     * </ul>
+     *
+     * @param startIndexOfSize 起始位置 包含
+     * @param endIndexOfSize   结束位置 不包含
      * @return 字符序列
      */
-    SeparatedCharSequence range(int start, int length);
+    SeparatedCharSequence range(int startIndexOfSize, int endIndexOfSize);
 
     /**
      * 将字符序列转换为共享字符序列,相同的字符序列将共享引用.

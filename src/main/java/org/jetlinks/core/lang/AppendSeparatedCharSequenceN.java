@@ -41,9 +41,20 @@ class AppendSeparatedCharSequenceN extends AbstractSeparatedCharSequence {
         int size = source.size();
 
         if (index >= size) {
-            return appendN[index - size];
+            return transform(appendN[index - size]);
         }
 
         return source.get(index);
+    }
+
+    private CharSequence transform(CharSequence c) {
+        if (c instanceof SeparatedCharSequence) {
+            SeparatedCharSequence seq = ((SeparatedCharSequence) c);
+            int seqSize = seq.size();
+            if (seqSize > 0 && "".equals(String.valueOf(seq.get(0)))) {
+                return seq.range(1, seqSize);
+            }
+        }
+        return c;
     }
 }

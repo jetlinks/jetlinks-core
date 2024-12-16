@@ -1,12 +1,18 @@
 package org.jetlinks.core.lang;
 
-import lombok.AllArgsConstructor;
-
-@AllArgsConstructor
 class RangeSeparatedCharSequence extends AbstractSeparatedCharSequence {
     private final AbstractSeparatedCharSequence source;
 
-    private final int from, size;
+    private final int from, end;
+
+    public RangeSeparatedCharSequence(AbstractSeparatedCharSequence source, int from, int end) {
+        this.source = source;
+        if(end > source.size()){
+            throw new StringIndexOutOfBoundsException(end);
+        }
+        this.from = from;
+        this.end = end;
+    }
 
     @Override
     public char separator() {
@@ -15,7 +21,7 @@ class RangeSeparatedCharSequence extends AbstractSeparatedCharSequence {
 
     @Override
     protected int size0() {
-        return size;
+        return end - from;
     }
 
     @Override

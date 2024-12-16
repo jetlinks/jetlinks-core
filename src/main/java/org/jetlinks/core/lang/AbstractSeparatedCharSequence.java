@@ -56,8 +56,9 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
         if (csq instanceof SeparatedCharSequence) {
             return new AppendSeparatedCharSequenceX(this, (SeparatedCharSequence) csq);
         }
-        if (csq.length() == 1 && csq.charAt(0) == separator()) {
-            csq = "";
+        // 以分隔符开头的字符序列,
+        if (csq.length() > 0 && csq.charAt(0) == separator()) {
+            csq = csq.subSequence(0, csq.length());
         }
         return new AppendSeparatedCharSequence(this, csq);
     }
@@ -77,8 +78,8 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
     }
 
     @Override
-    public SeparatedCharSequence range(int start, int size) {
-        return new RangeSeparatedCharSequence(this, start, size);
+    public SeparatedCharSequence range(int start, int end) {
+        return new RangeSeparatedCharSequence(this, start, end);
     }
 
     @Override

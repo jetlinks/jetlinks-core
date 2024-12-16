@@ -409,7 +409,7 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     @Override
-    public SeparatedCharSequence range(int start, int length) {
+    public SeparatedCharSequence range(int start, int end) {
         throw new UnsupportedOperationException();
     }
 

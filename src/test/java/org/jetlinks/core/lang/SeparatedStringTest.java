@@ -55,7 +55,7 @@ public class SeparatedStringTest {
         String str = "/test/1/2/3";
         SharedPathString string = SharedPathString.of(str);
 
-        assertEquals("test/1", string.range(1, 2).toString());
+        assertEquals("test/1", string.range(1, 3).toString());
         assertEquals("/test/1", string.range(0, 3).toString());
 
         assertEquals(string.range(0, 3).toString(),
@@ -102,6 +102,14 @@ public class SeparatedStringTest {
 
         assertEquals("test/1/2/test", string.append("test").toString());
 
+        assertEquals("test/1/2/test", string.append(SharedPathString.of("/test")).toString());
+
+        assertEquals("test/1/2/test/test2",
+                     string.append("test",
+                                   SharedPathString.of("/test2"))
+                           .toString());
+
+
         assertEquals(string.append("test"), string.append("test"));
         assertEquals(string.append("test").hashCode(), string.append("test").hashCode());
 
@@ -109,12 +117,13 @@ public class SeparatedStringTest {
         assertEquals(string.append("test/1").hashCode(), string.append("test/1").hashCode());
 
         assertEquals(string.append("test/1/2"), string.append("test/1/2"));
+
         assertEquals(0, string.append("test/1/2").compareTo(string.append("test/1/2")));
 
         assertEquals(string.append("test/1/2").hashCode(), string.append("test/1/2").hashCode());
 
 
-        assertEquals("test/1/2/", string.append("/").toString());
+        assertEquals("test/1/2/", string.append("").toString());
         assertEquals("test/1/2/", string.append('/').toString());
 
         assertEquals("test/1/2/test/t2", string.append("test", "t2").toString());

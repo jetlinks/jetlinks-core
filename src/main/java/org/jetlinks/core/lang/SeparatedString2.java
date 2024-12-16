@@ -17,6 +17,11 @@ class SeparatedString2 extends AbstractSeparatedCharSequence {
     }
 
     @Override
+    public boolean isEmpty() {
+        return false;
+    }
+
+    @Override
     protected int size0() {
         return 2;
     }
