@@ -1,6 +1,8 @@
 package org.jetlinks.core.benchmark;
 
 import lombok.SneakyThrows;
+import org.jetlinks.core.lang.SeparatedCharSequence;
+import org.jetlinks.core.lang.SharedPathString;
 import org.jetlinks.core.topic.Topic;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -46,10 +48,11 @@ public class TopicTest {
             device.append("/offline");
         }
         //订阅*
-         root.append("/device/*/*/message/**")
-                .subscribe(1);
+        root.append("/device/*/*/message/**")
+            .subscribe(1);
 
     }
+
 
     @Benchmark
     @SneakyThrows
@@ -63,16 +66,30 @@ public class TopicTest {
                        });
     }
 
+    static SharedPathString path = SharedPathString.of("/device/*/*/message/property/read");
+
+    @Benchmark
+    @SneakyThrows
+    public void testFindDirectShared(Blackhole blackhole) {
+        SeparatedCharSequence _path = path.replace(2, String.valueOf(ThreadLocalRandom.current().nextInt(1, 9)),
+                                                   3, String.valueOf(ThreadLocalRandom.current().nextInt(1, 10000)));
+        root.findTopic(_path,
+                       t -> blackhole.consume(t.getSubscribers()),
+                       () -> {
+                           blackhole.consume("ok");
+                       });
+    }
+
     @Benchmark
     @SneakyThrows
     public void testFindDirect(Blackhole blackhole) {
 
         root.findTopic("/device/" + ThreadLocalRandom.current().nextInt(1, 9) +
-                               "/" + ThreadLocalRandom.current()
-                                                      .nextInt(1, 10000) + "/message/property/read",
+                           "/" + ThreadLocalRandom.current()
+                                                  .nextInt(1, 10000) + "/message/property/read",
                        t -> blackhole.consume(t.getSubscribers()),
                        () -> {
-                            blackhole.consume("ok");
+                           blackhole.consume("ok");
                        });
     }
 

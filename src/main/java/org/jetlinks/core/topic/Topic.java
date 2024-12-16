@@ -17,6 +17,7 @@ import reactor.core.publisher.FluxSink;
 import reactor.function.Consumer4;
 import reactor.function.Consumer5;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -90,7 +91,7 @@ public final class Topic<T> implements SeparatedCharSequence {
 
     private SharedPathString topic() {
         if (topics == null) {
-            topics = SharedPathString.of(getTopic0());
+            topics = SharedPathString.of(getTopic0()).intern();
         }
         return topics;
     }
@@ -382,6 +383,19 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     @Override
+    public SeparatedCharSequence intern() {
+        String part = RecyclerUtils.intern(this.part);
+        if (this.part != part) {
+            this.part = part;
+        }
+        SharedPathString topics = this.topics;
+        if (topics != null) {
+            this.topics = topics.intern();
+        }
+        return this;
+    }
+
+    @Override
     public int length() {
         int len = 0;
         Topic<T> topic = this;
@@ -402,6 +416,7 @@ public final class Topic<T> implements SeparatedCharSequence {
         throw new UnsupportedOperationException();
     }
 
+    @Nonnull
     @Override
     public String toString() {
         return "topic: " + getTopic()
@@ -416,8 +431,9 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     private boolean match(SeparatedCharSequence parts) {
-        return TopicUtils.match(parts, this)
-            || TopicUtils.match(this, parts);
+        SeparatedCharSequence self = topics != null ? topics : this;
+        return TopicUtils.match(parts, self)
+            || TopicUtils.match(self, parts);
     }
 
     public static <T, ARG0, ARG1, ARG2, ARG3> void find(

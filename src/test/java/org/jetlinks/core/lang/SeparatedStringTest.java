@@ -4,7 +4,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class SeparatedStringNTest {
+public class SeparatedStringTest {
 
 
     @Test
@@ -21,7 +21,7 @@ public class SeparatedStringNTest {
     public void test() {
         String str = "/test/1/2/3";
 
-        CharSequence string = SeparatedStringN.of('/', str);
+        CharSequence string = SeparatedString.of('/', str);
         assertEquals(str, string.toString());
         assertEquals(str.length(), string.length());
         assertEquals(str.charAt(0), string.charAt(0));
@@ -87,7 +87,7 @@ public class SeparatedStringNTest {
     public void test3() {
         String str = "test/1/2";
 
-        CharSequence string = SeparatedStringN.of('/', str);
+        CharSequence string = SeparatedString.of('/', str);
         assertEquals(str, string.toString());
         assertEquals(str.length(), string.length());
 
@@ -103,9 +103,9 @@ public class SeparatedStringNTest {
 
     @Test
     public void testHashCode() {
-        CharSequence a = SeparatedStringN.of('/', "/test/1/2/3");
+        CharSequence a = SeparatedString.of('/', "/test/1/2/3");
 
-        CharSequence b = SeparatedStringN.of('/', "/test/1/2/3");
+        CharSequence b = SeparatedString.of('/', "/test/1/2/3");
         assertEquals(a, b);
         assertEquals(a.hashCode(), b.hashCode());
 

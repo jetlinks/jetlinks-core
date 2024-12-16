@@ -1,5 +1,6 @@
 package org.jetlinks.core.lang;
 
+import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.StringBuilderUtils;
 
 import javax.annotation.Nonnull;
@@ -82,21 +83,24 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof SeparatedCharSequence) {
-            return compareTo((SeparatedCharSequence) obj) == 0;
+        if (this == obj) {
+            return true;
         }
-        return false;
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        return compareTo((SeparatedCharSequence) obj) == 0;
     }
 
     @Override
     public int hashCode() {
         int h = $hash;
         if (h == 0) {
-            h = separator();
+            h = this.getClass().hashCode();
             int size = size();
             if (size > 0) {
                 for (int i = 0; i < size; i++) {
-                    h = 31 * h + get(i).hashCode();
+                    h = 31 * h + get(i).hashCode() + separator();
                 }
             }
         }
@@ -211,5 +215,9 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
                     sb.append(self.get(i));
                 }
             });
+    }
+
+    public AbstractSeparatedCharSequence intern() {
+        return RecyclerUtils.intern(this);
     }
 }

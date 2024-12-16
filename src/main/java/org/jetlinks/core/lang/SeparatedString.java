@@ -21,17 +21,18 @@ public abstract class SeparatedString extends AbstractSeparatedCharSequence {
             return arr[0];
         }
         if (separator == '/') {
-            return intern ? RecyclerUtils.intern(SharedPathString.of(arr)) : SharedPathString.of(arr);
+            return intern ? SharedPathString.of(arr).intern() : SharedPathString.of(arr);
         }
         if (arr.length == 2) {
-            return intern ? RecyclerUtils.intern(new SeparatedString2(separator, arr[0], arr[1])) :
+            return intern ? new SeparatedString2(separator, arr[0], arr[1]).intern() :
                 new SeparatedString2(separator, arr[0], arr[1]);
         }
         if (arr.length == 3) {
-            return intern ? RecyclerUtils.intern(new SeparatedString3(separator, arr[0], arr[1], arr[2])) :
+            return intern ? new SeparatedString3(separator, arr[0], arr[1], arr[2]).intern() :
                 new SeparatedString3(separator, arr[0], arr[1], arr[2]);
         }
-        return SeparatedStringN.of(separator, arr);
+        SeparatedStringN n = new SeparatedStringN(separator, arr);
+        return intern ? n.intern() : n;
     }
 
     public static CharSequence of(char separator, String string) {
@@ -56,5 +57,8 @@ public abstract class SeparatedString extends AbstractSeparatedCharSequence {
         return separated;
     }
 
-
+    @Override
+    public SeparatedString intern() {
+        return RecyclerUtils.intern(this);
+    }
 }

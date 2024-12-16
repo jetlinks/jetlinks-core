@@ -1,17 +1,36 @@
 package org.jetlinks.core.lang;
 
 import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
 import org.jetlinks.core.utils.StringBuilderUtils;
 
 import javax.annotation.Nonnull;
 
 @AllArgsConstructor
-@EqualsAndHashCode(cacheStrategy = EqualsAndHashCode.CacheStrategy.LAZY)
-class SeparatedString2 implements CharSequence {
+class SeparatedString2 extends AbstractSeparatedCharSequence {
 
     private final char separator;
     private final CharSequence s1, s2;
+
+    @Override
+    protected char separator() {
+        return separator;
+    }
+
+    @Override
+    protected int size0() {
+        return 2;
+    }
+
+    @Override
+    protected CharSequence get0(int index) {
+        if (index == 0) {
+            return s1;
+        }
+        if (index == 1) {
+            return s2;
+        }
+        throw new StringIndexOutOfBoundsException(index);
+    }
 
     @Override
     public int length() {

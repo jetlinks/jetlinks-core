@@ -29,14 +29,18 @@ public class SharedPathString extends SeparatedString {
         this(TopicUtils.split(topic, true, true));
     }
 
+    public SharedPathString intern() {
+        return RecyclerUtils.intern(this);
+    }
+
     public static SharedPathString empty() {
         return EMPTY;
     }
 
     public static SharedPathString of(String path, boolean intern) {
         return intern
-            ? RecyclerUtils.intern(new SharedPathString(path))
-            : new SharedPathString(TopicUtils.split(path));
+            ? new SharedPathString(path).intern()
+            :of(path);
     }
 
     public static SharedPathString of(CharSequence path) {
@@ -53,11 +57,15 @@ public class SharedPathString extends SeparatedString {
     }
 
     public static SharedPathString of(String path) {
-        return of(path, true);
+        String[] arr = TopicUtils.split(path);
+        for (int i = 0; i < arr.length; i++) {
+            arr[i] = RecyclerUtils.intern(arr[i]);
+        }
+        return of(arr);
     }
 
     public static SharedPathString of(String[] path) {
-        return RecyclerUtils.intern(new SharedPathString(path));
+        return new SharedPathString(path);
     }
 
 }

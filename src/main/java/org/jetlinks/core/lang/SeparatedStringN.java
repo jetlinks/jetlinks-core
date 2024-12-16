@@ -22,7 +22,7 @@ class SeparatedStringN extends SeparatedString {
     }
 
     public static SeparatedStringN of(char separator, String[] string) {
-        return RecyclerUtils.intern(new SeparatedStringN(separator, string));
+        return new SeparatedStringN(separator, string);
     }
 
     @Override

@@ -1,5 +1,7 @@
 package org.jetlinks.core.lang;
 
+import org.jetlinks.core.utils.RecyclerUtils;
+
 import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.function.Consumer;
@@ -8,9 +10,9 @@ import java.util.function.Consumer;
  * 经过分割的字符序列,用于处理类似于topic的字符串
  *
  * @author zhouhao
- * @since 1.2.3
  * @see SharedPathString
  * @see SeparatedString
+ * @since 1.2.3
  */
 public interface SeparatedCharSequence extends CharSequence,
     Comparable<SeparatedCharSequence>,
@@ -87,6 +89,13 @@ public interface SeparatedCharSequence extends CharSequence,
     SeparatedCharSequence range(int start, int length);
 
     /**
+     * 将字符序列转换为共享字符序列,相同的字符序列将共享引用.
+     *
+     * @return 共享字符序列
+     */
+    SeparatedCharSequence intern();
+
+    /**
      * 创建字符串序列迭代器,用于迭代分割后的字符序列
      *
      * @return 迭代器
@@ -122,10 +131,11 @@ public interface SeparatedCharSequence extends CharSequence,
         }
     }
 
-    default String[] asStringArray(){
+    default String[] asStringArray() {
         String[] arr = new String[size()];
         for (int i = 0; i < arr.length; i++) {
-            arr[i] = get(i).toString();
+            CharSequence c = get(i);
+            arr[i] = c == null ? null : get(i).toString();
         }
         return arr;
     }

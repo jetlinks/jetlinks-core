@@ -7,11 +7,34 @@ import org.jetlinks.core.utils.StringBuilderUtils;
 import javax.annotation.Nonnull;
 
 @AllArgsConstructor
-@EqualsAndHashCode(cacheStrategy = EqualsAndHashCode.CacheStrategy.LAZY)
-class SeparatedString3 implements CharSequence {
+class SeparatedString3 extends AbstractSeparatedCharSequence {
 
     private final char separator;
     private final CharSequence s1, s2, s3;
+
+    @Override
+    protected char separator() {
+        return separator;
+    }
+
+    @Override
+    protected int size0() {
+        return 3;
+    }
+
+    @Override
+    protected CharSequence get0(int index) {
+        if (index == 0) {
+            return s1;
+        }
+        if (index == 1) {
+            return s2;
+        }
+        if (index == 2) {
+            return s3;
+        }
+        throw new StringIndexOutOfBoundsException(index);
+    }
 
     @Override
     public int length() {
