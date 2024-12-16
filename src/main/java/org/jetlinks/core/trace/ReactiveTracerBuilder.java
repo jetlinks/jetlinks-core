@@ -42,10 +42,20 @@ public interface ReactiveTracerBuilder<T, E> {
     /**
      * 定义跟踪名称
      *
+     * @param name 名称
+     * @return this
+     */
+    default ReactiveTracerBuilder<T, E> spanName(@Nonnull CharSequence name) {
+        return spanName(ctx -> name);
+    }
+
+    /**
+     * 定义跟踪名称
+     *
      * @param nameBuilder 名称
      * @return this
      */
-    ReactiveTracerBuilder<T, E> spanName(@Nonnull Function<ContextView, String> nameBuilder);
+    ReactiveTracerBuilder<T, E> spanName(@Nonnull Function<ContextView, CharSequence> nameBuilder);
 
     /**
      * 监听流中的数据,并进行span自定义. 当流中产生数据时,回调函数被调用.
@@ -115,7 +125,7 @@ public interface ReactiveTracerBuilder<T, E> {
      */
     ReactiveTracerBuilder<T, E> onSubscription(Consumer<ReactiveSpanBuilder> callback);
 
-    ReactiveTracerBuilder<T,E> defaultContext(Supplier<Context> defaultContext);
+    ReactiveTracerBuilder<T, E> defaultContext(Supplier<Context> defaultContext);
 
     /**
      * 构造跟踪器

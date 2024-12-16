@@ -9,7 +9,7 @@ import java.util.Objects;
 abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
     private int $hash;
 
-    protected abstract char separator();
+    public abstract char separator();
 
     protected abstract int size0();
 

@@ -26,7 +26,7 @@ class SeparatedStringN extends SeparatedString {
     }
 
     @Override
-    protected char separator() {
+    public char separator() {
         return separator;
     }
 }

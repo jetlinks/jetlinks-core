@@ -1,5 +1,7 @@
 package org.jetlinks.core.lang;
 
+import org.jetlinks.core.utils.RecyclerUtils;
+
 class AppendSeparatedCharSequenceN extends AbstractSeparatedCharSequence {
 
     private final AbstractSeparatedCharSequence source;
@@ -12,7 +14,20 @@ class AppendSeparatedCharSequenceN extends AbstractSeparatedCharSequence {
     }
 
     @Override
-    protected char separator() {
+    public SeparatedCharSequence internInner() {
+        source.internInner();
+        for (int i = 0; i < appendN.length; i++) {
+            if (appendN[i] instanceof SeparatedCharSequence) {
+                appendN[i] = ((SeparatedCharSequence) appendN[i]).intern();
+            } else {
+                appendN[i] = RecyclerUtils.intern(appendN[i]);
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public char separator() {
         return source.separator();
     }
 

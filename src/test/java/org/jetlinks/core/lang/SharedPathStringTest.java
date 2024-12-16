@@ -1,6 +1,13 @@
 package org.jetlinks.core.lang;
 
+import lombok.SneakyThrows;
+import org.jetlinks.core.utils.SerializeUtils;
 import org.junit.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 import static org.junit.Assert.*;
 
@@ -24,5 +31,18 @@ public class SharedPathStringTest {
         assertEquals(sharedPathString, SharedPathString.of(topic));
         assertEquals(sharedPathString.hashCode(), SharedPathString.of(topic).hashCode());
 
+        assertEquals(sharedPathString,codec(sharedPathString));
+    }
+
+    @SneakyThrows
+    public Object codec(Object obj) {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (ObjectOutputStream objOut = new ObjectOutputStream(output)) {
+            SerializeUtils.writeObject(obj, objOut);
+        }
+        ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
+        try (ObjectInputStream obIn = new ObjectInputStream(input)) {
+            return SerializeUtils.readObject(obIn);
+        }
     }
 }

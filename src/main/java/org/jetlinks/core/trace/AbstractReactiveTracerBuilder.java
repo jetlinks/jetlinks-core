@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 
 abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuilder<T, R> {
     String scopeName = TraceHolder.appName();
-    Function<ContextView, String> spanName;
+    Function<ContextView, CharSequence> spanName;
     Consumer3<ContextView, ReactiveSpan, R> onNext;
     Consumer3<ContextView, ReactiveSpan, Long> onComplete;
     BiConsumer<ContextView, ReactiveSpanBuilder> onSubscription;
@@ -32,7 +32,12 @@ abstract class AbstractReactiveTracerBuilder<T, R> implements ReactiveTracerBuil
     }
 
     @Override
-    public ReactiveTracerBuilder<T, R> spanName(@Nonnull Function<ContextView, String> nameBuilder) {
+    public ReactiveTracerBuilder<T, R> spanName(@Nonnull CharSequence name) {
+        return this.spanName(ctx -> name);
+    }
+
+    @Override
+    public ReactiveTracerBuilder<T, R> spanName(@Nonnull Function<ContextView, CharSequence> nameBuilder) {
         this.spanName = nameBuilder;
         return this;
     }

@@ -13,6 +13,9 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.hswebframework.web.dict.EnumDict;
+import org.jetlinks.core.lang.SeparatedCharSequence;
+import org.jetlinks.core.lang.SeparatedString;
+import org.jetlinks.core.lang.SharedPathString;
 import org.jetlinks.core.message.Message;
 import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.metadata.Jsonable;
@@ -281,6 +284,12 @@ public class SerializeUtils {
         }
         if (readyToSer instanceof ByteBuffer) {
             return InternalSerializers.Nio;
+        }
+        if (readyToSer instanceof SharedPathString) {
+            return InternalSerializers.SharedPathStringSer;
+        }
+        if (readyToSer instanceof SeparatedCharSequence) {
+            return InternalSerializers.SeparatedCharSequenceSer;
         }
         return lookup(readyToSer.getClass());
     }
@@ -873,6 +882,49 @@ public class SerializeUtils {
                 byte[] jsonBytes = com.alibaba.fastjson.JSON.toJSONBytes(value);
                 output.writeInt(jsonBytes.length);
                 output.write(jsonBytes);
+            }
+        },
+        SharedPathStringSer(0x40, SharedPathString.class) {
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                int size = input.readInt();
+                String[] arr = new String[size];
+                return SharedPathString.of(arr);
+            }
+
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput input) {
+                SharedPathString path = ((SharedPathString) value);
+                input.writeInt(path.size());
+                for (String str : path.unsafeSeparated()) {
+                    input.writeUTF(str);
+                }
+            }
+        },
+        SeparatedCharSequenceSer(0x41, SeparatedCharSequence.class) {
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                char c = input.readChar();
+                int size = input.readInt();
+                String[] arr = new String[size];
+                for (int i = 0; i < size; i++) {
+                    arr[i] = input.readUTF();
+                }
+                return SeparatedString.create(c, arr);
+            }
+
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput input) {
+                SeparatedCharSequence path = ((SeparatedCharSequence) value);
+                input.writeChar(path.separator());
+                input.writeInt(path.size());
+                for (CharSequence str : path) {
+                    input.writeUTF(str.toString());
+                }
             }
         };
 

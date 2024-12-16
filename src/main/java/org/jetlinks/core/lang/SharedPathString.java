@@ -17,7 +17,7 @@ public class SharedPathString extends SeparatedString {
     private static final SharedPathString EMPTY = new SharedPathString(new String[0]);
 
     @Override
-    protected final char separator() {
+    public final char separator() {
         return '/';
     }
 
@@ -40,7 +40,7 @@ public class SharedPathString extends SeparatedString {
     public static SharedPathString of(String path, boolean intern) {
         return intern
             ? new SharedPathString(path).intern()
-            :of(path);
+            : of(TopicUtils.split(path));
     }
 
     public static SharedPathString of(CharSequence path) {
@@ -56,12 +56,14 @@ public class SharedPathString extends SeparatedString {
         return of(String.valueOf(path));
     }
 
+    @Override
+    public SharedPathString internInner() {
+        super.internInner();
+        return this;
+    }
+
     public static SharedPathString of(String path) {
-        String[] arr = TopicUtils.split(path);
-        for (int i = 0; i < arr.length; i++) {
-            arr[i] = RecyclerUtils.intern(arr[i]);
-        }
-        return of(arr);
+        return of(TopicUtils.split(path,true,true)).intern();
     }
 
     public static SharedPathString of(String[] path) {

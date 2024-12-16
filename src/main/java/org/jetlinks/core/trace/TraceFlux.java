@@ -21,7 +21,7 @@ import java.util.function.Supplier;
 
 @Slf4j
 public class TraceFlux<T> extends FluxOperator<T, T> {
-    private final Function<ContextView, String> spanName;
+    private final Function<ContextView, CharSequence> spanName;
     private final Tracer tracer;
     private final Consumer3<ContextView, ReactiveSpan, T> onNext;
     private final Consumer3<ContextView, ReactiveSpan, Long> onComplete;
@@ -44,7 +44,7 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
     }
 
     TraceFlux(Flux<? extends T> source,
-              Function<ContextView, String> name,
+              Function<ContextView, CharSequence> name,
               Tracer tracer,
               Consumer3<ContextView, ReactiveSpan, T> onNext,
               Consumer3<ContextView, ReactiveSpan, Long> onComplete,
@@ -160,13 +160,13 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
         try {
             ContextView context = actual.currentContext();
 
-            String name = spanName.apply(context);
+            CharSequence name = spanName.apply(context);
             if (fastSubscribe && TraceHolder.isDisabled(name)) {
                 this.source.subscribe(actual);
                 return;
             }
 
-            ReactiveSpanBuilder builder = new ReactiveSpanBuilderWrapper(tracer.spanBuilder(name));
+            ReactiveSpanBuilder builder = new ReactiveSpanBuilderWrapper(tracer.spanBuilder(name.toString()));
 
             Context ctx = context
                 .<Context>getOrEmpty(Context.class)

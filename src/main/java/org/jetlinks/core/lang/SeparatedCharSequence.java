@@ -1,7 +1,5 @@
 package org.jetlinks.core.lang;
 
-import org.jetlinks.core.utils.RecyclerUtils;
-
 import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.function.Consumer;
@@ -18,6 +16,8 @@ public interface SeparatedCharSequence extends CharSequence,
     Comparable<SeparatedCharSequence>,
     Iterable<CharSequence>,
     Appendable {
+
+    char separator();
 
     /**
      * 分割后的数量
@@ -96,6 +96,15 @@ public interface SeparatedCharSequence extends CharSequence,
     SeparatedCharSequence intern();
 
     /**
+     * 将内部的字符序列转换为共享字符序列,相同的字符序列将共享引用.
+     *
+     * @return 共享字符序列
+     */
+    default SeparatedCharSequence internInner() {
+        return this;
+    }
+
+    /**
      * 创建字符串序列迭代器,用于迭代分割后的字符序列
      *
      * @return 迭代器
@@ -131,6 +140,11 @@ public interface SeparatedCharSequence extends CharSequence,
         }
     }
 
+    /**
+     * 将字符序列转换为字符串数组
+     *
+     * @return 字符串数组
+     */
     default String[] asStringArray() {
         String[] arr = new String[size()];
         for (int i = 0; i < arr.length; i++) {

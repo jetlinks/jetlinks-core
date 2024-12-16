@@ -14,6 +14,14 @@ class ReplacedSeparatedCharSequence3 extends ReplacedSeparatedCharSequence2 {
         this.r3 = r3;
     }
 
+    @Override
+    public SeparatedCharSequence internInner() {
+        super.internInner();
+        if (r3 instanceof SeparatedCharSequence) {
+            ((SeparatedCharSequence) r3).internInner();
+        }
+        return this;
+    }
 
     @Override
     protected CharSequence get0(int index) {

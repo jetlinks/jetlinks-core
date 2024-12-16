@@ -295,6 +295,32 @@ public final class Topic<T> implements SeparatedCharSequence {
                   (nil, nil2, _end, _sink) -> _end.run());
     }
 
+    public  <A> void findTopic(CharSequence topic,
+                          A arg1,
+                          BiConsumer<A,Topic<T>> sink,
+                          Consumer<A> end) {
+        if (topic instanceof SeparatedCharSequence) {
+            find((SeparatedCharSequence) topic,
+                 this,
+                 arg1,
+                 null,
+                 end,
+                 sink,
+                 (a1, nil2, _end, _sink, _topic) ->
+                     _sink.accept(a1,_topic),
+                 (a1, nil2, _end, _sink) -> _end.accept(a1));
+        } else {
+            findTopic(topic.toString(),
+                      arg1,
+                      null,
+                      end,
+                      sink,
+                      (a1, nil2, _end, _sink, _topic) ->
+                          _sink.accept(a1,_topic),
+                      (a1, nil2, _end, _sink) ->
+                          _end.accept(a1));
+        }
+    }
     public void findTopic(CharSequence topic,
                           Consumer<Topic<T>> sink,
                           Runnable end) {
@@ -333,6 +359,11 @@ public final class Topic<T> implements SeparatedCharSequence {
         }
 
         find(topics, this, arg0, arg1, arg2, arg3, sink, end);
+    }
+
+    @Override
+    public char separator() {
+        return '/';
     }
 
     @Override
@@ -384,15 +415,7 @@ public final class Topic<T> implements SeparatedCharSequence {
 
     @Override
     public SeparatedCharSequence intern() {
-        String part = RecyclerUtils.intern(this.part);
-        if (this.part != part) {
-            this.part = part;
-        }
-        SharedPathString topics = this.topics;
-        if (topics != null) {
-            this.topics = topics.intern();
-        }
-        return this;
+        return internInner();
     }
 
     @Override
@@ -668,5 +691,15 @@ public final class Topic<T> implements SeparatedCharSequence {
     @Override
     public int compareTo(SeparatedCharSequence o) {
         return 0;
+    }
+
+    @Override
+    public Topic<T> internInner() {
+        this.part = RecyclerUtils.intern(this.part);
+        SharedPathString topics = this.topics;
+        if (topics != null) {
+            topics.internInner();
+        }
+        return this;
     }
 }

@@ -202,6 +202,13 @@ public class Subscription implements Externalizable {
             Feature.broker,
             Feature.shared
         };
+        //共享订阅本地和集群的消息,优先本地订阅者收到消息
+        public static final Feature[] clusterSharedLocalFirstFeatures = {
+            Feature.local,
+            Feature.broker,
+            Feature.shared,
+            Feature.sharedLocalFirst
+        };
         //共享订阅本地和集群的消息,以hash方式负载均衡
         public static final Feature[] clusterSharedHashFeatures = {
             Feature.local,
@@ -260,6 +267,11 @@ public class Subscription implements Externalizable {
 
         public Builder subscriberId(String id) {
             this.subscriber = id;
+            return this;
+        }
+
+        public Builder subscriberId(CharSequence id) {
+            this.subscriber = String.valueOf(id);
             return this;
         }
 

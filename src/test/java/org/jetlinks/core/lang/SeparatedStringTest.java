@@ -1,11 +1,54 @@
 package org.jetlinks.core.lang;
 
+import lombok.SneakyThrows;
+import org.jetlinks.core.utils.SerializeUtils;
 import org.junit.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 import static org.junit.Assert.*;
 
 public class SeparatedStringTest {
 
+
+    @Test
+    public void testReplace() {
+        String str = "/1/2/3/4/5";
+        SharedPathString string = SharedPathString.of(str);
+
+        assertEquals("/2/2/3/4/5", string.replace(1, "2").toString());
+
+        assertEquals("/1/2/4/5/5", string.replace(3, "4", 4, "5").toString());
+
+        assertEquals("/1/2/1/5/5", string.replace(3, "4", 4, "5").replace(3, "1").toString());
+
+        assertEquals("/1/2/4/5/6", string.replace(3, "4", 4, "5", 5, "6").toString());
+
+
+    }
+
+    @SneakyThrows
+    public Object codec(Object obj) {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (ObjectOutputStream objOut = new ObjectOutputStream(output)) {
+            SerializeUtils.writeObject(obj, objOut);
+        }
+        ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
+        try (ObjectInputStream obIn = new ObjectInputStream(input)) {
+            return SerializeUtils.readObject(obIn);
+        }
+    }
+
+    @Test
+    public void testSer() {
+        String str = "/test/1/2/3";
+        SharedPathString string = SharedPathString.of(str);
+
+        assertEquals(string, codec(string));
+    }
 
     @Test
     public void testRange() {
@@ -15,6 +58,8 @@ public class SeparatedStringTest {
         assertEquals("test/1", string.range(1, 2).toString());
         assertEquals("/test/1", string.range(0, 3).toString());
 
+        assertEquals(string.range(0, 3).toString(),
+                     codec(string.range(0, 3)).toString());
     }
 
     @Test

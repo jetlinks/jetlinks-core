@@ -9,7 +9,7 @@ class RangeSeparatedCharSequence extends AbstractSeparatedCharSequence {
     private final int from, size;
 
     @Override
-    protected char separator() {
+    public char separator() {
         return source.separator();
     }
 

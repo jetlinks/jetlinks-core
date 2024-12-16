@@ -10,6 +10,26 @@ public abstract class SeparatedString extends AbstractSeparatedCharSequence {
         this.separated = separated;
     }
 
+    public static SeparatedCharSequence create(char separator, String... arr) {
+        if (separator == '/') {
+            return SharedPathString.of(arr);
+        }
+        if (arr.length == 2) {
+            return new SeparatedString2(separator, arr[0], arr[1]);
+        }
+        if (arr.length == 3) {
+            return new SeparatedString3(separator, arr[0], arr[1], arr[2]);
+        }
+        return new SeparatedStringN(separator, arr);
+    }
+
+    public static CharSequence of(char separator, String[] arr) {
+        if (arr.length == 1) {
+            return arr[0];
+        }
+        return create(separator, arr);
+    }
+
     public static CharSequence of(char separator, String string, boolean intern) {
         String[] arr = TopicUtils.split(string, separator);
         if (intern) {
@@ -39,7 +59,7 @@ public abstract class SeparatedString extends AbstractSeparatedCharSequence {
         return of(separator, string, true);
     }
 
-    protected abstract char separator();
+    public abstract char separator();
 
     protected int size0() {
         return separated.length;
@@ -55,6 +75,13 @@ public abstract class SeparatedString extends AbstractSeparatedCharSequence {
 
     public String[] unsafeSeparated() {
         return separated;
+    }
+
+    public SeparatedString internInner() {
+        for (int i = 0; i < separated.length; i++) {
+            separated[i] = RecyclerUtils.intern(separated[i]);
+        }
+        return this;
     }
 
     @Override

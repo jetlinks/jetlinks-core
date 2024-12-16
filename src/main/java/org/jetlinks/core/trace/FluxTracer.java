@@ -65,6 +65,21 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
     }
 
     /**
+     * 使用默认的应用名作为作用域,使用指定的跟踪名创建跟踪器.
+     * <pre>{@code
+     *     return doSomeThing()
+     *              .as(FluxTracer.create("span.name"))
+     * }</pre>
+     *
+     * @param spanName spanName
+     * @param <T>      流元素类型
+     * @return FluxTracer
+     */
+    static <T> FluxTracer<T> create(CharSequence spanName) {
+        return create(TraceHolder.appName(), spanName);
+    }
+
+    /**
      * 使用指定的作用域以及跟踪名创建跟踪器.
      * <pre>{@code
      *     return doSomeThing()
@@ -77,6 +92,22 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      */
     static <T> FluxTracer<T> create(String scopeName,
                                     String spanName) {
+        return create(scopeName, spanName, null, null);
+    }
+
+    /**
+     * 使用指定的作用域以及跟踪名创建跟踪器.
+     * <pre>{@code
+     *     return doSomeThing()
+     *              .as(FluxTracer.create("user.api","/user/created"))
+     * }</pre>
+     *
+     * @param spanName spanName
+     * @param <T>      流元素类型
+     * @return FluxTracer
+     */
+    static <T> FluxTracer<T> create(String scopeName,
+                                    CharSequence spanName) {
         return create(scopeName, spanName, null, null);
     }
 
@@ -242,6 +273,33 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
     }
 
     /**
+     * 使用指定作用域和span名称,可通过onNext和builderConsumer来自定义span信息
+     * <pre>{@code
+     *     return this
+     *     .doSomeThing()
+     *     .as(FluxTracer.create(
+     *                  "user.api",
+     *                  "/user/created",
+     *                  (span,user)->span.setAttribute(userId,user.getId()),
+     *                  (builder)->builder.setAttribute("uid",id)
+     *                  ))
+     * }</pre>
+     *
+     * @param spanName        spanName
+     * @param onNext          onNext回调
+     * @param builderConsumer builderConsumer 回调
+     * @param <T>             流元素类型
+     * @return FluxTracer
+     */
+    static <T> FluxTracer<T> create(String scopeName,
+                                    CharSequence spanName,
+                                    BiConsumer<ReactiveSpan, T/*流中的数据*/> onNext,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
+        return create(scopeName, spanName, onNext, null, builderConsumer);
+    }
+
+
+    /**
      * 使用指定作用域和span名称,可通过onNext,onComplete和builderConsumer来自定义span信息
      * <pre>{@code
      *     return this
@@ -277,6 +335,44 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
                 .onComplete(onComplete)
                 .onSubscription(builderConsumer)
                 .build();
+    }
+
+    /**
+     * 使用指定作用域和span名称,可通过onNext,onComplete和builderConsumer来自定义span信息
+     * <pre>{@code
+     *     return this
+     *     .doSomeThing()
+     *     .as(FluxTracer.create(
+     *                  "user.api",
+     *                  "/user/created",
+     *                  (span,user)->span.setAttribute(userId,user.getId()),
+     *                  (span,hasValue)->span.setAttribute("hasValue",hasValue),
+     *                  (builder)->builder.setAttribute("uid",id)
+     *                  ))
+     * }</pre>
+     *
+     * @param spanName        spanName
+     * @param onNext          onNext回调
+     * @param builderConsumer builderConsumer 回调
+     * @param <T>             流元素类型
+     * @return FluxTracer
+     */
+    static <T> FluxTracer<T> create(String scopeName,
+                                    CharSequence spanName,
+                                    BiConsumer<ReactiveSpan, T> onNext,
+                                    BiConsumer<ReactiveSpan, Long> onComplete,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
+        if (TraceHolder.isDisabled(spanName)) {
+            return unsupported();
+        }
+        return FluxTracerBuilder
+            .<T>create(true)
+            .scopeName(scopeName)
+            .spanName(spanName)
+            .onNext(onNext)
+            .onComplete(onComplete)
+            .onSubscription(builderConsumer)
+            .build();
     }
 
     /**

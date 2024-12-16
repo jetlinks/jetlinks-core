@@ -14,6 +14,15 @@ class ReplacedSeparatedCharSequence2 extends ReplacedSeparatedCharSequence {
     }
 
     @Override
+    public SeparatedCharSequence internInner() {
+          super.internInner();
+          if(r2 instanceof SeparatedCharSequence){
+              ((SeparatedCharSequence) r2).internInner();
+          }
+          return this;
+    }
+
+    @Override
     protected CharSequence get0(int index) {
         if (index == this.i2) {
             return r2;

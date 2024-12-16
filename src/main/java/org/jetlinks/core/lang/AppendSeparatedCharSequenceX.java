@@ -12,7 +12,14 @@ class AppendSeparatedCharSequenceX extends AbstractSeparatedCharSequence {
     }
 
     @Override
-    protected char separator() {
+    public SeparatedCharSequence internInner() {
+        source.internInner();
+        append.internInner();
+        return this;
+    }
+
+    @Override
+    public char separator() {
         return source.separator();
     }
 

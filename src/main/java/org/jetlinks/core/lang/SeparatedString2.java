@@ -12,7 +12,7 @@ class SeparatedString2 extends AbstractSeparatedCharSequence {
     private final CharSequence s1, s2;
 
     @Override
-    protected char separator() {
+    public char separator() {
         return separator;
     }
 

@@ -9,7 +9,16 @@ class ReplacedSeparatedCharSequence extends AbstractSeparatedCharSequence {
     final CharSequence r;
 
     @Override
-    protected char separator() {
+    public SeparatedCharSequence internInner() {
+        source.internInner();
+        if (r instanceof SeparatedCharSequence) {
+            ((SeparatedCharSequence) r).internInner();
+        }
+        return this;
+    }
+
+    @Override
+    public char separator() {
         return source.separator();
     }
 
