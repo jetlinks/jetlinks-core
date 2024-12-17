@@ -4,13 +4,10 @@ import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import lombok.AllArgsConstructor;
-import org.jetlinks.core.codec.Codec;
-import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.event.EventBus;
 import org.jetlinks.core.lang.SeparatedCharSequence;
 import org.jetlinks.core.lang.SharedPathString;
 import org.jetlinks.core.trace.data.SpanDataInfo;
-import org.jetlinks.core.utils.StringBuilderUtils;
 import org.jetlinks.core.utils.TopicUtils;
 import reactor.core.publisher.Mono;
 
