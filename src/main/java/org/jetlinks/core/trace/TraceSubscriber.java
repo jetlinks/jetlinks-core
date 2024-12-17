@@ -28,7 +28,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     @SuppressWarnings("all")
     final static AtomicLongFieldUpdater<TraceSubscriber> NEXT_COUNT = AtomicLongFieldUpdater
-            .newUpdater(TraceSubscriber.class, "nextCount");
+        .newUpdater(TraceSubscriber.class, "nextCount");
 
     private final CoreSubscriber<? super T> actual;
     private final Span span;
@@ -52,9 +52,9 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         this.onComplete = onComplete;
         this.onError = onError;
         this.context = reactor.util.context.Context
-                .of(actual.currentContext())
-                .put(SpanContext.class, span.getSpanContext())
-                .put(io.opentelemetry.context.Context.class, span.storeInContext(ctx));
+            .of(actual.currentContext())
+            .put(SpanContext.class, span.getSpanContext())
+            .put(io.opentelemetry.context.Context.class, span.storeInContext(ctx));
     }
 
     @Override
@@ -85,7 +85,13 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     @Override
     protected void hookFinally(@Nonnull SignalType type) {
-        span.end(Instant.now());
+
+        try (Scope ignored = context
+            .get(io.opentelemetry.context.Context.class)
+            .makeCurrent()) {
+            span.end(Instant.now());
+        }
+
     }
 
     @Override

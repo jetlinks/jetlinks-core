@@ -170,7 +170,8 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
 
             Context ctx = context
                 .<Context>getOrEmpty(Context.class)
-                .orElseGet(defaultContext);
+                .orElseGet(defaultContext)
+                .with(TraceHolder.SPAN_NAME,name);
 
             if (null != onSubscription) {
                 this.onSubscription.accept(context, builder);

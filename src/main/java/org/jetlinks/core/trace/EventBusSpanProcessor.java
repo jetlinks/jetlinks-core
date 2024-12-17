@@ -44,10 +44,15 @@ public class EventBusSpanProcessor implements SpanProcessor {
 
     @Override
     public void onEnd(@Nonnull ReadableSpan span) {
+        Context ctx = Context.current();
 
-        SeparatedCharSequence topic = this
-                .prefix(span)
-                .append(SharedPathString.of(TopicUtils.split(span.getName(), true, false)));
+        CharSequence name = ctx.get(TraceHolder.SPAN_NAME);
+
+        if (name == null) {
+            name = SharedPathString.of(TopicUtils.split(span.getName(), true, false));
+        }
+
+        SeparatedCharSequence topic = this.prefix(span).append(name);
 
         eventBus
                 .publish(topic, Mono.fromSupplier(() -> SpanDataInfo.of(span.toSpanData())))

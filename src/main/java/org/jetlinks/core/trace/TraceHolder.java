@@ -4,6 +4,7 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.ContextKey;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -33,6 +34,8 @@ import java.util.function.Function;
  * @since 1.2
  */
 public class TraceHolder {
+
+    static final ContextKey<CharSequence> SPAN_NAME = ContextKey.named("spanName");
 
     //全局应用名: -Dtrace.app.name
     private static String GLOBAL_APP_NAME = System.getProperty("trace.app.name", "default");
