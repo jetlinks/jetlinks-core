@@ -7,8 +7,11 @@ import lombok.AllArgsConstructor;
 import org.jetlinks.core.codec.Codec;
 import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.event.EventBus;
+import org.jetlinks.core.lang.SeparatedCharSequence;
+import org.jetlinks.core.lang.SharedPathString;
 import org.jetlinks.core.trace.data.SpanDataInfo;
 import org.jetlinks.core.utils.StringBuilderUtils;
+import org.jetlinks.core.utils.TopicUtils;
 import reactor.core.publisher.Mono;
 
 import java.util.Collection;
@@ -27,19 +30,23 @@ public class EventBusSpanExporter implements SpanExporter {
     }
 
     //  /trace/{app}/{span}
-    Mono<Void> doPublish(SpanData data) {
-        String topic = StringBuilderUtils
-                .buildString(data, (_data, builder) -> {
-                    builder.append("/trace/")
-                           .append(_data.getInstrumentationScopeInfo().getName());
-                    if (!_data.getName().startsWith("/")) {
-                        builder.append("/");
-                    }
-                    builder.append(_data.getName());
-                });
+    Mono<Long> doPublish(SpanData data) {
+//        String topic = StringBuilderUtils
+//            .buildString(data, (_data, builder) -> {
+//                builder.append("/trace/")
+//                       .append(_data.getInstrumentationScopeInfo().getName());
+//                if (!_data.getName().startsWith("/")) {
+//                    builder.append("/");
+//                }
+//                builder.append(_data.getName());
+//            });
+
+        SeparatedCharSequence topic = SharedPathString
+            .of(new String[]{"", "trace", data.getInstrumentationScopeInfo().getName()})
+            .append(SharedPathString.of(TopicUtils.split(data.getName(), true, false)));
+
         return eventBus
-                .publish(topic, Mono.fromSupplier(() -> SpanDataInfo.of(data)))
-                .then();
+            .publish(topic, Mono.fromSupplier(() -> SpanDataInfo.of(data)));
     }
 
 

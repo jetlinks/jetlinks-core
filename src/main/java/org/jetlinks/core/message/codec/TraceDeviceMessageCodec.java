@@ -23,7 +23,7 @@ public class TraceDeviceMessageCodec implements DeviceMessageCodec {
     public Flux<? extends Message> decode(@Nonnull MessageDecodeContext context) {
         return Flux
                 .from(target.decode(context))
-                .as(FluxTracer.create(ProtocolTracer.SpanName.decode(protocolId)));
+                .as(FluxTracer.create(ProtocolTracer.SpanName.decode0(protocolId)));
     }
 
     @Nonnull
@@ -31,6 +31,6 @@ public class TraceDeviceMessageCodec implements DeviceMessageCodec {
     public Flux<? extends EncodedMessage> encode(@Nonnull MessageEncodeContext context) {
         return Flux
                 .from(target.encode(context))
-                .as(FluxTracer.create(ProtocolTracer.SpanName.encode(protocolId)));
+                .as(FluxTracer.create(ProtocolTracer.SpanName.encode0(protocolId)));
     }
 }

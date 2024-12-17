@@ -23,11 +23,25 @@ public class RecyclerUtils {
 
     static {
         share("");
+        share("*");
+        share("**");
         share("device");
         share("product");
         share("org");
-        share("*");
-        share("**");
+        share("user");
+        share("creatorId");
+        share("message");
+        share("online");
+        share("offline");
+        share("property");
+        share("report");
+        share("reply");
+        share("read");
+        share("write");
+        share("properties");
+        share("function");
+        share("event");
+
     }
 
     public static void clean() {
