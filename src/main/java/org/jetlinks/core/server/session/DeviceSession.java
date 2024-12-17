@@ -196,7 +196,7 @@ public interface DeviceSession {
             .getProtocol()
             .flatMap(protocol -> protocol.getMessageCodec(getTransport()))
             .flatMapMany(codec -> codec.encode(context))
-            .as(create(encode(device.getDeviceId()),
+            .as(create(encode0(device.getDeviceId()),
                        (span, msg) -> span.setAttribute(DeviceTracer.SpanKey.message, msg.toString())))
             .as(context::sendToDevice);
     }

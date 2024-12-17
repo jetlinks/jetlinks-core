@@ -132,6 +132,27 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
     }
 
     /**
+     * 使用指定的span名称以及跟踪名创建跟踪器.
+     * <pre>{@code
+     *     return doSomeThing()
+     *              .as(FluxTracer.create(
+     *                  "/user/created",
+     *                  (span,user)->span.setAttribute(userId,user.getId())
+     *                  ))
+     * }</pre>
+     *
+     * @param spanName spanName
+     * @param onNext   onNext回调
+     * @param <T>      流元素类型
+     * @return FluxTracer
+     */
+    static <T> FluxTracer<T> create(CharSequence spanName,
+                                    BiConsumer<ReactiveSpan, T> onNext) {
+        return create(TraceHolder.appName(), spanName, onNext, null);
+    }
+
+
+    /**
      * 使用指定的作用域和span名称以及跟踪名创建跟踪器.
      * <pre>{@code
      *     return this
@@ -217,6 +238,30 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
      * @return FluxTracer
      */
     static <T> FluxTracer<T> create(String spanName,
+                                    BiConsumer<ReactiveSpan, T/*流中的数据*/> onNext,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
+        return create(TraceHolder.appName(), spanName, onNext, builderConsumer);
+    }
+
+    /**
+     * 使用指定的span名称,可通过onNext和builderConsumer来自定义span信息
+     * <pre>{@code
+     *     return this
+     *     .doSomeThing()
+     *     .as(FluxTracer.create(
+     *                  "/user/created",
+     *                  (span,user)->span.setAttribute(userId,user.getId()),
+     *                  (builder)->builder.setAttribute("uid",id)
+     *                  ))
+     * }</pre>
+     *
+     * @param spanName        spanName
+     * @param onNext          onNext回调
+     * @param builderConsumer SpanBuilder 回调
+     * @param <T>             流元素类型
+     * @return FluxTracer
+     */
+    static <T> FluxTracer<T> create(CharSequence spanName,
                                     BiConsumer<ReactiveSpan, T/*流中的数据*/> onNext,
                                     Consumer<ReactiveSpanBuilder> builderConsumer) {
         return create(TraceHolder.appName(), spanName, onNext, builderConsumer);
