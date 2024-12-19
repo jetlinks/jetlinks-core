@@ -6,6 +6,7 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.trace.data.EventData;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.SerializeUtils;
 
 import java.io.Externalizable;
@@ -14,6 +15,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Getter
@@ -69,6 +71,9 @@ public class SpanEventDataInfo implements Externalizable {
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         this.name = in.readUTF();
         this.timeNanos = in.readLong();
-        this.attributes = SerializeUtils.readMap(in, Maps::newHashMapWithExpectedSize);
+        this.attributes = SerializeUtils.readMap(in,
+                                                 e -> RecyclerUtils.intern(String.valueOf(e)),
+                                                 Function.identity(),
+                                                 Maps::newHashMapWithExpectedSize);
     }
 }

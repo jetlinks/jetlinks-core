@@ -38,9 +38,12 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     private volatile long nextCount;
     private volatile boolean stateSet;
+    private final long startWithNanos;
+    private final Instant startWith;
     private final Context context;
 
-    public TraceSubscriber(CoreSubscriber<? super T> actual,
+    public TraceSubscriber(Instant startWith,
+                           CoreSubscriber<? super T> actual,
                            Span span,
                            Consumer3<ContextView, ReactiveSpan, T> onNext,
                            Consumer3<ContextView, ReactiveSpan, Long> onComplete,
@@ -51,6 +54,8 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         this.onNext = onNext;
         this.onComplete = onComplete;
         this.onError = onError;
+        this.startWithNanos = System.nanoTime();
+        this.startWith = startWith;
         this.context = reactor.util.context.Context
             .of(actual.currentContext())
             .put(SpanContext.class, span.getSpanContext())
@@ -89,7 +94,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         try (Scope ignored = context
             .get(io.opentelemetry.context.Context.class)
             .makeCurrent()) {
-            span.end(Instant.now());
+            span.end(startWith.plusNanos(System.nanoTime() - startWithNanos));
         }
 
     }

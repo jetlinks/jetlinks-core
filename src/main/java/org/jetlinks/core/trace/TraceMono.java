@@ -176,18 +176,19 @@ public class TraceMono<T> extends MonoOperator<T, T> {
             Context ctx = context
                 .<Context>getOrEmpty(Context.class)
                 .orElseGet(defaultContext)
-                .with(TraceHolder.SPAN_NAME,name);
+                .with(TraceHolder.SPAN_NAME, name);
 
             if (null != onSubscription) {
                 this.onSubscription.accept(context, builder);
             }
 
+            Instant now = Instant.now();
             Span span = builder
-                .setStartTimestamp(Instant.now())
+                .setStartTimestamp(now)
                 .setParent(ctx)
                 .startSpan();
             try (Scope ignored = span.makeCurrent()) {
-                this.source.subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, onError, ctx));
+                this.source.subscribe(new TraceSubscriber<>(now, actual, span, onNext, onComplete, onError, ctx));
             } catch (Throwable e) {
                 actual.onError(e);
                 span.recordException(e);

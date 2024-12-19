@@ -177,12 +177,13 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                 this.onSubscription.accept(context, builder);
             }
 
+            Instant now = Instant.now();
             Span span = builder
-                .setStartTimestamp(Instant.now())
+                .setStartTimestamp(now)
                 .setParent(ctx)
                 .startSpan();
             try (Scope ignored = span.makeCurrent()) {
-                this.source.subscribe(new TraceSubscriber<>(actual, span, onNext, onComplete, onError, ctx));
+                this.source.subscribe(new TraceSubscriber<>(now,actual, span, onNext, onComplete, onError, ctx));
             } catch (Throwable e) {
                 actual.onError(e);
                 span.recordException(e);

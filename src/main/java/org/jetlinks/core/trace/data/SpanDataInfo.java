@@ -8,6 +8,7 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.collections.CollectionUtils;
+import org.jetlinks.core.utils.RecyclerUtils;
 import org.jetlinks.core.utils.SerializeUtils;
 
 import java.io.Externalizable;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Getter
@@ -31,6 +33,8 @@ public class SpanDataInfo implements Externalizable {
     private long endWithNanos;
     private Map<String, Object> attributes;
     private List<SpanEventDataInfo> events;
+
+    private transient List<? extends SpanDataInfo> children;
 
     public static SpanDataInfo of(SpanData data) {
         return new SpanDataInfo().with(data);
@@ -113,16 +117,20 @@ public class SpanDataInfo implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        int version =  in.readUnsignedByte();
+        int version = in.readUnsignedByte();
 
-        this.app = in.readUTF();
-        this.name = in.readUTF();
+        this.app = RecyclerUtils.intern(in.readUTF());
+        this.name = RecyclerUtils.intern(in.readUTF());
         this.traceId = in.readUTF();
         this.spanId = in.readUTF();
         this.parentSpanId = in.readUTF();
         this.startWithNanos = in.readLong();
         this.endWithNanos = in.readLong();
-        this.attributes = SerializeUtils.readMap(in, Maps::newHashMapWithExpectedSize);
+        this.attributes = SerializeUtils
+            .readMap(in,
+                     e -> RecyclerUtils.intern(String.valueOf(e)),
+                     Function.identity(),
+                     Maps::newHashMapWithExpectedSize);
         int eventSize = in.readInt();
         if (eventSize > 0) {
             events = new ArrayList<>(eventSize);
