@@ -39,7 +39,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
 
     @Nonnull
     @Override
-    public final <R> R execute(@Nonnull Command<R> command) {
+    public <R> R execute(@Nonnull Command<R> command) {
 
         //直接执行可执行的指令
         if (command instanceof ExecutableCommand) {
@@ -59,7 +59,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     }
 
     @Override
-    public final <R, C extends Command<R>> C createCommand(String commandId) {
+    public <R, C extends Command<R>> C createCommand(String commandId) {
         CommandHandler<Command<?>, ?> handler = handlers.get(commandId);
 
         if (null != handler) {
