@@ -890,6 +890,9 @@ public class SerializeUtils {
             Object read(ObjectInput input) {
                 int size = input.readInt();
                 String[] arr = new String[size];
+                for (int i = 0; i < size; i++) {
+                    arr[i] = RecyclerUtils.intern(input.readUTF());
+                }
                 return SharedPathString.of(arr);
             }
 
