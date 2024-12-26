@@ -98,15 +98,20 @@ public final class Topic<T> implements SeparatedCharSequence {
 
     private String getTopic0() {
         return StringBuilderUtils
-            .buildString(getParent(), (_parent, builder) -> {
-                if (_parent != null) {
-                    String parentTopic = _parent.getTopic();
-                    builder.append(parentTopic)
-                           .append(parentTopic.equals("/") ? "" : "/");
-                } else {
-                    builder.append("/");
-                }
-                builder.append(part);
+            .buildString(this, (_that, builder) -> {
+
+                Topic<T> _temp = _that;
+                do {
+                    builder.insert(0, _temp.part);
+
+                    if (!_temp.part.isEmpty()) {
+                        builder.insert(0, "/");
+                    }
+
+                    _temp = _temp.parent;
+
+                } while (_temp != null);
+
             });
     }
 
@@ -295,10 +300,10 @@ public final class Topic<T> implements SeparatedCharSequence {
                   (nil, nil2, _end, _sink) -> _end.run());
     }
 
-    public  <A> void findTopic(CharSequence topic,
-                          A arg1,
-                          BiConsumer<A,Topic<T>> sink,
-                          Consumer<A> end) {
+    public <A> void findTopic(CharSequence topic,
+                              A arg1,
+                              BiConsumer<A, Topic<T>> sink,
+                              Consumer<A> end) {
         if (topic instanceof SeparatedCharSequence) {
             find((SeparatedCharSequence) topic,
                  this,
@@ -307,7 +312,7 @@ public final class Topic<T> implements SeparatedCharSequence {
                  end,
                  sink,
                  (a1, nil2, _end, _sink, _topic) ->
-                     _sink.accept(a1,_topic),
+                     _sink.accept(a1, _topic),
                  (a1, nil2, _end, _sink) -> _end.accept(a1));
         } else {
             findTopic(topic.toString(),
@@ -316,11 +321,12 @@ public final class Topic<T> implements SeparatedCharSequence {
                       end,
                       sink,
                       (a1, nil2, _end, _sink, _topic) ->
-                          _sink.accept(a1,_topic),
+                          _sink.accept(a1, _topic),
                       (a1, nil2, _end, _sink) ->
                           _end.accept(a1));
         }
     }
+
     public void findTopic(CharSequence topic,
                           Consumer<Topic<T>> sink,
                           Runnable end) {

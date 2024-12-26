@@ -90,7 +90,21 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
         if (obj == null || getClass() != obj.getClass()) {
             return false;
         }
-        return compareTo((SeparatedCharSequence) obj) == 0;
+        AbstractSeparatedCharSequence another = ((AbstractSeparatedCharSequence) obj);
+        if (another.separator() != separator()) {
+            return false;
+        }
+        int size = this.size();
+        int anotherSize = another.size();
+        if (size != anotherSize) {
+            return false;
+        }
+        for (int i = 0; i < size; i++) {
+            if (!Objects.equals(get(i), another.get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -110,6 +124,9 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
 
     @Override
     public int compareTo(@Nonnull SeparatedCharSequence c) {
+        if (this == c) {
+            return 0;
+        }
         if (c instanceof AbstractSeparatedCharSequence) {
             AbstractSeparatedCharSequence o = (AbstractSeparatedCharSequence) c;
             if (index() != o.index()) {
@@ -131,7 +148,9 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
             if (selfElement == null || targetElement == null) {
                 r = Objects.equals(selfElement, targetElement) ? 1 : 0;
             } else if (selfElement instanceof String && targetElement instanceof String) {
-                r = ((String) selfElement).compareTo((String) targetElement);
+                if (selfElement != targetElement) {
+                    r = ((String) selfElement).compareTo((String) targetElement);
+                }
             } else if (selfElement instanceof Comparable
                 && selfElement.getClass() == targetElement.getClass()) {
                 r = ((Comparable<CharSequence>) selfElement).compareTo(targetElement);

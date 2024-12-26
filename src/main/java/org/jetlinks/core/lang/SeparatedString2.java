@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import org.jetlinks.core.utils.StringBuilderUtils;
 
 import javax.annotation.Nonnull;
+import java.util.Objects;
 
 @AllArgsConstructor
 class SeparatedString2 extends AbstractSeparatedCharSequence {
@@ -76,5 +77,21 @@ class SeparatedString2 extends AbstractSeparatedCharSequence {
                 bd.append(a).append(b).append(c);
             }
         );
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof SeparatedString2)) {
+            return false;
+        }
+        SeparatedString2 another = ((SeparatedString2) obj);
+        if (another.separator() != separator()) {
+            return false;
+        }
+        return Objects.equals(s2, another.s2)
+            && Objects.equals(s1, another.s1);
     }
 }

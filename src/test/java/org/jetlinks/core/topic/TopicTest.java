@@ -61,7 +61,9 @@ public class TopicTest {
     @Test
     public void testPattern3() {
         Topic<String> root = Topic.createRoot();
-        root.append("/device/0/message/property/*/reply").subscribe("1");
+        Topic<String> t =  root.append("/device/0/message/property/*/reply");
+        System.out.println(t.getTopic());
+        t.subscribe("1");
         root.append("/device/0/message/property/report").subscribe("1");
 
         root.findTopic("/device/0/message/property/report")
