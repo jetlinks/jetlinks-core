@@ -15,6 +15,17 @@ public class SeparatedStringTest {
 
 
     @Test
+    public void testContentEquals(){
+        String str = "/1/2/3/4/5";
+        SharedPathString string = SharedPathString.of(str);
+
+        assertTrue(string.contentEquals("/1/2/3/4/5"));
+
+        assertTrue(string.contentEquals(SeparatedString.create('/', "","1", "2", "3", "4", "5")));
+
+    }
+
+    @Test
     public void testReplace() {
         String str = "/1/2/3/4/5";
         SharedPathString string = SharedPathString.of(str);

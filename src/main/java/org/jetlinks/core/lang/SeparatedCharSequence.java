@@ -172,6 +172,44 @@ public interface SeparatedCharSequence extends CharSequence,
         return arr;
     }
 
+    /**
+     * 比较序列内容是否相等
+     *
+     * @param target 目标字符序列
+     * @return 是否相等
+     */
+    default boolean contentEquals(CharSequence target) {
+        if (target instanceof SeparatedCharSequence) {
+            SeparatedCharSequence t = (SeparatedCharSequence) target;
+            if (this.separator() != ((SeparatedCharSequence) target).separator()) {
+                return false;
+            }
+            int targetSize = ((SeparatedCharSequence) target).size();
+            int selfSize = this.size();
+            if (targetSize != selfSize) {
+                return false;
+            }
+            for (int i = 0; i < targetSize; i++) {
+                if (!t.get(i).equals(this.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        int targetLen = target.length();
+        int selfLen = this.length();
+        if (targetLen != selfLen) {
+            return false;
+        }
+        for (int i = 0; i < targetLen; i++) {
+            if (target.charAt(i) != this.charAt(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Nonnull
     @Override
     String toString();
