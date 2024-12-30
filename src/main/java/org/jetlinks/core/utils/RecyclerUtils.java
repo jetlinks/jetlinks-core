@@ -41,7 +41,7 @@ public class RecyclerUtils {
         share("properties");
         share("function");
         share("event");
-
+        share("_sys");
     }
 
     public static void clean() {

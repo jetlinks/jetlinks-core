@@ -23,11 +23,11 @@ class ReplacedSeparatedCharSequence2 extends ReplacedSeparatedCharSequence {
     }
 
     @Override
-    protected CharSequence get0(int index) {
+    public CharSequence get(int index) {
         if (index == this.i2) {
             return r2;
         }
-        return super.get0(index);
+        return super.get(index);
     }
 
     @Override

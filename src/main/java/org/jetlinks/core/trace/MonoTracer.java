@@ -391,7 +391,8 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
                                     BiConsumer<ReactiveSpan, T> onNext,
                                     BiConsumer<ReactiveSpan, Boolean> onComplete,
                                     Consumer<ReactiveSpanBuilder> builderConsumer) {
-        if (TraceHolder.isDisabled(spanName)) {
+        //全局关闭了,这里不判断spanName是否禁用,因为在执行时还会判断.
+        if (TraceHolder.isDisabled()) {
             return unsupported();
         }
         return MonoTracerBuilder
@@ -429,7 +430,8 @@ public interface MonoTracer<T> extends Function<Mono<T>, Mono<T>> {
                                     BiConsumer<ReactiveSpan, T> onNext,
                                     BiConsumer<ReactiveSpan, Boolean> onComplete,
                                     Consumer<ReactiveSpanBuilder> builderConsumer) {
-        if (TraceHolder.isDisabled(spanName)) {
+        //全局关闭了,这里不判断spanName是否禁用,因为在执行时还会判断.
+        if (TraceHolder.isDisabled()) {
             return unsupported();
         }
         return MonoTracerBuilder

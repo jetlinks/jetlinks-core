@@ -20,12 +20,12 @@ class RangeSeparatedCharSequence extends AbstractSeparatedCharSequence {
     }
 
     @Override
-    protected int size0() {
+    public int size() {
         return end - from;
     }
 
     @Override
-    protected CharSequence get0(int index) {
+    public CharSequence get(int index) {
 
         return source.get(index + from);
     }

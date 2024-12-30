@@ -9,10 +9,62 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
+import java.io.*;
 import java.time.Duration;
 
 @Slf4j
 public class TopicTest {
+
+
+    @Test
+    @SneakyThrows
+    public void testSer(){
+        Topic<String> a = Topic.createRoot();
+
+        Topic<String> p = a.append("/device/1/2/3/4");
+
+        ByteArrayOutputStream out =new ByteArrayOutputStream();
+        DataOutputStream dout = new DataOutputStream(out);
+        p.writeTo(dout);
+        dout.flush();
+
+        Assert.assertArrayEquals(
+            TopicUtils.split("/device/1/2/3/4"),
+            Topic.readArray(new DataInputStream(new ByteArrayInputStream(out.toByteArray())))
+        );
+
+    }
+
+    @Test
+    public void testArray() {
+        Topic<String> a = Topic.createRoot();
+
+        Assert.assertArrayEquals(
+            TopicUtils.split("/device/1/2/3/4"),
+            a.append("/device/1/2/3/4").asStringArray()
+        );
+
+    }
+
+    @Test
+    public void testEq() {
+        Topic<String> a = Topic.createRoot();
+        Topic<String> b = Topic.createRoot();
+
+        Assert.assertEquals(a.append("/device/1/2/3/4"),
+                            b.append("/device/1/2/3/4"));
+
+        Assert.assertEquals(a.append("/device/1/2/3/4").hashCode(),
+                            b.append("/device/1/2/3/4").hashCode());
+
+        Assert.assertNotEquals(a.append("/device/2/1/3/4"),
+                               b.append("/device/1/2/3/4"));
+
+        Assert.assertNotEquals(a.append("/device/2/1/3/4").hashCode(),
+                               b.append("/device/1/2/3/4").hashCode());
+
+
+    }
 
     @Test
     public void testRoot() {
@@ -61,7 +113,7 @@ public class TopicTest {
     @Test
     public void testPattern3() {
         Topic<String> root = Topic.createRoot();
-        Topic<String> t =  root.append("/device/0/message/property/*/reply");
+        Topic<String> t = root.append("/device/0/message/property/*/reply");
         System.out.println(t.getTopic());
         t.subscribe("1");
         root.append("/device/0/message/property/report").subscribe("1");

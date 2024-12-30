@@ -18,13 +18,18 @@ import reactor.function.Consumer4;
 import reactor.function.Consumer5;
 
 import javax.annotation.Nonnull;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.io.ObjectOutput;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.*;
 
-@EqualsAndHashCode(of = "part")
 public final class Topic<T> implements SeparatedCharSequence {
+
+    private int $hash;
 
     @Getter
     private final Topic<T> parent;
@@ -707,5 +712,69 @@ public final class Topic<T> implements SeparatedCharSequence {
             topics.internInner();
         }
         return this;
+    }
+
+    @Override
+    public int hashCode() {
+        if ($hash == 0) {
+            Topic<T> t = this;
+            while (t != null) {
+                $hash = 31 * $hash + t.part.hashCode();
+                t = t.parent;
+            }
+        }
+        return $hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Topic)) {
+            return false;
+        }
+        if (this == obj) {
+            return true;
+        }
+        Topic<?> left = ((Topic<?>) obj);
+        Topic<?> right = this;
+
+        while (left != null && right != null) {
+            if (left.depth != right.depth || !Objects.equals(left.part, right.part)) {
+                return false;
+            }
+            left = left.parent;
+            right = right.parent;
+        }
+
+        return left == null && right == null;
+    }
+
+    @Override
+    public String[] asStringArray() {
+        String[] arr = new String[depth + 1];
+        Topic<T> topic = this;
+        for (int i = arr.length - 1; i >= 0 && topic != null; i--) {
+            arr[i] = topic.part;
+            topic = topic.parent;
+        }
+        return arr;
+    }
+
+    public void writeTo(DataOutput output) throws IOException {
+        int size = this.depth + 1;
+        output.writeShort(size);
+        Topic<T> topic = this;
+        for (int i = 0; i < size && topic != null; i++) {
+            output.writeUTF(topic.part);
+            topic = topic.parent;
+        }
+    }
+
+    public static String[] readArray(DataInput input) throws IOException {
+        int len = input.readUnsignedShort();
+        String[] arr = new String[len];
+        for (int i = arr.length - 1; i >= 0; i--) {
+            arr[i] = input.readUTF();
+        }
+        return arr;
     }
 }

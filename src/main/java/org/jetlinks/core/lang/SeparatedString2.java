@@ -23,12 +23,12 @@ class SeparatedString2 extends AbstractSeparatedCharSequence {
     }
 
     @Override
-    protected int size0() {
+    public int size() {
         return 2;
     }
 
     @Override
-    protected CharSequence get0(int index) {
+    public CharSequence get(int index) {
         if (index == 0) {
             return s1;
         }

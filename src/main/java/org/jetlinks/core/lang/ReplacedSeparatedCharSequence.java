@@ -23,16 +23,16 @@ class ReplacedSeparatedCharSequence extends AbstractSeparatedCharSequence {
     }
 
     @Override
-    protected int size0() {
+    public int size() {
         return source.size();
     }
 
     @Override
-    protected CharSequence get0(int index) {
+    public CharSequence get(int index) {
         if (index == this.i) {
             return r;
         }
-        return source.get0(index);
+        return source.get(index);
     }
 
     @Override

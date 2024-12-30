@@ -19,7 +19,7 @@ class SeparatedString3 extends AbstractSeparatedCharSequence {
     }
 
     @Override
-    protected int size0() {
+    public int size() {
         return 3;
     }
 
@@ -29,7 +29,7 @@ class SeparatedString3 extends AbstractSeparatedCharSequence {
     }
 
     @Override
-    protected CharSequence get0(int index) {
+    public CharSequence get(int index) {
         if (index == 0) {
             return s1;
         }

@@ -24,11 +24,11 @@ class ReplacedSeparatedCharSequence3 extends ReplacedSeparatedCharSequence2 {
     }
 
     @Override
-    protected CharSequence get0(int index) {
+    public CharSequence get(int index) {
         if (index == this.i3) {
             return r3;
         }
-        return super.get0(index);
+        return super.get(index);
     }
 
     @Override

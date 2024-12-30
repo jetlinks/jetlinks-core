@@ -29,12 +29,12 @@ class AppendSeparatedCharSequence extends AbstractSeparatedCharSequence {
     }
 
     @Override
-    protected int size0() {
+    public int size() {
         return source.size() + 1;
     }
 
     @Override
-    protected CharSequence get0(int index) {
+    public CharSequence get(int index) {
         if (index == source.size()) {
             return append;
         }

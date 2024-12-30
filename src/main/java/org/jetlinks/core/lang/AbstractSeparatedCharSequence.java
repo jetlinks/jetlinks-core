@@ -11,22 +11,11 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
 
     public abstract char separator();
 
-    protected abstract int size0();
+    @Override
+    public abstract int size();
 
     @Override
-    public final int size() {
-        return size0() - index();
-    }
-
-    protected abstract CharSequence get0(int index);
-
-    public final CharSequence get(int index) {
-        return get0(index + index());
-    }
-
-    protected int index() {
-        return 0;
-    }
+    public abstract CharSequence get(int index);
 
     @Override
     public SeparatedCharSequence replace(int index, CharSequence newChar) {
@@ -129,9 +118,6 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
         }
         if (c instanceof AbstractSeparatedCharSequence) {
             AbstractSeparatedCharSequence o = (AbstractSeparatedCharSequence) c;
-            if (index() != o.index()) {
-                return Integer.compare(index(), o.index());
-            }
             if (separator() != o.separator()) {
                 return Character.compare(separator(), o.separator());
             }
@@ -175,17 +161,17 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
             char c1 = a.charAt(k);
             char c2 = b.charAt(k);
             if (c1 != c2) {
-                return c1 - c2;
+                return Character.compare(c1,c2);
             }
             k++;
         }
-        return len1 - len2;
+        return Integer.compare(len1, len2);
     }
 
     @Override
     public int length() {
         int len = 0;
-        for (int i = index(); i < size(); i++) {
+        for (int i = 0; i < size(); i++) {
             len += get(i).length();
             len++;
         }
@@ -226,7 +212,7 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
             this,
             (self, sb) -> {
                 char sp = self.separator();
-                int index = self.index();
+                int index = 0;
                 int size = self.size();
                 for (int i = index; i < size; i++) {
                     if (i > index) {

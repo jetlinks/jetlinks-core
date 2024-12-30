@@ -61,11 +61,11 @@ public abstract class SeparatedString extends AbstractSeparatedCharSequence {
 
     public abstract char separator();
 
-    protected int size0() {
+    public int size() {
         return separated.length;
     }
 
-    protected String get0(int index) {
+    public String get(int index) {
         return separated[index];
     }
 

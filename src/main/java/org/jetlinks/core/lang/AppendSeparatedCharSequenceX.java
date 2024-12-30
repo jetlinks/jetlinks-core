@@ -5,12 +5,13 @@ class AppendSeparatedCharSequenceX extends AbstractSeparatedCharSequence {
     final AbstractSeparatedCharSequence source;
     final SeparatedCharSequence append;
     final boolean ignoreFirst;
-
+    final int $size;
     AppendSeparatedCharSequenceX(AbstractSeparatedCharSequence source,
                                  SeparatedCharSequence append) {
         this.source = source;
         this.ignoreFirst = !append.isEmpty() && "".equals(String.valueOf(append.get(0)));
         this.append = append;
+        this.$size = source.size() + append.size() + (ignoreFirst ? -1 : 0);
     }
 
     @Override
@@ -31,12 +32,12 @@ class AppendSeparatedCharSequenceX extends AbstractSeparatedCharSequence {
     }
 
     @Override
-    protected int size0() {
-        return source.size() + append.size() + (ignoreFirst ? -1 : 0);
+    public int size() {
+        return $size;
     }
 
     @Override
-    protected CharSequence get0(int index) {
+    public CharSequence get(int index) {
 
         int size = source.size();
         if (index >= size) {
