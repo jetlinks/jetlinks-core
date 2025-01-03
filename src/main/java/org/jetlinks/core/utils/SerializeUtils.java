@@ -51,6 +51,8 @@ public class SerializeUtils {
         }
         registerSerializer(new TypedMapSerializer());
         registerSerializer(new TypedCollectionSerializer());
+
+        cache.put(StackTraceElement.class, InternalSerializers.StackTraceElement);
     }
 
     private static final Set<Class<?>> safelySerializable = ConcurrentHashMap.newKeySet();
@@ -928,6 +930,31 @@ public class SerializeUtils {
                 for (CharSequence str : path) {
                     input.writeUTF(str.toString());
                 }
+            }
+        },
+        StackTraceElement(0x42, java.lang.StackTraceElement.class) {
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                String className = input.readUTF();
+                String methodName = input.readUTF();
+
+                String fileName = SerializeUtils.readNullableUTF(input);
+
+                int lineNumber = input.readInt();
+                return new StackTraceElement(className, methodName, fileName, lineNumber);
+            }
+
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput input) {
+                StackTraceElement element = ((StackTraceElement) value);
+                input.writeUTF(element.getClassName());
+                input.writeUTF(element.getMethodName());
+
+                SerializeUtils.writeNullableUTF(element.getFileName(), input);
+
+                input.writeInt(element.getLineNumber());
             }
         };
 

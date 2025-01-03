@@ -700,7 +700,29 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     @Override
-    public int compareTo(SeparatedCharSequence o) {
+    public int compareTo(@Nonnull SeparatedCharSequence obj) {
+        if (this == obj) {
+            return 0;
+        }
+        if (!(obj instanceof Topic)) {
+            return this.getTopic().compareTo(obj.toString());
+        }
+
+        Topic<?> left = ((Topic<?>) obj);
+        Topic<?> right = this;
+
+        if (left.depth != right.depth) {
+            return Integer.compare(left.depth, right.depth);
+        }
+
+        while (left != null && right != null) {
+            int compare = left.part.compareTo(right.part);
+            if (compare != 0) {
+                return compare;
+            }
+            left = left.parent;
+            right = right.parent;
+        }
         return 0;
     }
 

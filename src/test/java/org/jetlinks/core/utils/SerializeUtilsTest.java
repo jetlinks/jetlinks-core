@@ -24,6 +24,20 @@ public class SerializeUtilsTest {
 
 
     @Test
+    public void testStackTraceElement() {
+
+        Object trace = codec(new Exception().getStackTrace());
+
+        assertTrue(trace instanceof StackTraceElement[]);
+        StackTraceElement[] arr = (StackTraceElement[]) trace;
+
+        Exception e = new Exception();
+        e.setStackTrace(arr);
+
+
+    }
+
+    @Test
     public void testConvertToSafelySerializable() {
         assertEquals(1, SerializeUtils.convertToSafelySerializable(1));
 
@@ -233,7 +247,7 @@ public class SerializeUtilsTest {
         assertNotNull(map);
 
         //deepMap
-        Object deepMap = codec(Collections.singletonMap("1",Collections.singletonMap("2", obj)));
+        Object deepMap = codec(Collections.singletonMap("1", Collections.singletonMap("2", obj)));
         assertNotNull(deepMap);
         System.out.println(deepMap);
     }

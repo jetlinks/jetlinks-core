@@ -5,7 +5,9 @@ import lombok.Getter;
 import org.hswebframework.web.exception.ValidationException;
 import org.jetlinks.core.exception.DeviceOperationException;
 
+import java.net.SocketTimeoutException;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author bsetfeng
@@ -51,15 +53,24 @@ public enum ErrorCode {
     public static ErrorCode of(Throwable e) {
         if (e instanceof DeviceOperationException) {
             return ((DeviceOperationException) e).getCode();
-        } else if (e instanceof IllegalArgumentException
+        }
+        // 参数错误
+        else if (e instanceof IllegalArgumentException
             || e instanceof ValidationException
             || e instanceof javax.validation.ValidationException
             || e instanceof NullPointerException
-            || e instanceof ArrayIndexOutOfBoundsException
-            || e instanceof StringIndexOutOfBoundsException) {
+            || e instanceof IndexOutOfBoundsException) {
             return ErrorCode.PARAMETER_ERROR;
-        } else if (e instanceof UnsupportedOperationException) {
+        }
+        // 不支持
+        else if (e instanceof UnsupportedOperationException) {
             return ErrorCode.UNSUPPORTED_MESSAGE;
+        }
+        // 超时
+        else if (e instanceof TimeoutException
+            || e instanceof SocketTimeoutException
+            || e instanceof io.netty.handler.timeout.TimeoutException) {
+            return ErrorCode.TIME_OUT;
         } else {
             return ErrorCode.SYSTEM_ERROR;
         }
