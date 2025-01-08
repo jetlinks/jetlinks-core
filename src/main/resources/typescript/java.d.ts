@@ -3,21 +3,23 @@ declare module java.lang {
     // @ts-ignore
     class Object extends Function {
 
-        private static arguments: any;
-        private static caller: any;
-        private static length: any;
-        private static prototype: any;
-        private static name: any;
 
-        private static toString(): string;
 
-        private static apply<T>(this: new () => T, thisArg: T): void;
-        private static apply<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, args: A): void;
+        private arguments: any;
+        private caller: any;
+        private length: any;
+        private prototype: any;
+        private name: any;
 
-        private static call<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, ...args: A): void;
+        private toString(): string;
 
-        private static bind<T>(this: T, thisArg: any): T;
-        private static bind<A extends any[], B extends any[], R>(this: new (...args: [...A, ...B]) => R, thisArg: any, ...args: A): new (...args: B) => R;
+        private apply<T>(this: new () => T, thisArg: T): void;
+        private apply<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, args: A): void;
+
+        private call<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, ...args: A): void;
+
+        private bind<T>(this: T, thisArg: any): T;
+        private bind<A extends any[], B extends any[], R>(this: new (...args: [...A, ...B]) => R, thisArg: any, ...args: A): new (...args: B) => R;
 
     }
 
@@ -302,8 +304,8 @@ declare module java.util {
     import Entry = java.util.Map.Entry;
 
     module stream {
-
-        interface Stream<E> extends java.lang.Object {
+        // @ts-ignore
+        class Stream<E> extends java.lang.Object {
 
             /**
              * 过滤流中的元素，仅保留满足给定条件的元素。
@@ -658,6 +660,8 @@ declare module java.util {
         private some(predicate: (value: E, index: number, array: E[]) => boolean, thisArg?: any): boolean;
 
         private includes(searchElement: E, fromIndex?: number): boolean;
+        private flatMap(callback: (t: this, value: any, index: number, array: any[]) => E | readonly E[], thisArg?: this): boolean;
+        private flat<U,D>(t: this,depth?: D): U[];
 
         private toLocaleString(): string ;
 
@@ -669,6 +673,7 @@ declare module java.util {
         private indexOf(searchElement: E, fromIndex?: number): number;
 
         private lastIndexOf(searchElement: E, fromIndex?: number): number;
+
 
         private static arguments: any;
         private static caller: any;
@@ -776,14 +781,19 @@ declare module java.util {
          * 清空集合，移除所有元素。
          */
         clear(): void;
+
+
+        // @ts-ignore
+       private sort(compareFn?: (a: E, b: E) => number) : void;
     }
 
     export class Set<E> extends java.util.Collection<E> {
-
+        private static prototype: any;
     }
 
     // @ts-ignore
     export class List<E> extends Collection<E> {
+        private static prototype: any;
 
         get(index: int): E | null;
 
@@ -794,6 +804,9 @@ declare module java.util {
         lastIndexOf(searchElement: E): number;
 
         subList(fromIndex: int, toIndex: int): List<E>;
+
+        // @ts-ignore
+        sort(compareFn?: (a: E, b: E) => number) : void;
     }
 
     export class HashSet<E> extends Set<E> {
@@ -1021,18 +1034,19 @@ declare module java.util {
     }
 
     class TreeSet<E> extends NavigableSet<E> {
-
+        private static prototype: any;
     }
 
     class TreeMap<K, V> extends NavigableMap<K, V> {
-
+        private static prototype: any;
     }
 
     class HashMap<K, V> extends Map<K, V> {
-
+        private static prototype: any;
     }
 
     class ArrayList<E> extends List<E> {
+        private static prototype: any;
         constructor(collection: Collection<E>);
 
         constructor();
