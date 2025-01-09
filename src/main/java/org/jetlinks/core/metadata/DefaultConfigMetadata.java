@@ -2,8 +2,11 @@ package org.jetlinks.core.metadata;
 
 import com.google.common.collect.Maps;
 import lombok.*;
+import org.hswebframework.web.bean.FastBeanCopier;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigKeyValue;
+import org.jetlinks.core.metadata.types.EnumType;
 import org.springframework.core.io.Resource;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StreamUtils;
@@ -31,6 +34,23 @@ public class DefaultConfigMetadata implements ConfigMetadata {
 
     public DefaultConfigMetadata() {
 
+    }
+
+    public void convertLocaleValues(){
+        this.name = LocaleUtils.resolveMessage(name);
+        this.description=LocaleUtils.resolveMessage(description);
+        for (ConfigPropertyMetadata configProperty : properties) {
+            Property property = (Property) configProperty;
+            property.setName(LocaleUtils.resolveMessage(property.getName()));
+            DataType dataType = property.getType();
+            if (dataType instanceof EnumType) {
+                EnumType enumType = (EnumType)property.getType();
+                for (EnumType.Element element : enumType.getElements()) {
+                    element.setText(LocaleUtils.resolveMessage(element.getText()));
+                    element.setDescription(LocaleUtils.resolveMessage(element.getDescription()));
+                }
+            }
+        }
     }
 
     public DefaultConfigMetadata(String name, String description) {
