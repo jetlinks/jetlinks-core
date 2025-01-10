@@ -81,6 +81,10 @@ public class CompositeList<E> extends CompositeCollection<E> implements List<E> 
 
     @Override
     public ListIterator<E> listIterator(int index) {
+        int size = size();
+        if (index >= size) {
+            throw new IndexOutOfBoundsException("index:" + index + ",size:" + size);
+        }
         return new CompositeListIterator(index);
     }
 
@@ -100,100 +104,54 @@ public class CompositeList<E> extends CompositeCollection<E> implements List<E> 
     class CompositeListIterator implements ListIterator<E> {
 
         private int index;
-        private List<E> current;
 
         CompositeListIterator(int index) {
             this.index = index;
         }
 
-        private void init() {
-            this.current = this.index < first.size()
-                    ? first()
-                    : second();
-        }
-
         @Override
         public boolean hasNext() {
-            return current == null ? index < size() : index < current.size();
+            return size() > index;
         }
 
         @Override
         public E next() {
-            if (current == null) {
-                init();
-            }
-            if (current == first) {
-                if (index >= first.size()) {
-                    current = second();
-                    index -= first.size();
-                }
-            }
-            return current.get(index++);
+            return CompositeList.this.get(index++);
         }
 
         @Override
         public boolean hasPrevious() {
-            if (current == second) {
-                return true;
-            }
-            if (current == first) {
-                return index >= 0;
-            }
             return index > 0;
         }
 
         @Override
         public E previous() {
-            if (current == null) {
-                init();
-            }
-            if (current == second) {
-                if (index < 0) {
-                    current = first();
-                    index += first.size();
-                }
-                if (index == current.size()) {
-                    index--;
-                }
-            }
-            return current.get(index--);
+            return get(--index);
         }
 
         @Override
         public int nextIndex() {
-            if (current == second) {
-                return index + first.size();
-            }
             return index;
         }
 
         @Override
         public int previousIndex() {
-            if (current == second) {
-                if (index == 0) {
-                    return first.size();
-                }
-                if (index == second.size()) {
-                    return index + first.size() - 1;
-                }
-                return index + first.size();
-            }
-            return index;
+            return index - 1;
         }
 
         @Override
         public void remove() {
-            throw new UnsupportedOperationException();
+            CompositeList.this.remove(index);
         }
 
         @Override
         public void set(E e) {
-            throw new UnsupportedOperationException();
+            CompositeList.this.set(index, e);
         }
 
         @Override
         public void add(E e) {
-            throw new UnsupportedOperationException();
+            CompositeList.this.add(index, e);
         }
     }
 }

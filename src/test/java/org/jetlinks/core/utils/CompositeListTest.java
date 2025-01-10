@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import com.google.common.collect.Lists;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -11,6 +12,26 @@ import static org.junit.Assert.*;
 
 public class CompositeListTest {
 
+
+    @Test
+    public void testTransform() {
+        CompositeList<Integer> list = new CompositeList<>(
+            Arrays.asList(1, 2, 3),
+            Arrays.asList(4, 5, 6, 7)
+        );
+
+        list.listIterator(0)
+            .forEachRemaining(System.out::println);
+       List<String> trans = Lists.transform(list,String::valueOf);
+
+        System.out.println(trans);
+
+
+       assertEquals(
+           Arrays.asList("1","2","3","4","5","6","7"),
+           trans
+       );
+    }
 
     @Test
     public void test() {
@@ -26,6 +47,7 @@ public class CompositeListTest {
             //测试foreach
             long it = 0;
             for (Integer integer : list) {
+                System.out.println(integer);
                 it++;
             }
             assertEquals(7, it);
@@ -45,9 +67,7 @@ public class CompositeListTest {
             assertFalse(iterator.hasPrevious());
 
             for (int i = 0; i < list.size(); i++) {
-
                 assertEquals(i, iterator.nextIndex());
-
                 assertEquals(Integer.valueOf(i + 1), iterator.next());
 
             }

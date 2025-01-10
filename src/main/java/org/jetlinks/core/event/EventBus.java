@@ -87,6 +87,7 @@ public interface EventBus {
      * @param <T>         void
      * @return 订阅者数量
      */
+    @Deprecated
     <T> Mono<Long> publish(String topic,
                            Encoder<T> encoder,
                            Publisher<? extends T> eventStream,
