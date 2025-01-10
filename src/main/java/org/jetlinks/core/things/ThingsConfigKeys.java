@@ -21,5 +21,6 @@ public interface ThingsConfigKeys {
         ConfigKey.of("i18nMessages", "国际化消息", ResolvableType
             .forClassWithGenerics(Map.class,
                                   ResolvableType.forClass(String.class),
-                                  ResolvableType.forClassWithGenerics(String.class, String.class)).getType());
+                                  ResolvableType.forClassWithGenerics(Map.class, String.class, String.class)).getType());
+
 }
