@@ -43,7 +43,7 @@ public class EventBusSpanExporter implements SpanExporter {
             .append(SharedPathString.of(TopicUtils.split(data.getName(), true, false)));
 
         return eventBus
-            .publish(topic, Mono.fromSupplier(() -> SpanDataInfo.of(data)));
+            .publish(topic, () -> SpanDataInfo.of(data));
     }
 
 

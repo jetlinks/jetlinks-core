@@ -55,7 +55,7 @@ public class EventBusSpanProcessor implements SpanProcessor {
         SeparatedCharSequence topic = this.prefix(span).append(name);
 
         eventBus
-                .publish(topic, Mono.fromSupplier(() -> SpanDataInfo.of(span.toSpanData())))
+                .publish(topic, () -> SpanDataInfo.of(span.toSpanData()))
                 .subscribe();
     }
 

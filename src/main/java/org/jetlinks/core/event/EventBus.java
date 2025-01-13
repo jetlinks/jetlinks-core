@@ -193,7 +193,7 @@ public interface EventBus {
      * @since 1.2.3
      */
     default <T> Mono<Long> publish(CharSequence topic, Supplier<T> event) {
-        return publish(topic.toString(), Mono.fromSupplier(event));
+        return publish(topic, Mono.fromSupplier(event));
     }
 
 
