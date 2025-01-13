@@ -7,6 +7,7 @@ import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
 import org.jetlinks.core.Lazy;
+import org.jetlinks.core.LazyConverter;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.BaseSubscriber;
@@ -20,6 +21,7 @@ import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
@@ -140,6 +142,15 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
     @SuppressWarnings("all")
     public <T> ReactiveSpan setAttributeLazy(AttributeKey<T> key, Supplier<T> lazyValue) {
         span.setAttribute((AttributeKey) key, (lazyValue instanceof Lazy ? lazyValue : Lazy.of(lazyValue)));
+        return this;
+    }
+
+    @Override
+    @SuppressWarnings("all")
+    public <V, T> ReactiveSpan setAttributeLazy(AttributeKey<T> key, V value, Function<V, T> lazyValue) {
+        span.setAttribute((AttributeKey) key,
+                          (lazyValue instanceof LazyConverter ? lazyValue :
+                              LazyConverter.of(value, lazyValue)));
         return this;
     }
 

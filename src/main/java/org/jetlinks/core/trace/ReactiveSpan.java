@@ -5,6 +5,7 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 
 import javax.annotation.Nonnull;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -28,6 +29,23 @@ public interface ReactiveSpan extends Span {
      * @return ReactiveSpanBuilder
      */
     <T> ReactiveSpan setAttributeLazy(AttributeKey<T> key, Supplier<T> lazyValue);
+
+    /**
+     * 设置延迟获取的属性值,通常在属性值需要计算时(比如转为json)使用以提升性能.
+     *
+     * <pre>{@code
+     *      setAttributeLazy(BODY,body,Body::toJsonString)
+     * }</pre>
+     *
+     * @param key       Key
+     * @param lazyValue 延迟加载值
+     * @param <T>       值类型
+     * @return ReactiveSpanBuilder
+     * @since 1.2.3
+     */
+    default <V, T> ReactiveSpan setAttributeLazy(AttributeKey<T> key, V value, Function<V, T> lazyValue) {
+        return setAttributeLazy(key, () -> lazyValue.apply(value));
+    }
 
     /**
      * @see Span#setAttribute(AttributeKey, Object)

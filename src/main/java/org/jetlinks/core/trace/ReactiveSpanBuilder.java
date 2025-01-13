@@ -9,16 +9,17 @@ import io.opentelemetry.context.Context;
 import javax.annotation.Nonnull;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
  * 响应式的span构建器,主要拓展了{@link ReactiveSpanBuilder#setAttributeLazy(AttributeKey, Supplier)}以提升性能
  *
  * @author zhouhao
- * @since 1.2.1
  * @see SpanBuilder
  * @see MonoTracer
  * @see FluxTracer
+ * @since 1.2.1
  */
 public interface ReactiveSpanBuilder extends SpanBuilder {
 
@@ -35,6 +36,24 @@ public interface ReactiveSpanBuilder extends SpanBuilder {
      * @return ReactiveSpanBuilder
      */
     <T> ReactiveSpanBuilder setAttributeLazy(AttributeKey<T> key, Supplier<T> lazyValue);
+
+    /**
+     * 设置延迟获取的属性值,通常在属性值需要计算时(比如转为json)使用以提升性能.
+     *
+     * <pre>{@code
+     *      setAttributeLazy(BODY,body,Body::toJsonString)
+     * }</pre>
+     *
+     * @param key       Key
+     * @param value     值
+     * @param converter 转换器
+     * @param <T>       值类型
+     * @return ReactiveSpanBuilder
+     * @since 1.2.3
+     */
+    default <V, T> ReactiveSpanBuilder setAttributeLazy(AttributeKey<T> key, V value, Function<V, T> converter) {
+        return setAttributeLazy(key, () -> converter.apply(value));
+    }
 
     /**
      * @see SpanBuilder#setAttribute(AttributeKey, Object)

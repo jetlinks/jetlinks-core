@@ -7,29 +7,31 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @RequiredArgsConstructor(staticName = "of")
-public class Lazy<T> implements Supplier<T>, Externalizable {
+public class LazyConverter<V, T> implements Supplier<T>, Externalizable {
 
-    private transient final Supplier<? extends T> supplier;
+    private transient final V source;
+    private transient final Function<V, T> converter;
 
     private T value;
     private volatile boolean resolved;
 
 
-    public Lazy() {
-        this.supplier = null;
+    public LazyConverter() {
+        this.source = null;
+        this.converter = null;
     }
 
     @Override
     public T get() {
-
-        if (resolved || supplier == null) {
+        if (resolved || source == null) {
             return value;
         }
 
-        this.value = supplier.get();
+        this.value = converter.apply(source);
         this.resolved = true;
 
         return value;

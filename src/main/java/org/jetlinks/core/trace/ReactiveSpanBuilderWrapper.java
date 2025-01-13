@@ -9,10 +9,12 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.Lazy;
+import org.jetlinks.core.LazyConverter;
 
 import javax.annotation.Nonnull;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @AllArgsConstructor
@@ -23,6 +25,15 @@ public class ReactiveSpanBuilderWrapper implements ReactiveSpanBuilder {
     @SuppressWarnings("all")
     public <T> ReactiveSpanBuilder setAttributeLazy(AttributeKey<T> key, Supplier<T> lazyValue) {
         spanBuilder.setAttribute((AttributeKey) key, (lazyValue instanceof Lazy ? lazyValue : Lazy.of(lazyValue)));
+        return this;
+    }
+
+    @Override
+    @SuppressWarnings("all")
+    public <V, T> ReactiveSpanBuilder setAttributeLazy(AttributeKey<T> key, V value, Function<V, T> lazyValue) {
+        spanBuilder.setAttribute((AttributeKey) key,
+                                 (lazyValue instanceof LazyConverter ? lazyValue :
+                                     LazyConverter.of(value, lazyValue)));
         return this;
     }
 
