@@ -179,11 +179,17 @@ public interface EventBus {
      * <p>
      * 注意: 如果没有订阅者,event将不会被订阅.适合按需推送等场景.
      *
+     * <pre>{@code
+     *   publish(topic, ()-> createData(...))
+     * }</pre>
+     *
      * @param topic topic
      * @param event 事件
      * @param <T>   事件类型
      * @return 订阅者数量
      * @see org.jetlinks.core.lang.SharedPathString
+     * @see org.jetlinks.core.Lazy
+     * @see RoutableSupplier
      * @since 1.2.3
      */
     default <T> Mono<Long> publish(CharSequence topic, Supplier<T> event) {
