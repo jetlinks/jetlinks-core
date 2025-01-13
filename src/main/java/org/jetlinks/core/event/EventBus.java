@@ -12,6 +12,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * 基于订阅发布的事件总线,可用于事件传递,消息转发等.
@@ -170,6 +171,23 @@ public interface EventBus {
      */
     default <T> Mono<Long> publish(CharSequence topic, Publisher<T> event) {
         return publish(topic.toString(), event);
+    }
+
+    /**
+     * 使用CharSequence作为topic进行推送,
+     * 可通过使用{@link org.jetlinks.core.lang.SharedPathString}提前构造topic来提升推送性能.
+     * <p>
+     * 注意: 如果没有订阅者,event将不会被订阅.适合按需推送等场景.
+     *
+     * @param topic topic
+     * @param event 事件
+     * @param <T>   事件类型
+     * @return 订阅者数量
+     * @see org.jetlinks.core.lang.SharedPathString
+     * @since 1.2.3
+     */
+    default <T> Mono<Long> publish(CharSequence topic, Supplier<T> event) {
+        return publish(topic.toString(), Mono.fromSupplier(event));
     }
 
 
