@@ -20,7 +20,7 @@ public class PasswordType extends AbstractType<PasswordType> implements DataType
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "密码");
+        return LocaleUtils.resolveMessage("message.metadata.type.password", LocaleUtils.current(), "密码");
     }
 
     @Override

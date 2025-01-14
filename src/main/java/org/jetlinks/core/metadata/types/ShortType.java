@@ -20,7 +20,7 @@ public class ShortType extends NumberType<Short> {
     @Override
     @Generated
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "短整型");
+        return LocaleUtils.resolveMessage("message.metadata.type.short", LocaleUtils.current(), "短整型");
     }
 
     @Override

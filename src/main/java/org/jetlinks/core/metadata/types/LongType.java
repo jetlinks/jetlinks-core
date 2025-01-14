@@ -22,7 +22,7 @@ public class LongType extends NumberType<Long> {
     @Override
     @Generated
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "长整型");
+        return LocaleUtils.resolveMessage("message.metadata.type.long", LocaleUtils.current(), "长整型");
     }
 
     @Override

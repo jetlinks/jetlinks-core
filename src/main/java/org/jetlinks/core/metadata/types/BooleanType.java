@@ -50,7 +50,7 @@ public class BooleanType extends AbstractType<BooleanType> implements DataType, 
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "布尔值");
+        return LocaleUtils.resolveMessage("message.metadata.type.boolean", LocaleUtils.current(), "布尔值");
     }
 
     public Boolean convert(Object value) {

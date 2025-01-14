@@ -34,7 +34,7 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "枚举");
+        return LocaleUtils.resolveMessage("message.metadata.type.enum", LocaleUtils.current(), "枚举");
     }
 
     public EnumType multi(boolean multi) {

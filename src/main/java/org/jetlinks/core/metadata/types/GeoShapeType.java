@@ -33,7 +33,7 @@ public class GeoShapeType extends AbstractType<GeoShapeType> implements Converte
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "地理地形");
+        return LocaleUtils.resolveMessage("message.metadata.type.geoShape", LocaleUtils.current(), "地理地形");
     }
 
     @Override

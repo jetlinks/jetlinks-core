@@ -29,7 +29,7 @@ public class ArrayType extends AbstractType<ArrayType> implements DataType, Conv
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "数组");
+        return LocaleUtils.resolveMessage("message.metadata.type.array", LocaleUtils.current(), "数组");
     }
 
     public ArrayType elementType(DataType elementType) {

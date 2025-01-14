@@ -40,7 +40,7 @@ public class UserType extends AbstractType<UserType> {
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "用户");
+        return LocaleUtils.resolveMessage("message.metadata.type.user", LocaleUtils.current(), "用户");
     }
 
     public String getProperty() {

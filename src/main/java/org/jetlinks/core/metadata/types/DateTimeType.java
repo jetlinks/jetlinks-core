@@ -56,7 +56,7 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "时间");
+        return LocaleUtils.resolveMessage("message.metadata.type.date", LocaleUtils.current(), "时间");
     }
 
     protected DateTimeFormatter getFormatter() {

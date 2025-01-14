@@ -25,7 +25,7 @@ public class DoubleType extends NumberType<Double> {
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "双精度浮点数");
+        return LocaleUtils.resolveMessage("message.metadata.type.doouble", LocaleUtils.current(), "双精度浮点数");
     }
 
     @Override

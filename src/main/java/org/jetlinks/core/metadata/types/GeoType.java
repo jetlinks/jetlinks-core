@@ -41,7 +41,7 @@ public class GeoType extends AbstractType<GeoType> implements DataType, FormatSu
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "地理位置");
+        return LocaleUtils.resolveMessage("message.metadata.type.geoPoint", LocaleUtils.current(), "地理位置");
     }
 
     public Map<String, Object> convertToMap(Object value) {

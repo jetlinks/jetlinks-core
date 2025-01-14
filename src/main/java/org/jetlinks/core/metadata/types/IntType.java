@@ -19,7 +19,7 @@ public class IntType extends NumberType<Integer> {
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "整型");
+        return LocaleUtils.resolveMessage("message.metadata.type.int", LocaleUtils.current(), "整型");
     }
 
     @Override

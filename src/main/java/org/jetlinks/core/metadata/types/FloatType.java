@@ -30,7 +30,7 @@ public class FloatType extends NumberType<Float> {
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "单精度浮点数");
+        return LocaleUtils.resolveMessage("message.metadata.type.float", LocaleUtils.current(), "单精度浮点数");
     }
 
 

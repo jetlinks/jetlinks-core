@@ -26,7 +26,7 @@ public class FileType extends AbstractType<FileType> implements DataType, Conver
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "文件");
+        return LocaleUtils.resolveMessage("message.metadata.type.file", LocaleUtils.current(), "文件");
     }
 
     public FileType bodyType(BodyType type) {

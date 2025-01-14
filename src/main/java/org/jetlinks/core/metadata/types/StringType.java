@@ -20,7 +20,7 @@ public class StringType extends AbstractType<StringType> implements DataType, Co
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "字符串");
+        return LocaleUtils.resolveMessage("message.metadata.type.string", LocaleUtils.current(), "字符串");
     }
 
     @Override

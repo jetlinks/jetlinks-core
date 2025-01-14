@@ -28,7 +28,7 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "对象类型");
+        return LocaleUtils.resolveMessage("message.metadata.type.object", LocaleUtils.current(), "对象类型");
     }
 
     public ObjectType addPropertyMetadata(PropertyMetadata property) {

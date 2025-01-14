@@ -22,7 +22,7 @@ public class UnknownType implements DataType {
 
     @Override
     public String getName() {
-        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "未知类型");
+        return LocaleUtils.resolveMessage("message.metadata.type.unknown", LocaleUtils.current(), "未知类型");
     }
 
     @Override
