@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
@@ -28,7 +29,7 @@ public class ArrayType extends AbstractType<ArrayType> implements DataType, Conv
 
     @Override
     public String getName() {
-        return "数组";
+        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "数组");
     }
 
     public ArrayType elementType(DataType elementType) {

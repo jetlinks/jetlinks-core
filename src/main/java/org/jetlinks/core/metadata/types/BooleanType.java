@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.FormatSupport;
@@ -49,7 +50,7 @@ public class BooleanType extends AbstractType<BooleanType> implements DataType, 
 
     @Override
     public String getName() {
-        return "布尔值";
+        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "布尔值");
     }
 
     public Boolean convert(Object value) {

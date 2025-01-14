@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.ValidateResult;
 
@@ -32,7 +33,7 @@ public class GeoShapeType extends AbstractType<GeoShapeType> implements Converte
 
     @Override
     public String getName() {
-        return "地理地形";
+        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "地理地形");
     }
 
     @Override

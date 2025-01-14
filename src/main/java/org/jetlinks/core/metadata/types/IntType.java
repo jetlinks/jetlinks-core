@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 
 @Getter
 @Setter
@@ -18,7 +19,7 @@ public class IntType extends NumberType<Integer> {
 
     @Override
     public String getName() {
-        return "整型";
+        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "整型");
     }
 
     @Override

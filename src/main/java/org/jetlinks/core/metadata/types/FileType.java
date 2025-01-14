@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
@@ -25,7 +26,7 @@ public class FileType extends AbstractType<FileType> implements DataType, Conver
 
     @Override
     public String getName() {
-        return "文件";
+        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "文件");
     }
 
     public FileType bodyType(BodyType type) {

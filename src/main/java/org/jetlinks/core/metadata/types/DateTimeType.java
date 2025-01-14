@@ -5,6 +5,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.utils.StringUtils;
 import org.hswebframework.utils.time.DateFormatter;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
@@ -55,7 +56,7 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
 
     @Override
     public String getName() {
-        return "时间";
+        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "时间");
     }
 
     protected DateTimeFormatter getFormatter() {

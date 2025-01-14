@@ -3,6 +3,7 @@ package org.jetlinks.core.metadata.types;
 import lombok.Generated;
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 
 @Getter
 @Setter
@@ -21,7 +22,7 @@ public class LongType extends NumberType<Long> {
     @Override
     @Generated
     public String getName() {
-        return "长整型";
+        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "长整型");
     }
 
     @Override

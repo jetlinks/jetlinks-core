@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
@@ -33,7 +34,7 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
 
     @Override
     public String getName() {
-        return "枚举";
+        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "枚举");
     }
 
     public EnumType multi(boolean multi) {

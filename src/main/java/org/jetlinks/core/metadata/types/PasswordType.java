@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
@@ -19,7 +20,7 @@ public class PasswordType extends AbstractType<PasswordType> implements DataType
 
     @Override
     public String getName() {
-        return "密码";
+        return LocaleUtils.resolveMessage("data.type." + getId(), LocaleUtils.current(), "密码");
     }
 
     @Override
