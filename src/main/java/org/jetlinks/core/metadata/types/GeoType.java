@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.FormatSupport;
@@ -40,7 +41,7 @@ public class GeoType extends AbstractType<GeoType> implements DataType, FormatSu
 
     @Override
     public String getName() {
-        return "地理位置";
+        return LocaleUtils.resolveMessage("message.metadata.type.geoPoint", LocaleUtils.current(), "地理位置");
     }
 
     public Map<String, Object> convertToMap(Object value) {

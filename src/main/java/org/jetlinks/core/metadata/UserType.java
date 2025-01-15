@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata;
 
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.types.AbstractType;
 
 import java.util.Objects;
@@ -39,7 +40,7 @@ public class UserType extends AbstractType<UserType> {
 
     @Override
     public String getName() {
-        return "用户";
+        return LocaleUtils.resolveMessage("message.metadata.type.user", LocaleUtils.current(), "用户");
     }
 
     public String getProperty() {

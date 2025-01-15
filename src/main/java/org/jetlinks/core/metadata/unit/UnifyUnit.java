@@ -2,7 +2,9 @@ package org.jetlinks.core.metadata.unit;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.hswebframework.web.dict.EnumDict;
+import org.hswebframework.web.dict.Dict;
+import org.hswebframework.web.dict.I18nEnumDict;
+import org.hswebframework.web.i18n.LocaleUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,7 +20,8 @@ import java.util.stream.Stream;
  */
 @Getter
 @AllArgsConstructor
-public enum UnifyUnit implements ValueUnit, EnumDict<String> {
+@Dict("unify-unit")
+public enum UnifyUnit implements ValueUnit, I18nEnumDict<String> {
 
     //常用单位
     percent("百分比", "%", "常用单位", "百分比(%)"),
@@ -180,6 +183,17 @@ public enum UnifyUnit implements ValueUnit, EnumDict<String> {
     @Override
     public String getText() {
         return getName().concat("(").concat(getSymbol()+")");
+    }
+
+    @Override
+    public String getName() {
+        return LocaleUtils
+            .resolveMessage("message.metadata.unify-unit." + name() + ".name", LocaleUtils.current(), this.name);
+    }
+
+    @Override
+    public String getDescription() {
+        return getI18nMessage(LocaleUtils.current());
     }
 
     @Override

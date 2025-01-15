@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
 
@@ -21,7 +22,7 @@ public class UnknownType implements DataType {
 
     @Override
     public String getName() {
-        return "未知类型";
+        return LocaleUtils.resolveMessage("message.metadata.type.unknown", LocaleUtils.current(), "未知类型");
     }
 
     @Override
