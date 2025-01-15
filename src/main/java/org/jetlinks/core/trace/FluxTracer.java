@@ -195,6 +195,11 @@ public interface FluxTracer<T> extends Function<Flux<T>, Flux<T>> {
         return create(TraceHolder.appName(), spanName, null, builderConsumer);
     }
 
+    static <T> FluxTracer<T> create(CharSequence spanName,
+                                    Consumer<ReactiveSpanBuilder> builderConsumer) {
+        return create(TraceHolder.appName(), spanName, null, builderConsumer);
+    }
+
     /**
      * 使用指定的作用域和span名称以及自定义SpanBuilder创建跟踪器
      * <pre>{@code
