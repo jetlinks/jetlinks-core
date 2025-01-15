@@ -152,7 +152,7 @@ public enum UnifyUnit implements ValueUnit, I18nEnumDict<String> {
 
     private final String type;
 
-    private final String text;
+    private final String description;
 
     @Override
     public String getId() {
@@ -178,6 +178,11 @@ public enum UnifyUnit implements ValueUnit, I18nEnumDict<String> {
     @Override
     public String getValue() {
         return name();
+    }
+
+    @Override
+    public String getText() {
+        return getName().concat("(").concat(getSymbol()+")");
     }
 
     @Override
