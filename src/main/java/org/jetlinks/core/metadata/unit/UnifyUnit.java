@@ -186,6 +186,12 @@ public enum UnifyUnit implements ValueUnit, I18nEnumDict<String> {
     }
 
     @Override
+    public String getName() {
+        return LocaleUtils
+            .resolveMessage("message.metadata.unify-unit." + name() + ".name", LocaleUtils.current(), this.name);
+    }
+
+    @Override
     public String getDescription() {
         return getI18nMessage(LocaleUtils.current());
     }
