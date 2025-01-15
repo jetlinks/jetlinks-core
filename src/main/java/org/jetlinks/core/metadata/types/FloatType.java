@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 
 @Getter
 @Setter
@@ -29,7 +30,7 @@ public class FloatType extends NumberType<Float> {
 
     @Override
     public String getName() {
-        return "单精度浮点数";
+        return LocaleUtils.resolveMessage("message.metadata.type.float", LocaleUtils.current(), "单精度浮点数");
     }
 
 

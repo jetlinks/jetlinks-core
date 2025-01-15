@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 
 @Getter
 @Setter
@@ -24,7 +25,7 @@ public class DoubleType extends NumberType<Double> {
 
     @Override
     public String getName() {
-        return "双精度浮点数";
+        return LocaleUtils.resolveMessage("message.metadata.type.doouble", LocaleUtils.current(), "双精度浮点数");
     }
 
     @Override

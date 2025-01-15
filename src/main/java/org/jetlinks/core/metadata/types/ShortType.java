@@ -1,6 +1,7 @@
 package org.jetlinks.core.metadata.types;
 
 import lombok.Generated;
+import org.hswebframework.web.i18n.LocaleUtils;
 
 @Generated
 public class ShortType extends NumberType<Short> {
@@ -19,7 +20,7 @@ public class ShortType extends NumberType<Short> {
     @Override
     @Generated
     public String getName() {
-        return "短整型";
+        return LocaleUtils.resolveMessage("message.metadata.type.short", LocaleUtils.current(), "短整型");
     }
 
     @Override

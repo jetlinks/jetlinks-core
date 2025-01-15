@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.bean.FastBeanCopier;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.*;
 import org.springframework.util.CollectionUtils;
 
@@ -27,7 +28,7 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
 
     @Override
     public String getName() {
-        return "对象类型";
+        return LocaleUtils.resolveMessage("message.metadata.type.object", LocaleUtils.current(), "对象类型");
     }
 
     public ObjectType addPropertyMetadata(PropertyMetadata property) {
