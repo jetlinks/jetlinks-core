@@ -1,6 +1,6 @@
 package org.jetlinks.core.utils;
 
-import org.hswebframework.web.id.IDGenerator;
+import org.hswebframework.web.id.SnowflakeIdGenerator;
 
 /**
  * @author zhouhao
@@ -8,7 +8,9 @@ import org.hswebframework.web.id.IDGenerator;
  */
 public class IdUtils {
 
+    private static final SnowflakeIdGenerator generator = SnowflakeIdGenerator.create();
+
     public static String newUUID() {
-        return IDGenerator.SNOW_FLAKE_STRING.generate();
+        return String.valueOf(generator.nextId());
     }
 }
