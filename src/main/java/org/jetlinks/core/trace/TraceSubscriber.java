@@ -6,6 +6,7 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
+import org.hswebframework.web.exception.TraceSourceException;
 import org.jetlinks.core.Lazy;
 import org.jetlinks.core.LazyConverter;
 import org.reactivestreams.Subscription;
@@ -26,7 +27,9 @@ import java.util.function.Supplier;
 
 class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
-    final static AttributeKey<Long> count = AttributeKey.longKey("flux-next-count");
+    final static AttributeKey<Long> ATTR_NEXT_COUNT = AttributeKey.longKey("flux-next-count");
+    final static AttributeKey<String> ATTR_EXCEPTION_OPERATION = AttributeKey.stringKey("exception.operation");
+    final static AttributeKey<String> ATTR_EXCEPTION_SOURCE = AttributeKey.stringKey("exception.source");
 
     @SuppressWarnings("all")
     final static AtomicLongFieldUpdater<TraceSubscriber> NEXT_COUNT = AtomicLongFieldUpdater
@@ -71,14 +74,41 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         }
     }
 
+    @SuppressWarnings("all")
+    private Attributes createErrorAttributes(Throwable error) {
+        Attributes attrs = Attributes.empty();
+        //记录错误源信息
+        String operation = TraceSourceException.tryGetOperation(error);
+        Object source = TraceSourceException.tryGetSource(error);
+
+        if (operation != null && source != null) {
+            attrs = Attributes.of(
+                TraceSubscriber.ATTR_EXCEPTION_OPERATION,
+                operation,
+                (AttributeKey) TraceSubscriber.ATTR_EXCEPTION_SOURCE,
+                LazyConverter.of(source, String::valueOf));
+        } else if (operation != null) {
+            attrs = Attributes.of(
+                TraceSubscriber.ATTR_EXCEPTION_OPERATION,
+                operation);
+        } else if (source != null) {
+            attrs = Attributes.of(
+                (AttributeKey) TraceSubscriber.ATTR_EXCEPTION_SOURCE,
+                LazyConverter.of(source, String::valueOf));
+        }
+        return attrs;
+    }
+
     @Override
     protected void hookOnError(@Nonnull Throwable throwable) {
         span.setStatus(StatusCode.ERROR);
         if (onError != null) {
             onError.accept(context, throwable);
         } else {
-            span.recordException(throwable);
+            span.recordException(throwable, createErrorAttributes(throwable));
         }
+
+
         try (Scope ignored = span.makeCurrent()) {
             actual.onError(throwable);
         }
@@ -103,7 +133,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     @Override
     protected void hookOnCancel() {
-        span.setAttribute(count, nextCount);
+        span.setAttribute(ATTR_NEXT_COUNT, nextCount);
         if (nextCount > 0) {
             span.setStatus(StatusCode.OK, "cancel");
         } else if (!stateSet) {
@@ -128,7 +158,7 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         if (onComplete != null) {
             onComplete.accept(context, this, nextCount);
         }
-        span.setAttribute(count, nextCount);
+        span.setAttribute(ATTR_NEXT_COUNT, nextCount);
         if (!stateSet) {
             span.setStatus(StatusCode.OK);
         }
