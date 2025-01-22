@@ -15,10 +15,10 @@ public class TopicUtilsTest {
 
         List<String> expands = TopicUtils.expand("/1,2,3");
 
-        assertEquals(expands.size(),3);
-        assertEquals(expands.get(0),"/1");
-        assertEquals(expands.get(1),"/2");
-        assertEquals(expands.get(2),"/3");
+        assertEquals(3, expands.size());
+        assertEquals("/1", expands.get(0));
+        assertEquals("/2", expands.get(1));
+        assertEquals("/3", expands.get(2));
 
     }
     @Test
@@ -26,10 +26,10 @@ public class TopicUtilsTest {
 
         List<String> expands = TopicUtils.expand("/1,2,3/test/test2");
 
-        assertEquals(expands.size(),3);
-        assertEquals(expands.get(0),"/1/test/test2");
-        assertEquals(expands.get(1),"/2/test/test2");
-        assertEquals(expands.get(2),"/3/test/test2");
+        assertEquals(3, expands.size());
+        assertEquals("/1/test/test2", expands.get(0));
+        assertEquals("/2/test/test2", expands.get(1));
+        assertEquals("/3/test/test2", expands.get(2));
 
     }
     @Test
@@ -37,10 +37,10 @@ public class TopicUtilsTest {
 
         List<String> expands = TopicUtils.expand("/test/1,2,3/test2");
 
-        assertEquals(expands.size(),3);
-        assertEquals(expands.get(0),"/test/1/test2");
-        assertEquals(expands.get(1),"/test/2/test2");
-        assertEquals(expands.get(2),"/test/3/test2");
+        assertEquals(3, expands.size());
+        assertEquals("/test/1/test2", expands.get(0));
+        assertEquals("/test/2/test2", expands.get(1));
+        assertEquals("/test/3/test2", expands.get(2));
 
     }
 
@@ -49,8 +49,8 @@ public class TopicUtilsTest {
 
         List<String> expands = TopicUtils.expand("/test/{name}/test2,test3");
 
-        assertEquals(expands.get(0),"/test/*/test2");
-        assertEquals(expands.get(1),"/test/*/test3");
+        assertEquals("/test/*/test2", expands.get(0));
+        assertEquals("/test/*/test3", expands.get(1));
 
     }
 
@@ -59,11 +59,11 @@ public class TopicUtilsTest {
 
         List<String> expands = TopicUtils.expand("/test/1,2/1,2");
 
-        assertEquals(expands.size(),4);
-        assertEquals(expands.get(0),"/test/1/1");
-        assertEquals(expands.get(1),"/test/1/2");
-        assertEquals(expands.get(2),"/test/2/1");
-        assertEquals(expands.get(3),"/test/2/2");
+        assertEquals(4, expands.size());
+        assertEquals("/test/1/1", expands.get(0));
+        assertEquals("/test/1/2", expands.get(1));
+        assertEquals("/test/2/1", expands.get(2));
+        assertEquals("/test/2/2", expands.get(3));
 
     }
 
@@ -72,12 +72,12 @@ public class TopicUtilsTest {
 
         List<String> expands = Arrays.asList(TopicUtils.split("/test/1/2/3"));
 
-        assertEquals(expands.size(),5);
-        assertEquals(expands.get(0),"");
-        assertEquals(expands.get(1),"test");
-        assertEquals(expands.get(2),"1");
-        assertEquals(expands.get(3),"2");
-        assertEquals(expands.get(4),"3");
+        assertEquals(5, expands.size());
+        assertEquals("", expands.get(0));
+        assertEquals("test", expands.get(1));
+        assertEquals("1", expands.get(2));
+        assertEquals("2", expands.get(3));
+        assertEquals("3", expands.get(4));
 
     }
 

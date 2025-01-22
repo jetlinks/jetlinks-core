@@ -2,6 +2,7 @@ package org.jetlinks.core.topic;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jetlinks.core.lang.SharedPathString;
 import org.jetlinks.core.utils.TopicUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -11,6 +12,7 @@ import reactor.test.StepVerifier;
 
 import java.io.*;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 public class TopicTest {
@@ -18,12 +20,12 @@ public class TopicTest {
 
     @Test
     @SneakyThrows
-    public void testSer(){
+    public void testSer() {
         Topic<String> a = Topic.createRoot();
 
         Topic<String> p = a.append("/device/1/2/3/4");
 
-        ByteArrayOutputStream out =new ByteArrayOutputStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
         DataOutputStream dout = new DataOutputStream(out);
         p.writeTo(dout);
         dout.flush();
@@ -313,17 +315,39 @@ public class TopicTest {
         log.debug("topics:{}", root.getTotalTopic());
 
         {
+            SharedPathString template = SharedPathString.of("/device/1/*/message/property/read");
             long time = System.currentTimeMillis();
             for (int x = 0; x < 10; x++) {
-                Duration duration =
-                    Flux.range(0, 10000)
-                        .flatMap(i -> root
-                            .findTopic("/device/1/" + i + "/message/property/read"))
-                        .count()
-                        .as(StepVerifier::create)
-                        .expectNext(10000L)
-                        .verifyComplete();
-                log.debug("find 10000 use time:{}ms", duration.toMillis());
+
+                {
+                    long _time = System.currentTimeMillis();
+                    for (int i = 0; i < 10000; i++) {
+                        root
+                            .findTopic(template.replace(3, String.valueOf(i)),
+                                       t -> {
+                                       },
+                                       () -> {
+                                       });
+
+                    }
+                    log.debug("find 10000 use time:{}ms", System.currentTimeMillis() - _time);
+                }
+
+                {
+                    long _time = System.currentTimeMillis();
+                    for (int i = 0; i < 10000; i++) {
+                        root
+                            .findTopic(template.replace(3, String.valueOf(i)).toString(),
+                                       t -> {
+                                       },
+                                       () -> {
+                                       });
+
+                    }
+                    log.debug("find2 10000 use time:{}ms", System.currentTimeMillis() - _time);
+                }
+
+
             }
             log.debug("find 10*10000 use time:{}ms", System.currentTimeMillis() - time);
 

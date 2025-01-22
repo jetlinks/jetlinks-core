@@ -7,6 +7,8 @@ import org.springframework.util.ConcurrentReferenceHashMap;
 import org.springframework.util.PathMatcher;
 
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class TopicUtils {
     public static final char PATH_SPLITTER = '/';
@@ -123,19 +125,18 @@ public class TopicUtils {
         if (intern) {
             return splitCache.computeIfAbsent(
                 topic,
-                t -> {
-                    String[] arr = doSplit(t);
-                    for (int i = 0; i < arr.length; i++) {
-                        if (Objects.equals(arr[i], ANY)) {
-                            arr[i] = ANY;
-                        } else if (Objects.equals(arr[i], ANY_ALL)) {
-                            arr[i] = ANY_ALL;
+                t -> split(
+                    t,
+                    PATH_SPLITTER,
+                    (i, p) -> {
+                        if (Objects.equals(p, ANY)) {
+                            return ANY;
+                        } else if (Objects.equals(p, ANY_ALL)) {
+                            return ANY_ALL;
                         } else {
-                            arr[i] = RecyclerUtils.intern(arr[i]);
+                            return RecyclerUtils.intern(p);
                         }
-                    }
-                    return arr;
-                });
+                    }));
         }
 
         return splitCache.computeIfAbsent(topic, TopicUtils::doSplit);
@@ -160,6 +161,12 @@ public class TopicUtils {
     }
 
     public static String[] split(String topic, char pattern) {
+        return split(topic, pattern, (index, part) -> part);
+    }
+
+    public static String[] split(String topic,
+                                 char pattern,
+                                 BiFunction<Integer, String, String> converter) {
         List<String> list = SHARE_SPLIT.get();
         StringBuilder builder = SHARE_BUILDER.get();
         try {
@@ -169,7 +176,7 @@ public class TopicUtils {
             for (int i = 0; i < len; i++) {
                 char ch = topic.charAt(i);
                 if (ch == pattern) {
-                    list.add(builder.toString());
+                    list.add(converter.apply(total, builder.toString()));
                     builder.setLength(0);
                     total++;
                 } else {
@@ -178,7 +185,7 @@ public class TopicUtils {
             }
 
             if (builder.length() > 0) {
-                list.add(builder.toString());
+                list.add(converter.apply(total, builder.toString()));
                 total++;
             }
 
@@ -207,7 +214,7 @@ public class TopicUtils {
     }
 
     public static boolean match(SeparatedCharSequence pattern, SeparatedCharSequence topicParts) {
-        int patternSize=pattern.size();
+        int patternSize = pattern.size();
         int partsSize = topicParts.size();
         if (patternSize == 0 && partsSize == 0) {
             return true;
@@ -215,7 +222,7 @@ public class TopicUtils {
         int pattIdxStart = 0;
         int pattIdxEnd = patternSize - 1;
         int pathIdxStart = 0;
-        int pathIdxEnd = partsSize- 1;
+        int pathIdxEnd = partsSize - 1;
         while (pattIdxStart <= pattIdxEnd && pathIdxStart <= pathIdxEnd) {
             CharSequence pattDir = pattern.get(pattIdxStart);
             //匹配多层
@@ -233,7 +240,9 @@ public class TopicUtils {
                 return (pattern.get(patternSize - 1).equals("/") == topicParts.get(partsSize - 1).equals("/"));
             }
 
-            if (pattIdxStart == pattIdxEnd && pattern.get(pattIdxStart).equals("*") && topicParts.get(partsSize - 1).equals("/")) {
+            if (pattIdxStart == pattIdxEnd && pattern.get(pattIdxStart).equals("*") && topicParts
+                .get(partsSize - 1)
+                .equals("/")) {
                 return true;
             }
             for (int i = pattIdxStart; i <= pattIdxEnd; i++) {
@@ -318,6 +327,7 @@ public class TopicUtils {
         }
         return true;
     }
+
     public static boolean match(String[] pattern, String[] topicParts) {
         if (pattern.length == 0 && topicParts.length == 0) {
             return true;

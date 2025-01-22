@@ -26,7 +26,7 @@ public class BenchmarkRunner {
                 .measurementIterations(3)
                 .measurementTime(TimeValue.seconds(2))
                 .result("./target/benchmark-result.txt")
-                .addProfiler(JavaFlightRecorderProfiler.class)
+                .addProfiler(JavaFlightRecorderProfiler.class,"dir=./target/jfr")
                 .resultFormat(ResultFormatType.TEXT)
                 .jvmArgs("-Xms4g", "-Xmx4g")
                 .build();

@@ -31,11 +31,14 @@ public abstract class SeparatedString extends AbstractSeparatedCharSequence {
     }
 
     public static CharSequence of(char separator, String string, boolean intern) {
-        String[] arr = TopicUtils.split(string, separator);
+        String[] arr;
         if (intern) {
-            for (int i = 0; i < arr.length; i++) {
-                arr[i] = RecyclerUtils.intern(arr[i]);
-            }
+            arr = TopicUtils.split(
+                string,
+                separator,
+                (i, s) -> RecyclerUtils.intern(s));
+        } else {
+            arr = TopicUtils.split(string, separator);
         }
         if (arr.length == 1) {
             return arr[0];

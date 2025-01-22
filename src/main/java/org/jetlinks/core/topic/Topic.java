@@ -14,6 +14,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.function.Consumer3;
 import reactor.function.Consumer4;
 import reactor.function.Consumer5;
 
@@ -91,33 +92,14 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     public String getTopic() {
-        return getTopic0();
+        return SharedPathString.of(asStringArray()).toString();
     }
 
     private SharedPathString topic() {
         if (topics == null) {
-            topics = SharedPathString.of(getTopic0()).intern();
+            topics = SharedPathString.of(asStringArray()).intern();
         }
         return topics;
-    }
-
-    private String getTopic0() {
-        return StringBuilderUtils
-            .buildString(this, (_that, builder) -> {
-
-                Topic<T> _temp = _that;
-                do {
-                    builder.insert(0, _temp.part);
-
-                    if (!_temp.part.isEmpty()) {
-                        builder.insert(0, "/");
-                    }
-
-                    _temp = _temp.parent;
-
-                } while (_temp != null);
-
-            });
     }
 
     @Deprecated
@@ -332,6 +314,34 @@ public final class Topic<T> implements SeparatedCharSequence {
         }
     }
 
+    public <A, B> void findTopic(CharSequence topic,
+                                 A arg1,
+                                 B arg2,
+                                 Consumer3<A, B, Topic<T>> sink,
+                                 BiConsumer<A, B> end) {
+        if (topic instanceof SeparatedCharSequence) {
+            find((SeparatedCharSequence) topic,
+                 this,
+                 arg1,
+                 arg2,
+                 end,
+                 sink,
+                 (a1, b, _end, _sink, _topic) ->
+                     _sink.accept(a1, b, _topic),
+                 (a1, b, _end, _sink) -> _end.accept(a1, b));
+        } else {
+            findTopic(topic.toString(),
+                      arg1,
+                      arg2,
+                      end,
+                      sink,
+                      (a1, b, _end, _sink, _topic) ->
+                          _sink.accept(a1, b, _topic),
+                      (a1, b, _end, _sink) ->
+                          _end.accept(a1, b));
+        }
+    }
+
     public void findTopic(CharSequence topic,
                           Consumer<Topic<T>> sink,
                           Runnable end) {
@@ -353,6 +363,30 @@ public final class Topic<T> implements SeparatedCharSequence {
                       sink,
                       (nil, nil2, _end, _sink, _topic) -> _sink.accept(_topic),
                       (nil, nil2, _end, _sink) -> _end.run());
+        }
+    }
+
+    public <ARG0, ARG1, ARG2, ARG3> void findTopic(CharSequence topic,
+                                                   ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+                                                   Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+                                                   Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        if (topic instanceof SeparatedCharSequence) {
+            find((SeparatedCharSequence) topic,
+                 this,
+                 arg0,
+                 arg1,
+                 arg2,
+                 arg3,
+                 sink,
+                 end);
+        } else {
+            findTopic(topic.toString(),
+                      arg0,
+                      arg1,
+                      arg2,
+                      arg3,
+                      sink,
+                      end);
         }
     }
 
@@ -459,9 +493,7 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     private boolean match(String[] pars) {
-        String[] parts = getTopicsUnsafe();
-        return TopicUtils.match(parts, pars)
-            || TopicUtils.match(pars, parts);
+      return match(SharedPathString.of(pars));
     }
 
     private boolean match(SeparatedCharSequence parts) {
