@@ -28,8 +28,6 @@ import java.util.function.Supplier;
 class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     final static AttributeKey<Long> ATTR_NEXT_COUNT = AttributeKey.longKey("flux-next-count");
-    final static AttributeKey<String> ATTR_EXCEPTION_OPERATION = AttributeKey.stringKey("exception.operation");
-    final static AttributeKey<String> ATTR_EXCEPTION_SOURCE = AttributeKey.stringKey("exception.source");
 
     @SuppressWarnings("all")
     final static AtomicLongFieldUpdater<TraceSubscriber> NEXT_COUNT = AtomicLongFieldUpdater
@@ -74,40 +72,16 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
         }
     }
 
-    @SuppressWarnings("all")
-    private Attributes createErrorAttributes(Throwable error) {
-        Attributes attrs = Attributes.empty();
-        //记录错误源信息
-        String operation = TraceSourceException.tryGetOperation(error);
-        Object source = TraceSourceException.tryGetSource(error);
-
-        if (operation != null && source != null) {
-            attrs = Attributes.of(
-                TraceSubscriber.ATTR_EXCEPTION_OPERATION,
-                operation,
-                (AttributeKey) TraceSubscriber.ATTR_EXCEPTION_SOURCE,
-                LazyConverter.of(source, String::valueOf));
-        } else if (operation != null) {
-            attrs = Attributes.of(
-                TraceSubscriber.ATTR_EXCEPTION_OPERATION,
-                operation);
-        } else if (source != null) {
-            attrs = Attributes.of(
-                (AttributeKey) TraceSubscriber.ATTR_EXCEPTION_SOURCE,
-                LazyConverter.of(source, String::valueOf));
-        }
-        return attrs;
-    }
-
     @Override
     protected void hookOnError(@Nonnull Throwable throwable) {
         span.setStatus(StatusCode.ERROR);
         if (onError != null) {
             onError.accept(context, throwable);
         } else {
-            span.recordException(throwable, createErrorAttributes(throwable));
+            span.addEvent("exception",
+                          new ErrorAttributes(throwable),
+                          startWith.plusNanos(System.nanoTime() - startWithNanos));
         }
-
 
         try (Scope ignored = span.makeCurrent()) {
             actual.onError(throwable);
