@@ -1,9 +1,11 @@
 package org.jetlinks.core.topic;
 
+import com.google.common.collect.Collections2;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.collections4.MapUtils;
 import org.jetlinks.core.lang.SeparatedCharSequence;
 import org.jetlinks.core.lang.SharedPathString;
 import org.jetlinks.core.utils.RecyclableDequeue;
@@ -493,7 +495,7 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     private boolean match(String[] pars) {
-      return match(SharedPathString.of(pars));
+        return match(SharedPathString.of(pars));
     }
 
     private boolean match(SeparatedCharSequence parts) {
@@ -830,5 +832,24 @@ public final class Topic<T> implements SeparatedCharSequence {
             arr[i] = input.readUTF();
         }
         return arr;
+    }
+
+    public TopicView view() {
+        TopicView view = new TopicView();
+        view.setPart(part);
+
+        ConcurrentMap<T, Integer> subscribers = this.subscribers;
+        if (MapUtils.isNotEmpty(subscribers)) {
+            view.setSubscribers(subscribers.keySet());
+        }
+        ConcurrentMap<String, Topic<T>> child = this.child;
+        if (child != null) {
+            view.setChildren(
+                Collections2.
+                    transform(child.values(),
+                              Topic::view)
+            );
+        }
+        return view;
     }
 }
