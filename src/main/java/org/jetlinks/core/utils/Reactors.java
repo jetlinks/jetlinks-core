@@ -1,6 +1,5 @@
 package org.jetlinks.core.utils;
 
-import com.google.common.util.concurrent.RateLimiter;
 import lombok.SneakyThrows;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -79,7 +78,7 @@ public interface Reactors {
      */
     @SneakyThrows
     @SuppressWarnings("all")
-    static <T> T blockGet(Mono<T> mono, Duration timeout) {
+    static <T> T await(Mono<T> mono, Duration timeout) {
 
         if (mono instanceof Callable) {
             return (T) ((Callable<?>) mono).call();
