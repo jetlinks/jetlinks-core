@@ -1,11 +1,18 @@
 package org.jetlinks.core.utils;
 
+import com.google.common.util.concurrent.RateLimiter;
+import lombok.SneakyThrows;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.concurrent.Queues;
 import reactor.util.context.ContextView;
 
+import java.time.Duration;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 public interface Reactors {
@@ -30,9 +37,9 @@ public interface Reactors {
 
     static <T> Sinks.Many<T> createMany(int bufferSize, boolean autoCancel) {
         return Sinks
-                .many()
-                .multicast()
-                .onBackpressureBuffer(bufferSize, autoCancel);
+            .many()
+            .multicast()
+            .onBackpressureBuffer(bufferSize, autoCancel);
     }
 
     static <T> Sinks.Many<T> createMany(boolean autoCancel) {
@@ -60,5 +67,35 @@ public interface Reactors {
             }
             return Mono.empty();
         });
+    }
+
+    /**
+     * 阻塞获取Mono中的值,如果在响应式操作中执行此逻辑,建议使用{@link Schedulers#boundedElastic()}.
+     *
+     * @param mono    Mono对象
+     * @param timeout 超时时间
+     * @param <T>
+     * @return Mono的值
+     */
+    @SneakyThrows
+    @SuppressWarnings("all")
+    static <T> T blockGet(Mono<T> mono, Duration timeout) {
+
+        if (mono instanceof Callable) {
+            return (T) ((Callable<?>) mono).call();
+        }
+
+        //在非阻塞线程中,使用toFuture处理.
+        if (Schedulers.isNonBlockingThread(Thread.currentThread())) {
+            CompletableFuture<T> future = mono.toFuture();
+            try {
+                return future.get(timeout.getNano(), TimeUnit.NANOSECONDS);
+            } finally {
+                future.cancel(true);
+            }
+        }
+
+        return mono.block(timeout);
+
     }
 }
