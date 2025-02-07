@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import lombok.AllArgsConstructor;
 
 import javax.annotation.Nonnull;
+import java.net.InetSocketAddress;
 
 @AllArgsConstructor(staticName = "of")
 public class WebSocketSessionMessageWrapper implements WebSocketSessionMessage {
@@ -28,4 +29,8 @@ public class WebSocketSessionMessageWrapper implements WebSocketSessionMessage {
         return message.getPayload();
     }
 
+    @Override
+    public String toString() {
+        return session + "\n" + message.print();
+    }
 }
