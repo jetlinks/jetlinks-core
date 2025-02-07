@@ -42,6 +42,9 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
 
     @Override
     public AbstractSeparatedCharSequence append(CharSequence csq) {
+        if (!(csq instanceof SeparatedCharSequence)) {
+            csq = SeparatedString.of(separator(), csq.toString());
+        }
         if (csq instanceof SeparatedCharSequence) {
             return new AppendSeparatedCharSequenceX(this, (SeparatedCharSequence) csq);
         }
@@ -161,7 +164,7 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
             char c1 = a.charAt(k);
             char c2 = b.charAt(k);
             if (c1 != c2) {
-                return Character.compare(c1,c2);
+                return Character.compare(c1, c2);
             }
             k++;
         }

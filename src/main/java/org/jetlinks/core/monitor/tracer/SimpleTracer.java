@@ -1,22 +1,30 @@
 package org.jetlinks.core.monitor.tracer;
 
-import lombok.AllArgsConstructor;
-import org.jetlinks.core.trace.FluxTracer;
-import org.jetlinks.core.trace.MonoTracer;
-import org.jetlinks.core.trace.ReactiveTracerBuilder;
-import org.jetlinks.core.trace.TraceHolder;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Context;
+import org.jetlinks.core.lang.SeparatedCharSequence;
+import org.jetlinks.core.lang.SharedPathString;
+import org.jetlinks.core.trace.*;
+import reactor.util.context.ContextView;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
 
-@AllArgsConstructor
 public class SimpleTracer implements Tracer {
 
-    private final String tracePrefix;
+    private final SeparatedCharSequence tracePrefix;
+
+    public SimpleTracer(String tracePrefix) {
+        this(SharedPathString.of(tracePrefix));
+    }
+    public SimpleTracer(SeparatedCharSequence tracePrefix) {
+        this.tracePrefix = tracePrefix;
+    }
 
     @Override
-    public <E> FluxTracer<E> traceFlux(String operation,
+    public <E> FluxTracer<E> traceFlux(CharSequence operation,
                                        Consumer<ReactiveTracerBuilder<FluxTracer<E>, E>> consumer) {
-        String spanName = tracePrefix + operation;
+        SeparatedCharSequence spanName = tracePrefix.append(operation);
 
         if (TraceHolder.isEnabled(spanName)) {
             ReactiveTracerBuilder<FluxTracer<E>, E> builder = FluxTracer.builder();
@@ -30,10 +38,22 @@ public class SimpleTracer implements Tracer {
         return FluxTracer.unsupported();
     }
 
+
     @Override
+    public <E> FluxTracer<E> traceFlux(String operation,
+                                       Consumer<ReactiveTracerBuilder<FluxTracer<E>, E>> consumer) {
+        return traceFlux((CharSequence) operation, consumer);
+    }
+
     public <E> MonoTracer<E> traceMono(String operation,
                                        Consumer<ReactiveTracerBuilder<MonoTracer<E>, E>> consumer) {
-        String spanName = tracePrefix + operation;
+        return traceMono((CharSequence) operation, consumer);
+    }
+
+    @Override
+    public <E> MonoTracer<E> traceMono(CharSequence operation,
+                                       Consumer<ReactiveTracerBuilder<MonoTracer<E>, E>> consumer) {
+        SeparatedCharSequence spanName = tracePrefix.append(operation);
 
         if (TraceHolder.isEnabled(spanName)) {
             ReactiveTracerBuilder<MonoTracer<E>, E> builder = MonoTracer.builder();
@@ -46,6 +66,22 @@ public class SimpleTracer implements Tracer {
             return builder.build();
         }
         return MonoTracer.unsupported();
+    }
+
+    @Override
+    public <E> E traceBlocking(CharSequence operation, Function<Span, E> task) {
+        SeparatedCharSequence spanName = tracePrefix.append(operation);
+
+        return TraceHolder.traceBlocking(spanName, task);
+    }
+
+    @Override
+    public <E> E traceBlocking(CharSequence operation, ContextView ctx, Function<Span, E> task) {
+        SeparatedCharSequence spanName = tracePrefix.append(operation);
+        return TraceHolder.traceBlocking(
+            ctx.getOrDefault(Context.class, Context.current()),
+            spanName,
+            task);
     }
 
     protected void handleTraceBuilder(ReactiveTracerBuilder<?, ?> builder) {

@@ -31,6 +31,9 @@ public abstract class SeparatedString extends AbstractSeparatedCharSequence {
     }
 
     public static CharSequence of(char separator, String string, boolean intern) {
+        if(string.isEmpty()){
+            return string;
+        }
         String[] arr;
         if (intern) {
             arr = TopicUtils.split(

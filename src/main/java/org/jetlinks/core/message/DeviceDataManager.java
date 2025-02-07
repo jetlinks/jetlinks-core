@@ -1,5 +1,6 @@
 package org.jetlinks.core.message;
 
+import org.jetlinks.core.things.ThingsDataManager;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -11,6 +12,7 @@ import java.util.Map;
  *
  * @author zhouhao
  * @since 1.1.6
+ * @see ThingsDataManager
  */
 public interface DeviceDataManager {
 

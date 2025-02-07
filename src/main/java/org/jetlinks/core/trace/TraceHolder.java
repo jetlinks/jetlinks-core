@@ -89,7 +89,7 @@ public class TraceHolder {
      * @return 是否开启
      */
     public static boolean isEnabled(String name) {
-        return isEnabled((CharSequence)name);
+        return isEnabled((CharSequence) name);
     }
 
     /**
@@ -109,7 +109,7 @@ public class TraceHolder {
         enabledSpanName
             .findTopic(name,
                        enabled,
-                       (e,topic )-> e.set(true),
+                       (e, topic) -> e.set(true),
                        (e) -> {
                        });
         if (enabled.get() == null) {
@@ -117,7 +117,7 @@ public class TraceHolder {
             disabledSpanName
                 .findTopic(name,
                            enabled,
-                           (e,topic )-> e.set(false),
+                           (e, topic) -> e.set(false),
                            (e) -> {
                            });
         }
@@ -389,14 +389,20 @@ public class TraceHolder {
         return traceBlocking(Context.current(), operation, function);
     }
 
-    public static <R> R traceBlocking(Context context, String operation, Function<Span, R> function) {
+    public static <R> R traceBlocking(CharSequence operation, Function<Span, R> function) {
+        return traceBlocking(Context.current(), operation, function);
+    }
+
+    public static <R> R traceBlocking(Context context,
+                                      CharSequence operation,
+                                      Function<Span, R> function) {
         if (isDisabled(operation)) {
             return function.apply(Span.getInvalid());
         }
         Span span = telemetry
             .getTracer(appName())
-            .spanBuilder(operation)
-            .setParent(context)
+            .spanBuilder(operation.toString())
+            .setParent(context.with(SPAN_NAME, operation))
             .startSpan();
         try (Scope ignored = span.makeCurrent()) {
             return function.apply(span);
@@ -406,6 +412,10 @@ public class TraceHolder {
         } finally {
             span.end();
         }
+    }
+
+    public static <R> R traceBlocking(Context context, String operation, Function<Span, R> function) {
+       return traceBlocking(context, (CharSequence) operation, function);
     }
 
 }

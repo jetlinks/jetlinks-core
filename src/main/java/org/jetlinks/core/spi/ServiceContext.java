@@ -2,6 +2,7 @@ package org.jetlinks.core.spi;
 
 import org.jetlinks.core.Value;
 import org.jetlinks.core.config.ConfigKey;
+import org.jetlinks.core.monitor.Monitor;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +21,7 @@ public interface ServiceContext {
 
     <T> Optional<T> getService(Class<T> service);
 
-    default <T> Optional<T> getService(String service,Class<T> type){
+    default <T> Optional<T> getService(String service, Class<T> type) {
         return getService(service);
     }
 
@@ -30,4 +31,24 @@ public interface ServiceContext {
 
     <T> List<T> getServices(String service);
 
+    /**
+     * 获取监控器
+     *
+     * @return 监控器
+     * @since 1.2.3
+     */
+    default Monitor getMonitor() {
+        return Monitor.noop();
+    }
+
+    /**
+     * 获取特定设备的监控器
+     *
+     * @param deviceId 设备ID
+     * @return 监控器
+     * @since 1.2.3
+     */
+    default Monitor getMonitor(String deviceId) {
+        return Monitor.noop();
+    }
 }

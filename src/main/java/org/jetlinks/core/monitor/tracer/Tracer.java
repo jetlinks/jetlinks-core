@@ -1,13 +1,19 @@
 package org.jetlinks.core.monitor.tracer;
 
+import io.opentelemetry.api.trace.Span;
+import lombok.SneakyThrows;
 import org.jetlinks.core.trace.FluxTracer;
 import org.jetlinks.core.trace.MonoTracer;
 import org.jetlinks.core.trace.ReactiveSpanBuilder;
 import org.jetlinks.core.trace.ReactiveTracerBuilder;
+import reactor.core.publisher.Flux;
+import reactor.util.context.Context;
 import reactor.util.context.ContextView;
 
+import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -63,6 +69,11 @@ public interface Tracer {
     <E> FluxTracer<E> traceFlux(String operation,
                                 Consumer<ReactiveTracerBuilder<FluxTracer<E>, E>> consumer);
 
+    default <E> FluxTracer<E> traceFlux(CharSequence operation,
+                                        Consumer<ReactiveTracerBuilder<FluxTracer<E>, E>> consumer) {
+        return traceFlux(operation.toString(), consumer);
+    }
+
 
     /**
      * 对Flux进行追踪
@@ -78,6 +89,11 @@ public interface Tracer {
      * @return MonoTracer
      */
     default <E> FluxTracer<E> traceFlux(String operation) {
+        return traceFlux(operation, ignore -> {
+        });
+    }
+
+    default <E> FluxTracer<E> traceFlux(CharSequence operation) {
         return traceFlux(operation, ignore -> {
         });
     }
@@ -99,6 +115,11 @@ public interface Tracer {
      * @return FluxTracer
      */
     default <E> FluxTracer<E> traceFlux(String operation,
+                                        BiConsumer<ContextView, ReactiveSpanBuilder> consumer) {
+        return traceFlux(operation, (builder) -> builder.onSubscription(consumer));
+    }
+
+    default <E> FluxTracer<E> traceFlux(CharSequence operation,
                                         BiConsumer<ContextView, ReactiveSpanBuilder> consumer) {
         return traceFlux(operation, (builder) -> builder.onSubscription(consumer));
     }
@@ -127,6 +148,16 @@ public interface Tracer {
      */
     <E> MonoTracer<E> traceMono(String operation,
                                 Consumer<ReactiveTracerBuilder<MonoTracer<E>, E>> consumer);
+
+    default <E> MonoTracer<E> traceMono(CharSequence operation,
+                                        Consumer<ReactiveTracerBuilder<MonoTracer<E>, E>> consumer) {
+        return traceMono(operation.toString(), consumer);
+    }
+
+    default <E> MonoTracer<E> traceMono(CharSequence operation) {
+        return traceMono(operation, ignore -> {
+        });
+    }
 
 
     /**
@@ -168,5 +199,15 @@ public interface Tracer {
     default <E> MonoTracer<E> traceMono(String operation,
                                         BiConsumer<ContextView, ReactiveSpanBuilder> consumer) {
         return traceMono(operation, (builder) -> builder.onSubscription(consumer));
+    }
+
+    default <E> E traceBlocking(CharSequence operation,
+                                ContextView ctx,
+                                Function<Span, E> task) {
+        return task.apply(Span.current());
+    }
+
+    default <E> E traceBlocking(CharSequence operation, Function<Span, E> task) {
+        return traceBlocking(operation, Context.empty(), task);
     }
 }
