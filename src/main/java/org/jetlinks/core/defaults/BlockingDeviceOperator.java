@@ -27,6 +27,7 @@ public class BlockingDeviceOperator implements DeviceOperator {
     private final DeviceOperator target;
     private final Duration timeout;
     private final ContextView context;
+
     @Override
     public String getId() {
         return target.getId();
@@ -137,6 +138,15 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.online(serverId, address, onlineTime);
     }
 
+    /**
+     * 获取设备自身的配置,当配置不存在返回<code>null</code>.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param key 配置key
+     * @return 配置值
+     */
+    @Nullable
     public Value getSelfConfigNow(String key) {
         return await(getSelfConfig(key));
     }
@@ -146,6 +156,14 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.getSelfConfig(key);
     }
 
+    /**
+     * 获取设备自身的多个配置,可返回值{@link Values#getValue(String)}获取具体的值.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param keys key列表.
+     * @return 配置值
+     */
     public Values getSelfConfigsNow(Collection<String> keys) {
         return await(getSelfConfigs(keys));
     }
@@ -155,6 +173,14 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.getSelfConfigs(keys);
     }
 
+    /**
+     * 获取设备自身的多个配置,可返回值{@link Values#getValue(String)}获取具体的值.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param keys key列表.
+     * @return 配置值
+     */
     public Values getSelfConfigsNow(String... keys) {
         return await(getSelfConfigs(keys));
     }
@@ -164,6 +190,14 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.getSelfConfigs(keys);
     }
 
+    /**
+     * 获取设备自身的配置,当配置不存在返回<code>null</code>.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param key 配置key
+     * @return 配置值
+     */
     public <V> V getSelfConfigNow(ConfigKey<V> key) {
         return await(getSelfConfig(key));
     }
@@ -173,6 +207,14 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return DeviceOperator.super.getSelfConfig(key);
     }
 
+    /**
+     * 获取设备自身的多个配置,可返回值{@link Values#getValue(String)}获取具体的值.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param keys key列表.
+     * @return 配置值
+     */
     public Values getSelfConfigsNow(ConfigKey<?>... keys) {
         return await(getSelfConfigs(keys));
     }
@@ -296,6 +338,14 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.getTemplate();
     }
 
+    /**
+     * 获取设备的配置,当设备自身没有进行配置时,尝试获取产品的配置,产品没有时,返回<code>null</code>.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param key 配置key
+     * @return 配置值
+     */
     @Nullable
     public Value getConfigNow(String key) {
         return await(getConfig(key));
@@ -310,6 +360,14 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return values == null ? Values.of(Collections.emptyMap()) : values;
     }
 
+    /**
+     * 获取设备自身的多个配置,可返回值{@link Values#getValue(String)}获取具体的值.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param keys key列表.
+     * @return 配置值
+     */
     public Values getConfigsNow(Collection<String> keys) {
         return safeValues(
             await(getConfigs(keys))
@@ -366,6 +424,14 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.setConfigs(keyValues);
     }
 
+    /**
+     * 获取设备的配置,当设备自身没有进行配置时,尝试获取产品的配置,产品没有时,返回<code>null</code>.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param key 配置key
+     * @return 配置值
+     */
     @Nullable
     public <V> V getConfigNow(ConfigKey<V> key) {
         return await(getConfig(key));
@@ -376,6 +442,14 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.getConfig(key);
     }
 
+    /**
+     * 获取设备自身的多个配置,可返回值{@link Values#getValue(String)}获取具体的值.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param key key列表.
+     * @return 配置值
+     */
     public Values getConfigsNow(ConfigKey<?>... key) {
         return safeValues(
             await(getConfigs(key))
@@ -387,6 +461,14 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.getConfigs(key);
     }
 
+    /**
+     * 获取设备自身的多个配置,可返回值{@link Values#getValue(String)}获取具体的值.
+     * <p>
+     * 注意: 请谨慎在响应式上下文中使用此方法. 可能导致性能问题.
+     *
+     * @param keys key列表.
+     * @return 配置值
+     */
     public Values getConfigsNow(String... keys) {
         return safeValues(
             await(getConfigs(keys))
