@@ -1,8 +1,10 @@
 package org.jetlinks.core.message.codec.http.websocket;
 
 import io.netty.buffer.ByteBuf;
+import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.http.Header;
 import org.jetlinks.core.message.codec.http.HttpUtils;
+import org.jetlinks.core.server.ClientConnection;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -14,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public interface WebSocketSession {
+public interface WebSocketSession extends ClientConnection {
 
     Optional<InetSocketAddress> getRemoteAddress();
 
@@ -69,4 +71,31 @@ public interface WebSocketSession {
 
     WebSocketMessage pongMessage(ByteBuf message);
 
+    @Override
+    default InetSocketAddress address(){
+        return getRemoteAddress().orElse(null);
+    }
+
+    @Override
+    default Mono<Void> sendMessage(EncodedMessage message){
+        if(message instanceof WebSocketMessage){
+            return send((WebSocketMessage) message);
+        }
+        return send(binaryMessage(message.getPayload()));
+    }
+
+    @Override
+    default Flux<EncodedMessage> receiveMessage(){
+        return receive().cast(EncodedMessage.class);
+    }
+
+    @Override
+    default void disconnect(){
+        close().subscribe();
+    }
+
+    @Override
+    default void onDisconnect(Runnable callback) {
+        ClientConnection.super.onDisconnect(callback);
+    }
 }
