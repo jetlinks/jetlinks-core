@@ -8,6 +8,7 @@ import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
+import org.springframework.util.CollectionUtils;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -67,6 +68,20 @@ public class ArrayType extends AbstractType<ArrayType> implements DataType, Conv
 
     @Override
     public List<Object> convert(Object value) {
+        // 判断是否为数组
+        if (value.getClass().isArray()) {
+            // 将数组转换为 List
+            return CollectionUtils
+                .arrayToList(value)
+                .stream()
+                .map(val -> {
+                    if (elementType instanceof Converter) {
+                        return ((Converter<?>) elementType).convert(val);
+                    }
+                    return val;
+                }).collect(Collectors.toList());
+        }
+        
         if (value instanceof Collection) {
             return ((Collection<?>) value).stream()
                     .map(val -> {
@@ -76,6 +91,7 @@ public class ArrayType extends AbstractType<ArrayType> implements DataType, Conv
                         return val;
                     }).collect(Collectors.toList());
         }
+        
         if(value instanceof String){
             return JSON.parseArray(String.valueOf(value));
         }
