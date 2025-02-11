@@ -1,10 +1,7 @@
 package org.jetlinks.core.monitor.tracer;
 
 import io.opentelemetry.api.trace.Span;
-import org.jetlinks.core.trace.FluxTracer;
-import org.jetlinks.core.trace.MonoTracer;
-import org.jetlinks.core.trace.ReactiveSpanBuilder;
-import org.jetlinks.core.trace.ReactiveTracerBuilder;
+import org.jetlinks.core.trace.*;
 import reactor.util.context.ContextView;
 
 import java.util.function.BiConsumer;
@@ -51,12 +48,12 @@ class NoopTracer implements Tracer {
     }
 
     @Override
-    public <E> E traceBlocking(CharSequence operation, ContextView ctx, Function<Span, E> task) {
-        return task.apply(Span.getInvalid());
+    public <E> E traceBlocking(CharSequence operation, ContextView ctx, Function<ReactiveSpan, E> task) {
+        return task.apply(ReactiveSpan.noop());
     }
 
     @Override
-    public <E> E traceBlocking(CharSequence operation, Function<Span, E> task) {
-        return task.apply(Span.getInvalid());
+    public <E> E traceBlocking(CharSequence operation, Function<ReactiveSpan, E> task) {
+        return task.apply(ReactiveSpan.noop());
     }
 }

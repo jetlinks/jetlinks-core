@@ -69,14 +69,14 @@ public class SimpleTracer implements Tracer {
     }
 
     @Override
-    public <E> E traceBlocking(CharSequence operation, Function<Span, E> task) {
+    public <E> E traceBlocking(CharSequence operation, Function<ReactiveSpan, E> task) {
         SeparatedCharSequence spanName = tracePrefix.append(operation);
 
         return TraceHolder.traceBlocking(spanName, task);
     }
 
     @Override
-    public <E> E traceBlocking(CharSequence operation, ContextView ctx, Function<Span, E> task) {
+    public <E> E traceBlocking(CharSequence operation, ContextView ctx, Function<ReactiveSpan, E> task) {
         SeparatedCharSequence spanName = tracePrefix.append(operation);
         return TraceHolder.traceBlocking(
             ctx.getOrDefault(Context.class, Context.current()),

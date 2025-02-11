@@ -2,10 +2,7 @@ package org.jetlinks.core.monitor.tracer;
 
 import io.opentelemetry.api.trace.Span;
 import lombok.SneakyThrows;
-import org.jetlinks.core.trace.FluxTracer;
-import org.jetlinks.core.trace.MonoTracer;
-import org.jetlinks.core.trace.ReactiveSpanBuilder;
-import org.jetlinks.core.trace.ReactiveTracerBuilder;
+import org.jetlinks.core.trace.*;
 import reactor.core.publisher.Flux;
 import reactor.util.context.Context;
 import reactor.util.context.ContextView;
@@ -203,11 +200,11 @@ public interface Tracer {
 
     default <E> E traceBlocking(CharSequence operation,
                                 ContextView ctx,
-                                Function<Span, E> task) {
-        return task.apply(Span.current());
+                                Function<ReactiveSpan, E> task) {
+        return task.apply(ReactiveSpan.wrap(Span.current()));
     }
 
-    default <E> E traceBlocking(CharSequence operation, Function<Span, E> task) {
+    default <E> E traceBlocking(CharSequence operation, Function<ReactiveSpan, E> task) {
         return traceBlocking(operation, Context.empty(), task);
     }
 }

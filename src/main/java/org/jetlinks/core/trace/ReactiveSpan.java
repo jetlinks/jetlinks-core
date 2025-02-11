@@ -16,6 +16,17 @@ import java.util.function.Supplier;
  */
 public interface ReactiveSpan extends Span {
 
+    static ReactiveSpan wrap(Span span) {
+        if (span instanceof ReactiveSpan) {
+            return (ReactiveSpan) span;
+        }
+        return new ReactiveSpanWrapper(span);
+    }
+
+    static ReactiveSpan noop() {
+        return new ReactiveSpanWrapper(Span.getInvalid());
+    }
+
     /**
      * 设置延迟获取的属性值,通常在属性值需要计算时(比如转为json)使用以提升性能.
      *

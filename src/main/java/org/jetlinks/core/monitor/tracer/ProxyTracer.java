@@ -3,10 +3,7 @@ package org.jetlinks.core.monitor.tracer;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import lombok.AllArgsConstructor;
-import org.jetlinks.core.trace.FluxTracer;
-import org.jetlinks.core.trace.MonoTracer;
-import org.jetlinks.core.trace.ReactiveSpanBuilder;
-import org.jetlinks.core.trace.ReactiveTracerBuilder;
+import org.jetlinks.core.trace.*;
 import reactor.util.context.ContextView;
 
 import java.util.function.BiConsumer;
@@ -77,12 +74,12 @@ class ProxyTracer implements Tracer {
     }
 
     @Override
-    public <E> E traceBlocking(CharSequence operation, ContextView ctx, Function<Span, E> task) {
+    public <E> E traceBlocking(CharSequence operation, ContextView ctx, Function<ReactiveSpan, E> task) {
         return lazyRef.get().traceBlocking(operation, ctx, task);
     }
 
     @Override
-    public <E> E traceBlocking(CharSequence operation, Function<Span, E> task) {
+    public <E> E traceBlocking(CharSequence operation, Function<ReactiveSpan, E> task) {
         return lazyRef.get().traceBlocking(operation, task);
     }
 }

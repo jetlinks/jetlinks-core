@@ -378,26 +378,26 @@ public class TraceHolder {
             setter);
     }
 
-    public static void traceBlocking(String operation, Consumer<Span> task) {
+    public static void traceBlocking(String operation, Consumer<ReactiveSpan> task) {
         traceBlocking(operation, span -> {
             task.accept(span);
             return null;
         });
     }
 
-    public static <R> R traceBlocking(String operation, Function<Span, R> function) {
+    public static <R> R traceBlocking(String operation, Function<ReactiveSpan, R> function) {
         return traceBlocking(Context.current(), operation, function);
     }
 
-    public static <R> R traceBlocking(CharSequence operation, Function<Span, R> function) {
+    public static <R> R traceBlocking(CharSequence operation, Function<ReactiveSpan, R> function) {
         return traceBlocking(Context.current(), operation, function);
     }
 
     public static <R> R traceBlocking(Context context,
                                       CharSequence operation,
-                                      Function<Span, R> function) {
+                                      Function<ReactiveSpan, R> function) {
         if (isDisabled(operation)) {
-            return function.apply(Span.getInvalid());
+            return function.apply(ReactiveSpan.noop());
         }
         Span span = telemetry
             .getTracer(appName())
@@ -405,7 +405,7 @@ public class TraceHolder {
             .setParent(context.with(SPAN_NAME, operation))
             .startSpan();
         try (Scope ignored = span.makeCurrent()) {
-            return function.apply(span);
+            return function.apply(ReactiveSpan.wrap(span));
         } catch (Throwable e) {
             span.recordException(e);
             throw e;
@@ -414,7 +414,7 @@ public class TraceHolder {
         }
     }
 
-    public static <R> R traceBlocking(Context context, String operation, Function<Span, R> function) {
+    public static <R> R traceBlocking(Context context, String operation, Function<ReactiveSpan, R> function) {
        return traceBlocking(context, (CharSequence) operation, function);
     }
 
