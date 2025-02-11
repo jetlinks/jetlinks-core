@@ -5,6 +5,8 @@ import org.springframework.http.MediaType;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -82,6 +84,27 @@ public interface HttpExchangeMessage extends HttpRequestMessage {
     }
 
     /**
+     * @see #getRequestParamAsync()
+     */
+    @Nullable
+    @Override
+    @Deprecated
+    default Map<String, String> getRequestParam() {
+        return HttpRequestMessage.super.getRequestParam();
+    }
+
+    /**
+     * 异步获取请求参数,通常针对 POST application/x-www-form-urlencoded 请求
+     *
+     * @return 请求参数
+     */
+    default Mono<Map<String, String>> getRequestParamAsync() {
+        return this
+            .payload()
+            .mapNotNull(buf -> HttpRequestMessage.super.getRequestParam());
+    }
+
+    /**
      * 请使用 {@link  HttpExchangeMessage#payload()}方法来获取
      *
      * @return 已解析的请求体
@@ -92,10 +115,31 @@ public interface HttpExchangeMessage extends HttpRequestMessage {
     @Deprecated
     ByteBuf getPayload();
 
-
+    /**
+     * 响应http请求
+     * <pre>{@code
+     *
+     *  return exchange
+     *     .response(exchange.newResponse().status(200).body("success").build())
+     *
+     * }</pre>
+     *
+     * @param message 响应消息
+     * @return void
+     * @see SimpleHttpResponseMessage
+     * @see #ok(String)
+     * @see #error(int, String)
+     * @see #newResponse()
+     */
     @Nonnull
     Mono<Void> response(@Nonnull HttpResponseMessage message);
 
+    /**
+     * 响应http请求,状态码为200
+     *
+     * @param message 消息
+     * @return void
+     */
     default Mono<Void> ok(@Nonnull String message) {
         return response(
             SimpleHttpResponseMessage
@@ -107,6 +151,13 @@ public interface HttpExchangeMessage extends HttpRequestMessage {
         );
     }
 
+    /**
+     * 响应http请求,状态码为500
+     *
+     * @param status  状态码
+     * @param message 消息
+     * @return void
+     */
     default Mono<Void> error(int status, @Nonnull String message) {
         return response(SimpleHttpResponseMessage.builder()
                                                  .contentType(MediaType.APPLICATION_JSON)

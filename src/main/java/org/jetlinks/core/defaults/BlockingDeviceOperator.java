@@ -269,6 +269,13 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.authenticate(request);
     }
 
+    /**
+     * 获取设备物模型
+     * @return 物模型
+     * @see DeviceMetadata#getPropertyOrNull(String)
+     * @see DeviceMetadata#getFunctionOrNull(String)
+     * @see DeviceMetadata#getEventOrNull(String)
+     */
     public DeviceMetadata getMetadataNow() {
         return await(getMetadata());
     }

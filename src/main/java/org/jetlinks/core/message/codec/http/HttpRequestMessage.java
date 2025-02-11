@@ -19,26 +19,62 @@ import java.util.stream.Collectors;
 
 public interface HttpRequestMessage extends EncodedMessage {
 
+    /**
+     * 获取请求相对地址，不包含url参数。
+     *
+     * @return 请求地址
+     */
     @Nonnull
     default String getPath() {
         return HttpUtils.getUrlPath(getUrl());
     }
 
+    /**
+     * 获取请求相对地址，包含url参数。
+     *
+     * @return 请求地址
+     */
     @Nonnull
     String getUrl();
 
+    /**
+     * 获取请求方法
+     *
+     * @return 请求方法
+     */
     @Nonnull
     HttpMethod getMethod();
 
+    /**
+     * 获取请求类型
+     *
+     * @return 请求类型
+     */
     @Nullable
     MediaType getContentType();
 
+    /**
+     * 获取全部请求头
+     * @return 请求头
+     */
     @Nonnull
     List<Header> getHeaders();
 
+    /**
+     * 获取URL查询参数,如:
+     * <ul>
+     *     <li>/path?a=1&b=2 -> {"a":"1","b":"2"}</li>
+     *     <li>/path?a=1&b=2&b=3 -> {"a":"1","b":"2,3"}</li>
+     * </ul>
+     * @return 查询参数
+     */
     @Nullable
     Map<String, String> getQueryParameters();
 
+    /**
+     * 获取表单参数,通常针对 POST application/x-www-form-urlencoded 请求
+     * @return 表单参数
+     */
     @Nullable
     default Map<String, String> getRequestParam() {
         if (MediaType.APPLICATION_FORM_URLENCODED.includes(getContentType())) {
@@ -65,9 +101,9 @@ public interface HttpRequestMessage extends EncodedMessage {
 
     default Optional<Header> getHeader(String name) {
         return getHeaders()
-                .stream()
-                .filter(header -> header.getName().equals(name))
-                .findFirst();
+            .stream()
+            .filter(header -> header.getName().equals(name))
+            .findFirst();
     }
 
     default Optional<String> getQueryParameter(String name) {
@@ -81,17 +117,17 @@ public interface HttpRequestMessage extends EncodedMessage {
         if (!CollectionUtils.isEmpty(getQueryParameters())) {
             builder.append("?")
                    .append(getQueryParameters()
-                                   .entrySet().stream()
-                                   .map(e -> e.getKey().concat("=").concat(e.getValue()))
-                                   .collect(Collectors.joining("&")))
+                               .entrySet().stream()
+                               .map(e -> e.getKey().concat("=").concat(e.getValue()))
+                               .collect(Collectors.joining("&")))
                    .append("\n");
         } else {
             builder.append("\n");
         }
         for (Header header : getHeaders()) {
             builder
-                    .append(header.getName()).append(": ").append(String.join(",", header.getValue()))
-                    .append("\n");
+                .append(header.getName()).append(": ").append(String.join(",", header.getValue()))
+                .append("\n");
         }
         if (multiPart().isPresent()) {
             multiPart().ifPresent(parts -> {
