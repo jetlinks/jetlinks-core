@@ -54,11 +54,7 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
     }
 
     public ObjectType addProperty(String property, String name, DataType type) {
-        SimplePropertyMetadata metadata = new SimplePropertyMetadata();
-        metadata.setId(property);
-        metadata.setName(name);
-        metadata.setValueType(type);
-        return addPropertyMetadata(metadata);
+        return addPropertyMetadata(SimplePropertyMetadata.of(property, name, type));
     }
 
     @Override

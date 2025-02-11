@@ -15,4 +15,9 @@ public class DefaultWebSocketMessage implements WebSocketMessage {
     Type type;
 
     ByteBuf payload;
+
+    @Override
+    public String toString() {
+        return print();
+    }
 }

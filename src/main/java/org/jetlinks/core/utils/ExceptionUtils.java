@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -101,6 +102,54 @@ public class ExceptionUtils {
         }
 
         return builder;
+    }
+
+
+    private static void fillStackTrace(Throwable e, List<StackTraceElement> container) {
+        for (StackTraceElement traceElement : e.getStackTrace()) {
+            if (ExceptionUtils.isUnimportant(traceElement)) {
+                continue;
+            }
+            container.add(traceElement);
+        }
+    }
+
+    public static StackTraceElement[] getMergedStackTrace(Throwable e){
+        List<StackTraceElement> elements = new ArrayList<>(64);
+        getFullStackTrace(e,elements);
+        return elements.toArray(new StackTraceElement[0]);
+    }
+
+
+    private static void getFullStackTrace(Throwable e, List<StackTraceElement> elements) {
+
+        fillStackTrace(e, elements);
+
+        for (Throwable throwable : e.getSuppressed()) {
+            elements.add(
+                new StackTraceElement(
+                    "Suppressed: " + throwable,
+                    "",
+                    null,
+                    -1
+                )
+            );
+            fillStackTrace(throwable, elements);
+        }
+
+        Throwable cause = e.getCause();
+        if (cause != null) {
+            elements.add(
+                new StackTraceElement(
+                    "Caused by: " +cause,
+                    "",
+                    null,
+                    -1
+                )
+            );
+            getFullStackTrace(cause,elements);
+        }
+
     }
 
 
