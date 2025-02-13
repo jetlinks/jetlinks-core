@@ -106,6 +106,23 @@ public class SeparatedStringTest {
     }
 
     @Test
+    public void testAppendMulti() {
+        String str = "test/1/2";
+        SeparatedStringN string = SeparatedStringN.of('/', str.split("/"));
+
+        SeparatedCharSequence c = string.append("3","4","5","/6/7");
+        assertEquals("test/1/2/3/4/5/6/7", c.toString());
+
+        assertEquals(8,c.size());
+
+        assertEquals("1",c.get(1).toString());
+        assertEquals("5",c.get(5).toString());
+        assertEquals("6",c.get(6).toString());
+        assertEquals("7",c.get(7).toString());
+
+
+    }
+    @Test
     public void testAppend() {
         String str = "test/1/2";
         SeparatedStringN string = SeparatedStringN.of('/', str.split("/"));

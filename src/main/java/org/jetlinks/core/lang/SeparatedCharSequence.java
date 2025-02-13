@@ -1,6 +1,7 @@
 package org.jetlinks.core.lang;
 
 import javax.annotation.Nonnull;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.function.Consumer;
 

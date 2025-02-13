@@ -34,10 +34,24 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
         if (csq == null || csq.length == 0) {
             return this;
         }
+
         if (csq.length == 1) {
             return append(csq[0]);
         }
-        return new AppendSeparatedCharSequenceN(this, csq);
+
+        if (csq.length == 2) {
+            return append(csq[0]).append(csq[1]);
+        }
+
+        if (csq.length == 3) {
+            return append(csq[0]).append(csq[1]).append(csq[2]);
+        }
+
+        AbstractSeparatedCharSequence s = this;
+        for (CharSequence charSequence : csq) {
+            s = s.append(charSequence);
+        }
+        return s;
     }
 
     @Override
