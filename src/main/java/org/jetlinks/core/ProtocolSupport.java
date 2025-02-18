@@ -1,5 +1,6 @@
 package org.jetlinks.core;
 
+import org.hswebframework.web.i18n.MultipleI18nSupportEntity;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
@@ -15,6 +16,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -23,7 +25,7 @@ import java.util.Map;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface ProtocolSupport extends Disposable, Ordered, Comparable<ProtocolSupport>, Wrapper {
+public interface ProtocolSupport extends Disposable, Ordered, Comparable<ProtocolSupport>, Wrapper, MultipleI18nSupportEntity{
     /**
      * @return 协议ID
      */
@@ -39,6 +41,14 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      * @return 说明
      */
     String getDescription();
+    
+    /**
+     *
+     * @return 国际化信息
+     */
+    default Map<String ,Map<String, String>> getI18nMessages(){
+        return Collections.emptyMap();
+    }
 
     default String getDocument(Transport transport) {
         return null;

@@ -43,6 +43,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private String name;
 
     private String description;
+    
+    private Map<String, Map<String, String>> i18nMessages;
 
     private DeviceMetadataCodec metadataCodec = DeviceMetadataCodecs.defaultCodec();
 
