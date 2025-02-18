@@ -45,6 +45,22 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private String description;
     
     private Map<String, Map<String, String>> i18nMessages;
+    
+    public String getName(){
+        return getI18nMessage("name", name);
+    }
+    
+    public String getName(Locale locale) {
+        return getI18nMessage("name", locale, name);
+    }
+    
+    public String getDescription(){
+        return getI18nMessage("description", description);
+    }
+    
+    public String getDescription(Locale locale) {
+        return getI18nMessage("description", locale, description);
+    }
 
     private DeviceMetadataCodec metadataCodec = DeviceMetadataCodecs.defaultCodec();
 
