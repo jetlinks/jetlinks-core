@@ -37,6 +37,30 @@ public class Result<T> extends GenericHeaderSupport<Result<T>> implements Extern
      */
     private int code;
 
+    public static <T> Result<T> success(T data) {
+        Result<T> result = new Result<>();
+        result.setSuccess(true);
+        result.setData(data);
+        result.setCode(CollectorConstants.Codes.success.getCode());
+        return result;
+    }
+
+    public static <T> Result<T> error(int code) {
+        Result<T> result = new Result<>();
+        result.setSuccess(false);
+        result.setCode(code);
+        return result;
+    }
+
+    public static <T> Result<T> error(Throwable error) {
+        Result<T> result = new Result<>();
+        result.setSuccess(false);
+        //todo 错误信息传递
+
+        result.setCode(CollectorConstants.Codes.pointError.getCode());
+        return result;
+    }
+
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         SerializeUtils.writeKeyValue(getHeaders(), out);

@@ -22,7 +22,8 @@ public class PointNode {
 
     private AccessMode[] accessModes;
 
-    private Type type;
+    private Type nodeType;
+
 
     private String parentAddress;
 

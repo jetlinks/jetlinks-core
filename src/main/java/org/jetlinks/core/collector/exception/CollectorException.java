@@ -4,15 +4,17 @@ import lombok.Getter;
 import org.hswebframework.web.exception.I18nSupportException;
 
 @Getter
-public class CollectorException extends I18nSupportException.NoStackTrace {
+public abstract class CollectorException extends I18nSupportException.NoStackTrace {
 
     private final String collectorId;
 
     public CollectorException(String collectorId,
-                              String code,
+                              String messageOrI18nCode,
                               Throwable cause,
                               Object... args) {
-        super(code, cause, args);
+        super(messageOrI18nCode, cause, args);
         this.collectorId = collectorId;
     }
+
+    abstract int getCode();
 }

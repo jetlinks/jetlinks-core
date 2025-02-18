@@ -14,7 +14,8 @@ public interface CollectorConstants {
         running("运行中"),
         paused("已暂停"),
         starting("启动中"),
-        stopped("已停止");
+        stopped("已停止"),
+        shutdown("已关闭");
 
         private final String text;
 
@@ -30,7 +31,7 @@ public interface CollectorConstants {
     @Getter
     enum Codes {
 
-        ok(0),
+        success(0),
 
         channelError(10000),
         channelNetworkError(10001),
@@ -42,7 +43,11 @@ public interface CollectorConstants {
 
         pointError(30000),
         pointConfigError(30001),
-        pointCodecError(30002);
+        pointCodecError(30002),
+        pointUnsupportedRead(3004),
+        pointUnsupportedWrite(3005),
+
+        ;
 
         final int code;
 

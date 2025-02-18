@@ -1,5 +1,6 @@
 package org.jetlinks.core.collector;
 
+import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.command.Command;
 import org.jetlinks.core.command.CommandSupport;
 import org.jetlinks.core.monitor.Monitor;
@@ -67,13 +68,6 @@ public interface DataCollectorProvider extends CommandSupport {
          * @return 通道配置
          */
         ChannelProperties getProperties();
-
-        /**
-         * 获取采集器管理器
-         *
-         * @return 采集器管理器
-         */
-        DataCollectorManager getManager();
 
         /**
          * 创建通道监控器
@@ -174,6 +168,14 @@ public interface DataCollectorProvider extends CommandSupport {
         String getId();
 
         /**
+         * 校验点位配置
+         *
+         * @param properties 点位配置
+         * @return 校验结果
+         */
+        Mono<Result<Void>> validatePoint(PointProperties properties);
+
+        /**
          * 注册点位
          *
          * @param points 点位信息
@@ -239,6 +241,15 @@ public interface DataCollectorProvider extends CommandSupport {
 
         String getId();
 
+
+        /**
+         * 测试点位是否正常,通过状态码来传递状态.
+         *
+         * @return 测试结果
+         * @see Result#getCode()
+         */
+        Mono<Result<Void>> test();
+
         /**
          * 读取点位数据
          *
@@ -256,7 +267,9 @@ public interface DataCollectorProvider extends CommandSupport {
 
     }
 
-    interface Lifecycle {
+    interface Lifecycle extends Wrapper {
+
+        Mono<State> checkState();
 
         Mono<State> state();
 
