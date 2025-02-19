@@ -25,7 +25,7 @@ import java.util.Map;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface ProtocolSupport extends Disposable, Ordered, Comparable<ProtocolSupport>, Wrapper, MultipleI18nSupportEntity{
+public interface ProtocolSupport extends Disposable, Ordered, Comparable<ProtocolSupport>, Wrapper {
     /**
      * @return 协议ID
      */
@@ -43,7 +43,6 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
     String getDescription();
     
     /**
-     *
      * @return 国际化信息
      */
     default Map<String ,Map<String, String>> getI18nMessages(){
