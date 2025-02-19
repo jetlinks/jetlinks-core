@@ -41,13 +41,6 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      * @return 说明
      */
     String getDescription();
-    
-    /**
-     * @return 国际化信息
-     */
-    default Map<String ,Map<String, String>> getI18nMessages(){
-        return Collections.emptyMap();
-    }
 
     default String getDocument(Transport transport) {
         return null;

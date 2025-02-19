@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
@@ -44,8 +45,32 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     private String description;
     
-    private Map<String, Map<String, String>> i18nMessages;
-
+    @Override
+    public String getName(){
+        return getI18nName(LocaleUtils.current());
+    }
+    
+    protected String getI18nName(Locale locale) {
+        return LocaleUtils.resolveMessage(getI18nNameCode(), locale, name);
+    }
+    
+    protected String getI18nNameCode(){
+        return this.getClass().getName() + "." + getId() + ".name";
+    }
+    
+    @Override
+    public String getDescription() {
+        return getI18nDescription(LocaleUtils.current());
+    }
+    
+    protected String getI18nDescription(Locale locale) {
+        return LocaleUtils.resolveMessage(getI18nDescriptionCode(), locale, name);
+    }
+    
+    protected String getI18nDescriptionCode() {
+        return this.getClass().getName() + "." + getId() + ".description";
+    }
+    
     private DeviceMetadataCodec metadataCodec = DeviceMetadataCodecs.defaultCodec();
 
     @Getter(AccessLevel.PRIVATE)
