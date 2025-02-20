@@ -1,6 +1,5 @@
 package org.jetlinks.core;
 
-import org.hswebframework.web.i18n.MultipleI18nSupportEntity;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
@@ -16,7 +15,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
-import java.util.Collections;
 import java.util.Map;
 
 /**
