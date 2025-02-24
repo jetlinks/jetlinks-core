@@ -56,6 +56,18 @@ public interface RpcManager {
     <I> Mono<RpcService<I>> selectService(Class<I> service);
 
     /**
+     * 根据路由key选择一个服务,相同key会选择相同的服务.
+     *
+     * @param service  服务类型
+     * @param routeKey 路由key
+     * @param <I>      服务类型
+     * @return 选择结果
+     */
+    default <I> Mono<RpcService<I>> selectService(Class<I> service, Object routeKey) {
+        return selectService(service);
+    }
+
+    /**
      * 获取指定服务ID的RPC服务接口
      *
      * @param serviceId 服务ID
@@ -99,5 +111,18 @@ public interface RpcManager {
      */
     <I> Flux<ServiceEvent> listen(Class<I> service);
 
+    /**
+     * 获取全部服务
+     *
+     * @return 全部服务
+     */
+    Flux<RpcService<?>> getServices();
+
+    /**
+     * @return 是否已经关闭
+     */
+    default boolean isShutdown() {
+        return false;
+    }
 
 }
