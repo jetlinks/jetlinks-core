@@ -2,14 +2,34 @@ package org.jetlinks.core.collector;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.hswebframework.web.dict.EnumDict;
+import org.hswebframework.web.dict.I18nEnumDict;
+import org.jetlinks.core.metadata.Feature;
 
 public interface CollectorConstants {
 
 
     @AllArgsConstructor
     @Getter
-    enum States implements DataCollectorProvider.State, EnumDict<String> {
+    enum CollectorFeatures implements Feature {
+        subscribable("可订阅点位数据"),
+
+        ;
+        final String name;
+
+        @Override
+        public final String getId() {
+            return name();
+        }
+
+        @Override
+        public final String getType() {
+            return "CollectorFeature";
+        }
+    }
+
+    @AllArgsConstructor
+    @Getter
+    enum States implements DataCollectorProvider.State, I18nEnumDict<String> {
 
         running("运行中"),
         paused("已暂停"),

@@ -3,19 +3,22 @@ package org.jetlinks.core.collector;
 import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.command.Command;
 import org.jetlinks.core.command.CommandSupport;
+import org.jetlinks.core.metadata.Feature;
 import org.jetlinks.core.monitor.Monitor;
 import reactor.core.Disposable;
+import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
  * 针对数据采集的支持,用于平台主动采集的场景,如: 定时采集modbus数据等.
  * <p>
- * 数采集由通道{@link ChannelRuntime}、采集器{@link CollectorRuntime}、点位{@link PointRuntime}组成.
+ * 数采集由通道 、采集器 、点位组成.
  * <p>
  * 通道 {@link ChannelRuntime} 用于实现一个具体的数据通道，如: 一个modbus主站，一个TCP客户端，一个数据库连接等.
  * <p>
@@ -45,20 +48,52 @@ public interface DataCollectorProvider extends CommandSupport {
     /**
      * 创建通道
      *
-     * @param context 通道配置
+     * @param configuration 通道配置
      * @return 通道运行时
      */
-    Mono<DataCollectorProvider.ChannelRuntime> createChannel(ChannelConfiguration context);
+    Mono<DataCollectorProvider.ChannelRuntime> createChannel(ChannelConfiguration configuration);
 
     /**
-     * 重新加载通道
+     * 创建采集器
      *
-     * @param runtime 通道运行时
-     * @param context 通道配置
-     * @return 通道运行时
+     * @param configuration 采集器配置
+     * @return 采集器运行时
      */
-    Mono<DataCollectorProvider.ChannelRuntime> reloadChannel(DataCollectorProvider.ChannelRuntime runtime,
-                                                             ChannelConfiguration context);
+    Mono<DataCollectorProvider.CollectorRuntime> createCollector(CollectorConfiguration configuration);
+
+    /**
+     * 创建点位运行时
+     *
+     * @param configuration 点位配置
+     * @return 点位运行时
+     */
+    Mono<DataCollectorProvider.PointRuntime> createPoint(PointConfiguration configuration);
+
+
+    interface CollectorConfiguration {
+
+        /**
+         * 获取通道配置
+         *
+         * @return 通道配置
+         */
+        CollectorProperties getProperties();
+
+        /**
+         * 创建通道监控器
+         *
+         * @return 监控器
+         */
+        Monitor monitor();
+
+        /**
+         * 通道运行时
+         *
+         * @return 通道运行时
+         */
+        DataCollectorProvider.ChannelRuntime channel();
+    }
+
 
     interface ChannelConfiguration {
 
@@ -70,32 +105,41 @@ public interface DataCollectorProvider extends CommandSupport {
         ChannelProperties getProperties();
 
         /**
-         * 创建通道监控器
+         * 监控器
          *
          * @return 监控器
+         * @see Monitor#logger()
+         * @see Monitor#tracer()
          */
-        Monitor createMonitor();
-
-        /**
-         * 创建采集器监控器
-         *
-         * @param collectorId 采集器ID
-         * @return 监控器
-         */
-        Monitor createMonitor(String collectorId);
-
-        /**
-         * 创建点位监控器,用于在执行点位相关操作时进行监控.如打印日志,链路追踪,熔断等操作.
-         *
-         * @param collectorId 采集器ID
-         * @param pointId     点位ID
-         * @return 监控器
-         */
-        Monitor createMonitor(String collectorId, String pointId);
+        Monitor monitor();
 
     }
 
 
+    interface PointConfiguration {
+        /**
+         * 获取通道配置
+         *
+         * @return 通道配置
+         */
+        PointProperties getProperties();
+
+        /**
+         * 监控器
+         *
+         * @return 监控器
+         * @see Monitor#logger()
+         * @see Monitor#tracer()
+         */
+        Monitor monitor();
+    }
+
+    /**
+     * 通道运行时,用于执行通信等操作.
+     *
+     * @author zhouhao
+     * @since 1.2.3
+     */
     interface ChannelRuntime extends Lifecycle, CommandSupport {
 
         /**
@@ -105,43 +149,10 @@ public interface DataCollectorProvider extends CommandSupport {
          */
         String getId();
 
-        /**
-         * 注册采集器
-         *
-         * @param properties 采集器配置
-         * @return void
-         */
-        Mono<Void> registerCollector(Collection<CollectorProperties> properties);
-
-        /**
-         * 注销采集器
-         *
-         * @param id 采集器ID
-         * @return void
-         */
-        Mono<Void> unregisterCollector(Collection<String> id);
-
-        /**
-         * 获取指定ID的采集器运行时
-         *
-         * @param id 采集器ID
-         * @return 采集器信息
-         */
-        Mono<CollectorRuntime> getCollector(String id);
-
-        /**
-         * 获取指定ID的采集器信息
-         *
-         * @param id 采集器ID
-         * @return 采集器信息
-         * @see CollectorProperties#getId()
-         */
-        Flux<CollectorRuntime> getCollectors(Collection<String> id);
-
     }
 
     /**
-     * 数据采集器运行时，表示正在运行中的采集器.
+     * 数据采集器运行时，用于执行采集逻辑.
      *
      * @author zhouhao
      * @see org.jetlinks.core.collector.discovery.DiscoveryPointCommand
@@ -168,79 +179,39 @@ public interface DataCollectorProvider extends CommandSupport {
         String getId();
 
         /**
-         * 校验点位配置
-         *
-         * @param properties 点位配置
-         * @return 校验结果
-         */
-        Mono<Result<Void>> validatePoint(PointProperties properties);
-
-        /**
-         * 注册点位
-         *
-         * @param points 点位信息
-         * @return 注销点位
-         */
-        Mono<Void> registerPoint(Collection<PointProperties> points);
-
-        /**
-         * 注销点位
-         *
-         * @param idList 点位ID
-         * @return 注销点位
-         */
-        Mono<Void> unregisterPoint(Collection<String> idList);
-
-        /**
-         * 获取指定ID的点位运行时
-         *
-         * @param id 点位ID
-         * @return 点位信息
-         */
-        Mono<PointRuntime> getPoint(String id);
-
-        /**
-         * 获取指定ID的点位信息
-         *
-         * @param idList 点位ID
-         * @return 点位信息
-         * @see PointProperties#getId()
-         */
-        Flux<PointRuntime> getPoints(Collection<String> idList);
-
-        /**
-         * 获取全部点位信息
-         *
-         * @return 点位信息
-         */
-        Flux<PointRuntime> getPoints();
-
-        /**
-         * 订阅点位数据.
+         * 订阅点位数据.如果不支持则返回{@link Disposables#disposed()}.
          * <p>
-         * 用于接收通过{@link AccessMode#subscribe}采集到的数据.
+         * 调用返回值{@link Disposable#dispose()}取消订阅.
+         * <p>
+         * 当点位产生数据时,调用监听器{@link Consumer#accept(Object)}方法.
          *
-         * @return 点位数据
+         * @return Disposable
          * @see AccessMode#subscribe
          */
-        Disposable subscribe(Consumer<PointData> listener);
+        Disposable subscribe(Collection<PointRuntime> points,
+                             Consumer<PointData> listener);
 
         /**
-         * 采集指定的点位数据. 用于主动获取点位数据.
+         * 采集指定的点位数据. 用于主动获取点位数据，如定时获取等.
          *
-         * @param idList 点位ID
          * @return 点位数据
          * @see PointRuntime#read()
          * @see AccessMode#read
          */
-        Flux<Result<PointData>> collect(Collection<String> idList);
+        Flux<Result<PointData>> collect(Collection<PointRuntime> points);
 
+        /**
+         * 获取采集器支持的特性
+         *
+         * @return 特性
+         * @see CollectorConstants.CollectorFeatures
+         */
+        List<Feature> getFeatures();
     }
 
     interface PointRuntime extends Lifecycle {
 
         String getId();
-
 
         /**
          * 测试点位是否正常,通过状态码来传递状态.
@@ -267,15 +238,20 @@ public interface DataCollectorProvider extends CommandSupport {
 
     }
 
-    interface Lifecycle extends Wrapper {
+    /**
+     * 生命周期,用于管理状态等逻辑.
+     *
+     * @since 1.2.3
+     */
+    interface Lifecycle extends Wrapper, Disposable {
 
         Mono<State> checkState();
 
-        Mono<State> state();
+        State state();
 
-        Mono<Void> start();
+        void start();
 
-        Mono<Void> shutdown();
+        void dispose();
 
     }
 
