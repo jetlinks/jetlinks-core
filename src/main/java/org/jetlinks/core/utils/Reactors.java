@@ -85,9 +85,12 @@ public interface Reactors {
         }
 
         //在非阻塞线程中,使用toFuture处理.
-        if (Schedulers.isNonBlockingThread(Thread.currentThread())) {
+        if (Schedulers.isNonBlockingThread(Thread.currentThread()) || timeout.isZero()) {
             CompletableFuture<T> future = mono.toFuture();
             try {
+                if (timeout.isZero()) {
+                    return future.getNow(null);
+                }
                 return future.get(timeout.getNano(), TimeUnit.NANOSECONDS);
             } finally {
                 future.cancel(true);
