@@ -9,7 +9,11 @@ import java.time.Duration;
 import static org.junit.Assert.*;
 
 public class ExceptionUtilsTest {
-
+static {
+    ExceptionUtils.addUnimportantPackage("org.junit",
+                                         "com.intellij",
+                                         "sun.reflect");
+}
     @Test
     public void testBenchmark() {
         StackTraceElement traceElement = new StackTraceElement(
@@ -34,9 +38,11 @@ public class ExceptionUtilsTest {
 
         ), "test", "AAA");
 
-        e.printStackTrace();;
+        e.printStackTrace();
 
         System.out.println();
+
+        System.out.println(ExceptionUtils.getStackTrace(e).length());
 
         for (StackTraceElement traceElement : ExceptionUtils.getMergedStackTrace(e)) {
             System.out.println(traceElement);

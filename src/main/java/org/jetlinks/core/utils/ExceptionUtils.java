@@ -77,7 +77,7 @@ public class ExceptionUtils {
         if (e == null) {
             return "";
         }
-        return getStackTrace(new StringBuilder(), e).toString();
+        return getStackTrace(new StringBuilder(1024), e).toString();
     }
 
     public static StringBuilder getStackTrace(StringBuilder builder,
@@ -114,9 +114,9 @@ public class ExceptionUtils {
         }
     }
 
-    public static StackTraceElement[] getMergedStackTrace(Throwable e){
+    public static StackTraceElement[] getMergedStackTrace(Throwable e) {
         List<StackTraceElement> elements = new ArrayList<>(64);
-        getFullStackTrace(e,elements);
+        getFullStackTrace(e, elements);
         return elements.toArray(new StackTraceElement[0]);
     }
 
@@ -141,13 +141,13 @@ public class ExceptionUtils {
         if (cause != null) {
             elements.add(
                 new StackTraceElement(
-                    "Caused by: " +cause,
+                    "Caused by: " + cause,
                     "",
                     null,
                     -1
                 )
             );
-            getFullStackTrace(cause,elements);
+            getFullStackTrace(cause, elements);
         }
 
     }
