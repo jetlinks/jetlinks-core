@@ -2,6 +2,7 @@ package org.jetlinks.core;
 
 import org.jetlinks.core.message.HeaderKey;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
@@ -38,7 +39,7 @@ public class GenericHeaderSupport<SELF extends GenericHeaderSupport<SELF>> imple
     }
 
     @Override
-    public final SELF addHeader(String header, Object value) {
+    public final SELF addHeader(@Nonnull String header, @Nonnull Object value) {
         if (header == null || value == null) {
             return castSelf();
         }
@@ -115,7 +116,7 @@ public class GenericHeaderSupport<SELF extends GenericHeaderSupport<SELF>> imple
     }
 
     @Override
-    public <T> SELF addHeader(HeaderKey<T> header, T value) {
+    public <T> SELF addHeader(@Nonnull HeaderKey<T> header, @Nonnull T value) {
         return HeaderSupport.super.addHeader(header, value);
     }
 }

@@ -1,6 +1,5 @@
 package org.jetlinks.core.message;
 
-import org.hswebframework.web.exception.ValidationException;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
 import org.jetlinks.core.utils.SerializeUtils;
@@ -11,6 +10,11 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
+/**
+ * 消息回复,用于对下发的指令进行回复.
+ *
+ * @since 1.0.0
+ */
 public interface ThingMessageReply extends ThingMessage {
 
     //是否成功
@@ -44,7 +48,7 @@ public interface ThingMessageReply extends ThingMessage {
     }
 
     //设置物类型和物ID
-    ThingMessageReply thingId(String type, String thingId);
+    ThingMessageReply thingId(@Nonnull String type,@Nonnull String thingId);
 
     //设置成功
     ThingMessageReply success();
@@ -64,7 +68,7 @@ public interface ThingMessageReply extends ThingMessage {
     ThingMessageReply messageId(@Nonnull String messageId);
 
     //设置时间戳
-    ThingMessageReply timestamp(@Nonnull long timestamp);
+    ThingMessageReply timestamp(long timestamp);
 
     //添加头
     @Override
@@ -90,6 +94,7 @@ public interface ThingMessageReply extends ThingMessage {
     }
 
     @Override
+    @SuppressWarnings("all")
     default void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         ThingMessage.super.readExternal(in);
         this.success(in.readBoolean());
