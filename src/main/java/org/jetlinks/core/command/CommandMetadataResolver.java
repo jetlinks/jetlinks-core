@@ -2,10 +2,12 @@ package org.jetlinks.core.command;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
+import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.utils.MetadataUtils;
 import org.springframework.core.ResolvableType;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
@@ -147,6 +149,7 @@ public class CommandMetadataResolver {
         }
         metadata.setInputs(resolveInputs(commandClazz));
         metadata.setOutput(resolveOutput(outClazz));
+        metadata.setExpands(MetadataUtils.parseExpands(clazz));
         return metadata;
     }
 
@@ -178,6 +181,7 @@ public class CommandMetadataResolver {
         prop.setDescription(schema.description());
         prop.setName(StringUtils.hasText(schema.title()) ? schema.title() : prop.getDescription());
         prop.setValueType(MetadataUtils.parseType(ResolvableType.forMethodReturnType(method, clazz)));
+        prop.setExpands(MetadataUtils.parseExpands(method));
         return prop;
     }
 

@@ -5,6 +5,7 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.annotation.ui.Selector;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import org.jetlinks.core.metadata.PropertyMetadata;
@@ -141,6 +142,7 @@ public class CommandMetadataResolverTest {
     public static class Test1Command extends AbstractCommand<Mono<String>, Test1Command> {
 
         @Schema(description = "Str")
+        @Selector(type = "device")
         public String getStr() {
             return getOrNull("str", String.class);
         }

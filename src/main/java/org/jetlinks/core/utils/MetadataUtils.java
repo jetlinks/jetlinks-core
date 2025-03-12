@@ -1,12 +1,11 @@
 package org.jetlinks.core.utils;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.apache.commons.beanutils.BeanUtilsBean;
-import org.apache.commons.beanutils.PropertyUtils;
-import org.apache.commons.beanutils.PropertyUtilsBean;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.hswebframework.web.dict.EnumDict;
-import org.hswebframework.web.i18n.LocaleUtils;
+import org.jetlinks.core.annotation.Attr;
+import org.jetlinks.core.annotation.Expands;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.Metadata;
 import org.jetlinks.core.metadata.PropertyMetadata;
@@ -16,12 +15,15 @@ import org.jetlinks.core.things.ThingsConfigKeys;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 import reactor.util.function.Tuples;
 
 import java.beans.IntrospectionException;
 import java.beans.PropertyDescriptor;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
@@ -134,29 +136,125 @@ public class MetadataUtils {
         return MetadataParser.withType(type);
     }
 
+    /**
+     * 解析拓展信息
+     *
+     * @param element 元素
+     * @return 属性元数据
+     */
+    public static Map<String, Object> parseExpands(AnnotatedElement element) {
+        Map<String, Object> expands = new HashMap<>();
+        MetadataParser.parseExpands(element, true, expands);
+        return expands;
+    }
+
     static class MetadataParser {
 
 
         Set<Object> distinct = new HashSet<>();
 
         public static PropertyMetadata withField(Field field, ResolvableType type) {
-            return new MetadataParser().withField0(null, field, type);
+            return new MetadataParser().withField0(field.getDeclaringClass(), field, type);
         }
 
         public static DataType withType(ResolvableType type) {
             return new MetadataParser().withType0(null, type);
         }
 
+        static void parseAttr(AnnotatedElement element,
+                              Map<String, Object> container) {
 
-        private PropertyMetadata withField0(Object owner, Field field, ResolvableType type) {
+            Set<Attr> attrs = AnnotatedElementUtils
+                .findMergedRepeatableAnnotations(
+                    element,
+                    Attr.class
+                );
 
-            Schema schema = this.getSchema(type.toClass(), field);
+            for (Attr attr : attrs) {
+                container.putIfAbsent(attr.key(), attr.value());
+            }
+
+        }
+
+
+        static void parseExpands(AnnotatedElement element,
+                                 boolean includeName,
+                                 Map<String, Object> container) {
+
+            Annotation[] annotation = element.getAnnotations();
+
+            for (Annotation ann : annotation) {
+
+                Set<Expands> expandsSet = new HashSet<>();
+                if (ann instanceof Expands) {
+                    expandsSet.add(((Expands) ann));
+                } else if (ann instanceof Expands.List) {
+                    expandsSet.addAll(Arrays.asList(((Expands.List) ann).value()));
+                } else {
+
+                    expandsSet.addAll(
+                        AnnotatedElementUtils
+                            .findMergedRepeatableAnnotations(ann.annotationType(), Expands.class)
+                    );
+
+                    Expands e = AnnotatedElementUtils
+                        .findMergedAnnotation(ann.annotationType(), Expands.class);
+                    if (e == null) {
+                        continue;
+                    }
+                    expandsSet.add(e);
+                }
+
+
+                if (CollectionUtils.isNotEmpty(expandsSet)) {
+                    for (Expands exp : expandsSet) {
+                        Map<String, Object> c = container;
+
+                        // 平铺
+                        if (includeName && StringUtils.hasText(exp.key())) {
+                            c = new HashMap<>();
+                            container.put(exp.key(), c);
+                        }
+                        // 注解继承的方式
+                        if (ann.annotationType() != Expands.class &&
+                            ann.annotationType() != Expands.List.class) {
+                            AnnotationUtils
+                                .getAnnotationAttributes(
+                                    ann,
+                                    true,
+                                    true)
+                                .forEach(c::putIfAbsent);
+                            parseExpands(ann.annotationType(), false, c);
+                            parseAttr(ann.annotationType(), c);
+                        }
+                        // 直接定义了attr
+                        for (Attr attr : exp.value()) {
+                            c.putIfAbsent(attr.key(), attr.value());
+                        }
+                    }
+                }
+            }
+        }
+
+        private PropertyMetadata withField0(Class<?> owner, Field field, ResolvableType type) {
+            Schema schema = this.getSchema(owner, field);
             String id = field.getName();
 
             SimplePropertyMetadata metadata = new SimplePropertyMetadata();
             metadata.setId(id);
             metadata.setName(id);
             metadata.setValueType(withType0(field, type));
+
+            Map<String, Object> expands = new HashMap<>();
+            // 在getter方法上定义的注解
+            Method method = getReadMethod(owner, field);
+            if (method != null) {
+                parseExpands(method, true, expands);
+            }
+            // 在字段上定义的注解
+            parseExpands(field, true, expands);
+
+            metadata.setExpands(expands);
 
             if (null != schema) {
                 if (StringUtils.hasText(schema.description())) {
@@ -250,19 +348,24 @@ public class MetadataUtils {
             return objectType;
         }
 
-        private Schema getSchema(Class<?> owner, Field field) {
+        private Method getReadMethod(Class<?> owner, Field field) {
             String name = field.getName();
             try {
                 PropertyDescriptor descriptor = new PropertyDescriptor(name, owner);
-                Method method = descriptor.getReadMethod();
-                if (method != null) {
-                    Schema schema = AnnotatedElementUtils.getMergedAnnotation(field, Schema.class);
-                    if (schema != null) {
-                        return schema;
-                    }
-                }
+                return descriptor.getReadMethod();
             } catch (IntrospectionException ignore) {
 
+            }
+            return null;
+        }
+
+        private Schema getSchema(Class<?> owner, Field field) {
+            Method readMethod = getReadMethod(owner, field);
+            if (readMethod != null) {
+                Schema schema = AnnotatedElementUtils.getMergedAnnotation(readMethod, Schema.class);
+                if (schema != null) {
+                    return schema;
+                }
             }
             return AnnotatedElementUtils.getMergedAnnotation(field, Schema.class);
         }
