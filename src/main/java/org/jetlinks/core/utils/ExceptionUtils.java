@@ -38,6 +38,15 @@ public class ExceptionUtils {
         unimportantPackages.addAll(Arrays.asList(packageName));
     }
 
+    public static boolean isUnimportant(String className) {
+        for (String unimportantPackage : unimportantPackages) {
+            if (className.startsWith(unimportantPackage)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean isUnimportant(StackTraceElement element) {
         for (String unimportantPackage : unimportantPackages) {
             if (element.getClassName().startsWith(unimportantPackage)) {
