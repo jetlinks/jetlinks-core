@@ -2,6 +2,7 @@ package org.jetlinks.core.command;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
+import org.jetlinks.core.annotation.Attrs;
 import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.utils.MetadataUtils;
@@ -11,9 +12,7 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * 基于注解{@link Schema}的命令元数据解析器.
@@ -178,6 +177,7 @@ public class CommandMetadataResolver {
         prop.setDescription(schema.description());
         prop.setName(StringUtils.hasText(schema.title()) ? schema.title() : prop.getDescription());
         prop.setValueType(MetadataUtils.parseType(ResolvableType.forMethodReturnType(method, clazz)));
+        tryResolveProperty(method, prop);
         return prop;
     }
 
@@ -194,5 +194,15 @@ public class CommandMetadataResolver {
             }
         }
         return null;
+    }
+
+    private static void tryResolveProperty(Method method, PropertyMetadata metadata) {
+        Attrs attrs = AnnotationUtils.findAnnotation(method, Attrs.class);
+        if (Objects.isNull(attrs)) {
+            return;
+        }
+        Arrays
+            .stream(attrs.attrs())
+            .forEach(attr -> metadata.expand(attr.key(), attr.value()));
     }
 }
