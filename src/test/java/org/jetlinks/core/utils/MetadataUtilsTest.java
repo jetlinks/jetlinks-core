@@ -25,6 +25,11 @@ public class MetadataUtilsTest {
 
 
     @Test
+    public void testParseExpands(){
+
+    }
+
+    @Test
     public void testAttr() {
 
         ObjectType type = (ObjectType) MetadataUtils.parseType(ResolvableType.forType(TestEntity.class));

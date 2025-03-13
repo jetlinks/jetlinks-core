@@ -18,8 +18,10 @@ import static java.lang.annotation.ElementType.*;
 @Target({FIELD, METHOD, PARAMETER, ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-@Expands(key = "selector")
+@Expands(key = Selector.KEY)
 public @interface Selector {
+
+    String KEY = "selector";
 
     /**
      * 选择器类型

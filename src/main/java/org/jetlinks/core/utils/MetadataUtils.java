@@ -139,6 +139,18 @@ public class MetadataUtils {
     /**
      * 解析拓展信息
      *
+     * @param annotations 注解对象
+     * @return 属性元数据
+     */
+    public static Map<String, Object> parseExpands(Annotation... annotations) {
+        Map<String, Object> expands = new HashMap<>();
+        MetadataParser.parseExpands(annotations, true, expands);
+        return expands;
+    }
+
+    /**
+     * 解析拓展信息
+     *
      * @param element 元素
      * @return 属性元数据
      */
@@ -176,13 +188,9 @@ public class MetadataUtils {
 
         }
 
-
-        static void parseExpands(AnnotatedElement element,
+        static void parseExpands(Annotation[] annotation,
                                  boolean includeName,
                                  Map<String, Object> container) {
-
-            Annotation[] annotation = element.getAnnotations();
-
             for (Annotation ann : annotation) {
 
                 Set<Expands> expandsSet = new HashSet<>();
@@ -234,6 +242,12 @@ public class MetadataUtils {
                     }
                 }
             }
+        }
+
+        static void parseExpands(AnnotatedElement element,
+                                 boolean includeName,
+                                 Map<String, Object> container) {
+            parseExpands(element.getAnnotations(), includeName, container);
         }
 
         private PropertyMetadata withField0(Class<?> owner, Field field, ResolvableType type) {
