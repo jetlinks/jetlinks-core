@@ -13,7 +13,7 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -81,7 +81,7 @@ public class CommandMetadataResolver {
             }
             //AbstractCommand 基于方法来解析
             if (AbstractCommand.class.isAssignableFrom(clazz)) {
-                Map<String, PropertyMetadata> inputsMap = new HashMap<>();
+                Map<String, PropertyMetadata> inputsMap = new LinkedHashMap<>();
                 ReflectionUtils.doWithMethods(clazz, method -> {
                     PropertyMetadata prop = tryResolveProperty(clazz, method);
                     if (prop != null) {
