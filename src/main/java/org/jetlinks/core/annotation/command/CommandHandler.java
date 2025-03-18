@@ -108,6 +108,7 @@ public @interface CommandHandler {
      *
      * @return Attr
      * @see FunctionMetadata#getExpands()
+     * @see org.jetlinks.core.annotation.Expands
      */
     Attr[] expands() default {};
 
