@@ -3,6 +3,7 @@ package org.jetlinks.core.utils;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.hswebframework.ezorm.core.CastUtil;
 import org.hswebframework.web.dict.EnumDict;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.Expands;
@@ -15,6 +16,7 @@ import org.jetlinks.core.things.ThingsConfigKeys;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
@@ -226,12 +228,17 @@ public class MetadataUtils {
                         // 注解继承的方式
                         if (ann.annotationType() != Expands.class &&
                             ann.annotationType() != Expands.List.class) {
-                            AnnotationUtils
-                                .getAnnotationAttributes(
-                                    ann,
-                                    true,
-                                    true)
-                                .forEach(c::putIfAbsent);
+                            AnnotationAttributes annotationAttributes = AnnotationUtils
+                                .getAnnotationAttributes(ann, false, true);
+                            for (Map.Entry<String, Object> entry : annotationAttributes.entrySet()) {
+                                if (entry.getValue() instanceof Class<?>) {
+                                    DataType parseType = parseType(ResolvableType.forClass(CastUtil.cast(entry.getValue())));
+                                    List<PropertyMetadata> properties = ((ObjectType) parseType).getProperties();
+                                    c.putIfAbsent(entry.getKey(), properties);
+                                } else {
+                                    c.putIfAbsent(entry.getKey(), entry.getValue());
+                                }
+                            }
                             parseExpands(ann.annotationType(), false, c);
                             parseAttr(ann.annotationType(), c);
                         }
