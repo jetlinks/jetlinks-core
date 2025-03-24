@@ -22,6 +22,7 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 import reactor.util.function.Tuples;
 
+import javax.validation.constraints.NotBlank;
 import java.beans.IntrospectionException;
 import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
@@ -210,6 +211,10 @@ public class MetadataUtils {
                     Expands e = AnnotatedElementUtils
                         .findMergedAnnotation(ann.annotationType(), Expands.class);
                     if (e == null) {
+                        Class<? extends Annotation> annotationType = ann.annotationType();
+                        if (annotationType == NotBlank.class) {
+                            container.putIfAbsent(StringUtils.uncapitalize(annotationType.getSimpleName()), true);
+                        }
                         continue;
                     }
                     expandsSet.add(e);
