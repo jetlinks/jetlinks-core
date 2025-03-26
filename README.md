@@ -2,7 +2,6 @@
 # JetLinks Core
 [![Maven Central](https://img.shields.io/maven-central/v/org.jetlinks/jetlinks-core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cjetlinks-core)
 [![Maven metadata URL](https://img.shields.io/maven-metadata/v/https/oss.sonatype.org/content/repositories/snapshots/org/jetlinks/jetlinks-core/maven-metadata.xml.svg)](https://oss.sonatype.org/content/repositories/snapshots/org/jetlinks/jetlinks-core)
-[![Build Status](https://travis-ci.com/jetlinks/jetlinks-core.svg?branch=master)](https://travis-ci.com/jetlinks/jetlinks-core)
 [![codecov](https://codecov.io/gh/jetlinks/jetlinks-core/branch/master/graph/badge.svg)](https://codecov.io/gh/jetlinks/jetlinks-core)
 
 本仓库为JetLinks核心模块,提供通用的API和工具封装,
