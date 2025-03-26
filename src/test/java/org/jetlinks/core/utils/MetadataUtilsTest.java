@@ -5,6 +5,7 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.validator.CreateGroup;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.Expands;
 import org.jetlinks.core.annotation.ui.Selector;
@@ -13,6 +14,9 @@ import org.junit.Test;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AliasFor;
 
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -72,9 +76,11 @@ public class MetadataUtilsTest {
 
         @Schema(title = "设备ID")
         @DeviceSelector(multiple = true,custom = @CustomAnnotation(x = "2"))
+        @NotBlank(groups = CreateGroup.class)
         private String deviceId;
 
         @Schema(title = "产品ID")
+        @Pattern(regexp = "^[0-9a-zA-Z_\\-]+$")
         public String productId;
 
         @Expands({@Attr(key = "k1", value = "v1"), @Attr(key = "k2", value = "v2")})

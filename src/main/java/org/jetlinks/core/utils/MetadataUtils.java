@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import com.google.common.collect.Sets;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -164,8 +165,16 @@ public class MetadataUtils {
 
     static class MetadataParser {
 
+        static final Set<String> jsr303Packages = Sets.newHashSet(
+            "javax.validation.constraints",
+            "jakarta.validation.constraints",
+            "org.hibernate.validator.constraints"
+        );
 
         Set<Object> distinct = new HashSet<>();
+
+        MetadataParser() {
+        }
 
         public static PropertyMetadata withField(Field field, ResolvableType type) {
             return new MetadataParser().withField0(field.getDeclaringClass(), field, type);
@@ -173,6 +182,43 @@ public class MetadataUtils {
 
         public static DataType withType(ResolvableType type) {
             return new MetadataParser().withType0(null, type);
+        }
+
+        static void parseJsr303(Annotation[] annotation,
+                                Map<String, Object> container) {
+            List<Map<String, Object>> validators = new ArrayList<>();
+            for (Annotation ann : annotation) {
+                if (jsr303Packages.contains(ann.annotationType().getPackage().getName())) {
+                    Map<String, Object> validator =
+                        new HashMap<>(AnnotationUtils.getAnnotationAttributes(
+                            ann,
+                            true,
+                            true));
+                    validator.put("type", ann.annotationType().getSimpleName());
+                    validator.compute("groups", (ignore, groups) -> {
+                        if (groups instanceof String[]) {
+                            @SuppressWarnings("all")
+                            String[] lst = ((String[]) groups);
+                            if(lst.length==0){
+                                return null;
+                            }
+                            for (int i = 0; i < lst.length; i++) {
+                                if(lst[i].contains(".")) {
+                                    lst[i] = lst[i].substring(lst[i].lastIndexOf('.') + 1);
+                                }
+                            }
+                            return lst;
+                        }
+                        return null;
+                    });
+                    validator.remove("payload");
+                    validator.remove("message");
+                    validators.add(validator);
+                }
+            }
+            if (!validators.isEmpty()) {
+                container.putIfAbsent("validators", validators);
+            }
         }
 
         static void parseAttr(AnnotatedElement element,
@@ -249,6 +295,8 @@ public class MetadataUtils {
                     }
                 }
             }
+
+            parseJsr303(annotation, container);
         }
 
         static void parseExpands(AnnotatedElement element,
