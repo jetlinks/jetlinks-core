@@ -348,7 +348,8 @@ public class MetadataUtils {
             if (Publisher.class.isAssignableFrom(clazz)) {
                 clazz = type.getGeneric(0).toClass();
             }
-            if (List.class.isAssignableFrom(clazz)) {
+            if (List.class.isAssignableFrom(clazz)
+                || Set.class.isAssignableFrom(clazz)) {
                 ArrayType arrayType = new ArrayType();
                 arrayType.setElementType(withType0(owner, type.getGeneric(0)));
                 return arrayType;
