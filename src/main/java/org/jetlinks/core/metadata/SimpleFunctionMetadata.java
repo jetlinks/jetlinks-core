@@ -9,10 +9,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.jetlinks.core.config.ConfigKey;
 
 import javax.annotation.Nonnull;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 @Getter
@@ -31,6 +28,16 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
 
     public static SimpleFunctionMetadata of(String id, String name, List<PropertyMetadata> inputs, DataType output) {
         return SimpleFunctionMetadata.of(id, name, null, null, inputs, output, false);
+    }
+
+    public SimpleFunctionMetadata copy() {
+        return of(id,
+                  name,
+                  description,
+                  expands == null ? null : new HashMap<>(expands),
+                  new ArrayList<>(inputs),
+                  output,
+                  async);
     }
 
     public <T> SimpleFunctionMetadata expand(ConfigKey<T> key, T value) {
