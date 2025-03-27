@@ -7,6 +7,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
@@ -125,6 +126,15 @@ public class ContextWriteCommandSupport implements CommandSupport {
         return contextMono
             .flatMap(ctx -> origin
                 .getCommandMetadata(command)
+                .contextWrite(ctx));
+    }
+
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(@Nonnull String commandId,
+                                                     @Nullable Map<String, Object> parameters) {
+        return contextMono
+            .flatMap(ctx -> origin
+                .getCommandMetadata(commandId,parameters)
                 .contextWrite(ctx));
     }
 

@@ -1,11 +1,13 @@
 package org.jetlinks.core.command;
 
+import org.apache.commons.collections4.MapUtils;
 import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Objects;
 
@@ -153,6 +155,22 @@ public interface CommandSupport extends Wrapper {
             .getCommandMetadata()
             .filter(cmd -> Objects.equals(cmd.getId(), commandId))
             .singleOrEmpty();
+    }
+
+    /**
+     * 根据指定的命令获取命令元数据信息,命令可能根据参数的不同返回不同的结果.
+     *
+     * @return 命令元数据信息
+     * @since 1.2.3
+     */
+    default Mono<FunctionMetadata> getCommandMetadata(@Nonnull String commandId,
+                                                      @Nullable Map<String, Object> parameters) {
+        if (MapUtils.isEmpty(parameters)) {
+            return getCommandMetadata(commandId);
+        }
+        return this
+            .createCommandAsync(commandId)
+            .flatMap(cmd -> this.getCommandMetadata(cmd.with(parameters)));
     }
 
     /**
