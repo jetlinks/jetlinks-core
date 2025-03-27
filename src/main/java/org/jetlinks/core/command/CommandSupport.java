@@ -156,6 +156,16 @@ public interface CommandSupport extends Wrapper {
     }
 
     /**
+     * 根据指定的命令获取命令元数据信息,命令可能根据参数的不同返回不同的结果.
+     *
+     * @return 命令元数据信息
+     * @since 1.2.3
+     */
+    default Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        return getCommandMetadata(command.getCommandId());
+    }
+
+    /**
      * 判断是否支持此命令
      *
      * @param cmd 命令

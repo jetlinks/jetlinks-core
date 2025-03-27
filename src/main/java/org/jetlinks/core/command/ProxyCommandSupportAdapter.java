@@ -58,6 +58,7 @@ public class ProxyCommandSupportAdapter implements ProxyCommandSupport {
         return target.createCommandAsync(commandId);
     }
 
+
     @Override
     public Mono<Boolean> commandIsSupported(Class<? extends Command<?>> cmd) {
         return target.commandIsSupported(cmd);
@@ -71,6 +72,11 @@ public class ProxyCommandSupportAdapter implements ProxyCommandSupport {
     @Override
     public Mono<FunctionMetadata> getCommandMetadata(String commandId) {
         return target.getCommandMetadata(commandId);
+    }
+
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        return target.getCommandMetadata(command);
     }
 
     @Override

@@ -74,6 +74,11 @@ public interface ProxyCommandSupport extends CommandSupport {
     }
 
     @Override
+    default Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        return getProxyTarget().getCommandMetadata(command);
+    }
+
+    @Override
     default Mono<Object> executeToMono(Command<?> command) {
         return getProxyTarget().executeToMono(command);
     }

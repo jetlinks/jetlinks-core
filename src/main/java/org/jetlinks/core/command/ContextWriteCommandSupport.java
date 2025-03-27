@@ -121,6 +121,14 @@ public class ContextWriteCommandSupport implements CommandSupport {
     }
 
     @Override
+    public Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        return contextMono
+            .flatMap(ctx -> origin
+                .getCommandMetadata(command)
+                .contextWrite(ctx));
+    }
+
+    @Override
     public Mono<Boolean> commandIsSupported(Command<?> cmd) {
         return contextMono
             .flatMap(ctx -> origin

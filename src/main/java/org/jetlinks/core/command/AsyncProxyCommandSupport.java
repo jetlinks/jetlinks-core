@@ -87,6 +87,11 @@ public class AsyncProxyCommandSupport implements CommandSupport {
     }
 
     @Override
+    public Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        return asyncCommand.flatMap(s -> s.getCommandMetadata(command));
+    }
+
+    @Override
     public Mono<Boolean> commandIsSupported(String commandId) {
         return asyncCommand.flatMap(s -> s.commandIsSupported(commandId));
     }

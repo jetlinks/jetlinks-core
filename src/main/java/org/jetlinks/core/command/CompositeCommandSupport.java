@@ -153,6 +153,17 @@ public class CompositeCommandSupport implements CommandSupport {
     }
 
     @Override
+    public Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        for (AbstractCommandSupport support : supports) {
+            boolean supported = support.commandIsSupported0(command.getCommandId());
+            if (supported) {
+                return support.getCommandMetadata(command);
+            }
+        }
+        return Mono.error(unsupportedCommand(command));
+    }
+
+    @Override
     public Mono<FunctionMetadata> getCommandMetadata(String commandId) {
         for (AbstractCommandSupport support : supports) {
             boolean supported = support.commandIsSupported0(commandId);
