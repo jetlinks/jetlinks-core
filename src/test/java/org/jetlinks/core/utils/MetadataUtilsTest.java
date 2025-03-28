@@ -15,15 +15,16 @@ import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AliasFor;
 
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 
 import static java.lang.annotation.ElementType.*;
-import static java.lang.annotation.ElementType.PARAMETER;
 
 public class MetadataUtilsTest {
 
@@ -40,6 +41,13 @@ public class MetadataUtilsTest {
 
         System.out.println(JSON.toJSONString(type, SerializerFeature.PrettyFormat));
 
+    }
+
+    @Test
+    public void testCollectionParse() {
+        ObjectType type = (ObjectType) MetadataUtils.parseType(ResolvableType.forType(CollectionsTest.class));
+
+        System.out.println(JSON.toJSONString(type, SerializerFeature.PrettyFormat));
     }
 
 
@@ -91,6 +99,21 @@ public class MetadataUtilsTest {
         public String getProductId() {
             return productId;
         }
+    }
+
+    @Getter
+    @Setter
+    public static class CollectionsTest {
+
+
+        @Schema(title = "set集合")
+        private Set<String> set;
+
+        @Schema(title = "list集合")
+        private List<String> list;
+
+        @Schema(title = "collection集合")
+        private Collection<String> collection;
     }
 
 }
