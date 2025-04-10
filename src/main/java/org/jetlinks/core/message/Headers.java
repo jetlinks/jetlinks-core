@@ -243,6 +243,12 @@ public interface Headers {
     HeaderKey<Boolean> replyNoMessageId = HeaderKey.of("replyNoMessageId", false, Boolean.class);
 
     /**
+     * 设备注销时是否同步删除设备
+     */
+    HeaderKey<Object> deleteOnUnRegister = HeaderKey.of("deleteOnUnRegister", false, Boolean.class);
+
+
+    /**
      * copy有意义的header到新到消息中,比如标记异步,超时等信息
      *
      * @param from from
