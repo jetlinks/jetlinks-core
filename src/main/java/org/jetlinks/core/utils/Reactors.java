@@ -83,6 +83,10 @@ public interface Reactors {
         if (mono instanceof Callable) {
             return (T) ((Callable<?>) mono).call();
         }
+        // 在阻塞线程中,使用单独的调度器来切换到非阻塞线程
+        if (!Schedulers.isNonBlockingThread(Thread.currentThread())) {
+            mono = mono.subscribeOn(Schedulers.parallel());
+        }
 
         //在非阻塞线程中,使用toFuture处理.
         if (Schedulers.isNonBlockingThread(Thread.currentThread()) || timeout.isZero()) {
