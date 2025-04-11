@@ -1,5 +1,6 @@
 package org.jetlinks.core.command;
 
+import com.google.common.collect.Lists;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.*;
@@ -13,7 +14,6 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 基于注解{@link Schema}的命令元数据解析器.
@@ -91,15 +91,9 @@ public class CommandMetadataResolver {
                         inputsMap.putIfAbsent(method.getName(), prop);
                     }
                 });
-                return inputsMap
-                    .values()
-                    .stream()
-                    .sorted((metadata, antherMetadata) -> {
-                        Integer order = indexMap.getOrDefault(metadata.getId(), Integer.MAX_VALUE);
-                        Integer antherOrder = indexMap.getOrDefault(antherMetadata.getId(), Integer.MAX_VALUE);
-                        return order.compareTo(antherOrder);
-                    })
-                    .collect(Collectors.toList());
+                List<PropertyMetadata> list = Lists.newArrayList(inputsMap.values());
+                list.sort(Comparator.comparingLong(m -> indexMap.getOrDefault(m.getId(), Integer.MAX_VALUE)));
+                return list;
             }
         }
         DataType objectType = MetadataUtils.parseType(type);
