@@ -8,14 +8,12 @@ import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.utils.MetadataUtils;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.Order;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 基于注解{@link Schema}的命令元数据解析器.
@@ -82,13 +80,20 @@ public class CommandMetadataResolver {
             //AbstractCommand 基于方法来解析
             if (AbstractCommand.class.isAssignableFrom(clazz)) {
                 Map<String, PropertyMetadata> inputsMap = new LinkedHashMap<>();
+                Map<String, Integer> indexMap = new HashMap<>();
                 ReflectionUtils.doWithMethods(clazz, method -> {
                     PropertyMetadata prop = tryResolveProperty(clazz, method);
                     if (prop != null) {
+                        Order order = AnnotationUtils.findAnnotation(method, Order.class);
+                        if (order != null) {
+                            indexMap.put(prop.getId(), order.value());
+                        }
                         inputsMap.putIfAbsent(method.getName(), prop);
                     }
                 });
-                return Lists.newArrayList(inputsMap.values());
+                List<PropertyMetadata> list = Lists.newArrayList(inputsMap.values());
+                list.sort(Comparator.comparingLong(m -> indexMap.getOrDefault(m.getId(), Integer.MAX_VALUE)));
+                return list;
             }
         }
         DataType objectType = MetadataUtils.parseType(type);
