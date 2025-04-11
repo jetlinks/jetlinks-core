@@ -1,6 +1,5 @@
 package org.jetlinks.core.command;
 
-import com.google.common.collect.Lists;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.*;
@@ -8,14 +7,13 @@ import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.utils.MetadataUtils;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.Order;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 基于注解{@link Schema}的命令元数据解析器.
@@ -82,13 +80,26 @@ public class CommandMetadataResolver {
             //AbstractCommand 基于方法来解析
             if (AbstractCommand.class.isAssignableFrom(clazz)) {
                 Map<String, PropertyMetadata> inputsMap = new LinkedHashMap<>();
+                Map<String, Integer> indexMap = new HashMap<>();
                 ReflectionUtils.doWithMethods(clazz, method -> {
                     PropertyMetadata prop = tryResolveProperty(clazz, method);
                     if (prop != null) {
+                        Order order = AnnotationUtils.findAnnotation(method, Order.class);
+                        if (order != null) {
+                            indexMap.put(prop.getId(), order.value());
+                        }
                         inputsMap.putIfAbsent(method.getName(), prop);
                     }
                 });
-                return Lists.newArrayList(inputsMap.values());
+                return inputsMap
+                    .values()
+                    .stream()
+                    .sorted((metadata, antherMetadata) -> {
+                        Integer order = indexMap.getOrDefault(metadata.getId(), Integer.MAX_VALUE);
+                        Integer antherOrder = indexMap.getOrDefault(antherMetadata.getId(), Integer.MAX_VALUE);
+                        return order.compareTo(antherOrder);
+                    })
+                    .collect(Collectors.toList());
             }
         }
         DataType objectType = MetadataUtils.parseType(type);
