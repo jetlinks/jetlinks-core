@@ -6,6 +6,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,7 +22,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
 
     @SuppressWarnings("unchecked")
     protected <C extends Command<R>, R> void registerHandler(Class<C> type,
-                                                                   CommandHandler<C, R> handler) {
+                                                             CommandHandler<C, R> handler) {
         FunctionMetadata metadata = handler.getMetadata();
 
         handlers.put(type, (CommandHandler<Command<?>, ?>) handler);
@@ -33,7 +34,7 @@ public abstract class AbstractCommandSupport implements CommandSupport {
 
     @SuppressWarnings("all")
     protected <C extends Command<R>, R> void registerHandler(String id,
-                                                                   CommandHandler<C, R> handler) {
+                                                             CommandHandler<C, R> handler) {
         handlers.put(id, (CommandHandler<Command<?>, ?>) handler);
     }
 
@@ -73,12 +74,12 @@ public abstract class AbstractCommandSupport implements CommandSupport {
     @Override
     public Flux<FunctionMetadata> getCommandMetadata() {
         return Flux
-                .fromIterable(handlers.values())
-                .distinct()
-                .mapNotNull(handler -> Optional
-                        .ofNullable(handler.getMetadata())
-                        .map(m-> CommandUtils.wrapMetadata(handler.createCommand(), m))
-                        .orElse(null));
+            .fromIterable(handlers.values())
+            .distinct()
+            .mapNotNull(handler -> Optional
+                .ofNullable(handler.getMetadata())
+                .map(m -> CommandUtils.wrapMetadata(handler.createCommand(), m))
+                .orElse(null));
     }
 
     @Override
@@ -86,12 +87,35 @@ public abstract class AbstractCommandSupport implements CommandSupport {
         return Mono.justOrEmpty(getRegisteredMetadata(commandId));
     }
 
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        CommandHandler<Command<?>, ?> handler = handlers.get(command.getCommandId());
+        if (handler != null) {
+            return handler
+                .getMetadata(command)
+                .map(m -> CommandUtils.wrapMetadata(handler.createCommand(), m));
+        }
+        return Mono.empty();
+    }
+
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(@Nonnull String commandId,
+                                                     @Nullable Map<String, Object> parameters) {
+        CommandHandler<Command<?>, ?> handler = handlers.get(commandId);
+        if (handler != null) {
+            return handler
+                .getMetadata(handler.createCommand().with(parameters))
+                .map(m -> CommandUtils.wrapMetadata(handler.createCommand(), m));
+        }
+        return Mono.empty();
+    }
+
     public Optional<FunctionMetadata> getRegisteredMetadata(String commandId) {
         CommandHandler<Command<?>, ?> handler = handlers.get(commandId);
         if (handler != null) {
             return Optional
-                    .ofNullable(handler.getMetadata())
-                    .map(m-> CommandUtils.wrapMetadata(handler.createCommand(), m));
+                .ofNullable(handler.getMetadata())
+                .map(m -> CommandUtils.wrapMetadata(handler.createCommand(), m));
         }
         return Optional.empty();
     }

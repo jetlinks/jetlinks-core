@@ -7,6 +7,8 @@ import org.jetlinks.core.GenericHeaderSupport;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
 
+import javax.annotation.Nonnull;
+
 /**
  * @author zhouhao
  * @since 1.0.0
@@ -35,19 +37,19 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     private long timestamp = System.currentTimeMillis();
 
     @Override
-    public ThingMessageReply thingId(String type, String thingId) {
+    public ThingMessageReply thingId(@Nonnull String type, @Nonnull String thingId) {
         this.thingType = type;
         this.thingId = thingId;
         return this;
     }
 
-    public SELF code(String code) {
+    public SELF code(@Nonnull String code) {
         this.code = code;
 
         return castSelf();
     }
 
-    public SELF message(String message) {
+    public SELF message(@Nonnull String message) {
         this.message = message;
 
         return castSelf();
@@ -94,7 +96,7 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     }
 
     @Override
-    public SELF from(Message message) {
+    public SELF from(@Nonnull Message message) {
         this.messageId = message.getMessageId();
         if (message instanceof ThingMessage) {
             this.thingId = ((ThingMessage) message).getThingId();
@@ -104,7 +106,7 @@ public class CommonThingMessageReply<SELF extends CommonThingMessageReply<SELF>>
     }
 
     @Override
-    public SELF messageId(String messageId) {
+    public SELF messageId(@Nonnull String messageId) {
         this.messageId = messageId;
         return castSelf();
     }

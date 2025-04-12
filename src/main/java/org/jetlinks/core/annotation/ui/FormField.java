@@ -2,6 +2,7 @@ package org.jetlinks.core.annotation.ui;
 
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.jetlinks.core.annotation.Expands;
 
 import java.lang.annotation.*;
 
@@ -15,6 +16,7 @@ import java.lang.annotation.*;
 @Target({ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
+@Expands(key = "form")
 public @interface FormField {
 
     /**

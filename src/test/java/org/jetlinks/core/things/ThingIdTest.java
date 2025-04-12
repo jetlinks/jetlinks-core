@@ -10,6 +10,7 @@ public class ThingIdTest {
     public void test(){
         ThingId one =  ThingId.of("test","1");
         ThingId two =  ThingId.of("test","1");
+        System.out.println(one.toUniqueId());
         assertEquals(one,two);
         assertEquals(one.hashCode(),two.hashCode());
         assertEquals(one.toUniqueId(), two.toUniqueId());

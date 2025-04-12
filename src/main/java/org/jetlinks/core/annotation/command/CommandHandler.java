@@ -9,6 +9,7 @@ import org.springframework.core.ResolvableType;
 
 import java.lang.annotation.*;
 import java.lang.reflect.Type;
+import java.util.Map;
 
 /**
  * 标记一个方法为命令处理器,用于对外提供命令实现
@@ -104,10 +105,36 @@ public @interface CommandHandler {
     Class<?> outputSpec() default Void.class;
 
     /**
+     * 使用指定的方法来提供output信息.
+     * <p>
+     * 执行{@link org.jetlinks.core.command.CommandSupport#getCommandMetadata(Command)}  }将会使用指定的方法来获取输出类型.
+     *
+     * <pre>{@code
+     *   // 使用parseOutput来构建输出参数
+     *   @CommandHandler(outputProvider = "parseOutput")
+     *   public Mono<Void> doSomeThing(DoSomeThingCommand cmd){
+     *    ///...
+     *   }
+     *
+     *   public Mono<DataType> parseOutput(DoSomeThingCommand cmd){
+     *
+     *   }
+     * }</pre>
+     *
+     * @return 方法名
+     * @see org.jetlinks.core.command.CommandSupport#getCommandMetadata(Command)
+     * @see org.jetlinks.core.command.CommandSupport#getCommandMetadata(String, Map)
+     * @see org.jetlinks.core.metadata.DataType
+     * @since 1.2.3
+     */
+    String outputProvider() default "";
+
+    /**
      * 其他拓展配置
      *
      * @return Attr
      * @see FunctionMetadata#getExpands()
+     * @see org.jetlinks.core.annotation.Expands
      */
     Attr[] expands() default {};
 

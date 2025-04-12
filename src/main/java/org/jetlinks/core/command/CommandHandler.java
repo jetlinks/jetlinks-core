@@ -1,6 +1,7 @@
 package org.jetlinks.core.command;
 
 import org.jetlinks.core.metadata.FunctionMetadata;
+import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.util.function.BiFunction;
@@ -27,6 +28,7 @@ public interface CommandHandler<C extends Command<Response>, Response> {
 
     /**
      * 创建命令
+     *
      * @return 命令实例
      */
     @Nonnull
@@ -40,13 +42,24 @@ public interface CommandHandler<C extends Command<Response>, Response> {
     FunctionMetadata getMetadata();
 
     /**
+     * 根据命令获取元数据
+     *
+     * @param cmd 命令
+     * @return 元数据
+     */
+    default Mono<FunctionMetadata> getMetadata(Command<?> cmd) {
+        return Mono.just(getMetadata());
+    }
+
+    /**
      * 通过lambda创建命令处理器
-     * @param metadata 元数据
-     * @param executor 执行器
+     *
+     * @param metadata       元数据
+     * @param executor       执行器
      * @param commandBuilder 命令构建器
+     * @param <R>            命令执行结果类型
+     * @param <C>            命令类型
      * @return 命令处理器
-     * @param <R> 命令执行结果类型
-     * @param <C> 命令类型
      */
     static <R, C extends Command<R>> CommandHandler<C, R> of(FunctionMetadata metadata,
                                                              BiFunction<C, CommandSupport, R> executor,
@@ -56,12 +69,13 @@ public interface CommandHandler<C extends Command<Response>, Response> {
 
     /**
      * 通过lambda创建命令处理器
-     * @param metadata 元数据
-     * @param executor 执行器
+     *
+     * @param metadata       元数据
+     * @param executor       执行器
      * @param commandBuilder 命令构建器
+     * @param <R>            命令执行结果类型
+     * @param <C>            命令类型
      * @return 命令处理器
-     * @param <R> 命令执行结果类型
-     * @param <C> 命令类型
      */
     static <R, C extends Command<R>> CommandHandler<C, R> of(Supplier<FunctionMetadata> metadata,
                                                              BiFunction<C, CommandSupport, R> executor,

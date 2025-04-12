@@ -18,6 +18,21 @@ public class NumberUtils {
      * @return 转换后的值
      */
     public static double convertEffectiveScale(double origin, int scale) {
+        return convertEffectiveScaleNumber(origin, scale).doubleValue();
+    }
+
+
+    public static String toEffectiveScaleString(double origin, int scale) {
+        Number num = convertEffectiveScaleNumber(origin, scale);
+        if (num instanceof BigDecimal) {
+            return ((BigDecimal) num).toPlainString();
+        }
+        return new BigDecimal(num.toString())
+            .setScale(scale, RoundingMode.HALF_UP)
+            .toPlainString();
+    }
+
+    public static Number convertEffectiveScaleNumber(double origin, int scale) {
         if (origin == 0) {
             return origin;
         }
@@ -38,24 +53,23 @@ public class NumberUtils {
         if (integerPart != 0) {
             return BigDecimal
                 .valueOf(origin)
-                .setScale(scale, RoundingMode.HALF_UP)
-                .doubleValue();
+                .setScale(scale, RoundingMode.HALF_UP);
         }
         int n = scale;
         double temp = decimalPart;
         if (temp < 0) {
-            for (; temp > -1 ; n++) {
+            for (; temp > -1; n++) {
                 temp *= 10;
             }
         } else {
-            for (;temp < 1 ; n++) {
+            for (; temp < 1; n++) {
                 temp *= 10;
             }
         }
         return new BigDecimal(decimalPart)
-            .setScale(n - 1, RoundingMode.HALF_UP)
-            .doubleValue();
+            .setScale(n - 1, RoundingMode.HALF_UP);
     }
+
 
     /**
      * 将数字转为固定长度,超过长度截断,不足长度补0.

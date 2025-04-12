@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -62,6 +63,10 @@ public interface EncodedMessage {
 
     static EmptyMessage empty() {
         return EmptyMessage.INSTANCE;
+    }
+
+    static EncodedMessage simple(byte[] data) {
+        return simple(Unpooled.wrappedBuffer(data), MessagePayloadType.BINARY);
     }
 
     static EncodedMessage simple(ByteBuf data) {

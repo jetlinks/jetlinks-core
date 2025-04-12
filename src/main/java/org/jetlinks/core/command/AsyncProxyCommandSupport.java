@@ -8,9 +8,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Map;
 
 @AllArgsConstructor
 public class AsyncProxyCommandSupport implements CommandSupport {
@@ -39,14 +41,14 @@ public class AsyncProxyCommandSupport implements CommandSupport {
         if (command instanceof ProxyCommand) {
             ProxyCommand cmd = ((ProxyCommand) command);
             return asyncCommand
-                    .flatMapMany(support -> support
-                            .createCommandAsync(cmd.getCommandId())
-                            .doOnNext(proxyCmd -> proxyCmd.with(cmd.readable()))
-                            .flatMapMany(support::executeToFlux));
+                .flatMapMany(support -> support
+                    .createCommandAsync(cmd.getCommandId())
+                    .doOnNext(proxyCmd -> proxyCmd.with(cmd.readable()))
+                    .flatMapMany(support::executeToFlux));
         }
 
         return asyncCommand
-                .flatMapMany(support -> support.executeToFlux(command));
+            .flatMapMany(support -> support.executeToFlux(command));
     }
 
     @Override
@@ -55,14 +57,14 @@ public class AsyncProxyCommandSupport implements CommandSupport {
         if (command instanceof ProxyCommand) {
             ProxyCommand cmd = ((ProxyCommand) command);
             return asyncCommand
-                    .flatMap(support -> support
-                            .createCommandAsync(cmd.getCommandId())
-                            .doOnNext(proxyCmd -> proxyCmd.with(cmd.readable()))
-                            .flatMap(support::executeToMono));
+                .flatMap(support -> support
+                    .createCommandAsync(cmd.getCommandId())
+                    .doOnNext(proxyCmd -> proxyCmd.with(cmd.readable()))
+                    .flatMap(support::executeToMono));
         }
 
         return asyncCommand
-                .flatMap(support -> support.executeToMono(command));
+            .flatMap(support -> support.executeToMono(command));
     }
 
     @Override
@@ -84,6 +86,16 @@ public class AsyncProxyCommandSupport implements CommandSupport {
     @Override
     public final Mono<FunctionMetadata> getCommandMetadata(String commandId) {
         return asyncCommand.flatMap(s -> s.getCommandMetadata(commandId));
+    }
+
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        return asyncCommand.flatMap(s -> s.getCommandMetadata(command));
+    }
+
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(@Nonnull String commandId, @Nullable Map<String, Object> parameters) {
+        return asyncCommand.flatMap(s -> s.getCommandMetadata(commandId, parameters));
     }
 
     @Override

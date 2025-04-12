@@ -6,6 +6,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 
 @AllArgsConstructor
@@ -58,6 +59,7 @@ public class ProxyCommandSupportAdapter implements ProxyCommandSupport {
         return target.createCommandAsync(commandId);
     }
 
+
     @Override
     public Mono<Boolean> commandIsSupported(Class<? extends Command<?>> cmd) {
         return target.commandIsSupported(cmd);
@@ -71,6 +73,17 @@ public class ProxyCommandSupportAdapter implements ProxyCommandSupport {
     @Override
     public Mono<FunctionMetadata> getCommandMetadata(String commandId) {
         return target.getCommandMetadata(commandId);
+    }
+
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        return target.getCommandMetadata(command);
+    }
+
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(@Nonnull String commandId,
+                                                     @Nullable Map<String, Object> parameters) {
+        return target.getCommandMetadata(commandId, parameters);
     }
 
     @Override

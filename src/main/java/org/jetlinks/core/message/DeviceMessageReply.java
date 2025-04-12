@@ -35,7 +35,7 @@ public interface DeviceMessageReply extends DeviceMessage, ThingMessageReply {
     }
 
     //设置设备ID
-    DeviceMessageReply deviceId(String deviceId);
+    DeviceMessageReply deviceId(@Nonnull String deviceId);
 
     //设置成功
     DeviceMessageReply success();
@@ -60,7 +60,7 @@ public interface DeviceMessageReply extends DeviceMessage, ThingMessageReply {
     DeviceMessageReply addHeader(@Nonnull String header, @Nonnull Object value);
 
     @Override
-    default DeviceMessageReply thingId(String type, String thingId) {
+    default DeviceMessageReply thingId(@Nonnull String type, @Nonnull String thingId) {
         deviceId(thingId);
         return this;
     }

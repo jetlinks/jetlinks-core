@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.utils.SerializeUtils;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -42,13 +43,13 @@ public class ChildDeviceMessageReply extends CommonDeviceMessageReply<ChildDevic
     }
 
     @Override
-    public ChildDeviceMessageReply message(String message) {
+    public ChildDeviceMessageReply message(@Nonnull String message) {
         doWithChildReply(message, DeviceMessageReply::message);
         return super.message(message);
     }
 
     @Override
-    public ChildDeviceMessageReply code(String code) {
+    public ChildDeviceMessageReply code(@Nonnull String code) {
         doWithChildReply(code, DeviceMessageReply::code);
         return super.code(code);
     }

@@ -5,6 +5,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
@@ -71,6 +72,17 @@ public interface ProxyCommandSupport extends CommandSupport {
     @Override
     default Mono<FunctionMetadata> getCommandMetadata(String commandId) {
         return getProxyTarget().getCommandMetadata(commandId);
+    }
+
+    @Override
+    default Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        return getProxyTarget().getCommandMetadata(command);
+    }
+
+    @Override
+    default Mono<FunctionMetadata> getCommandMetadata(@Nonnull String commandId,
+                                                      @Nullable Map<String, Object> parameters) {
+        return getProxyTarget().getCommandMetadata(commandId,parameters);
     }
 
     @Override

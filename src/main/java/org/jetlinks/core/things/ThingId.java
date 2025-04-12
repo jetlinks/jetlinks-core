@@ -1,7 +1,7 @@
 package org.jetlinks.core.things;
 
 import lombok.*;
-import org.springframework.util.DigestUtils;
+import org.hswebframework.web.utils.DigestUtils;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -23,12 +23,15 @@ public class ThingId implements Externalizable {
     private String id;
 
     public String toUniqueId() {
-        byte[] typeBytes = type.getBytes(StandardCharsets.UTF_8);
-        byte[] idBytes = id.getBytes(StandardCharsets.UTF_8);
-        byte[] arr = new byte[typeBytes.length + idBytes.length];
-        System.arraycopy(typeBytes, 0, arr, 0, typeBytes.length);
-        System.arraycopy(idBytes, 0, arr, typeBytes.length, idBytes.length);
-        return DigestUtils.md5DigestAsHex(arr);
+//        byte[] typeBytes = type.getBytes(StandardCharsets.UTF_8);
+//        byte[] idBytes = id.getBytes(StandardCharsets.UTF_8);
+//        byte[] arr = new byte[typeBytes.length + idBytes.length];
+//        System.arraycopy(typeBytes, 0, arr, 0, typeBytes.length);
+//        System.arraycopy(idBytes, 0, arr, typeBytes.length, idBytes.length);
+        return DigestUtils.md5Hex(md5->{
+            md5.update(type.getBytes(StandardCharsets.UTF_8));
+            md5.update(id.getBytes(StandardCharsets.UTF_8));
+        });
     }
 
     @Override

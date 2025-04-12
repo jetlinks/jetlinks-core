@@ -1,5 +1,6 @@
 package org.jetlinks.core.command;
 
+import com.google.common.collect.Lists;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.*;
@@ -7,13 +8,12 @@ import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.utils.MetadataUtils;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.Order;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * 基于注解{@link Schema}的命令元数据解析器.
@@ -79,14 +79,21 @@ public class CommandMetadataResolver {
             }
             //AbstractCommand 基于方法来解析
             if (AbstractCommand.class.isAssignableFrom(clazz)) {
-                List<PropertyMetadata> inputs = new ArrayList<>();
+                Map<String, PropertyMetadata> inputsMap = new LinkedHashMap<>();
+                Map<String, Integer> indexMap = new HashMap<>();
                 ReflectionUtils.doWithMethods(clazz, method -> {
                     PropertyMetadata prop = tryResolveProperty(clazz, method);
                     if (prop != null) {
-                        inputs.add(prop);
+                        Order order = AnnotationUtils.findAnnotation(method, Order.class);
+                        if (order != null) {
+                            indexMap.put(prop.getId(), order.value());
+                        }
+                        inputsMap.putIfAbsent(method.getName(), prop);
                     }
                 });
-                return inputs;
+                List<PropertyMetadata> list = Lists.newArrayList(inputsMap.values());
+                list.sort(Comparator.comparingLong(m -> indexMap.getOrDefault(m.getId(), Integer.MAX_VALUE)));
+                return list;
             }
         }
         DataType objectType = MetadataUtils.parseType(type);
@@ -147,6 +154,7 @@ public class CommandMetadataResolver {
         }
         metadata.setInputs(resolveInputs(commandClazz));
         metadata.setOutput(resolveOutput(outClazz));
+        metadata.setExpands(MetadataUtils.parseExpands(clazz));
         return metadata;
     }
 
@@ -178,6 +186,7 @@ public class CommandMetadataResolver {
         prop.setDescription(schema.description());
         prop.setName(StringUtils.hasText(schema.title()) ? schema.title() : prop.getDescription());
         prop.setValueType(MetadataUtils.parseType(ResolvableType.forMethodReturnType(method, clazz)));
+        prop.setExpands(MetadataUtils.parseExpands(method));
         return prop;
     }
 

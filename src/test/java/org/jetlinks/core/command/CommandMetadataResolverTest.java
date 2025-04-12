@@ -5,6 +5,9 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.bean.FastBeanCopier;
+import org.jetlinks.core.annotation.Expands;
+import org.jetlinks.core.annotation.ui.Selector;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import org.jetlinks.core.metadata.PropertyMetadata;
@@ -15,7 +18,13 @@ import org.junit.Test;
 import org.springframework.core.ResolvableType;
 import reactor.core.publisher.Mono;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.*;
 
@@ -141,6 +150,7 @@ public class CommandMetadataResolverTest {
     public static class Test1Command extends AbstractCommand<Mono<String>, Test1Command> {
 
         @Schema(description = "Str")
+        @Selector(type = "device")
         public String getStr() {
             return getOrNull("str", String.class);
         }
@@ -163,6 +173,51 @@ public class CommandMetadataResolverTest {
         private Long number;
 
         private String ignore;
+
+    }
+
+    @Target({ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
+    @Retention(RetentionPolicy.RUNTIME)
+    @Expands(key = "testAnnotation")
+    public @interface TestClassAnnotation {
+
+        Class<?> innerClass() default Object.class;
+
+    }
+
+    @TestClassAnnotation(innerClass = Test2.class)
+    @Schema(title = "测试2", description = "测试2.")
+    public static class Test2Command extends AbstractCommand<Mono<String>, Test2Command> {
+
+        @Schema(description = "Str")
+        public String getStr() {
+            return getOrNull("str", String.class);
+        }
+
+        @Schema(description = "Index")
+        public Integer getIndex() {
+            return getOrNull("index", Integer.class);
+        }
+
+    }
+
+    @Test
+    public void testClassAnnotation() {
+        FunctionMetadata metadata = CommandMetadataResolver.resolve(Test2Command.class);
+        System.out.println(JSON.toJSONString(metadata.toJson(), SerializerFeature.PrettyFormat));
+        assertNotNull(metadata);
+
+        Object testAnnotation = metadata.getExpands().get("testAnnotation");
+        assertNotNull(testAnnotation);
+        Map<String, Object> copy = FastBeanCopier.copy(testAnnotation, new HashMap<>());
+
+        Object innerClass = copy.get("innerClass");
+        assertNotNull(innerClass);
+        List<PropertyMetadata> metadataList = ((List<PropertyMetadata>) innerClass);
+        assertEquals(2, metadataList.size());
+        assertEquals("name", metadataList.get(0).getId());
+        assertEquals("number", metadataList.get(1).getId());
+
 
     }
 

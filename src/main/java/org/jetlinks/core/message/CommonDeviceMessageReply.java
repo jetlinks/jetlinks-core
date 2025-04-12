@@ -8,6 +8,8 @@ import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.GenericHeaderSupport;
 import org.jetlinks.core.enums.ErrorCode;
 
+import javax.annotation.Nonnull;
+
 /**
  * @author zhouhao
  * @since 1.0.0
@@ -47,19 +49,19 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
     }
 
 
-    public Self code(String code) {
+    public Self code(@Nonnull String code) {
         this.code = code;
 
         return castSelf();
     }
 
-    public Self message(String message) {
+    public Self message(@Nonnull String message) {
         this.message = message;
 
         return castSelf();
     }
 
-    public Self deviceId(String deviceId) {
+    public Self deviceId(@Nonnull String deviceId) {
         this.deviceId = deviceId;
 
         return castSelf();
@@ -96,7 +98,7 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
     }
 
     @Override
-    public Self from(Message message) {
+    public Self from(@Nonnull Message message) {
         this.messageId = message.getMessageId();
         if (message instanceof DeviceMessage) {
             this.deviceId = ((DeviceMessage) message).getDeviceId();
@@ -106,7 +108,7 @@ public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self
     }
 
     @Override
-    public Self messageId(String messageId) {
+    public Self messageId(@Nonnull String messageId) {
         this.messageId = messageId;
         return castSelf();
     }

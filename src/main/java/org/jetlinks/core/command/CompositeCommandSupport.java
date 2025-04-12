@@ -6,6 +6,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -150,6 +151,29 @@ public class CompositeCommandSupport implements CommandSupport {
     public Flux<FunctionMetadata> getCommandMetadata() {
         return Flux.fromIterable(supports)
                    .flatMap(CommandSupport::getCommandMetadata);
+    }
+
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(Command<?> command) {
+        for (AbstractCommandSupport support : supports) {
+            boolean supported = support.commandIsSupported0(command.getCommandId());
+            if (supported) {
+                return support.getCommandMetadata(command);
+            }
+        }
+        return Mono.error(unsupportedCommand(command));
+    }
+
+    @Override
+    public Mono<FunctionMetadata> getCommandMetadata(@Nonnull String commandId,
+                                                     @Nullable Map<String, Object> parameters) {
+        for (AbstractCommandSupport support : supports) {
+            boolean supported = support.commandIsSupported0(commandId);
+            if (supported) {
+                return support.getCommandMetadata(commandId, parameters);
+            }
+        }
+        return Mono.error(unsupportedCommand(commandId));
     }
 
     @Override
