@@ -2,10 +2,10 @@ package org.jetlinks.core.monitor.limit;
 
 import org.hswebframework.web.exception.BusinessException;
 
-public class CircuitBreakerClosedException extends BusinessException {
+public class CircuitBreakerOpenedException extends BusinessException {
 
 
-    public CircuitBreakerClosedException(String message) {
+    public CircuitBreakerOpenedException(String message) {
         super(message);
     }
 

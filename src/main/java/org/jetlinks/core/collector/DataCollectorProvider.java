@@ -70,6 +70,26 @@ public interface DataCollectorProvider extends CommandSupport {
     Mono<DataCollectorProvider.PointRuntime> createPoint(PointConfiguration configuration);
 
 
+    interface ChannelConfiguration {
+
+        /**
+         * 获取通道配置
+         *
+         * @return 通道配置
+         */
+        ChannelProperties getProperties();
+
+        /**
+         * 监控器
+         *
+         * @return 监控器
+         * @see Monitor#logger()
+         * @see Monitor#tracer()
+         */
+        Monitor monitor();
+
+    }
+
     interface CollectorConfiguration {
 
         /**
@@ -95,26 +115,6 @@ public interface DataCollectorProvider extends CommandSupport {
     }
 
 
-    interface ChannelConfiguration {
-
-        /**
-         * 获取通道配置
-         *
-         * @return 通道配置
-         */
-        ChannelProperties getProperties();
-
-        /**
-         * 监控器
-         *
-         * @return 监控器
-         * @see Monitor#logger()
-         * @see Monitor#tracer()
-         */
-        Monitor monitor();
-
-    }
-
 
     interface PointConfiguration {
         /**
@@ -132,6 +132,20 @@ public interface DataCollectorProvider extends CommandSupport {
          * @see Monitor#tracer()
          */
         Monitor monitor();
+
+        /**
+         * 获取通道运行时
+         *
+         * @return ChannelRuntime
+         */
+        ChannelRuntime channel();
+
+        /**
+         * 获取采集器运行时
+         *
+         * @return CollectorRuntime
+         */
+        CollectorRuntime collector();
     }
 
     /**
@@ -209,8 +223,18 @@ public interface DataCollectorProvider extends CommandSupport {
         List<Feature> getFeatures();
     }
 
+    /**
+     * 点位运行时
+     *
+     * @since 1.2.3
+     */
     interface PointRuntime extends Lifecycle {
 
+        /**
+         * 点位ID
+         *
+         * @return 点位ID
+         */
         String getId();
 
         /**

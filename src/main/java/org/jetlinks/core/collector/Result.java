@@ -3,6 +3,7 @@ package org.jetlinks.core.collector;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.GenericHeaderSupport;
+import org.jetlinks.core.utils.ExceptionUtils;
 import org.jetlinks.core.utils.SerializeUtils;
 
 import java.io.Externalizable;
@@ -37,6 +38,10 @@ public class Result<T> extends GenericHeaderSupport<Result<T>> implements Extern
      */
     private int code;
 
+    public static Result<Void> success() {
+        return success(null);
+    }
+
     public static <T> Result<T> success(T data) {
         Result<T> result = new Result<>();
         result.setSuccess(true);
@@ -52,12 +57,12 @@ public class Result<T> extends GenericHeaderSupport<Result<T>> implements Extern
         return result;
     }
 
-    public static <T> Result<T> error(Throwable error) {
+    public static <T> Result<T> error(int code, Throwable error) {
         Result<T> result = new Result<>();
         result.setSuccess(false);
-        //todo 错误信息传递
-
-        result.setCode(CollectorConstants.Codes.pointError.getCode());
+        result.addHeader("errorType", error.getClass().getCanonicalName());
+        result.addHeader("errorStack", ExceptionUtils.getStackTrace(error));
+        result.setCode(code);
         return result;
     }
 
