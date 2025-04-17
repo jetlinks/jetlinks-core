@@ -13,6 +13,28 @@ public class PasswordType extends AbstractType<PasswordType> implements DataType
     public static final String ID = "password";
     public static final PasswordType GLOBAL = new PasswordType();
 
+    private int minLength = 8;
+
+    private int maxLength = 64;
+
+    private int level = 2;
+
+    public PasswordType minLength(int minLength) {
+        this.minLength = minLength;
+        return this;
+    }
+
+    public PasswordType maxLength(int maxLength) {
+        this.maxLength = maxLength;
+        return this;
+    }
+
+    public PasswordType level(int level) {
+        this.level = level;
+        return this;
+    }
+
+
     @Override
     public String getId() {
         return ID;
