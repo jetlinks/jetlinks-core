@@ -1,7 +1,6 @@
 package org.jetlinks.core.cache;
 
 import lombok.extern.slf4j.Slf4j;
-import org.jetlinks.core.codec.Codec;
 import org.jetlinks.core.config.ConfigKey;
 
 import java.nio.file.Path;
@@ -59,11 +58,6 @@ class SPIFileQueueBuilder<T> implements FileQueue.Builder<T> {
         return builder.build();
     }
 
-    @Override
-    @Deprecated
-    public FileQueue.Builder<T> codec(Codec<T> codec) {
-        return builder.codec(codec);
-    }
 
     @Override
     public FileQueue.Builder<T> path(Path path) {

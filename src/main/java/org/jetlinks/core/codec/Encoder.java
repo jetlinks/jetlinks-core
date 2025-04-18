@@ -1,9 +1,11 @@
 package org.jetlinks.core.codec;
 
-import org.jetlinks.core.Payload;
+import io.netty.buffer.ByteBuf;
 
 public interface Encoder<T> {
 
-    Payload encode(T body);
+    Class<T> forType();
+
+    void encode(T body, ByteBuf buf);
 
 }

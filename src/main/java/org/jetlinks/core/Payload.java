@@ -8,9 +8,7 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
-import org.jetlinks.core.codec.Codecs;
 import org.jetlinks.core.codec.Decoder;
-import org.jetlinks.core.codec.Encoder;
 
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +20,7 @@ import java.util.function.Function;
  * @author zhouhao
  * @since 1.1
  */
+@Deprecated
 public interface Payload extends ReferenceCounted {
 
     @Nonnull
@@ -36,7 +35,7 @@ public interface Payload extends ReferenceCounted {
     @Deprecated
     default <T> T decode(Decoder<T> decoder, boolean release) {
         try {
-            return decoder.decode(this);
+            return decoder.decode(getBody());
         } finally {
             if (release) {
                 ReferenceCountUtil.safeRelease(this);
@@ -50,13 +49,10 @@ public interface Payload extends ReferenceCounted {
     }
 
     default <T> T decode(Class<T> decoder) {
-        return decode(decoder, true);
+        throw new UnsupportedOperationException();
     }
 
-    @Deprecated
-    default <T> T decode(Class<T> decoder, boolean release) {
-        return decode(Codecs.lookup(decoder), release);
-    }
+
 
     default Object decode(boolean release) {
         byte[] payload = getBytes(false);
@@ -72,7 +68,7 @@ public interface Payload extends ReferenceCounted {
                 }
             }
         }
-        return decode(Object.class, release);
+        return decode(Object.class);
     }
 
     default Object decode() {
@@ -151,7 +147,7 @@ public interface Payload extends ReferenceCounted {
 
     @Deprecated
     default JSONObject bodyToJson(boolean release) {
-        return decode(JSONObject.class,release);
+        return decode(JSONObject.class);
     }
 
     default JSONObject bodyToJson() {
@@ -200,10 +196,4 @@ public interface Payload extends ReferenceCounted {
         return of(body.getBytes());
     }
 
-    static <T> Payload of(T body, Encoder<T> encoder) {
-        if (body instanceof Payload) {
-            return encoder.encode(body);
-        }
-        return NativePayload.of(body, encoder);
-    }
 }

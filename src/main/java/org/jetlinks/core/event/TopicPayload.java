@@ -3,28 +3,31 @@ package org.jetlinks.core.event;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
+import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.NativePayload;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.Routable;
 import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.message.Headers;
+import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.utils.TopicUtils;
 
 import javax.annotation.Nonnull;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
 @AllArgsConstructor(staticName = "of")
 @Slf4j
-public class TopicPayload implements Payload, Routable {
+public class TopicPayload implements Routable {
 
     private CharSequence topic;
 
-    private Payload payload;
+    private Object payload;
 
     private Map<String, Object> headers;
 
@@ -36,10 +39,16 @@ public class TopicPayload implements Payload, Routable {
         return topic;
     }
 
+    public static TopicPayload of(CharSequence topic, Object payload) {
+        return TopicPayload.of(topic, payload, null);
+    }
+
+    @Deprecated
     public static TopicPayload of(CharSequence topic, Payload payload) {
         return TopicPayload.of(topic, payload, null);
     }
 
+    @Deprecated
     public static TopicPayload of(String topic, Payload payload) {
         return TopicPayload.of(topic, payload, null);
     }
@@ -69,64 +78,10 @@ public class TopicPayload implements Payload, Routable {
         return headers == null ? null : headers.get(key);
     }
 
-    @Nonnull
-    @Override
-    public ByteBuf getBody() {
-        return payload.getBody();
-    }
-
-    @Override
-    public TopicPayload slice() {
-        return TopicPayload.of(topic, payload.slice());
-    }
-
-    @Override
     public boolean release() {
         return true;
     }
 
-    @Override
-    public boolean release(int dec) {
-        return true;
-    }
-
-    protected boolean handleRelease(boolean success) {
-
-        return success;
-    }
-
-    protected void deallocate() {
-
-    }
-
-    @Override
-    public TopicPayload retain() {
-
-        return this;
-    }
-
-    @Override
-    public TopicPayload retain(int inc) {
-
-        return this;
-    }
-
-    @Override
-    public TopicPayload touch(Object o) {
-
-        return this;
-    }
-
-    @Override
-    public TopicPayload touch() {
-
-        return this;
-    }
-
-    @Override
-    public int refCnt() {
-        return 0;
-    }
 
     @Override
     public String toString() {
@@ -136,55 +91,97 @@ public class TopicPayload implements Payload, Routable {
             '}';
     }
 
-    @Override
+    public JSONObject bodyToJson() {
+        return bodyToJson(true);
+    }
+
+    @SuppressWarnings("all")
     public JSONObject bodyToJson(boolean release) {
-        return payload.bodyToJson(release);
+        try {
+            if (payload == null) {
+                return new JSONObject();
+            }
+            if (payload instanceof Jsonable) {
+                return ((Jsonable) payload).toJson();
+            }
+            if (payload instanceof JSONObject) {
+                return ((JSONObject) payload);
+            }
+            if (payload instanceof Map) {
+                return new JSONObject(((Map) payload));
+            }
+            return FastBeanCopier.copy(payload, JSONObject::new);
+        } finally {
+            if (release) {
+                ReferenceCountUtil.safeRelease(this);
+            }
+        }
     }
 
-    @Override
+
+    @SuppressWarnings("all")
     public JSONArray bodyToJsonArray(boolean release) {
-        return payload.bodyToJsonArray(release);
+        try {
+            if (payload == null) {
+                return new JSONArray();
+            }
+            if (payload instanceof JSONArray) {
+                return ((JSONArray) payload);
+            }
+            List<Object> collection;
+            if (payload instanceof List) {
+                collection = ((List<Object>) payload);
+            } else if (payload instanceof Collection) {
+                collection = new ArrayList<>(((Collection<Object>) payload));
+            } else if (payload instanceof Object[]) {
+                collection = Arrays.asList(((Object[]) payload));
+            } else {
+                throw new UnsupportedOperationException("body is not array");
+            }
+            return new JSONArray(collection);
+        } finally {
+            if (release) {
+                ReferenceCountUtil.safeRelease(this);
+            }
+        }
     }
 
-    @Override
     public String bodyToString() {
-        return payload.bodyToString();
+        return String.valueOf(payload);
     }
 
-    @Override
     public String bodyToString(boolean release) {
-        return payload.bodyToString(release);
+        return bodyToString();
     }
 
-    @Override
     public Object decode() {
-        return payload.decode();
+        return payload;
     }
 
-    @Override
+
     public Object decode(boolean release) {
-        return payload.decode(release);
+        return decode();
     }
 
-    @Override
-    public <T> T decode(Class<T> decoder) {
-        return payload.decode(decoder);
+
+    @SuppressWarnings("all")
+    public <T> T decode(Class<T> type) {
+        if (type.isInstance(payload)) {
+            return (T) payload;
+        }
+        if (type == JSONObject.class || type == Map.class) {
+            return (T) bodyToJson();
+        }
+        if (Map.class.isAssignableFrom(type)) {
+            return bodyToJson().toJavaObject(type);
+        }
+        return FastBeanCopier.copy(payload, type);
     }
 
-    @Override
     public <T> T decode(Class<T> decoder, boolean release) {
-        return payload.decode(decoder, release);
+        return decode(decoder);
     }
 
-    @Override
-    public <T> T decode(Decoder<T> decoder) {
-        return payload.decode(decoder);
-    }
-
-    @Override
-    public <T> T decode(Decoder<T> decoder, boolean release) {
-        return payload.decode(decoder, release);
-    }
 
     public Map<String, String> getTopicVars(String pattern) {
         return TopicUtils.getPathVariables(pattern, getTopic());
