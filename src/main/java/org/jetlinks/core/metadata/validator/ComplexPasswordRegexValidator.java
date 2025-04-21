@@ -11,7 +11,12 @@ package org.jetlinks.core.metadata.validator;
  */
 public class ComplexPasswordRegexValidator extends RegexValidator {
 
-    public ComplexPasswordRegexValidator(int maxLength) {
-        super(String.format("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[\\p{Punct}]).{%d,%d}$", 4, maxLength));
+    public ComplexPasswordRegexValidator(int maxLength, String errorMessage) {
+        super(String.format("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[\\p{Punct}]).{%d,%d}$", 4, maxLength), errorMessage);
+    }
+
+    @Override
+    protected String defaultErrorMessage() {
+        return "message.complex_password_validator_fail";
     }
 }

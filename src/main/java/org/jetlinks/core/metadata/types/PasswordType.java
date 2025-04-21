@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.i18n.LocaleUtils;
@@ -16,7 +17,8 @@ public class PasswordType extends AbstractType<PasswordType> implements DataType
     public static final String ID = "password";
     public static final PasswordType GLOBAL = new PasswordType();
 
-    private Validator validator;
+    @JsonIgnore
+    private transient Validator validator;
 
     /**
      * 添加校验器
@@ -43,12 +45,7 @@ public class PasswordType extends AbstractType<PasswordType> implements DataType
     public ValidateResult validate(Object value) {
         return Optional
             .ofNullable(validator)
-            .map(validator -> {
-                if (validator.validate(value)) {
-                    return ValidateResult.success(String.valueOf(value));
-                }
-                return ValidateResult.fail(String.valueOf(value));
-            })
+            .map(validator -> validator.validate(value))
             .orElse(ValidateResult.success(String.valueOf(value)));
 
     }
