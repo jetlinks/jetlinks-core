@@ -6,6 +6,9 @@ import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
+import org.jetlinks.core.metadata.validator.Validator;
+
+import java.util.Optional;
 
 @Getter
 @Setter
@@ -13,27 +16,18 @@ public class PasswordType extends AbstractType<PasswordType> implements DataType
     public static final String ID = "password";
     public static final PasswordType GLOBAL = new PasswordType();
 
-    private int minLength = 8;
+    private Validator validator;
 
-    private int maxLength = 64;
-
-    private int level = 2;
-
-    public PasswordType minLength(int minLength) {
-        this.minLength = minLength;
+    /**
+     * 添加校验器
+     *
+     * @param validator 校验器
+     * @return PasswordType
+     */
+    public PasswordType withValidator(Validator validator) {
+        this.validator = validator;
         return this;
     }
-
-    public PasswordType maxLength(int maxLength) {
-        this.maxLength = maxLength;
-        return this;
-    }
-
-    public PasswordType level(int level) {
-        this.level = level;
-        return this;
-    }
-
 
     @Override
     public String getId() {
@@ -47,7 +41,16 @@ public class PasswordType extends AbstractType<PasswordType> implements DataType
 
     @Override
     public ValidateResult validate(Object value) {
-        return ValidateResult.success(String.valueOf(value));
+        return Optional
+            .ofNullable(validator)
+            .map(validator -> {
+                if (validator.validate(value)) {
+                    return ValidateResult.success(String.valueOf(value));
+                }
+                return ValidateResult.fail(String.valueOf(value));
+            })
+            .orElse(ValidateResult.success(String.valueOf(value)));
+
     }
 
     @Override
