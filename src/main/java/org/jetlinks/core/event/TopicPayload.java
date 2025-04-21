@@ -2,21 +2,17 @@ package org.jetlinks.core.event;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.bean.FastBeanCopier;
-import org.jetlinks.core.NativePayload;
 import org.jetlinks.core.Payload;
 import org.jetlinks.core.Routable;
-import org.jetlinks.core.codec.Decoder;
 import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.utils.TopicUtils;
 
-import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -78,10 +74,10 @@ public class TopicPayload implements Routable {
         return headers == null ? null : headers.get(key);
     }
 
+    @Deprecated
     public boolean release() {
         return true;
     }
-
 
     @Override
     public String toString() {
@@ -190,30 +186,24 @@ public class TopicPayload implements Routable {
     @Override
     @SuppressWarnings("all")
     public long hash(Object... objects) {
-        if (payload instanceof NativePayload) {
-            if (((NativePayload<?>) payload).getNativeObject() instanceof Routable) {
-                return ((Routable) ((NativePayload<?>) payload).getNativeObject()).hash(objects);
-            }
+        if (payload instanceof Routable) {
+            return ((Routable) payload).hash(objects);
         }
         return Routable.super.hash(objects);
     }
 
     @SuppressWarnings("all")
     public void copyRouteKeyToHeader() {
-        if (payload instanceof NativePayload) {
-            if (((NativePayload<?>) payload).getNativeObject() instanceof Routable) {
-                addHeader(Headers.routeKey.getKey(), ((Routable) ((NativePayload<?>) payload).getNativeObject()).routeKey());
-            }
+        if (payload instanceof Routable) {
+            addHeader(Headers.routeKey.getKey(), ((Routable) payload).routeKey());
         }
     }
 
     @SuppressWarnings("all")
     @Override
     public Object routeKey() {
-        if (payload instanceof NativePayload) {
-            if (((NativePayload<?>) payload).getNativeObject() instanceof Routable) {
-                return ((Routable) ((NativePayload<?>) payload).getNativeObject()).routeKey();
-            }
+        if (payload instanceof Routable) {
+           return ((Routable) payload).routeKey();
         }
         return headers.get(Headers.routeKey.getKey());
     }
