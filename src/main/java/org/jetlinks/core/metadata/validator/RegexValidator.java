@@ -1,6 +1,5 @@
 package org.jetlinks.core.metadata.validator;
 
-import org.jetlinks.core.metadata.ValidateResult;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -22,10 +21,7 @@ public class RegexValidator extends AbstractValidator {
     }
 
     @Override
-    protected ValidateResult doValidate(Object value) {
-        if (pattern.matcher(String.valueOf(value)).matches()) {
-            return ValidateResult.success(value);
-        }
-        return ValidateResult.fail();
+    protected boolean doValidate(Object value) {
+        return pattern.matcher(String.valueOf(value)).matches();
     }
 }

@@ -28,14 +28,13 @@ public abstract class AbstractValidator implements Validator {
     @Override
     public ValidateResult validate(Object value) {
         if (Objects.nonNull(value)) {
-            ValidateResult result = doValidate(value);
-            if (!result.isSuccess()) {
+            if (!doValidate(value)) {
                 return ValidateResult.fail(errorMessage);
             }
-            return result;
+            return ValidateResult.success(value);
         }
         return ValidateResult.fail(errorMessage);
     }
 
-    protected abstract ValidateResult doValidate(Object value);
+    protected abstract boolean doValidate(Object value);
 }
