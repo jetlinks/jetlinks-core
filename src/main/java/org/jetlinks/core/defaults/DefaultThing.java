@@ -8,6 +8,7 @@ import org.jetlinks.core.config.ConfigStorage;
 import org.jetlinks.core.config.ConfigStorageManager;
 import org.jetlinks.core.config.StorageConfigurable;
 import org.jetlinks.core.device.DeviceConfigKey;
+import org.jetlinks.core.metadata.CompositeThingMetadata;
 import org.jetlinks.core.things.*;
 import reactor.core.publisher.Mono;
 
@@ -68,25 +69,13 @@ class DefaultThing implements Thing, StorageConfigurable {
                 .getSelfConfig(ThingsConfigKeys.templateId)
                 .flatMap(templateId -> registry.getTemplate(this.type, templateId));
 
-        this.metadataMono = this
-                //获取最后更新物模型的时间
-                .getSelfConfig(lastMetadataTimeKey.getKey())
-                .map(Value::asLong)
-                .flatMap(i -> {
-                    //如果时间一致,则直接返回物模型缓存.
-                    if (i.equals(lastMetadataTime) && i != -1 && metadataCache != null) {
-                        return Mono.just(metadataCache);
-                    }
-                    lastMetadataTime = i;
-                    //加载真实的物模型
-                    return this
-                            .getSelfConfig(metadata)
-                            .flatMap(metadataCodec::decode)
-                            .doOnNext(metadata -> metadataCache = metadata);
-
+        this.metadataMono = templateMetadata()
+            .flatMap(tmpMetadata -> selfMetadata()
+                .<ThingMetadata>map(self -> {
+                    //组合物模型
+                    return new CompositeThingMetadata(tmpMetadata, self);
                 })
-                //获取物模版的物模型
-                .switchIfEmpty(Mono.defer(() -> getTemplate().flatMap(ThingTemplate::getMetadata)));
+                .defaultIfEmpty(tmpMetadata));
     }
 
     @Override
@@ -156,5 +145,29 @@ class DefaultThing implements Thing, StorageConfigurable {
     @Override
     public ThingRpcSupport rpc() {
         return this.rpcFactory.apply(this);
+    }
+
+    private Mono<ThingMetadata> selfMetadata() {
+        return this
+            //获取最后更新物模型的时间
+            .getSelfConfig(lastMetadataTimeKey.getKey())
+            .map(Value::asLong)
+            .flatMap(i -> {
+                //如果时间一致,则直接返回物模型缓存.
+                if (i.equals(lastMetadataTime) && i != -1 && metadataCache != null) {
+                    return Mono.just(metadataCache);
+                }
+                lastMetadataTime = i;
+                //加载真实的物模型
+                return this
+                    .getSelfConfig(metadata)
+                    .flatMap(metadataCodec::decode)
+                    .doOnNext(metadata -> metadataCache = metadata);
+
+            });
+    }
+
+    private Mono<ThingMetadata> templateMetadata() {
+        return getTemplate().flatMap(ThingTemplate::getMetadata);
     }
 }
