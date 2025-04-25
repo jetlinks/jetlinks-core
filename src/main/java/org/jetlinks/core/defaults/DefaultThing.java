@@ -39,13 +39,14 @@ class DefaultThing implements Thing, StorageConfigurable {
     private volatile ThingMetadata metadataCache;
 
     private final ThingMetadataCodec metadataCodec;
-    private  final Function<Thing,ThingRpcSupport> rpcFactory;
+    private final Function<Thing, ThingRpcSupport> rpcFactory;
+
     public DefaultThing(ThingType thingType,
                         String id,
                         ConfigStorageManager storageManager,
                         ThingMetadataCodec metadataCodec,
                         ThingsRegistry registry,
-                        Function<Thing,ThingRpcSupport> rpcFactory) {
+                        Function<Thing, ThingRpcSupport> rpcFactory) {
         this(thingType,
              id,
              storageManager.getStorage("thing:" + thingType.getId() + ":" + id),
@@ -59,15 +60,15 @@ class DefaultThing implements Thing, StorageConfigurable {
                         Mono<ConfigStorage> storageSupplier,
                         ThingMetadataCodec metadataCodec,
                         ThingsRegistry registry,
-                        Function<Thing,ThingRpcSupport> rpcFactory) {
+                        Function<Thing, ThingRpcSupport> rpcFactory) {
         this.id = id;
         this.type = thingType;
         this.storageMono = storageSupplier;
         this.metadataCodec = metadataCodec;
-        this.rpcFactory=rpcFactory;
+        this.rpcFactory = rpcFactory;
         this.templateMono = this
-                .getSelfConfig(ThingsConfigKeys.templateId)
-                .flatMap(templateId -> registry.getTemplate(this.type, templateId));
+            .getSelfConfig(ThingsConfigKeys.templateId)
+            .flatMap(templateId -> registry.getTemplate(this.type, templateId));
 
         this.metadataMono = templateMetadata()
             .flatMap(tmpMetadata -> selfMetadata()
@@ -109,7 +110,7 @@ class DefaultThing implements Thing, StorageConfigurable {
     public Mono<Void> resetMetadata() {
         this.lastMetadataTime = -1;
         return removeConfigs(metadata, lastMetadataTimeKey)
-                .then();
+            .then();
     }
 
     @Override
@@ -118,9 +119,9 @@ class DefaultThing implements Thing, StorageConfigurable {
         if (conf.containsKey(metadata.getKey())) {
             configs.put(lastMetadataTimeKey.getKey(), lastMetadataTime = System.currentTimeMillis());
             return StorageConfigurable.super
-                    .setConfigs(configs)
-                    .doOnNext(suc -> this.metadataCache = null)
-                    .thenReturn(true);
+                .setConfigs(configs)
+                .doOnNext(suc -> this.metadataCache = null)
+                .thenReturn(true);
         }
         return StorageConfigurable.super.setConfigs(configs);
     }
@@ -128,8 +129,8 @@ class DefaultThing implements Thing, StorageConfigurable {
     @Override
     public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
         return this.metadataCodec
-                .encode(metadata)
-                .flatMap(this::updateMetadata);
+            .encode(metadata)
+            .flatMap(this::updateMetadata);
     }
 
     @Override
@@ -150,8 +151,8 @@ class DefaultThing implements Thing, StorageConfigurable {
     private Mono<ThingMetadata> selfMetadata() {
         return this
             //获取最后更新物模型的时间
-            .getSelfConfig(lastMetadataTimeKey.getKey())
-            .map(Value::asLong)
+            .getSelfConfig(lastMetadataTimeKey)
+            .defaultIfEmpty(-1L)
             .flatMap(i -> {
                 //如果时间一致,则直接返回物模型缓存.
                 if (i.equals(lastMetadataTime) && i != -1 && metadataCache != null) {
@@ -163,7 +164,6 @@ class DefaultThing implements Thing, StorageConfigurable {
                     .getSelfConfig(metadata)
                     .flatMap(metadataCodec::decode)
                     .doOnNext(metadata -> metadataCache = metadata);
-
             });
     }
 
