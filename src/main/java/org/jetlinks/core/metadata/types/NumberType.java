@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.UnitSupported;
@@ -37,6 +38,9 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
     private RoundingMode round = defaultRound();
 
     private Integer scale;
+
+    protected NumberType() {
+    }
 
     public NumberType<N> scale(Integer scale) {
         this.scale = scale;
@@ -99,13 +103,31 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
         try {
             Number numberValue = convertScaleNumber(value);
             if (numberValue == null) {
-                return ValidateResult.fail("数字格式错误:" + value);
+                return ValidateResult.fail(
+                    LocaleUtils.resolveMessage(
+                        "error.metadata.type.number.illegal_format",
+                        "数字格式错误:" + value,
+                        value
+                    )
+                );
             }
             if (max != null && numberValue.doubleValue() > max.doubleValue()) {
-                return ValidateResult.fail("超过最大值:" + max);
+                return ValidateResult.fail(
+                    LocaleUtils.resolveMessage(
+                        "error.metadata.type.number.out_of_max",
+                        "超过最大值:" + max,
+                        value
+                    )
+                );
             }
             if (min != null && numberValue.doubleValue() < min.doubleValue()) {
-                return ValidateResult.fail("小于最小值:" + min);
+                return ValidateResult.fail(
+                    LocaleUtils.resolveMessage(
+                        "error.metadata.type.number.out_of_min",
+                        "小于最小值:" + min,
+                        value
+                    )
+                );
             }
             return ValidateResult.success(numberValue);
         } catch (NumberFormatException e) {
