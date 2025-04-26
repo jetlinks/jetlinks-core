@@ -56,8 +56,7 @@ public interface Command<Response> extends Wrapper, Serializable {
      * @return this
      */
     default Command<Response> with(String key, Object value) {
-        FastBeanCopier.copy(this, Collections.singletonMap(key, value));
-        return this;
+        return with(Collections.singletonMap(key, value));
     }
 
     /**
@@ -68,7 +67,26 @@ public interface Command<Response> extends Wrapper, Serializable {
      */
     default Command<Response> with(Map<String, Object> parameters) {
         if (null != parameters) {
-            FastBeanCopier.copy(this, parameters);
+            return FastBeanCopier.copy(parameters, this);
+        }
+        return this;
+    }
+
+    /**
+     * 设置命令的多个参数
+     *
+     * @param parameterObject 参数
+     * @return this
+     */
+    @SuppressWarnings("all")
+    default Command<Response> with(Object parameterObject) {
+
+        if (parameterObject instanceof Map) {
+            return with((Map<String, Object>) parameterObject);
+        }
+
+        if (parameterObject != null) {
+            return FastBeanCopier.copy(parameterObject, this);
         }
         return this;
     }

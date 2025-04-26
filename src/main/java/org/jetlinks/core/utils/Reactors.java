@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public interface Reactors {
@@ -66,6 +67,21 @@ public interface Reactors {
             }
             return Mono.empty();
         });
+    }
+
+    /**
+     * <pre>{@code
+     *   List<Data> list=fetch()
+     *   .collectList()
+     *   .as(awaiter(Duration.ofSeconds(10)))
+     * }</pre>
+     *
+     * @param duration 超时时间
+     * @param <T>      泛型
+     * @return Function
+     */
+    static <T> Function<Mono<T>, T> awaiter(Duration duration) {
+        return mono -> await(mono, duration);
     }
 
     /**
