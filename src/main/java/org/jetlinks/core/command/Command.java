@@ -3,6 +3,7 @@ package org.jetlinks.core.command;
 import lombok.SneakyThrows;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.Wrapper;
+import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.utils.ConverterUtils;
 import org.springframework.core.ResolvableType;
 import reactor.core.publisher.Flux;
@@ -83,6 +84,14 @@ public interface Command<Response> extends Wrapper, Serializable {
 
         if (parameterObject instanceof Map) {
             return with((Map<String, Object>) parameterObject);
+        }
+
+        if(parameterObject instanceof Command){
+            return with(((Command<?>) parameterObject).asMap());
+        }
+
+        if (parameterObject instanceof Jsonable) {
+            return with(((Jsonable) parameterObject).toJson());
         }
 
         if (parameterObject != null) {
