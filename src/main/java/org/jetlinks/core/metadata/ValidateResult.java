@@ -44,6 +44,12 @@ public class ValidateResult {
         return result;
     }
 
+    public static ValidateResult fail() {
+        ValidateResult result = new ValidateResult();
+        result.setSuccess(false);
+        return result;
+    }
+
     public Object assertSuccess(){
         if(!success){
             throw new IllegalArgumentException(errorMsg);

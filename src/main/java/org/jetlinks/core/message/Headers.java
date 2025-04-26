@@ -68,6 +68,7 @@ public interface Headers {
      * @see org.jetlinks.core.message.property.ReportPropertyMessage
      * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
      * @see org.jetlinks.core.message.property.WritePropertyMessageReply
+     * @see org.jetlinks.core.things.ThingsDataManager
      * @since 1.1.4
      */
     HeaderKey<Boolean> mergeLatest = HeaderKey.of("mergeLatest", false, Boolean.class);
@@ -118,19 +119,28 @@ public interface Headers {
      */
     HeaderKey<String> dataId = HeaderKey.of("dataId", null, String.class);
 
-    //是否属性为部分属性,如果为true,在列式存储策略下,将会把之前上报的属性合并到一起进行存储.
+    /**
+     * 已弃用,请使用{@link Headers#mergeLatest}
+     *
+     * @deprecated {@link Headers#mergeLatest}
+     */
+    @Deprecated
     HeaderKey<Boolean> partialProperties = HeaderKey.of("partialProperties", false, Boolean.class);
 
     /**
      * 是否开启追踪,开启后header中将添加各个操作的时间戳
      *
-     * @see org.jetlinks.core.utils.DeviceMessageTracer
+     * @see org.jetlinks.core.trace.MonoTracer
+     * @see org.jetlinks.core.trace.FluxTracer
+     * @see org.jetlinks.core.spi.ServiceContext#getMonitor(String)
+     * @see org.jetlinks.core.trace.DeviceTracer
+     * @deprecated 已弃用
      */
     @Deprecated
     HeaderKey<Boolean> enableTrace = HeaderKey.of("_trace", Boolean.getBoolean("device.message.trace.enabled"), Boolean.class);
 
     /**
-     * 标记数据不存储
+     * 标记数据不存储,设置为true：数据不会记录到时序数据库中.
      *
      * @see org.jetlinks.core.message.property.ReadPropertyMessage
      * @see org.jetlinks.core.message.property.ReadPropertyMessageReply
@@ -140,7 +150,7 @@ public interface Headers {
     HeaderKey<Boolean> ignoreStorage = HeaderKey.of("ignoreStorage", false, Boolean.class);
 
     /**
-     * 忽略记录日志
+     * 忽略记录日志,设置为true：消息上报不会记录到设备日志中.
      */
     HeaderKey<Boolean> ignoreLog = HeaderKey.of("ignoreLog", false, Boolean.class);
 
@@ -222,6 +232,7 @@ public interface Headers {
      * </ul>
      *
      * @see Routable#routeKey()
+     * @see org.jetlinks.core.event.Subscription.Feature#shared
      */
     HeaderKey<Object> routeKey = HeaderKey.of("_routeKey", null, Object.class);
 

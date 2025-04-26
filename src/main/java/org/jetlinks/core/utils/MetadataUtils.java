@@ -8,10 +8,7 @@ import org.hswebframework.ezorm.core.CastUtil;
 import org.hswebframework.web.dict.EnumDict;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.Expands;
-import org.jetlinks.core.metadata.DataType;
-import org.jetlinks.core.metadata.Metadata;
-import org.jetlinks.core.metadata.PropertyMetadata;
-import org.jetlinks.core.metadata.SimplePropertyMetadata;
+import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.metadata.types.*;
 import org.jetlinks.core.things.ThingsConfigKeys;
 import org.reactivestreams.Publisher;
@@ -31,6 +28,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.BiConsumer;
 
 /**
  * 物模型工具类
@@ -163,6 +161,30 @@ public class MetadataUtils {
         return expands;
     }
 
+
+    public static void resolveAttrs(Attr[] attrs, BiConsumer<String, Object> handler) {
+        for (Attr attr : attrs) {
+            handler.accept(attr.key(), parseAttrValue(attr));
+        }
+    }
+
+    public static void resolveAttrs(Iterable<Attr> attrs, BiConsumer<String, Object> handler) {
+        for (Attr attr : attrs) {
+            handler.accept(attr.key(), parseAttrValue(attr));
+        }
+    }
+
+    public static Object parseAttrValue(Attr attr) {
+        if (StringUtils.hasText(attr.type())) {
+            DataType type = DataTypes.lookup(attr.type()).get();
+            if (type instanceof Converter) {
+                return ((Converter<?>) type).convert(attr.value());
+            }
+            return type.validate(attr.value()).assertSuccess();
+        }
+        return attr.value();
+    }
+
     static class MetadataParser {
 
         static final Set<String> jsr303Packages = Sets.newHashSet(
@@ -199,11 +221,11 @@ public class MetadataUtils {
                         if (groups instanceof String[]) {
                             @SuppressWarnings("all")
                             String[] lst = ((String[]) groups);
-                            if(lst.length==0){
+                            if (lst.length == 0) {
                                 return null;
                             }
                             for (int i = 0; i < lst.length; i++) {
-                                if(lst[i].contains(".")) {
+                                if (lst[i].contains(".")) {
                                     lst[i] = lst[i].substring(lst[i].lastIndexOf('.') + 1);
                                 }
                             }
@@ -230,9 +252,8 @@ public class MetadataUtils {
                     Attr.class
                 );
 
-            for (Attr attr : attrs) {
-                container.putIfAbsent(attr.key(), attr.value());
-            }
+            resolveAttrs(attrs,container::putIfAbsent);
+
 
         }
 
@@ -289,9 +310,7 @@ public class MetadataUtils {
                             parseAttr(ann.annotationType(), c);
                         }
                         // 直接定义了attr
-                        for (Attr attr : exp.value()) {
-                            c.putIfAbsent(attr.key(), attr.value());
-                        }
+                        resolveAttrs(exp.value(), c::putIfAbsent);
                     }
                 }
             }
@@ -361,7 +380,7 @@ public class MetadataUtils {
             if (Map.class.isAssignableFrom(clazz)) {
                 return new ObjectType();
             }
-            if (clazz == String.class || clazz == Character.class) {
+            if (clazz == String.class || clazz == Character.class || CharSequence.class.isAssignableFrom(clazz)) {
                 return new StringType();
             }
             if (clazz == byte.class || clazz == Byte.class) {

@@ -1,17 +1,35 @@
 package org.jetlinks.core.metadata.types;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
+import org.jetlinks.core.metadata.validator.Validator;
+
+import java.util.Optional;
 
 @Getter
 @Setter
 public class PasswordType extends AbstractType<PasswordType> implements DataType, Converter<String> {
     public static final String ID = "password";
     public static final PasswordType GLOBAL = new PasswordType();
+
+    @JsonIgnore
+    private transient Validator validator;
+
+    /**
+     * 添加校验器
+     *
+     * @param validator 校验器
+     * @return PasswordType
+     */
+    public PasswordType withValidator(Validator validator) {
+        this.validator = validator;
+        return this;
+    }
 
     @Override
     public String getId() {
@@ -25,7 +43,11 @@ public class PasswordType extends AbstractType<PasswordType> implements DataType
 
     @Override
     public ValidateResult validate(Object value) {
-        return ValidateResult.success(String.valueOf(value));
+        return Optional
+            .ofNullable(validator)
+            .map(validator -> validator.validate(value))
+            .orElse(ValidateResult.success(String.valueOf(value)));
+
     }
 
     @Override

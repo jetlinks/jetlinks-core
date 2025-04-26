@@ -30,7 +30,7 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
         return new ReplacedSeparatedCharSequence3(this, i0, r0, i1, r1, i2, r2);
     }
 
-    public AbstractSeparatedCharSequence append(CharSequence... csq) {
+    public SeparatedCharSequence append(CharSequence... csq) {
         if (csq == null || csq.length == 0) {
             return this;
         }
@@ -47,7 +47,7 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
             return append(csq[0]).append(csq[1]).append(csq[2]);
         }
 
-        AbstractSeparatedCharSequence s = this;
+        SeparatedCharSequence s = this;
         for (CharSequence charSequence : csq) {
             s = s.append(charSequence);
         }
@@ -55,7 +55,7 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
     }
 
     @Override
-    public AbstractSeparatedCharSequence append(CharSequence csq) {
+    public SeparatedCharSequence append(CharSequence csq) {
         if (!(csq instanceof SeparatedCharSequence)) {
             csq = SeparatedString.of(separator(), csq.toString());
         }

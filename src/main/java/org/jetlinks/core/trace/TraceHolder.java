@@ -2,7 +2,6 @@ package org.jetlinks.core.trace;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.ContextKey;
 import io.opentelemetry.context.Scope;
@@ -12,14 +11,13 @@ import io.opentelemetry.context.propagation.TextMapPropagator;
 import org.apache.commons.collections.MapUtils;
 import org.jetlinks.core.topic.Topic;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -34,6 +32,9 @@ import java.util.function.Function;
  * @since 1.2
  */
 public class TraceHolder {
+
+    private TraceHolder() {
+    }
 
     static final ContextKey<CharSequence> SPAN_NAME = ContextKey.named("spanName");
 
@@ -168,11 +169,29 @@ public class TraceHolder {
      * @param handler  handler
      * @return Disposable
      */
-    public static Disposable enable(String spanName, String handler) {
+    public static Disposable enable(CharSequence spanName, String handler) {
         removeDisabled(spanName, handler);
-        Topic<String> subTable = enabledSpanName.append(spanName);
+        Topic<String> subTable = enabledSpanName.append(spanName.toString());
         subTable.subscribe(handler);
         return () -> subTable.unsubscribe(handler);
+    }
+
+    public static Disposable enable(String spanName, String handler) {
+        return enable((CharSequence) spanName, handler);
+    }
+
+    public static Flux<String> getEnabledSpan() {
+        return enabledSpanName
+            .getAllSubscriber()
+            .filter(t -> !t.getSubscribers().isEmpty())
+            .map(Topic::getTopic);
+    }
+
+    public static Flux<String> getDisabledSpan() {
+        return disabledSpanName
+            .getAllSubscriber()
+            .filter(t -> !t.getSubscribers().isEmpty())
+            .map(Topic::getTopic);
     }
 
     public static void removeEnabled(String spanName, String handler) {
@@ -181,10 +200,18 @@ public class TraceHolder {
             .ifPresent(topic -> topic.unsubscribe(handler));
     }
 
+    public static void removeEnabled(CharSequence spanName, String handler) {
+        removeEnabled(spanName.toString(), handler);
+    }
+
     public static void removeDisabled(String spanName, String handler) {
         disabledSpanName
             .getTopic(spanName)
             .ifPresent(topic -> topic.unsubscribe(handler));
+    }
+
+    public static void removeDisabled(CharSequence spanName, String handler) {
+        removeDisabled(spanName.toString(), handler);
     }
 
 
@@ -415,7 +442,7 @@ public class TraceHolder {
     }
 
     public static <R> R traceBlocking(Context context, String operation, Function<ReactiveSpan, R> function) {
-       return traceBlocking(context, (CharSequence) operation, function);
+        return traceBlocking(context, (CharSequence) operation, function);
     }
 
 }
