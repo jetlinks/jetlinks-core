@@ -1,6 +1,5 @@
 package org.jetlinks.core.cache;
 
-import org.jetlinks.core.codec.Codec;
 import org.jetlinks.core.config.ConfigKey;
 import reactor.core.publisher.Sinks;
 
@@ -65,15 +64,6 @@ public interface FileQueue<T> extends Queue<T> {
          * @return this
          */
         Builder<T> name(String name);
-
-        /**
-         * 指定队列元素编解码器，用于序列化数据
-         *
-         * @param codec 编解码器
-         * @return this
-         */
-        @Deprecated
-        Builder<T> codec(Codec<T> codec);
 
         /**
          * 指定数据文件存储路径

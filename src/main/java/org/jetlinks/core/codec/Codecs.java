@@ -9,6 +9,9 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * Codecs.FixedPointQ8_8(payload,BIG_ENDIAN)
+ */
 @SuppressWarnings("all")
 @Slf4j
 public final class Codecs {

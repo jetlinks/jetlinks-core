@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.annotation.Expands;
+import org.jetlinks.core.annotation.command.Unbounded;
 import org.jetlinks.core.annotation.ui.Selector;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.FunctionMetadata;
@@ -187,6 +188,7 @@ public class CommandMetadataResolverTest {
 
     @TestClassAnnotation(innerClass = Test2.class)
     @Schema(title = "测试2", description = "测试2.")
+    @Unbounded
     public static class Test2Command extends AbstractCommand<Mono<String>, Test2Command> {
 
         @Schema(description = "Str")

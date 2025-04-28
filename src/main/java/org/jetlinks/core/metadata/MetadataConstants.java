@@ -2,13 +2,18 @@ package org.jetlinks.core.metadata;
 
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.metadata.expand.LocaleResource;
+import org.jetlinks.core.things.ThingsConfigKeys;
 
 import java.util.Locale;
 
 /**
  * @author gyl
  * @since 2.3
+ * @see Metadata#getI18nName()
+ * @see org.jetlinks.core.utils.MetadataUtils#resolveI18nMessage(Locale, Metadata, String, String)
+ * @see ThingsConfigKeys#i18nMessages
  */
+@Deprecated
 public interface MetadataConstants {
 
     interface Expand {

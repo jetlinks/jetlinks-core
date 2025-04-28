@@ -19,6 +19,7 @@ public class DataTypes {
         supports.put(EnumType.ID, EnumType::new);
         supports.put(FloatType.ID, FloatType::new);
         supports.put(ShortType.ID, ShortType::new);
+        supports.put(ByteType.ID, ByteType::new);
         supports.put(IntType.ID, IntType::new);
         supports.put(LongType.ID, LongType::new);
         supports.put(ObjectType.ID, ObjectType::new);
@@ -31,7 +32,10 @@ public class DataTypes {
         supports.put(PasswordType.ID, PasswordType::new);
         supports.put(GeoShapeType.ID, GeoShapeType::new);
 
-        supports.put(UserType.ID,UserType::new);
+        supports.put(UserType.ID, UserType::new);
+    }
+
+    private DataTypes() {
     }
 
     public static void register(String id, Supplier<DataType> supplier) {

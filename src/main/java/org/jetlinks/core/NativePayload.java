@@ -51,18 +51,18 @@ public class NativePayload<T> implements Payload {
         return of(nativeObject, (Encoder<T>) null);
     }
 
-    public static <T> NativePayload<T> of(T nativeObject, Supplier<Payload> bodySupplier) {
-        return of(nativeObject, v -> bodySupplier.get());
-    }
+//    public static <T> NativePayload<T> of(T nativeObject, Supplier<Payload> bodySupplier) {
+//        return of(nativeObject, v -> bodySupplier.get());
+//    }
 
     @Override
     @SuppressWarnings("all")
     @SneakyThrows
     public <T> T decode(Decoder<T> decoder, boolean release) {
         try {
-            if (decoder.isDecodeFrom(nativeObject)) {
-                return (T) nativeObject;
-            }
+//            if (decoder.isDecodeFrom(nativeObject)) {
+//                return (T) nativeObject;
+//            }
         } finally {
             if (release) {
                 ReferenceCountUtil.safeRelease(this);

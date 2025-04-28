@@ -41,9 +41,19 @@ public interface Metadata extends Serializable {
      * @since 1.2.3
      */
     default String getI18nName() {
+        return getI18nName(LocaleUtils.current());
+    }
+
+    /**
+     * 获取国际化名称
+     *
+     * @return 国际化名称
+     * @since 1.2.3
+     */
+    default String getI18nName(Locale locale) {
         return MetadataUtils
             .resolveI18nMessage(
-                LocaleUtils.current(),
+                locale,
                 this,
                 "name",
                 getName()
