@@ -7,12 +7,17 @@ import reactor.core.Disposable;
 import reactor.core.Disposables;
 import reactor.core.publisher.Mono;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.BiConsumer;
 
 public abstract class AbstractLifecycle extends AbstractCommandSupport implements DataCollectorProvider.Lifecycle {
 
     private static final AtomicReferenceFieldUpdater<AbstractLifecycle, DataCollectorProvider.State>
-            STATE = AtomicReferenceFieldUpdater.newUpdater(AbstractLifecycle.class, DataCollectorProvider.State.class, "state");
+        STATE = AtomicReferenceFieldUpdater.newUpdater(AbstractLifecycle.class, DataCollectorProvider.State.class, "state");
+
+    private List<BiConsumer<DataCollectorProvider.State, DataCollectorProvider.State>> stateListener;
 
     private volatile DataCollectorProvider.State state;
 
@@ -36,8 +41,38 @@ public abstract class AbstractLifecycle extends AbstractCommandSupport implement
         return STATE.get(this);
     }
 
+    protected final boolean changeState(DataCollectorProvider.State expect,
+                                        DataCollectorProvider.State state) {
+
+        if (STATE.compareAndSet(this, expect, state)) {
+            fireListener(expect, state);
+            return true;
+        }
+        return false;
+    }
+
     protected final boolean changeState(DataCollectorProvider.State state) {
-        return STATE.getAndSet(this, state) != state;
+
+        DataCollectorProvider.State before = STATE.getAndSet(this, state);
+
+        if (before != state) {
+            fireListener(before, state);
+            return true;
+        }
+        return false;
+    }
+
+    private void fireListener(DataCollectorProvider.State before,
+                              DataCollectorProvider.State after) {
+
+        List<BiConsumer<DataCollectorProvider.State, DataCollectorProvider.State>> stateListener = this.stateListener;
+
+        if (stateListener != null) {
+            for (BiConsumer<DataCollectorProvider.State, DataCollectorProvider.State> consumer : stateListener) {
+                consumer.accept(before, after);
+            }
+        }
+
     }
 
     @Override
@@ -47,7 +82,8 @@ public abstract class AbstractLifecycle extends AbstractCommandSupport implement
         }
         if (changeState(CollectorConstants.States.starting)) {
             start0();
-            changeState(CollectorConstants.States.running);
+            changeState(CollectorConstants.States.starting,
+                        CollectorConstants.States.running);
         }
     }
 
@@ -55,6 +91,27 @@ public abstract class AbstractLifecycle extends AbstractCommandSupport implement
         this.disposable.add(listener);
     }
 
+    @Override
+    public final Disposable onStateChanged(BiConsumer<DataCollectorProvider.State, DataCollectorProvider.State> listener) {
+        synchronized (this) {
+            List<BiConsumer<DataCollectorProvider.State, DataCollectorProvider.State>> listeners = this.stateListener;
+            if (listeners == null) {
+                listeners = new LinkedList<>();
+                this.stateListener = listeners;
+            }
+            listeners.add(listener);
+
+            return () -> {
+                synchronized (this) {
+                    List<BiConsumer<DataCollectorProvider.State, DataCollectorProvider.State>> _listeners = this.stateListener;
+                    _listeners.remove(listener);
+                    if (_listeners.isEmpty()) {
+                        this.stateListener = null;
+                    }
+                }
+            };
+        }
+    }
 
     @Override
     public final void dispose() {

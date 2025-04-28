@@ -20,13 +20,24 @@ public class PointNode {
      */
     private String name;
 
+    /**
+     * 支持的访问模式
+     */
     private AccessMode[] accessModes;
 
+    /**
+     * 点位类型
+     */
     private Type nodeType;
 
-
+    /**
+     * 上级地址
+     */
     private String parentAddress;
 
+    /**
+     * 其他配置信息
+     */
     private Map<String, Object> others;
 
     public enum Type {

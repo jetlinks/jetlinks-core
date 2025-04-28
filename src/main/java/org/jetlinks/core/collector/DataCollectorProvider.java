@@ -1,6 +1,7 @@
 package org.jetlinks.core.collector;
 
 import org.jetlinks.core.Wrapper;
+import org.jetlinks.core.collector.subscribe.PointSubscriber;
 import org.jetlinks.core.command.Command;
 import org.jetlinks.core.command.CommandSupport;
 import org.jetlinks.core.metadata.Feature;
@@ -13,6 +14,8 @@ import reactor.core.publisher.Mono;
 import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -69,7 +72,6 @@ public interface DataCollectorProvider extends CommandSupport {
      */
     Mono<DataCollectorProvider.PointRuntime> createPoint(PointConfiguration configuration);
 
-
     interface ChannelConfiguration {
 
         /**
@@ -113,8 +115,6 @@ public interface DataCollectorProvider extends CommandSupport {
          */
         DataCollectorProvider.ChannelRuntime channel();
     }
-
-
 
     interface PointConfiguration {
         /**
@@ -203,7 +203,7 @@ public interface DataCollectorProvider extends CommandSupport {
          * @see AccessMode#subscribe
          */
         Disposable subscribe(Collection<PointRuntime> points,
-                             Consumer<PointData> listener);
+                             PointSubscriber subscriber);
 
         /**
          * 采集指定的点位数据. 用于主动获取点位数据，如定时获取等.
@@ -220,7 +220,7 @@ public interface DataCollectorProvider extends CommandSupport {
          * @return 特性
          * @see CollectorConstants.CollectorFeatures
          */
-        List<Feature> getFeatures();
+        Set<Feature> getFeatures();
     }
 
     /**
@@ -238,12 +238,12 @@ public interface DataCollectorProvider extends CommandSupport {
         String getId();
 
         /**
-         * 测试点位是否正常,通过状态码来传递状态.
+         * 测试点位,返回点位健康度.
          *
          * @return 测试结果
          * @see Result#getCode()
          */
-        Mono<Result<Void>> test();
+        Mono<Result<Health>> test();
 
         /**
          * 读取点位数据
@@ -269,6 +269,10 @@ public interface DataCollectorProvider extends CommandSupport {
      */
     interface Lifecycle extends Wrapper, Disposable {
 
+        /**
+         * 检查状态
+         * @return 检查状态
+         */
         Mono<State> checkState();
 
         State state();
@@ -277,8 +281,13 @@ public interface DataCollectorProvider extends CommandSupport {
 
         void dispose();
 
+        /**
+         * 监听状态变化
+         * @param listener 状态变化
+         * @return Disposable
+         */
+        Disposable onStateChanged(BiConsumer<State,State> listener);
     }
-
 
     /**
      * 状态
