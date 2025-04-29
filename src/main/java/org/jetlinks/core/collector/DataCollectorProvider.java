@@ -221,6 +221,16 @@ public interface DataCollectorProvider extends CommandSupport {
          * @see CollectorConstants.CollectorFeatures
          */
         Set<Feature> getFeatures();
+
+        /**
+         * 判断是否支持特性
+         *
+         * @param feature 特性
+         * @return 支持：true，不支持：false。
+         */
+        default boolean hasFeature(Feature feature) {
+            return getFeatures().contains(feature);
+        }
     }
 
     /**
@@ -271,6 +281,7 @@ public interface DataCollectorProvider extends CommandSupport {
 
         /**
          * 检查状态
+         *
          * @return 检查状态
          */
         Mono<State> checkState();
@@ -283,10 +294,11 @@ public interface DataCollectorProvider extends CommandSupport {
 
         /**
          * 监听状态变化
+         *
          * @param listener 状态变化
          * @return Disposable
          */
-        Disposable onStateChanged(BiConsumer<State,State> listener);
+        Disposable onStateChanged(BiConsumer<State, State> listener);
     }
 
     /**

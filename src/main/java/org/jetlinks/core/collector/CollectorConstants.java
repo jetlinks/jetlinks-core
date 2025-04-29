@@ -3,17 +3,23 @@ package org.jetlinks.core.collector;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.hswebframework.web.dict.I18nEnumDict;
+import org.jetlinks.core.message.HeaderKey;
+import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.metadata.Feature;
 
 public interface CollectorConstants {
 
+    interface Headers {
+
+        HeaderKey<String> pointId = HeaderKey.of("pointId", null, String.class);
+
+    }
 
     @AllArgsConstructor
     @Getter
     enum CollectorFeatures implements Feature {
         subscribable("可订阅点位数据"),
-
-        ;
+        batchSupport("支持批量采集");
         final String name;
 
         @Override

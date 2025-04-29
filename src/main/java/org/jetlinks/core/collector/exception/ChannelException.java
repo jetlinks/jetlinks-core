@@ -10,6 +10,13 @@ public class ChannelException extends I18nSupportException.NoStackTrace {
 
     public ChannelException(String channelId,
                             String code,
+                            Object... args) {
+        super(code, args);
+        this.channelId = channelId;
+    }
+
+    public ChannelException(String channelId,
+                            String code,
                             Throwable cause,
                             Object... args) {
         super(code, cause, args);
