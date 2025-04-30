@@ -89,4 +89,11 @@ public interface CollectorConstants {
     }
 
 
+    interface Tracer{
+        CharSequence decode = "decode";
+        CharSequence encode = "encode";
+        CharSequence convert = "convert";
+
+    }
+
 }

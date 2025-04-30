@@ -18,17 +18,17 @@ public class BufferImpl implements Buffer{
 
     @Override
     public BitsBuffer readBits(int length) {
-
-        return null;
+        return new BitsBufferImpl(byteBuf,length);
     }
 
     @Override
     public BitsBuffer getBits(int offset, int length) {
-        return null;
+        return new BitsBufferImpl(byteBuf,offset,length);
     }
 
     @Override
     public Buffer writeBits(BitsBuffer bitsBuffer) {
-        return null;
+
+        return this;
     }
 }
