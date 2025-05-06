@@ -2,6 +2,7 @@ package org.jetlinks.core.collector;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.codec.binary.Hex;
 import org.jetlinks.core.utils.SerializeUtils;
 
 import java.io.Externalizable;
@@ -53,6 +54,12 @@ public class PointData implements Externalizable {
      * 其他自定义数据
      */
     private Map<String, Object> others;
+
+    @Override
+    public String toString() {
+        String val = data == null ? Hex.encodeHexString(nativeData) : String.valueOf(data);
+        return state==null?val:(val + ":" + state);
+    }
 
 
     public PointData withOther(String key, Object value) {

@@ -19,7 +19,7 @@ public abstract class AbstractLifecycle extends AbstractCommandSupport implement
 
     private List<BiConsumer<DataCollectorProvider.State, DataCollectorProvider.State>> stateListener;
 
-    private volatile DataCollectorProvider.State state;
+    private volatile DataCollectorProvider.State state = CollectorConstants.States.initializing;
 
     private final Disposable.Composite disposable = Disposables.composite();
 
@@ -87,6 +87,14 @@ public abstract class AbstractLifecycle extends AbstractCommandSupport implement
         }
     }
 
+    @Override
+    public void pause() {
+        if (disposable.isDisposed()) {
+            return;
+        }
+        changeState(CollectorConstants.States.paused);
+    }
+
     protected final void doOnStop(Disposable listener) {
         this.disposable.add(listener);
     }
@@ -115,10 +123,13 @@ public abstract class AbstractLifecycle extends AbstractCommandSupport implement
 
     @Override
     public final void dispose() {
-        if (disposable.isDisposed()) {
-            return;
+        synchronized (this) {
+            if (disposable.isDisposed()) {
+                return;
+            }
+            disposable.dispose();
         }
-        disposable.dispose();
         stop0();
+        changeState(CollectorConstants.States.stopped);
     }
 }

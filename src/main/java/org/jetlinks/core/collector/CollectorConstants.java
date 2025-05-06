@@ -37,6 +37,7 @@ public interface CollectorConstants {
     @Getter
     enum States implements DataCollectorProvider.State, I18nEnumDict<String> {
 
+        initializing("初始化"),
         running("运行中"),
         paused("已暂停"),
         starting("启动中"),
@@ -54,42 +55,37 @@ public interface CollectorConstants {
     }
 
 
-    @AllArgsConstructor
-    @Getter
-    enum Codes {
+    interface Codes {
         // 成功
-        success(0),
+        int success = 0;
 
-        channelError(10000),
+        int channelError = 10000;
         // 通信错误
-        channelCommunicationError(10001),
+        int channelCommunicationError = 1000;
         // 配置错误
-        channelConfigError(10002),
+        int channelConfigError = 10002;
 
-        collectorError(20000),
+        int collectorError = 20000;
         // 通信错误
-        collectorCommunicationError(20001),
+        int collectorCommunicationError = 20001;
         // 配置错误
-        collectorConfigError(20002),
+        int collectorConfigError = 20002;
 
-        pointError(30000),
+        int pointError = 30000;
         // 配置错误
-        pointConfigError(30001),
+        int pointConfigError = 30001;
         // 编解码错误
-        pointCodecError(30002),
+        int pointCodecError = 30002;
         // 不支持读
-        pointUnsupportedRead(3004),
+        int pointUnsupportedRead = 30004;
         // 不支持写
-        pointUnsupportedWrite(3005),
+        int pointUnsupportedWrite = 30005;
 
-        ;
-
-        final int code;
 
     }
 
 
-    interface Tracer{
+    interface Tracer {
         CharSequence decode = "decode";
         CharSequence encode = "encode";
         CharSequence convert = "convert";

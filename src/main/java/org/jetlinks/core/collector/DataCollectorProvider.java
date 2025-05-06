@@ -202,7 +202,7 @@ public interface DataCollectorProvider extends CommandSupport {
          * @return Disposable
          * @see AccessMode#subscribe
          */
-        Disposable subscribe(Collection<PointRuntime> points,
+        Disposable subscribe(PointRuntime point,
                              PointSubscriber subscriber);
 
         /**
@@ -220,7 +220,7 @@ public interface DataCollectorProvider extends CommandSupport {
          * @return 特性
          * @see CollectorConstants.CollectorFeatures
          */
-        Set<Feature> getFeatures();
+        Set<? extends Feature> getFeatures();
 
         /**
          * 判断是否支持特性
@@ -238,7 +238,7 @@ public interface DataCollectorProvider extends CommandSupport {
      *
      * @since 1.2.3
      */
-    interface PointRuntime extends Lifecycle {
+    interface PointRuntime extends CommandSupport, Lifecycle {
 
         /**
          * 点位ID
@@ -286,10 +286,25 @@ public interface DataCollectorProvider extends CommandSupport {
          */
         Mono<State> checkState();
 
+        /**
+         * 当前状态
+         * @return 状态
+         */
         State state();
 
+        /**
+         * 启动
+         */
         void start();
 
+        /**
+         * 暂停
+         */
+        void pause();
+
+        /**
+         * 停止
+         */
         void dispose();
 
         /**
