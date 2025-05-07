@@ -46,7 +46,7 @@ public class Result<T> extends GenericHeaderSupport<Result<T>> implements Extern
         Result<T> result = new Result<>();
         result.setSuccess(true);
         result.setData(data);
-        result.setCode(CollectorConstants.Codes.success.getCode());
+        result.setCode(CollectorConstants.Codes.success);
         return result;
     }
 
