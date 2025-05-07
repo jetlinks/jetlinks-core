@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public interface Reactors {
@@ -83,9 +84,13 @@ public interface Reactors {
         if (mono instanceof Callable) {
             return (T) ((Callable<?>) mono).call();
         }
+        // 传递链路追踪上下文
+        mono = ReactorHooks.doHook(mono);
+
         // 在阻塞线程中,使用单独的调度器来切换到非阻塞线程
         if (!Schedulers.isNonBlockingThread(Thread.currentThread())) {
-            mono = mono.subscribeOn(Schedulers.parallel());
+            mono = mono
+                .subscribeOn(Schedulers.parallel());
         }
 
         //在非阻塞线程中,使用toFuture处理.
@@ -103,5 +108,9 @@ public interface Reactors {
 
         return mono.block(timeout);
 
+    }
+
+    static <T> Function<Mono<T>, T> awaiter(Duration timeout) {
+        return (mono) -> await(mono, timeout);
     }
 }
