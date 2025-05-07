@@ -10,6 +10,7 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import org.apache.commons.collections.MapUtils;
 import org.jetlinks.core.topic.Topic;
+import org.jetlinks.core.utils.ReactorHooks;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -34,6 +35,14 @@ import java.util.function.Function;
 public class TraceHolder {
 
     private TraceHolder() {
+    }
+
+    static {
+        // 传递链路追踪上下文
+        ReactorHooks
+            .hookBlocking(mono -> mono
+                .contextWrite(reactor.util.context.Context.of(Context.class,
+                                                              Context.current())));
     }
 
     static final ContextKey<CharSequence> SPAN_NAME = ContextKey.named("spanName");
