@@ -570,6 +570,13 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     }
 
     @Override
+    public Mono<DeviceOperator> getParentDevice() {
+        return this
+            .getSelfConfig(parentGatewayId)
+            .flatMap(registry::getDevice);
+    }
+
+    @Override
     public ThingRpcSupport rpc() {
         return (msg) -> this
             .getProtocol()

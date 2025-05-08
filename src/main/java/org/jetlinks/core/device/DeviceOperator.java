@@ -151,7 +151,7 @@ public interface DeviceOperator extends Thing {
      */
     default <V> Mono<V> getSelfConfig(ConfigKey<V> key) {
         return getSelfConfig(key.getKey())
-                .map(value -> value.as(key.getValueType()));
+            .map(value -> value.as(key.getValueType()));
     }
 
     /**
@@ -170,8 +170,8 @@ public interface DeviceOperator extends Thing {
      */
     default Mono<Boolean> isOnline() {
         return checkState()
-                .map(state -> state.equals(DeviceState.online))
-                .defaultIfEmpty(false);
+            .map(state -> state.equals(DeviceState.online))
+            .defaultIfEmpty(false);
     }
 
     /**
@@ -220,7 +220,7 @@ public interface DeviceOperator extends Thing {
     Mono<Boolean> updateMetadata(String metadata);
 
     /**
-     * 重置当前设备的独立物模型
+     * 重置当前设备的独立物模型,重置后将以产品的为准.
      *
      * @return void
      * @since 1.1.6
@@ -231,6 +231,16 @@ public interface DeviceOperator extends Thing {
      * @return 获取设备对应的产品操作接口
      */
     Mono<DeviceProductOperator> getProduct();
+
+    /**
+     * 获取父设备，如果没有父设备则返回empty.
+     *
+     * @return 父设备
+     * @since 1.3
+     */
+    default Mono<DeviceOperator> getParentDevice() {
+        return Mono.empty();
+    }
 
     @Override
     default Mono<DeviceProductOperator> getTemplate() {
