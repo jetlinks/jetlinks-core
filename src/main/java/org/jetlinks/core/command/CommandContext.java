@@ -3,6 +3,7 @@ package org.jetlinks.core.command;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -84,6 +85,16 @@ public interface CommandContext extends Function<Context, Context> {
     default CommandContext or(CommandContext context) {
         return name -> getCommandSupport(name)
             .switchIfEmpty(context.getCommandSupport(name));
+    }
+
+    /**
+     * 创建一个固定名称的命令支持上下文
+     * @param name 名称
+     * @param commandSupport 命令支持
+     * @return 上下文
+     */
+    static CommandContext create(String name, Mono<CommandSupport> commandSupport) {
+        return _name -> Objects.equals(name, _name) ? commandSupport : Mono.empty();
     }
 
     /**
