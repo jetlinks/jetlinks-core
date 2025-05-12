@@ -74,6 +74,20 @@ public interface Command<Response> extends Wrapper, Serializable {
     }
 
     /**
+     * 基于另外一个命令设置当前命令的参数
+     *
+     * @param command 命令
+     * @return this
+     */
+    default Command<Response> with(Command<?> command) {
+        if (null != command) {
+            return with(command.asMap());
+        }
+        return this;
+    }
+
+
+    /**
      * 获取命令的参数,当参数不存在时返回null.
      *
      * @param key  参数Key

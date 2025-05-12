@@ -20,4 +20,15 @@ public abstract class AbstractStreamCommand<E, R, Self extends AbstractStreamCom
         this.stream = stream;
     }
 
+    @Override
+    @SuppressWarnings("all")
+    public Command<Flux<R>> with(Command<?> command) {
+        if (command.isWrapperFor(StreamCommand.class)) {
+            this.stream = command
+                .unwrap(StreamCommand.class)
+                .stream()
+                .map(this::convertStreamValue);
+        }
+        return super.with(command);
+    }
 }

@@ -37,6 +37,15 @@ public interface CommandConstant {
     ConfigKey<Boolean> responseFlux = ConfigKey.of("responseFlux", "Flux响应", Boolean.class);
 
     /**
+     * 标记命令为一个流式命令
+     *
+     * @see org.jetlinks.core.metadata.FunctionMetadata#expand(ConfigKey, Object)
+     * @see reactor.core.publisher.Flux
+     * @see CommandSupport#executeToFlux(Command)
+     */
+    ConfigKey<Boolean> STREAM = ConfigKey.of("_stream_req", "流失参数", Boolean.class);
+
+    /**
      * 判断命令是否返回无界流
      *
      * @param metadata 命令元数据
@@ -54,5 +63,15 @@ public interface CommandConstant {
      */
     static boolean isResponseFlux(Metadata metadata) {
         return metadata.getExpand(responseFlux).orElse(false);
+    }
+
+    /**
+     * 判断命令是否返回Flux流
+     *
+     * @param metadata 命令元数据
+     * @return true:Flux流, false:单值
+     */
+    static boolean isStream(Metadata metadata) {
+        return metadata.getExpand(STREAM).orElse(false);
     }
 }
