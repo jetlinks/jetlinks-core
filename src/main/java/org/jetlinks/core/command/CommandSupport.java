@@ -15,6 +15,8 @@ import java.util.Objects;
  * 命令模式支持的统一定义接口,用于表示支持命令模式.
  *
  * @author zhouhao
+ * @see CommandContext
+ * @see CommandSupport#current(String)
  * @since 1.2.1
  */
 public interface CommandSupport extends Wrapper {
@@ -216,7 +218,7 @@ public interface CommandSupport extends Wrapper {
     }
 
     /**
-     * 获取当前上下文中的命令支持
+     * 获取当前上下文中的命令支持,获取到的命令支持仅可在同一个响应式流中使用.
      *
      * @param name 名称,由命令提供者定义。
      * @return 命令支持.

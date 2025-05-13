@@ -20,7 +20,7 @@ import java.util.function.Function;
  *       Mono<Void> handleConnection(NetConnection connection){
  *
  *          // 构造上下文
- *          CommandContext ctx = createCommand("net_comm",connection);
+ *          CommandContext ctx = CommandContext.create("net_comm",connection);
  *
  *          // 获取命令服务
  *          CommandSupport service= ...;
@@ -41,7 +41,7 @@ import java.util.function.Function;
  *        return this
  *             .handleConnection(cmd)
  *             .flatMap(ackData->{
- *               return CommandContext
+ *               return CommandSupport
  *                    .current("net_comm")// 获取上下文中指定的命令支持
  *                    // 执行上下文中的命令,
  *                    .flatMap(support->support
@@ -89,7 +89,19 @@ public interface CommandContext extends Function<Context, Context> {
 
     /**
      * 创建一个固定名称的命令支持上下文
-     * @param name 名称
+     *
+     * @param name           名称
+     * @param commandSupport 命令支持
+     * @return 上下文
+     */
+    static CommandContext create(String name, CommandSupport commandSupport) {
+        return create(name, Mono.just(commandSupport));
+    }
+
+    /**
+     * 创建一个固定名称的命令支持上下文
+     *
+     * @param name           名称
      * @param commandSupport 命令支持
      * @return 上下文
      */
