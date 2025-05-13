@@ -214,4 +214,16 @@ public interface CommandSupport extends Wrapper {
             .getCommandMetadata(commandId)
             .hasElement();
     }
+
+    /**
+     * 获取当前上下文中的命令支持
+     *
+     * @param name 名称,由命令提供者定义。
+     * @return 命令支持.
+     * @see CommandContext
+     * @since 1.3
+     */
+    static Mono<CommandSupport> current(String name) {
+        return CommandContext.current(name);
+    }
 }
