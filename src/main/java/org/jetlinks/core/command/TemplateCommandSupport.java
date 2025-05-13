@@ -39,7 +39,8 @@ public abstract class TemplateCommandSupport implements CommandSupport {
     }
 
     @Override
-    public Mono<FunctionMetadata> getCommandMetadata(@Nonnull String commandId, @Nullable Map<String, Object> parameters) {
+    public Mono<FunctionMetadata> getCommandMetadata(@Nonnull String commandId,
+                                                     @Nullable Map<String, Object> parameters) {
         return template.getCommandMetadata(commandId, parameters);
     }
 
