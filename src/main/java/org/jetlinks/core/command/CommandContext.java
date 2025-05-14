@@ -6,6 +6,7 @@ import reactor.util.context.Context;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * 命令上下文,用于在上下文中提供命令支持,用于执行业务回调等场景.
@@ -97,6 +98,31 @@ public interface CommandContext extends Function<Context, Context> {
     static CommandContext create(String name, CommandSupport commandSupport) {
         return create(name, Mono.just(commandSupport));
     }
+
+    /**
+     * 使用lambda创建一个固定名称的命令支持上下文
+     * <pre>{@code
+     *
+     * CommandContext
+     *    .create("my-callback",CallBackCommand::new,cmd->....)
+     *
+     * }</pre>
+     *
+     * @param name           名称
+     * @param commandBuilder 命令购置器
+     * @param commandInvoker 命令执行器
+     * @param <R>            返回值
+     * @param <T>            命令类型
+     * @return 上下文
+     * @see CommandSupport#create(Supplier, Function)
+     * @since 1.3
+     */
+    static <R, T extends Command<R>> CommandContext create(String name,
+                                                           Supplier<T> commandBuilder,
+                                                           Function<T, R> commandInvoker) {
+        return create(name, CommandSupport.create(commandBuilder, commandInvoker));
+    }
+
 
     /**
      * 创建一个固定名称的命令支持上下文

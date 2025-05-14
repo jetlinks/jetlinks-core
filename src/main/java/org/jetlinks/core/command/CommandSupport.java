@@ -10,6 +10,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * 命令模式支持的统一定义接口,用于表示支持命令模式.
@@ -227,5 +229,20 @@ public interface CommandSupport extends Wrapper {
      */
     static Mono<CommandSupport> current(String name) {
         return CommandContext.current(name);
+    }
+
+    /**
+     * 使用lambda创建一个命令支持
+     *
+     * @param commandBuilder 命令构造器
+     * @param commandInvoker 执行逻辑函数
+     * @param <R>            命令返回类型
+     * @param <T>            命令类型
+     * @return 命令支持
+     * @since 1.3
+     */
+    static <R, T extends Command<R>> CommandSupport create(Supplier<T> commandBuilder,
+                                                           Function<T, R> commandInvoker) {
+        return new LambdaCommandSupport<>(commandBuilder, commandInvoker);
     }
 }
