@@ -2,6 +2,7 @@ package org.jetlinks.core.command;
 
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.FunctionMetadata;
+import org.jetlinks.core.utils.Reactors;
 import org.springframework.core.ResolvableType;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -27,6 +28,22 @@ class LambdaCommandSupport<R, T extends Command<R>> implements CommandSupport {
         }
         cmd.with(command);
         return (R) commandInvoker.apply(cmd);
+    }
+
+    @Override
+    public <R2, C extends Command<R2>> C createCommand(String commandId) {
+        Command<?> cmd = commandBuilder.get();
+        if (Objects.equals(commandId, cmd.getCommandId())) {
+            return (C) cmd;
+        }
+        return CommandSupport.super.createCommand(commandId);
+    }
+
+    @Override
+    public Mono<Boolean> commandIsSupported(String commandId) {
+        return Objects.equals(commandBuilder.get().getCommandId(), commandId)
+            ? Reactors.ALWAYS_TRUE
+            : Reactors.ALWAYS_FALSE;
     }
 
     @Override
