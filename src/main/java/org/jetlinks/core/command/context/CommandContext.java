@@ -1,10 +1,13 @@
-package org.jetlinks.core.command;
+package org.jetlinks.core.command.context;
 
+import org.jetlinks.core.Wrapper;
+import org.jetlinks.core.command.Command;
+import org.jetlinks.core.command.CommandSupport;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
-import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -57,7 +60,7 @@ import java.util.function.Supplier;
  * @author zhouhao
  * @since 1.3
  */
-public interface CommandContext extends Function<Context, Context> {
+public interface CommandContext extends Function<Context, Context>, Wrapper {
 
     /**
      * 获取命令支持,获取不到时返回{@link Mono#empty()}
@@ -67,6 +70,23 @@ public interface CommandContext extends Function<Context, Context> {
      * @see CommandSupport
      */
     Mono<CommandSupport> getCommandSupport(String name);
+
+    /**
+     * 获取所有支持的名称
+     *
+     * @return 名称集合
+     */
+    Set<String> getSupports();
+
+    /**
+     * 判断是否支持指定的名称
+     *
+     * @param name 名称
+     * @return true:支持, false:不支持
+     */
+    default boolean isSupported(String name) {
+        return getSupports().contains(name);
+    }
 
     /**
      * @see Mono#contextWrite(Function)
@@ -80,12 +100,11 @@ public interface CommandContext extends Function<Context, Context> {
     /**
      * 组合另外一个上下文,当前上下文获取不到命令时,使用另外一个上下文进行获取
      *
-     * @param context 另外一个上下文
+     * @param another 另外一个上下文
      * @return CommandContext
      */
-    default CommandContext or(CommandContext context) {
-        return name -> getCommandSupport(name)
-            .switchIfEmpty(context.getCommandSupport(name));
+    default CommandContext or(CommandContext another) {
+        return new CommandContextOr(this, another);
     }
 
     /**
@@ -132,7 +151,7 @@ public interface CommandContext extends Function<Context, Context> {
      * @return 上下文
      */
     static CommandContext create(String name, Mono<CommandSupport> commandSupport) {
-        return _name -> Objects.equals(name, _name) ? commandSupport : Mono.empty();
+        return new SingleCommandContext(name, commandSupport);
     }
 
     /**

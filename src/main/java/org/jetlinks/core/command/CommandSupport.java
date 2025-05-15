@@ -2,6 +2,7 @@ package org.jetlinks.core.command;
 
 import org.apache.commons.collections4.MapUtils;
 import org.jetlinks.core.Wrapper;
+import org.jetlinks.core.command.context.CommandContext;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
