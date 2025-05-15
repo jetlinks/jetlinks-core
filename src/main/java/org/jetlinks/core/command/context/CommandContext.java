@@ -6,6 +6,7 @@ import org.jetlinks.core.command.CommandSupport;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
+import javax.annotation.Nonnull;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -76,6 +77,7 @@ public interface CommandContext extends Function<Context, Context>, Wrapper {
      *
      * @return 名称集合
      */
+    @Nonnull
     Set<String> getSupports();
 
     /**
