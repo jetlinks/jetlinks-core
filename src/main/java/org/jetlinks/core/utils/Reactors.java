@@ -70,6 +70,21 @@ public interface Reactors {
     }
 
     /**
+     * <pre>{@code
+     *   List<Data> list=fetch()
+     *   .collectList()
+     *   .as(awaiter(Duration.ofSeconds(10)))
+     * }</pre>
+     *
+     * @param duration 超时时间
+     * @param <T>      泛型
+     * @return Function
+     */
+    static <T> Function<Mono<T>, T> awaiter(Duration duration) {
+        return mono -> await(mono, duration);
+    }
+
+    /**
      * 阻塞获取Mono中的值,如果在响应式操作中执行此逻辑,建议使用{@link Schedulers#boundedElastic()}.
      *
      * @param mono    Mono对象

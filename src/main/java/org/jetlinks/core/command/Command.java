@@ -3,6 +3,7 @@ package org.jetlinks.core.command;
 import lombok.SneakyThrows;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.Wrapper;
+import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.utils.ConverterUtils;
 import org.springframework.core.ResolvableType;
 import reactor.core.publisher.Flux;
@@ -56,8 +57,7 @@ public interface Command<Response> extends Wrapper, Serializable {
      * @return this
      */
     default Command<Response> with(String key, Object value) {
-        FastBeanCopier.copy(this, Collections.singletonMap(key, value));
-        return this;
+        return with(Collections.singletonMap(key, value));
     }
 
     /**
@@ -68,7 +68,34 @@ public interface Command<Response> extends Wrapper, Serializable {
      */
     default Command<Response> with(Map<String, Object> parameters) {
         if (null != parameters) {
-            FastBeanCopier.copy(this, parameters);
+            return FastBeanCopier.copy(parameters, this);
+        }
+        return this;
+    }
+
+    /**
+     * 设置命令的多个参数
+     *
+     * @param parameterObject 参数
+     * @return this
+     */
+    @SuppressWarnings("all")
+    default Command<Response> with(Object parameterObject) {
+
+        if (parameterObject instanceof Map) {
+            return with((Map<String, Object>) parameterObject);
+        }
+
+        if(parameterObject instanceof Command){
+            return with(((Command<?>) parameterObject).asMap());
+        }
+
+        if (parameterObject instanceof Jsonable) {
+            return with(((Jsonable) parameterObject).toJson());
+        }
+
+        if (parameterObject != null) {
+            return FastBeanCopier.copy(parameterObject, this);
         }
         return this;
     }
