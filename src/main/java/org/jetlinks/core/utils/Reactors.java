@@ -125,7 +125,4 @@ public interface Reactors {
 
     }
 
-    static <T> Function<Mono<T>, T> awaiter(Duration timeout) {
-        return (mono) -> await(mono, timeout);
-    }
 }
