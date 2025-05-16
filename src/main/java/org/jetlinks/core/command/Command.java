@@ -87,7 +87,7 @@ public interface Command<Response> extends Wrapper, Serializable {
         }
 
         if(parameterObject instanceof Command){
-            return with(((Command<?>) parameterObject).asMap());
+            return with(((Command<?>) parameterObject));
         }
 
         if (parameterObject instanceof Jsonable) {
