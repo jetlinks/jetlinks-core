@@ -27,12 +27,14 @@ public interface EventBus {
     Flux<TopicPayload> subscribe(Subscription subscription);
 
     /**
-     * 从事件总线中订阅事件并指定handler来处理事件，通过调用{@link Disposable#dispose()}来取消订阅
+     * 从事件总线中订阅事件并指定handler来处理事件，通过调用{@link Disposable#dispose()}来取消订阅。
+     * <p>
+     * 如果配置了{@link Subscription.Feature#persistent},则需要调用{@link Cancelable#cancel()}来取消订阅。
      *
      * @param subscription 订阅信息
      * @return 事件流
      */
-    Disposable subscribe(Subscription subscription,
+    Cancelable subscribe(Subscription subscription,
                          Function<TopicPayload, Mono<Void>> handler);
 
     /**
