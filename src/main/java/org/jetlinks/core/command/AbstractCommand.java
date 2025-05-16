@@ -40,7 +40,7 @@ public abstract class AbstractCommand<Response, Self extends AbstractCommand<Res
 
     @Override
     @SuppressWarnings("all")
-    public Command<Response> with(Object parameterObject) {
+    public Self with(Object parameterObject) {
         if (parameterObject == null) {
             return castSelf();
         }
@@ -50,7 +50,7 @@ public abstract class AbstractCommand<Response, Self extends AbstractCommand<Res
         }
 
         if (parameterObject instanceof Command) {
-            return with(((Command<?>) parameterObject).asMap());
+            return with(((Command<?>) parameterObject));
         }
 
         if (parameterObject instanceof Jsonable) {
@@ -58,6 +58,14 @@ public abstract class AbstractCommand<Response, Self extends AbstractCommand<Res
         }
 
         return with(FastBeanCopier.copy(parameterObject, new HashMap<>()));
+    }
+
+    @Override
+    public Self with(Command<?> command) {
+        if (null != command) {
+            return with(command.asMap());
+        }
+        return castSelf();
     }
 
     @Override

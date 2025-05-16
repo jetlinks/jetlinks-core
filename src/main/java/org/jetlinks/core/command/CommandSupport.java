@@ -20,6 +20,7 @@ import java.util.function.Supplier;
  * @author zhouhao
  * @see CommandContext
  * @see CommandSupport#current(String)
+ * @see CommandSupport#create(Supplier, Function)
  * @since 1.2.1
  */
 public interface CommandSupport extends Wrapper {
