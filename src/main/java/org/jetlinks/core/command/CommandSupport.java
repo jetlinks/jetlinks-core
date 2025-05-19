@@ -2,6 +2,7 @@ package org.jetlinks.core.command;
 
 import org.apache.commons.collections4.MapUtils;
 import org.jetlinks.core.Wrapper;
+import org.jetlinks.core.command.context.CommandContext;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -10,11 +11,16 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * 命令模式支持的统一定义接口,用于表示支持命令模式.
  *
  * @author zhouhao
+ * @see CommandContext
+ * @see CommandSupport#current(String)
+ * @see CommandSupport#create(Supplier, Function)
  * @since 1.2.1
  */
 public interface CommandSupport extends Wrapper {
@@ -213,5 +219,32 @@ public interface CommandSupport extends Wrapper {
         return this
             .getCommandMetadata(commandId)
             .hasElement();
+    }
+
+    /**
+     * 获取当前上下文中的命令支持,获取到的命令支持仅可在同一个响应式流中使用.
+     *
+     * @param name 名称,由命令提供者定义。
+     * @return 命令支持.
+     * @see CommandContext
+     * @since 1.3
+     */
+    static Mono<CommandSupport> current(String name) {
+        return CommandContext.current(name);
+    }
+
+    /**
+     * 使用lambda创建一个命令支持
+     *
+     * @param commandBuilder 命令构造器
+     * @param commandInvoker 执行逻辑函数
+     * @param <R>            命令返回类型
+     * @param <T>            命令类型
+     * @return 命令支持
+     * @since 1.3
+     */
+    static <R, T extends Command<R>> CommandSupport create(Supplier<T> commandBuilder,
+                                                           Function<T, R> commandInvoker) {
+        return new LambdaCommandSupport<>(commandBuilder, commandInvoker);
     }
 }

@@ -15,6 +15,7 @@ import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Mono;
 import reactor.util.context.ContextView;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Collection;
@@ -271,6 +272,7 @@ public class BlockingDeviceOperator implements DeviceOperator {
 
     /**
      * 获取设备物模型
+     *
      * @return 物模型
      * @see DeviceMetadata#getPropertyOrNull(String)
      * @see DeviceMetadata#getFunctionOrNull(String)
@@ -457,6 +459,7 @@ public class BlockingDeviceOperator implements DeviceOperator {
      * @param key key列表.
      * @return 配置值
      */
+    @Nonnull
     public Values getConfigsNow(ConfigKey<?>... key) {
         return safeValues(
             await(getConfigs(key))
@@ -476,6 +479,7 @@ public class BlockingDeviceOperator implements DeviceOperator {
      * @param keys key列表.
      * @return 配置值
      */
+    @Nonnull
     public Values getConfigsNow(String... keys) {
         return safeValues(
             await(getConfigs(keys))
@@ -498,6 +502,20 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return target.setConfigs(conf);
     }
 
+    @Override
+    public Mono<DeviceOperator> getParentDevice() {
+        return target.getParentDevice();
+    }
+
+    /**
+     * 阻塞方式获取父设备,如果没有则返回null.
+     *
+     * @return 父设备
+     */
+    @Nullable
+    public DeviceOperator getParentDeviceNow() {
+        return await(target.getParentDevice());
+    }
 
     public boolean removeConfigNow(String key) {
         return Boolean.TRUE.equals(

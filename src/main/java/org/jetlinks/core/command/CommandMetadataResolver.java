@@ -155,6 +155,9 @@ public class CommandMetadataResolver {
         metadata.setInputs(resolveInputs(commandClazz));
         metadata.setOutput(resolveOutput(outClazz));
         metadata.setExpands(MetadataUtils.parseExpands(clazz));
+        if (StreamCommand.class.isAssignableFrom(clazz)) {
+            metadata.expand(CommandConstant.STREAM, true);
+        }
         return metadata;
     }
 

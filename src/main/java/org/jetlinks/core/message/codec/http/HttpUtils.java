@@ -44,10 +44,10 @@ public class HttpUtils {
 
     public static String createEncodedUrlParams(Map<?, ?> maps) {
         return maps
-                .entrySet()
-                .stream()
-                .map(e -> urlEncode(String.valueOf(e.getKey())) + "=" + urlEncode(String.valueOf(e.getValue())))
-                .collect(Collectors.joining("&"));
+            .entrySet()
+            .stream()
+            .map(e -> urlEncode(String.valueOf(e.getKey())) + "=" + urlEncode(String.valueOf(e.getValue())))
+            .collect(Collectors.joining("&"));
 
     }
 
@@ -61,19 +61,19 @@ public class HttpUtils {
         }
         int queryIndex = uriOrQuery.indexOf("?");
         if (queryIndex >= 0) {
-            uriOrQuery = uriOrQuery.substring(queryIndex+1);
+            uriOrQuery = uriOrQuery.substring(queryIndex + 1);
         }
         return Stream
-                .of(uriOrQuery.split("[&]"))
-                .map(par -> par.split("[=]", 2))
-                .collect(
-                        Collectors.toMap(
-                                arr -> urlDecode(arr[0]),  // key
-                                arr -> arr.length > 1 ? urlDecode(arr[1]) : "", // value
-                                (a, b) -> String.join(",", a, b),// 合并相同value
-                                supplier
-                        )
-                );
+            .of(uriOrQuery.split("[&]"))
+            .map(par -> par.split("[=]", 2))
+            .collect(
+                Collectors.toMap(
+                    arr -> urlDecode(arr[0]),  // key
+                    arr -> arr.length > 1 ? urlDecode(arr[1]) : "", // value
+                    (a, b) -> String.join(",", a, b),// 合并相同value
+                    supplier
+                )
+            );
     }
 
     public static String appendUrlParameter(String url, Map<?, ?> param) {

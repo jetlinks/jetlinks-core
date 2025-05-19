@@ -132,9 +132,11 @@ public class CommandUtils {
      */
     public static ResolvableType getCommandResponseType(Class<?> cmd) {
         return commandResponseType
-            .computeIfAbsent(cmd, clazz -> ResolvableType
-                .forClass(Command.class, clazz)
-                .getGeneric(0));
+            .computeIfAbsent(cmd, clazz -> {
+                return ResolvableType
+                    .forClass(Command.class, clazz)
+                    .getGeneric(0);
+            });
     }
 
     /**
@@ -144,7 +146,6 @@ public class CommandUtils {
      * @return 数据类型
      */
     public static ResolvableType getCommandResponseDataType(Class<?> cmd) {
-
         return getCommandResponseDataType(CommandUtils.getCommandResponseType(cmd));
     }
 

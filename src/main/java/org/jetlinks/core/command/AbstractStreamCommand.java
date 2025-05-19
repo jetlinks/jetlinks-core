@@ -1,5 +1,6 @@
 package org.jetlinks.core.command;
 
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
 import javax.annotation.Nonnull;
@@ -20,4 +21,30 @@ public abstract class AbstractStreamCommand<E, R, Self extends AbstractStreamCom
         this.stream = stream;
     }
 
+    public Self with(@Nonnull Flux<E> stream) {
+        withStream(stream);
+        return castSelf();
+    }
+
+    @Override
+    @SuppressWarnings("all")
+    public Self with(Object parameterObject) {
+        if (parameterObject instanceof Publisher) {
+            withStream(Flux.from((Publisher) parameterObject));
+            return castSelf();
+        }
+        return super.with(parameterObject);
+    }
+
+    @Override
+    @SuppressWarnings("all")
+    public Self with(Command<?> command) {
+        if (command.isWrapperFor(StreamCommand.class)) {
+            this.stream = command
+                .unwrap(StreamCommand.class)
+                .stream()
+                .map(this::convertStreamValue);
+        }
+        return super.with(command);
+    }
 }

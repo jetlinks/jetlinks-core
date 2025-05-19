@@ -39,6 +39,36 @@ public abstract class AbstractCommand<Response, Self extends AbstractCommand<Res
     }
 
     @Override
+    @SuppressWarnings("all")
+    public Self with(Object parameterObject) {
+        if (parameterObject == null) {
+            return castSelf();
+        }
+
+        if (parameterObject instanceof Map) {
+            return with((Map<String, Object>) parameterObject);
+        }
+
+        if (parameterObject instanceof Command) {
+            return with(((Command<?>) parameterObject));
+        }
+
+        if (parameterObject instanceof Jsonable) {
+            return with(((Jsonable) parameterObject).toJson());
+        }
+
+        return with(FastBeanCopier.copy(parameterObject, new HashMap<>()));
+    }
+
+    @Override
+    public Self with(Command<?> command) {
+        if (null != command) {
+            return with(command.asMap());
+        }
+        return castSelf();
+    }
+
+    @Override
     public <T> T getOrNull(String key, Type type) {
         return ConverterUtils.convert(readable().get(key), type);
     }
