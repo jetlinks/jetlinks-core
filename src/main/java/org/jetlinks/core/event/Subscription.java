@@ -190,11 +190,12 @@ public class Subscription implements Externalizable {
         sharedMinimumLoad("使用最小负载方式路由共享订阅"),
 
         /**
-         * 开启持久化,必须手动取消订阅,注意: 企业版才支持.
+         * 开启持久化,必须手动取消订阅.
          *
          * @see Cancelable#cancel()
          * @since 1.3
          */
+        @Deprecated // 预留，暂未实现。
         persistent("是否开启持久化");
 
         private final String text;
