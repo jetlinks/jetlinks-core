@@ -1,11 +1,12 @@
 package org.jetlinks.core.monitor.limit;
 
+import org.jetlinks.core.Wrapper;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nullable;
 import java.util.concurrent.Callable;
 
-public interface CircuitBreaker {
+public interface CircuitBreaker extends Wrapper {
 
     static CircuitBreaker noop() {
         return NoopCircuitBreaker.INSTANCE;
