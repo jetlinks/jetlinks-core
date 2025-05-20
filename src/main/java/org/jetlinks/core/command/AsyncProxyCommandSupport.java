@@ -43,7 +43,7 @@ public class AsyncProxyCommandSupport implements CommandSupport {
             return asyncCommand
                 .flatMapMany(support -> support
                     .createCommandAsync(cmd.getCommandId())
-                    .doOnNext(proxyCmd -> proxyCmd.with(cmd.readable()))
+                    .doOnNext(proxyCmd -> proxyCmd.with(cmd))
                     .flatMapMany(support::executeToFlux));
         }
 
@@ -59,7 +59,7 @@ public class AsyncProxyCommandSupport implements CommandSupport {
             return asyncCommand
                 .flatMap(support -> support
                     .createCommandAsync(cmd.getCommandId())
-                    .doOnNext(proxyCmd -> proxyCmd.with(cmd.readable()))
+                    .doOnNext(proxyCmd -> proxyCmd.with(cmd))
                     .flatMap(support::executeToMono));
         }
 

@@ -1,5 +1,6 @@
 package org.jetlinks.core.command;
 
+import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import reactor.core.publisher.Mono;
 
@@ -15,7 +16,7 @@ import java.util.function.Supplier;
  * @author zhouhao
  * @since 1.2.0
  */
-public interface CommandHandler<C extends Command<Response>, Response> {
+public interface CommandHandler<C extends Command<Response>, Response> extends Wrapper {
 
     /**
      * 处理命令
