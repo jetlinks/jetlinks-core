@@ -3,6 +3,7 @@ package org.jetlinks.core.collector.discovery;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.collector.AccessMode;
+import org.jetlinks.core.metadata.DataType;
 
 import java.util.Map;
 
@@ -36,12 +37,19 @@ public class PointNode {
     private String parentAddress;
 
     /**
+     * 数据类型
+     */
+    private DataType dataType;
+
+    /**
      * 其他配置信息
      */
     private Map<String, Object> others;
 
     public enum Type {
+        // 点位
         point,
+        // 目录
         directory
     }
 }

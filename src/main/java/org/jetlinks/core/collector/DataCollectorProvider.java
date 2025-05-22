@@ -13,7 +13,6 @@ import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -184,13 +183,6 @@ public interface DataCollectorProvider extends CommandSupport {
         @Nonnull
         @Override
         <R> R execute(@Nonnull Command<R> command);
-
-        /**
-         * 获取采集器ID
-         *
-         * @return 采集器ID
-         */
-        String getId();
 
         /**
          * 订阅点位数据.如果不支持则返回{@link Disposables#disposed()}.

@@ -70,6 +70,8 @@ public interface CollectorConstants {
         int collectorCommunicationError = 20001;
         // 配置错误
         int collectorConfigError = 20002;
+        // 采集器已熔断
+        int collectorCircuitBreakerClosed = 20100;
 
         int pointError = 30000;
         // 配置错误

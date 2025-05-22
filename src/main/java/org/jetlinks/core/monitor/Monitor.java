@@ -1,6 +1,5 @@
 package org.jetlinks.core.monitor;
 
-import org.jetlinks.core.monitor.limit.CircuitBreaker;
 import org.jetlinks.core.monitor.logger.Logger;
 import org.jetlinks.core.monitor.metrics.Metrics;
 import org.jetlinks.core.monitor.tracer.Tracer;
@@ -53,12 +52,4 @@ public interface Monitor {
      */
     Metrics metrics();
 
-    /**
-     * 熔断器,用于熔断某个操作,防止操作过载
-     *
-     * @return 熔断器
-     */
-    default CircuitBreaker circuitBreaker() {
-        return CircuitBreaker.noop();
-    }
 }

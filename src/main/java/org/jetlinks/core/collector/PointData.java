@@ -38,12 +38,12 @@ public class PointData implements Externalizable {
     /**
      * 点位原始数据
      */
-    private byte[] nativeData;
+    private byte[] originData;
 
     /**
      * 解析后的数据
      */
-    private Object data;
+    private Object parsedData;
 
     /**
      * 时间戳
@@ -57,7 +57,7 @@ public class PointData implements Externalizable {
 
     @Override
     public String toString() {
-        String val = data == null ? Hex.encodeHexString(nativeData) : String.valueOf(data);
+        String val = parsedData == null ? Hex.encodeHexString(originData) : String.valueOf(parsedData);
         return state==null?val:(val + ":" + state);
     }
 
@@ -75,9 +75,9 @@ public class PointData implements Externalizable {
     public void writeExternal(ObjectOutput out) throws IOException {
         SerializeUtils.writeNullableUTF(id, out);
         SerializeUtils.writeNullableUTF(state, out);
-        SerializeUtils.writeObject(nativeData, out);
+        SerializeUtils.writeObject(originData, out);
 
-        SerializeUtils.writeObject(data, out);
+        SerializeUtils.writeObject(parsedData, out);
         out.writeLong(timestamp);
 
         SerializeUtils.writeKeyValue(others, out);
@@ -87,9 +87,9 @@ public class PointData implements Externalizable {
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         id = SerializeUtils.readNullableUTF(in);
         state = SerializeUtils.readNullableUTF(in);
-        nativeData = (byte[]) SerializeUtils.readObject(in);
+        originData = SerializeUtils.readObjectAs(in);
 
-        data = SerializeUtils.readObject(in);
+        parsedData = SerializeUtils.readObject(in);
         timestamp = in.readLong();
 
         SerializeUtils.readKeyValue(in, this::withOther);
