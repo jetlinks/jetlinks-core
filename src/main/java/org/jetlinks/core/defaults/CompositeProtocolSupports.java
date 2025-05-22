@@ -1,5 +1,6 @@
 package org.jetlinks.core.defaults;
 
+import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.ProtocolSupports;
 import reactor.core.publisher.Flux;
@@ -34,7 +35,7 @@ public class CompositeProtocolSupports implements ProtocolSupports {
             }
         }
 
-        return Mono.error(new UnsupportedOperationException("不支持的协议:" + protocol));
+        return Mono.error(new I18nSupportException.NoStackTrace("error.unsupported_protocol",protocol));
     }
 
     @Override
