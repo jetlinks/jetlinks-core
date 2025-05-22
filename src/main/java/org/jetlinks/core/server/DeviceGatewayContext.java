@@ -9,9 +9,19 @@ import reactor.core.publisher.Mono;
  * 设备网关上下文,通过上下文可进行设备相关操作
  *
  * @author zhouhao
- * @since  1.1.6
+ * @since 1.1.6
  */
 public interface DeviceGatewayContext {
+
+    /**
+     * 获取当前连接的设备,对于tcp等场景,可能获取到为empty;
+     *
+     * @return 设备操作接口
+     * @since 1.2.4
+     */
+    default Mono<DeviceOperator> getDevice() {
+        return Mono.deferContextual(ctx -> Mono.justOrEmpty(ctx.getOrEmpty(DeviceOperator.class)));
+    }
 
     /**
      * 根据ID获取设备操作接口
