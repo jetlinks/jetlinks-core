@@ -1,5 +1,7 @@
 package org.jetlinks.core.utils;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -130,6 +132,8 @@ class TypedCollectionSerializer implements SerializeUtils.Serializer {
         guavaTransformedCollection(ArrayList::new, Collections2
             .transform(Collections.emptySet(), e -> true)
             .getClass()),
+        // fastjson
+        fastJson(ignore->new JSONArray(), JSONArray.class)
 
         ;
         private final Function<Integer, Collection<Object>> instance;
