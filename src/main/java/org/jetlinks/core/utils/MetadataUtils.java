@@ -252,7 +252,7 @@ public class MetadataUtils {
                     Attr.class
                 );
 
-            resolveAttrs(attrs,container::putIfAbsent);
+            resolveAttrs(attrs, container::putIfAbsent);
 
 
         }
@@ -300,8 +300,10 @@ public class MetadataUtils {
                             for (Map.Entry<String, Object> entry : annotationAttributes.entrySet()) {
                                 if (entry.getValue() instanceof Class<?>) {
                                     DataType parseType = parseType(ResolvableType.forClass(CastUtil.cast(entry.getValue())));
-                                    List<PropertyMetadata> properties = ((ObjectType) parseType).getProperties();
-                                    c.putIfAbsent(entry.getKey(), properties);
+                                    if (parseType != null) {
+                                        List<PropertyMetadata> properties = ((ObjectType) parseType).getProperties();
+                                        c.putIfAbsent(entry.getKey(), properties);
+                                    }
                                 } else {
                                     c.putIfAbsent(entry.getKey(), entry.getValue());
                                 }
