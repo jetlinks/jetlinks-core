@@ -49,7 +49,7 @@ public class SpanDataInfoTest {
 
         String result = span.toString();
         // 验证attributes分支
-        assertTrue("应包含Attributes标签", result.contains("├── Attributes:"));
+        assertTrue("应包含Attributes标签", result.contains("🏷️ Attributes:"));
         assertTrue("应包含key1属性", result.contains("key1: value1"));
         assertTrue("应包含key2属性", result.contains("key2: value2"));
         assertTrue("应使用正确的树状字符", result.contains("│   ├──") || result.contains("│   └──"));
@@ -114,6 +114,7 @@ public class SpanDataInfoTest {
         event1.setTimeNanos(1050000000L); // 开始后50ms
         Map<String, Object> event1Attrs = new HashMap<>();
         event1Attrs.put("level", "info");
+        event1Attrs.put("message", "处理开始\nProcessing started\n详细信息: OK");
         event1.setAttributes(event1Attrs);
 
         SpanEventDataInfo event2 = new SpanEventDataInfo();
@@ -127,12 +128,31 @@ public class SpanDataInfoTest {
         String result = span.toString();
 
         // 验证events分支
-        assertTrue("应包含Events标签", result.contains("Events:"));
+        assertTrue("应包含Events标签", result.contains("⚠️ Events:"));
         assertTrue("应包含event1", result.contains("event1"));
         assertTrue("应包含event2", result.contains("event2"));
         assertTrue("应包含相对时间", result.contains("(at 50ms)"));
         assertTrue("应包含相对时间", result.contains("(at 150ms)"));
-        assertTrue("应包含事件属性", result.contains("level=info"));
+        
+        // 验证事件属性采用分层格式（不再是内联格式）
+        assertFalse("不应包含旧的内联格式", result.contains("level=info"));
+        assertTrue("应包含新的分层格式", result.contains("level: info"));
+        assertTrue("应包含多行事件属性", result.contains("处理开始"));
+        assertTrue("应包含多行事件属性", result.contains("Processing started"));
+        
+        // 验证多行事件属性对齐
+        String[] lines = result.split("\n");
+        boolean foundEventMessageStart = false;
+        for (String line : lines) {
+            if (line.contains("message: 处理开始")) {
+                foundEventMessageStart = true;
+            } else if (foundEventMessageStart && line.contains("Processing started")) {
+                // 应该有正确的缩进
+                assertFalse("事件多行属性应该有缩进", line.startsWith("Processing started"));
+                assertTrue("应包含缩进字符", line.contains("│") || line.contains(" "));
+                break;
+            }
+        }
     }
 
     @Test
@@ -254,8 +274,8 @@ public class SpanDataInfoTest {
         assertTrue("应包含根节点", result.contains("[root-app] root-span"));
         assertTrue("应包含子节点", result.contains("[child-app] child-span"));
         assertTrue("应包含孙节点", result.contains("[gc-app] grandchild-span"));
-        assertTrue("应包含属性", result.contains("Attributes:"));
-        assertTrue("应包含事件", result.contains("Events:"));
+        assertTrue("应包含属性", result.contains("🏷️ Attributes:"));
+        assertTrue("应包含事件", result.contains("⚠️ Events:"));
         assertTrue("应包含多行文本", result.contains("line1") && result.contains("line2"));
 
         // 验证三级缩进
@@ -297,8 +317,8 @@ public class SpanDataInfoTest {
         assertTrue("name为null时应显示unknown", result.contains("unknown"));
 
         // 验证空集合不显示对应分支
-        assertFalse("不应显示Attributes分支", result.contains("Attributes:"));
-        assertFalse("不应显示Events分支", result.contains("Events:"));
+        assertFalse("不应显示Attributes分支", result.contains("🏷️ Attributes:"));
+        assertFalse("不应显示Events分支", result.contains("⚠️ Events:"));
 
         // 测试空集合
         span.setAttributes(new HashMap<>());
@@ -306,8 +326,8 @@ public class SpanDataInfoTest {
         span.setChildren(new ArrayList<>());
 
         result = span.toString();
-        assertFalse("空attributes不应显示分支", result.contains("Attributes:"));
-        assertFalse("空events不应显示分支", result.contains("Events:"));
+        assertFalse("空attributes不应显示分支", result.contains("🏷️ Attributes:"));
+        assertFalse("空events不应显示分支", result.contains("⚠️ Events:"));
     }
 
     @Test
@@ -598,7 +618,7 @@ public class SpanDataInfoTest {
         String result = rootSpan.toString();
         
         // 验证事件信息
-        assertTrue("应包含事件标签", result.contains("Events:"));
+        assertTrue("应包含事件标签", result.contains("⚠️ Events:"));
         assertTrue("应包含请求接收事件", result.contains("request_received"));
         assertTrue("应包含限流检查事件", result.contains("rate_limit_check"));
         assertTrue("应包含响应发送事件", result.contains("response_sent"));
@@ -610,8 +630,170 @@ public class SpanDataInfoTest {
         assertTrue("应包含正确的相对时间", result.contains("(at 480ms)")); // response_sent
         
         // 验证中文属性在事件中的显示
-        assertTrue("应包含中文事件属性", result.contains("result=通过"));
-        assertTrue("应包含中文操作描述", result.contains("operation=用户信息查询"));
+        assertTrue("应包含中文事件属性", result.contains("result: 通过"));
+        assertTrue("应包含中文操作描述", result.contains("operation: 用户信息查询"));
+    }
+
+    @Test
+    public void testEventAttributesFormattingToString() {
+        // 专门测试事件属性的分层格式化
+        SpanDataInfo span = createSpanDataInfo(
+            "event-test-app", 
+            "event-formatting-test", 
+            "trace123", 
+            "span123", 
+            "parent123",
+            1000000000L,
+            1300000000L
+        );
+        
+        // 创建包含复杂属性的事件
+        List<SpanEventDataInfo> events = new ArrayList<>();
+        
+        // 事件1：包含多行文本和中英文混合
+        SpanEventDataInfo complexEvent = new SpanEventDataInfo();
+        complexEvent.setName("复杂事件");
+        complexEvent.setTimeNanos(1100000000L);
+        Map<String, Object> complexAttrs = new HashMap<>();
+        complexAttrs.put("error_message", "连接超时\nConnection timeout\n错误代码: TIMEOUT_001\nRetry count: 3");
+        complexAttrs.put("status", "failed");
+        complexAttrs.put("详细描述", "This is a detailed\nerror description\n包含多行中文说明\nwith retry information");
+        complexEvent.setAttributes(complexAttrs);
+        
+        // 事件2：简单属性
+        SpanEventDataInfo simpleEvent = new SpanEventDataInfo();
+        simpleEvent.setName("simple_event");
+        simpleEvent.setTimeNanos(1200000000L);
+        Map<String, Object> simpleAttrs = new HashMap<>();
+        simpleAttrs.put("code", 200);
+        simpleAttrs.put("message", "success");
+        simpleEvent.setAttributes(simpleAttrs);
+        
+        // 事件3：无属性事件
+        SpanEventDataInfo noAttrEvent = new SpanEventDataInfo();
+        noAttrEvent.setName("no_attributes");
+        noAttrEvent.setTimeNanos(1250000000L);
+        
+        events.add(complexEvent);
+        events.add(simpleEvent);
+        events.add(noAttrEvent);
+        span.setEvents(events);
+
+        String result = span.toString();
+        
+        // 验证事件分支结构
+        assertTrue("应包含Events标签", result.contains("⚠️ Events:"));
+        assertTrue("应包含复杂事件", result.contains("复杂事件"));
+        assertTrue("应包含简单事件", result.contains("simple_event"));
+        assertTrue("应包含无属性事件", result.contains("no_attributes"));
+        
+        // 验证事件属性格式（分层，非内联）
+        assertTrue("应包含分层属性格式", result.contains("error_message: 连接超时"));
+        assertTrue("应包含分层属性格式", result.contains("status: failed"));
+        assertTrue("应包含分层属性格式", result.contains("code: 200"));
+        assertTrue("应包含分层属性格式", result.contains("message: success"));
+        
+        // 验证不再包含内联格式
+        assertFalse("不应包含内联格式", result.contains("status=failed"));
+        assertFalse("不应包含内联格式", result.contains("code=200"));
+        
+        // 验证多行文本对齐
+        String[] lines = result.split("\n");
+        boolean foundErrorStart = false;
+        boolean foundDetailStart = false;
+        
+        for (String line : lines) {
+            // 验证英文多行属性对齐
+            if (line.contains("error_message: 连接超时")) {
+                foundErrorStart = true;
+            } else if (foundErrorStart && line.contains("Connection timeout")) {
+                assertFalse("多行英文应该有缩进", line.startsWith("Connection timeout"));
+                assertTrue("应包含正确对齐", line.contains("│") && line.trim().endsWith("Connection timeout"));
+                foundErrorStart = false; // 重置
+            }
+            
+            // 验证中文键名的多行属性对齐
+            if (line.contains("详细描述: This is a detailed")) {
+                foundDetailStart = true;
+            } else if (foundDetailStart && line.contains("error description")) {
+                assertFalse("多行文本应该有缩进", line.startsWith("error description"));
+                assertTrue("应包含正确对齐", line.contains("│") && line.trim().endsWith("error description"));
+                break;
+            }
+        }
+        
+        // 验证树状结构的正确性
+        assertTrue("应使用正确的树状字符", result.contains("├──") || result.contains("└──"));
+        assertTrue("应包含正确的分支字符", result.contains("│"));
+    }
+
+    @Test
+    public void testEmojiOptimizedToString() {
+        // 测试emoji优化后的输出效果
+        SpanDataInfo span = createSpanDataInfo(
+            "user-service", 
+            "用户登录处理", 
+            "trace-emoji-123", 
+            "login-span", 
+            null,
+            1000000000L,
+            1500000000L
+        );
+        
+        // 添加属性
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("user_id", "12345");
+        attributes.put("session_info", "会话信息\nSession details\n状态: 活跃");
+        span.setAttributes(attributes);
+        
+        // 添加各种类型的事件
+        List<SpanEventDataInfo> events = new ArrayList<>();
+        
+        // 开始事件
+        SpanEventDataInfo startEvent = new SpanEventDataInfo();
+        startEvent.setName("request_start");
+        startEvent.setTimeNanos(1010000000L);
+        events.add(startEvent);
+        
+        // 错误事件
+        SpanEventDataInfo errorEvent = new SpanEventDataInfo();
+        errorEvent.setName("auth_error");
+        errorEvent.setTimeNanos(1200000000L);
+        Map<String, Object> errorAttrs = new HashMap<>();
+        errorAttrs.put("error_code", "INVALID_PASSWORD");
+        errorAttrs.put("message", "密码验证失败\nPassword validation failed");
+        errorEvent.setAttributes(errorAttrs);
+        events.add(errorEvent);
+        
+        // 数据库事件
+        SpanEventDataInfo dbEvent = new SpanEventDataInfo();
+        dbEvent.setName("sql_query");
+        dbEvent.setTimeNanos(1300000000L);
+        Map<String, Object> dbAttrs = new HashMap<>();
+        dbAttrs.put("query", "SELECT * FROM users WHERE id = ?");
+        dbEvent.setAttributes(dbAttrs);
+        events.add(dbEvent);
+        
+        // 网络请求事件
+        SpanEventDataInfo httpEvent = new SpanEventDataInfo();
+        httpEvent.setName("http_request");
+        httpEvent.setTimeNanos(1400000000L);
+        events.add(httpEvent);
+        
+        span.setEvents(events);
+        
+        String result = span.toString();
+        System.out.println("=== Emoji优化后的输出效果 ===");
+        System.out.println(result);
+        
+        // 验证emoji图标
+        assertTrue("应包含span图标", result.contains("🔍"));
+        assertTrue("应包含属性图标", result.contains("🏷️"));
+        assertTrue("应包含事件图标", result.contains("⚠️"));
+        assertTrue("应包含开始图标", result.contains("🚀"));
+        assertTrue("应包含错误图标", result.contains("❌"));
+        assertTrue("应包含数据库图标", result.contains("🗄️"));
+        assertTrue("应包含网络图标", result.contains("🌐"));
     }
 
     /**

@@ -159,7 +159,7 @@ public class SpanDataInfo implements Externalizable {
         if (!prefix.isEmpty()) {
             builder.append(isLast ? "└── " : "├── ");
         }
-        builder.append("[").append(app != null ? app : "unknown").append("] ")
+        builder.append("🔍 [").append(app != null ? app : "unknown").append("] ")
                .append(name != null ? name : "unknown");
         
         // 计算并输出耗时
@@ -171,7 +171,7 @@ public class SpanDataInfo implements Externalizable {
         
         // 输出attributes
         if (attributes != null && !attributes.isEmpty()) {
-            builder.append(childPrefix).append("├── Attributes:\n");
+            builder.append(childPrefix).append("├── 🏷️ Attributes:\n");
             String attrPrefix = childPrefix + "│   ";
             int attrIndex = 0;
             int attrCount = attributes.size();
@@ -193,31 +193,39 @@ public class SpanDataInfo implements Externalizable {
             boolean hasChildren = children != null && !children.isEmpty();
             String eventBranch = hasChildren ? "├── " : "└── ";
             
-            builder.append(childPrefix).append(eventBranch).append("Events:\n");
+            builder.append(childPrefix).append(eventBranch).append("⚠️ Events:\n");
             String eventPrefix = childPrefix + (hasChildren ? "│   " : "    ");
             
             for (int i = 0; i < events.size(); i++) {
                 SpanEventDataInfo event = events.get(i);
                 boolean isLastEvent = (i == events.size() - 1);
+                
+                // 根据事件名称选择合适的emoji
+                String eventEmoji = getEventEmoji(event.getName());
+                
                 builder.append(eventPrefix).append(isLastEvent ? "└── " : "├── ")
-                       .append(event.getName());
+                       .append(eventEmoji).append(" ").append(event.getName());
                 
                 // 计算事件相对时间
                 long relativeTimeMs = (event.getTimeNanos() - startWithNanos) / 1_000_000;
-                builder.append(" (at ").append(relativeTimeMs).append("ms)");
+                builder.append(" (at ").append(relativeTimeMs).append("ms)").append("\n");
                 
-                // 输出事件属性（如果有）
+                // 输出事件属性（采用与span attributes相同的格式）
                 if (event.getAttributes() != null && !event.getAttributes().isEmpty()) {
-                    builder.append(" {");
-                    boolean first = true;
+                    String eventAttrPrefix = eventPrefix + (isLastEvent ? "    " : "│   ");
+                    int attrIndex = 0;
+                    int attrCount = event.getAttributes().size();
                     for (Map.Entry<String, Object> attr : event.getAttributes().entrySet()) {
-                        if (!first) builder.append(", ");
-                        builder.append(attr.getKey()).append("=").append(attr.getValue());
-                        first = false;
+                        boolean isLastEventAttr = (attrIndex == attrCount - 1);
+                        builder.append(eventAttrPrefix).append(isLastEventAttr ? "└── " : "├── ")
+                               .append(attr.getKey()).append(": ");
+                        formatMultiLineValue(String.valueOf(attr.getValue()), 
+                                           eventAttrPrefix + (isLastEventAttr ? "    " : "│   "), 
+                                           attr.getKey(), builder);
+                        builder.append("\n");
+                        attrIndex++;
                     }
-                    builder.append("}");
                 }
-                builder.append("\n");
             }
         }
         
@@ -271,5 +279,71 @@ public class SpanDataInfo implements Externalizable {
     @Override
     public String toString() {
         return toString(new StringBuilder()).toString();
+    }
+
+    /**
+     * 根据事件名称选择合适的emoji图标
+     * @param eventName 事件名称
+     * @return emoji图标
+     */
+    private String getEventEmoji(String eventName) {
+        if (eventName == null) {
+            return "📝";
+        }
+        
+        String lowerName = eventName.toLowerCase();
+        
+        // 错误相关事件
+        if (lowerName.contains("error") || lowerName.contains("fail") || lowerName.contains("exception")) {
+            return "❌";
+        }
+        
+        // 警告相关事件
+        if (lowerName.contains("warn") || lowerName.contains("timeout") || lowerName.contains("retry")) {
+            return "⚠️";
+        }
+        
+        // 开始相关事件
+        if (lowerName.contains("start") || lowerName.contains("begin") || lowerName.contains("init")) {
+            return "🚀";
+        }
+        
+        // 完成相关事件
+        if (lowerName.contains("finish") || lowerName.contains("complete") || lowerName.contains("end") || lowerName.contains("success")) {
+            return "✅";
+        }
+        
+        // 数据库相关事件
+        if (lowerName.contains("sql") || lowerName.contains("query") || lowerName.contains("database") || lowerName.contains("db")) {
+            return "🗄️";
+        }
+        
+        // 网络相关事件
+        if (lowerName.contains("request") || lowerName.contains("response") || lowerName.contains("http") || lowerName.contains("api")) {
+            return "🌐";
+        }
+        
+        // 认证相关事件
+        if (lowerName.contains("auth") || lowerName.contains("login") || lowerName.contains("logout") || lowerName.contains("permission")) {
+            return "🔐";
+        }
+        
+        // 缓存相关事件
+        if (lowerName.contains("cache") || lowerName.contains("redis") || lowerName.contains("memory")) {
+            return "💾";
+        }
+        
+        // 日志相关事件
+        if (lowerName.contains("log") || lowerName.contains("audit") || lowerName.contains("record")) {
+            return "📋";
+        }
+        
+        // 业务逻辑相关事件
+        if (lowerName.contains("business") || lowerName.contains("logic") || lowerName.contains("process") || lowerName.contains("execute")) {
+            return "⚙️";
+        }
+        
+        // 默认图标
+        return "📝";
     }
 }
