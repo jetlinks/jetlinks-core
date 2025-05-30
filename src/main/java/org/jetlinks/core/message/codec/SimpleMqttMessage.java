@@ -54,6 +54,20 @@ public class SimpleMqttMessage implements MqttMessage {
         return new SimpleMqttMessageBuilder();
     }
 
+    public static SimpleMqttMessageBuilder builder(MqttMessage message) {
+        return new SimpleMqttMessageBuilder()
+            .topic(message.getTopic())
+            .messageId(message.getMessageId())
+            .clientId(message.getClientId())
+            .qosLevel(message.getQosLevel())
+            .payload(message.getPayload())
+            .properties(message.getProperties())
+            .retain(message.isRetain())
+            .dup(message.isDup())
+            .will(message.isWill());
+    }
+
+
     @Override
     public String toString() {
         return print();
