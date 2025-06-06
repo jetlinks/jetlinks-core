@@ -1,5 +1,7 @@
 package org.jetlinks.core.things;
 
+import org.jetlinks.core.lang.SharedPathString;
+
 import java.util.Objects;
 import java.util.StringJoiner;
 
@@ -30,7 +32,7 @@ public interface ThingType extends TopicSupport {
 
     default boolean isSameType(ThingType thingType) {
         return this == thingType
-                || Objects.equals(thingType.getId(), this.getId());
+            || Objects.equals(thingType.getId(), this.getId());
     }
 
     @Override
@@ -38,6 +40,11 @@ public interface ThingType extends TopicSupport {
         StringJoiner joiner = new StringJoiner("/", "/", "");
         joiner.add(getId()).add(templateId).add(thingId);
         return joiner.toString();
+    }
+
+    @Override
+    default SharedPathString getTopicPrefix0(String templateId, String thingId) {
+        return SharedPathString.of(new String[]{getId(), templateId, thingId});
     }
 
     /**

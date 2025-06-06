@@ -1,5 +1,8 @@
 package org.jetlinks.core.things;
 
+import org.jetlinks.core.lang.SeparatedCharSequence;
+import org.jetlinks.core.lang.SharedPathString;
+
 /**
  * 支持 Topic 的物类型
  *
@@ -16,5 +19,10 @@ public interface TopicSupport {
      * @return topic前缀
      */
     String getTopicPrefix(String templateId,String thingId);
+
+
+    default SeparatedCharSequence getTopicPrefix0(String templateId, String thingId) {
+        return SharedPathString.of(getTopicPrefix(templateId,thingId));
+    }
 
 }
