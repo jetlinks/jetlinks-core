@@ -225,7 +225,7 @@ public class CommandMetadataResolverTest {
 
     public static class Test3Command extends Test1Command {
 
-        @Schema(description = "Str")
+        @Schema(description = "Str", hidden = true)
         @Selector(type = "device")
         public String getStr() {
             return super.getStr();
