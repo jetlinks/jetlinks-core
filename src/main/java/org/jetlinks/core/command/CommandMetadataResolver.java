@@ -1,5 +1,6 @@
 package org.jetlinks.core.command;
 
+import com.google.common.collect.Lists;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.*;
@@ -13,7 +14,6 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 基于注解{@link Schema}的命令元数据解析器.
@@ -91,12 +91,9 @@ public class CommandMetadataResolver {
                         inputsMap.putIfAbsent(method.getName(), prop);
                     }
                 });
-                return inputsMap
-                    .values()
-                    .stream()
-                    .filter(metadata -> StringUtils.hasText(metadata.getId()))
-                    .sorted(Comparator.comparingLong(m -> indexMap.getOrDefault(m.getId(), Integer.MAX_VALUE)))
-                    .collect(Collectors.toList());
+                List<PropertyMetadata> list = Lists.newArrayList(inputsMap.values());
+                list.sort(Comparator.comparingLong(m -> indexMap.getOrDefault(m.getId(), Integer.MAX_VALUE)));
+                return list;
             }
         }
         DataType objectType = MetadataUtils.parseType(type);
@@ -170,9 +167,6 @@ public class CommandMetadataResolver {
         if (method.getReturnType() == Void.class || method.getParameterCount() != 0) {
             return null;
         }
-        if (schema.hidden()) {
-            return new SimplePropertyMetadata();
-        }
         String name;
         if (StringUtils.hasText(schema.name())) {
             name = schema.name();
@@ -193,6 +187,7 @@ public class CommandMetadataResolver {
         prop.setName(StringUtils.hasText(schema.title()) ? schema.title() : prop.getDescription());
         prop.setValueType(MetadataUtils.parseType(ResolvableType.forMethodReturnType(method, clazz)));
         prop.setExpands(MetadataUtils.parseExpands(method));
+        prop.expand("hidden", schema.hidden());
         return prop;
     }
 
