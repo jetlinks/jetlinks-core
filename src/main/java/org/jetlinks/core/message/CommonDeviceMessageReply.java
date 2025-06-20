@@ -3,6 +3,7 @@ package org.jetlinks.core.message;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.annotation.JSONField;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.GenericHeaderSupport;
@@ -23,16 +24,22 @@ import javax.annotation.Nonnull;
 public class CommonDeviceMessageReply<Self extends CommonDeviceMessageReply<Self>> extends GenericHeaderSupport<Self> implements DeviceMessageReply {
     private static final long serialVersionUID = -6849794470754667710L;
 
+    @Schema(title = "是否成功")
     private boolean success = true;
 
+    @Schema(title = "业务码,具体由设备定义")
     private String code;
 
+    @Schema(title = "消息")
     private String message;
 
+    @Schema(title = "消息ID")
     private String messageId;
 
+    @Schema(title = "设备ID")
     private String deviceId;
 
+    @Schema(title = "时间戳")
     private long timestamp = System.currentTimeMillis();
 
 

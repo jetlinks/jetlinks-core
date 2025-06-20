@@ -1,6 +1,7 @@
 package org.jetlinks.core.message.function;
 
 import com.alibaba.fastjson.JSONObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
@@ -15,8 +16,10 @@ import org.jetlinks.core.message.MessageType;
 @Setter
 public class FunctionInvokeMessageReply extends CommonDeviceMessageReply<FunctionInvokeMessageReply> implements ThingFunctionInvokeMessageReply {
 
+    @Schema(title = "物模型功能ID")
     private String functionId;
 
+    @Schema(title = "功能调用响应结果")
     private Object output;
 
     public FunctionInvokeMessageReply() {
