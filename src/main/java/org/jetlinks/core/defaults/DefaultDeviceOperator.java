@@ -29,6 +29,7 @@ import org.jetlinks.core.things.ThingMetadata;
 import org.jetlinks.core.things.ThingRpcSupport;
 import org.jetlinks.core.things.ThingRpcSupportChain;
 import org.jetlinks.core.utils.IdUtils;
+import org.jetlinks.core.utils.Reactors;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
@@ -55,6 +56,9 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         AtomicLongFieldUpdater.newUpdater(DefaultDeviceOperator.class, "lastMetadataTime");
 
     private static final DeviceMetadata NON_METADATA = new SimpleDeviceMetadata();
+
+    private static final boolean FORCE_CHECK_STATE_PARENT = Boolean
+        .getBoolean("jetlinks.device.force-check-state-from-parent");
 
     @Getter
     private final String id;
@@ -310,8 +314,14 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                         boolean isSelfManageState = values.getValue(selfManageState).orElse(false);
                         //如果关联了上级网关设备则尝试给网关设备发送指令进行检查
                         if (StringUtils.hasText(parentGatewayId) && isSelfManageState) {
-                            return this
-                                .checkStateFromParent(parentGatewayId, checker)
+                            return registry
+                                .getDevice(parentGatewayId)
+                                // 尝试过滤掉离线的网关设备
+                                .filterWhen(parent -> FORCE_CHECK_STATE_PARENT
+                                    ? Reactors.ALWAYS_TRUE
+                                    : parent.isOnline())
+                                // 发送指令给网关设备获取真实状态
+                                .flatMap(parent -> checkStateFromParent(parent, checker))
                                 .switchIfEmpty(checker);
                         }
                     }
@@ -320,44 +330,37 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 }));
     }
 
-    private Mono<Byte> checkStateFromParent(String parentId, Mono<Byte> defaultState) {
-
-        return registry
-            .getDevice(parentId)
-            .flatMap(device -> {
-                //发送设备状态检查指令给网关设备
-                return device
-                    .messageSender()
-                    .<ChildDeviceMessageReply>
-                        send(ChildDeviceMessage
-                                 .create(parentId,
-                                         DeviceStateCheckMessage.create(getDeviceId())
-                                 )
-                                 .addHeader(Headers.timeout, 5000L))
-                    .singleOrEmpty()
-                    .map(msg -> {
-                        if (msg.getChildDeviceMessage() instanceof DeviceStateCheckMessageReply) {
-                            return ((DeviceStateCheckMessageReply) msg.getChildDeviceMessage())
-                                .getState();
-                        }
-                        log.warn("State check return error {}", msg);
-                        //网关设备在线,只是返回了错误的消息,所以也认为网关设备在线
-                        return DeviceState.online;
-                    })
-                    .onErrorResume(err -> {
-                        if (err instanceof DeviceOperationException) {
-                            ErrorCode code = ((DeviceOperationException) err).getCode();
-                            if (code == ErrorCode.CLIENT_OFFLINE) {
-                                //父设备已经离线了
-                                return Mono.just(DeviceState.offline);
-                            } else if (code == ErrorCode.UNSUPPORTED_MESSAGE) {
-                                //不支持的消息，则认为父设备是在线的，只是协议包不支持处理。
-                                return Mono.just(DeviceState.online);
-                            }
-                        }
-                        //发送返回错误,但是配置了状态自管理,直接返回原始状态
-                        return defaultState;
-                    });
+    private Mono<Byte> checkStateFromParent(DeviceOperator parentDevice, Mono<Byte> defaultState) {
+        // 发送状态检查指令给父设备获取真实状态
+        return parentDevice
+            .messageSender()
+            .<ChildDeviceMessageReply>
+                send(ChildDeviceMessage
+                         .create(parentDevice.getDeviceId(), DeviceStateCheckMessage.create(getDeviceId()))
+                         .addHeader(Headers.timeout, 5000L))
+            .singleOrEmpty()
+            .map(msg -> {
+                if (msg.getChildDeviceMessage() instanceof DeviceStateCheckMessageReply) {
+                    return ((DeviceStateCheckMessageReply) msg.getChildDeviceMessage())
+                        .getState();
+                }
+                log.warn("State check return error {}", msg);
+                // 网关设备在线,只是返回了错误的消息,所以也认为网关设备在线
+                return DeviceState.online;
+            })
+            .onErrorResume(err -> {
+                if (err instanceof DeviceOperationException) {
+                    ErrorCode code = ((DeviceOperationException) err).getCode();
+                    if (code == ErrorCode.CLIENT_OFFLINE) {
+                        // 父设备已经离线了
+                        return Mono.just(DeviceState.offline);
+                    } else if (code == ErrorCode.UNSUPPORTED_MESSAGE) {
+                        // 不支持的消息，则认为父设备是在线的，只是协议包不支持处理。
+                        return Mono.just(DeviceState.online);
+                    }
+                }
+                //发送返回错误,但是配置了状态自管理,直接返回原始状态
+                return defaultState;
             });
     }
 
