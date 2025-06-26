@@ -1,5 +1,6 @@
 package org.jetlinks.core.server;
 
+import org.jetlinks.core.Attributes;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -52,5 +53,9 @@ public interface ClientConnection {
      */
     default void onDisconnect(Runnable callback) {
 
+    }
+
+    default Attributes attributes() {
+        return Attributes.empty();
     }
 }

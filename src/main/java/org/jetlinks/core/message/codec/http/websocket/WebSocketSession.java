@@ -53,11 +53,11 @@ public interface WebSocketSession extends ClientConnection {
         return close(status);
     }
 
-    Map<String, Object> getAttributes();
+    Map<Object, Object> getAttributes();
 
-    Optional<Object> getAttribute(String key);
+   <T> Optional<T> getAttribute(Object key);
 
-    void setAttribute(String key, Object value);
+    void setAttribute(Object key, Object value);
 
     Flux<WebSocketMessage> receive();
 
