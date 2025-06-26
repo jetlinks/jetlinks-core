@@ -113,8 +113,9 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
                 getThing(thingType, thingId)
                     .flatMap(thing -> {
                         thingCache.remove(thingId);
-                        if (thing instanceof DefaultThing) {
-                            return ((DefaultThing) thing)
+                        if (thing.isWrapperFor(DefaultThing.class)) {
+                            return thing
+                                .unwrap(DefaultThing.class)
                                 .getReactiveStorage()
                                 .flatMap(ConfigStorage::clear);
                         }
