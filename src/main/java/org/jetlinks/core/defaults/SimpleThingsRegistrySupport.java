@@ -109,16 +109,23 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
     public Mono<Void> unregisterThing(@Nonnull String thingType, @Nonnull String thingId) {
         checkThingType(thingType);
         return Flux
-                .merge(
-                        Mono.justOrEmpty(thingCache.remove(thingId))
-                            .flatMap(DefaultThing::getReactiveStorage)
-                            .flatMap(ConfigStorage::clear)
-                        ,
-                        registryInfo
-                                .flatMap(storage -> storage.remove(thingId))
-
-                )
-                .then();
+            .merge(
+                getThing(thingType, thingId)
+                    .flatMap(thing -> {
+                        thingCache.remove(thingId);
+                        if (thing.isWrapperFor(DefaultThing.class)) {
+                            return thing
+                                .unwrap(DefaultThing.class)
+                                .getReactiveStorage()
+                                .flatMap(ConfigStorage::clear);
+                        }
+                        return Mono.empty();
+                    })
+                ,
+                registryInfo
+                    .flatMap(storage -> storage.remove(thingId))
+            )
+            .then();
     }
 
     @Override
