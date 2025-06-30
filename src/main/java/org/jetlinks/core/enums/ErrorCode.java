@@ -57,7 +57,7 @@ public enum ErrorCode {
         // 参数错误
         else if (e instanceof IllegalArgumentException
             || e instanceof ValidationException
-            || e instanceof javax.validation.ValidationException
+            || e instanceof jakarta.validation.ValidationException
             || e instanceof NullPointerException
             || e instanceof IndexOutOfBoundsException) {
             return ErrorCode.PARAMETER_ERROR;
