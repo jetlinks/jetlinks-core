@@ -3,6 +3,8 @@ package org.jetlinks.core.utils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.validator.CreateGroup;
@@ -14,8 +16,6 @@ import org.junit.Test;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AliasFor;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -41,6 +41,7 @@ public class MetadataUtilsTest {
 
         System.out.println(JSON.toJSONString(type, SerializerFeature.PrettyFormat));
 
+        // tshark -i any -f "tcp port 28400" -Y "tcp.flags.reset == 1 or tcp.flags.fin == 1"
     }
 
     @Test

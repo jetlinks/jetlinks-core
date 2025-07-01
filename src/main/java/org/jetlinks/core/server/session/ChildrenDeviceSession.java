@@ -132,7 +132,7 @@ public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSe
     }
 
     @Override
-    public <T extends DeviceSession> T unwrap(Class<T> type) {
+    public <T> T unwrap(Class<T> type) {
         return type.isInstance(this) ? type.cast(this) : parent.unwrap(type);
     }
 

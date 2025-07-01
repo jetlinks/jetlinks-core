@@ -155,7 +155,7 @@ public interface DeviceSession {
      * @param <T>  类型泛型
      * @return 指定类型对会话
      */
-    default <T extends DeviceSession> T unwrap(Class<T> type) {
+    default <T> T unwrap(Class<T> type) {
         return type.cast(this);
     }
 
