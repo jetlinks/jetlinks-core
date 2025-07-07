@@ -34,6 +34,8 @@ public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSe
 
     private List<Runnable> closeListener;
 
+    private final long connectTime = System.currentTimeMillis();
+
     private long lastKeepAliveTime;
 
     private long keepAliveTimeOutMs = -1;
@@ -60,7 +62,7 @@ public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSe
 
     @Override
     public long connectTime() {
-        return parent.connectTime();
+        return connectTime;
     }
 
     @Override
