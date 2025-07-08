@@ -58,6 +58,10 @@ public class CommonDeviceMessage<SELF extends CommonDeviceMessage<SELF> > extend
         return castSelf();
     }
 
+    public SELF deviceId(@Nonnull String deviceId) {
+        this.deviceId = deviceId;
+        return castSelf();
+    }
 
     @Override
     public JSONObject toJson() {
