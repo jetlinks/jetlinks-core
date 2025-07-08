@@ -17,7 +17,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class AsyncProxyCommandSupport implements CommandSupport {
 
-    private final Mono<CommandSupport> asyncCommand;
+    private final Mono<? extends CommandSupport> asyncCommand;
 
     @Nonnull
     @Override
