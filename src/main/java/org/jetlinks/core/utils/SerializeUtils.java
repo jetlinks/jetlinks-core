@@ -302,7 +302,7 @@ public class SerializeUtils {
                 t = Primitives.wrap(t);
             }
             //不是同一个classLoader.使用json序列化.
-            if (t.getClassLoader() != null && t.getClassLoader() != ClassUtils.getDefaultClassLoader()) {
+            if (t.getClassLoader() != null && t.getClassLoader() != SerializeUtils.class.getClassLoader()) {
                 return InternalSerializers.JSON;
             }
 
@@ -875,7 +875,7 @@ public class SerializeUtils {
                 String className;
                 //跨classloader,序列化为Object
                 if (clazz.getClassLoader() != null
-                    && clazz.getClassLoader() != ClassUtils.getDefaultClassLoader()) {
+                    && clazz.getClassLoader() != SerializeUtils.class.getClassLoader()) {
                     className = Object.class.getName();
                 } else {
                     className = clazz.getName();
