@@ -8,6 +8,8 @@ import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.GenericHeaderSupport;
 
+import javax.annotation.Nonnull;
+
 /**
  * @author zhouhao
  * @since 1.0.0
