@@ -100,6 +100,7 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     @Override
     public void keepAlive(long time) {
         lastKeepAliveTime = time;
+        parent.keepAlive(time);
     }
 
     @Override
