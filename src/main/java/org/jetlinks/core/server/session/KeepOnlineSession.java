@@ -98,6 +98,11 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     }
 
     @Override
+    public void keepAlive(long time) {
+        lastKeepAliveTime = time;
+    }
+
+    @Override
     public boolean isAlive() {
         if (aliveByKeepAlive()) {
             return true;
