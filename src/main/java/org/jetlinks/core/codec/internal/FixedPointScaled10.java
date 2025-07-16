@@ -1,9 +1,10 @@
 package org.jetlinks.core.codec.internal;
 
-import io.netty.buffer.ByteBuf;
+import org.jetlinks.core.buffer.Buffer;
 import org.jetlinks.core.codec.Codec;
 
 import javax.annotation.Nonnull;
+import java.nio.ByteOrder;
 
 public class FixedPointScaled10 implements Codec<Float> {
 
@@ -13,35 +14,21 @@ public class FixedPointScaled10 implements Codec<Float> {
     }
 
     @Override
-    public void encode(Float body, ByteBuf buf, Endian endian) {
+    public void encode(Float body, Buffer buf) {
         int intVal = (int) (body * 10);
 
         int high = intVal >> 8;
         int low = intVal & 0xff;
 
-        if (endian == Endian.Little) {
-            buf.writeByte(low);
-            buf.writeByte(high);
-        } else {
-            buf.writeByte(high);
-            buf.writeByte(low);
-        }
+        buf.byteBuf().writeByte(high);
+        buf.byteBuf().writeByte(low);
     }
 
     @Override
-    public Float decode(@Nonnull ByteBuf payload, Endian endian) {
-        byte high = payload.readByte();
-        byte low = payload.readByte();
-        //默认大端.小端时,低字节在前.
-        if (endian == Endian.Little) {
-            byte tmp = low;
-            low = high;
-            high = tmp;
-        }
+    public Float decode(@Nonnull Buffer payload) {
+        byte high = payload.byteBuf().readByte();
+        byte low = payload.byteBuf().readByte();
 
-        int fistValue = high << 8;
-        int secondValue = low;
-
-        return (fistValue + secondValue) / 10F;
+        return (high << 8 + low) / 10F;
     }
 }

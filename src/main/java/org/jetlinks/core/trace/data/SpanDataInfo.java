@@ -5,6 +5,7 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.trace.data.EventData;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.collections.CollectionUtils;
@@ -24,14 +25,31 @@ import java.util.function.Supplier;
 public class SpanDataInfo implements Externalizable {
     private static final long serialVersionUID = -1;
 
+    @Schema(title = "应用标识")
     private String app;
+
+    @Schema(title = "名称")
     private String name;
+
+    @Schema(title = "链路ID")
     private String traceId;
+
+    @Schema(title = "SpanId")
     private String spanId;
+
+    @Schema(title = "上级SpanID")
     private String parentSpanId;
+
+    @Schema(title = "开始时间(纳秒)")
     private long startWithNanos;
+
+    @Schema(title = "结束时间(纳秒)")
     private long endWithNanos;
+
+    @Schema(title = "链路属性")
     private Map<String, Object> attributes;
+
+    @Schema(title = "事件")
     private List<SpanEventDataInfo> events;
 
     private transient List<? extends SpanDataInfo> children;
