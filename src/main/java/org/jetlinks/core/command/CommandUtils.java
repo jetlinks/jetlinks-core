@@ -8,10 +8,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * 命令相关工具类
@@ -63,10 +64,19 @@ public class CommandUtils {
      */
     @SuppressWarnings("all")
     public static Flux<Object> convertResponseToFlux(Object response, Command<?> cmd) {
+        if (response instanceof Iterable<?>) {
+            response = Flux.fromIterable(((Iterable<?>) response));
+        }
+
+        if (response instanceof Stream<?>) {
+            response = Flux.fromStream(((Stream<?>) response));
+        }
+
         if (response instanceof Publisher) {
             return Flux.from(((Publisher) response))
                        .mapNotNull(cmd::createResponseData);
         }
+
         return response == null
             ? Flux.empty()
             : Flux.just(cmd.createResponseData(response));
@@ -76,7 +86,7 @@ public class CommandUtils {
      * 转换对象为{@link Mono}
      * <p>当对象时{@link Mono}时,直接返回</p>
      * <p>
-     * 当对象是{@link Publisher}时,将使用{@link Flux#collectList()}收集流中所有元素为{@link java.util.List}后返回{@link Mono},
+     * 当对象是{@link Publisher}时,将使用{@link Flux#collectList()}收集流中所有元素为{@link List}后返回{@link Mono},
      * 否则使用{@link Mono#justOrEmpty(Object)}进行包装.
      *
      * @param response response
@@ -99,7 +109,7 @@ public class CommandUtils {
      * 转换对象为{@link Mono}
      * <p>当对象时{@link Mono}时,直接返回</p>
      * <p>
-     * 当对象是{@link Publisher}时,将使用{@link Flux#collectList()}收集流中所有元素为{@link java.util.List}后返回{@link Mono},
+     * 当对象是{@link Publisher}时,将使用{@link Flux#collectList()}收集流中所有元素为{@link List}后返回{@link Mono},
      * 否则使用{@link Mono#justOrEmpty(Object)}进行包装.
      *
      * @param response response
@@ -262,10 +272,12 @@ public class CommandUtils {
      */
     public static FunctionMetadata wrapMetadata(Command<?> command, FunctionMetadata metadata) {
 
-        if (metadata.getExpand(CommandConstant.responseFlux).isPresent()) {
+        if (metadata.getExpand(CommandConstant.responseFlux).isPresent() &&
+            metadata.getExpand(CommandConstant.responseReactive).isPresent()) {
             return metadata;
         }
 
-        return metadata.expand(CommandConstant.responseFlux, commandResponseFlux(command));
+        return metadata.expand(CommandConstant.responseFlux, commandResponseFlux(command))
+                       .expand(CommandConstant.responseReactive, commandResponsePublisher(command));
     }
 }
