@@ -190,6 +190,7 @@ public class CommandMetadataResolver {
         prop.setName(StringUtils.hasText(schema.title()) ? schema.title() : prop.getDescription());
         prop.setValueType(MetadataUtils.parseType(ResolvableType.forMethodReturnType(method, clazz)));
         prop.setExpands(MetadataUtils.parseExpands(method));
+        prop.expand("hidden", schema.hidden());
         return prop;
     }
 

@@ -98,6 +98,12 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     }
 
     @Override
+    public void keepAlive(long time) {
+        lastKeepAliveTime = time;
+        parent.keepAlive(time);
+    }
+
+    @Override
     public boolean isAlive() {
         if (aliveByKeepAlive()) {
             return true;
@@ -145,7 +151,7 @@ public class KeepOnlineSession implements DeviceSession, ReplaceableDeviceSessio
     }
 
     @Override
-    public <T extends DeviceSession> T unwrap(Class<T> type) {
+    public <T> T unwrap(Class<T> type) {
         return type.isInstance(this) ? type.cast(this) : parent.unwrap(type);
     }
 

@@ -26,6 +26,7 @@ import java.lang.annotation.Target;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.Assert.*;
 
@@ -221,6 +222,34 @@ public class CommandMetadataResolverTest {
         assertEquals("number", metadataList.get(1).getId());
 
 
+    }
+
+    public static class Test3Command extends Test1Command {
+
+        @Schema(description = "Str", hidden = true)
+        @Selector(type = "device")
+        public String getStr() {
+            return super.getStr();
+        }
+
+        @Schema(description = "Index")
+        public Integer getIndex() {
+            return super.getIndex();
+        }
+
+    }
+
+    @Test
+    public void testHiddenParentMethod() {
+        FunctionMetadata resolve = CommandMetadataResolver.resolve(Test3Command.class);
+        assertNotNull(resolve.getInputs());
+        assertEquals(2, resolve.getInputs().size());
+        Optional<Object> hidden = resolve
+            .getInputs()
+            .get(0)
+            .getExpand("hidden");
+        assertTrue(hidden.isPresent());
+        assertTrue(((boolean) hidden.get()));
     }
 
 }

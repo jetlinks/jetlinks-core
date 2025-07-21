@@ -8,6 +8,8 @@ import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.GenericHeaderSupport;
 
+import javax.annotation.Nonnull;
+
 /**
  * @author zhouhao
  * @since 1.0.0
@@ -58,6 +60,10 @@ public class CommonDeviceMessage<SELF extends CommonDeviceMessage<SELF> > extend
         return castSelf();
     }
 
+    public SELF deviceId(@Nonnull String deviceId) {
+        this.deviceId = deviceId;
+        return castSelf();
+    }
 
     @Override
     public JSONObject toJson() {

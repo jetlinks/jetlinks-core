@@ -99,17 +99,19 @@ public interface Reactors {
         if (mono instanceof Callable) {
             return (T) ((Callable<?>) mono).call();
         }
-        // 传递链路追踪上下文
+        // 执行阻塞hook
         mono = ReactorHooks.doHook(mono);
 
-        // 在阻塞线程中,使用单独的调度器来切换到非阻塞线程
-        if (!Schedulers.isNonBlockingThread(Thread.currentThread())) {
+        boolean inNonBlocking = Schedulers.isInNonBlockingThread();
+
+        // fixme 在阻塞线程中,使用单独的调度器来切换到非阻塞线程,避免基于ThreadLocal缓存失效.
+        if (!inNonBlocking) {
             mono = mono
                 .subscribeOn(Schedulers.parallel());
         }
 
         //在非阻塞线程中,使用toFuture处理.
-        if (Schedulers.isNonBlockingThread(Thread.currentThread()) || timeout.isZero()) {
+        if (inNonBlocking || timeout.isZero()) {
             CompletableFuture<T> future = mono.toFuture();
             try {
                 if (timeout.isZero()) {

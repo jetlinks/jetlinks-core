@@ -34,6 +34,8 @@ public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSe
 
     private List<Runnable> closeListener;
 
+    private final long connectTime = System.currentTimeMillis();
+
     private long lastKeepAliveTime;
 
     private long keepAliveTimeOutMs = -1;
@@ -60,7 +62,7 @@ public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSe
 
     @Override
     public long connectTime() {
-        return parent.connectTime();
+        return connectTime;
     }
 
     @Override
@@ -85,6 +87,12 @@ public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSe
     public void ping() {
         parent.ping();
         this.lastKeepAliveTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public void keepAlive(long time) {
+        parent.keepAlive(time);
+        this.lastKeepAliveTime = time;
     }
 
     @Override
@@ -132,7 +140,7 @@ public class ChildrenDeviceSession implements DeviceSession, ReplaceableDeviceSe
     }
 
     @Override
-    public <T extends DeviceSession> T unwrap(Class<T> type) {
+    public <T> T unwrap(Class<T> type) {
         return type.isInstance(this) ? type.cast(this) : parent.unwrap(type);
     }
 

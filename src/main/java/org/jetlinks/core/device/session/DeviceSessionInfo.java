@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.server.session.ChildrenDeviceSession;
 import org.jetlinks.core.server.session.DeviceSession;
+import reactor.core.Scannable;
 
 import java.io.Serializable;
 import java.net.InetSocketAddress;
@@ -52,6 +53,13 @@ public class DeviceSessionInfo implements Serializable {
      */
     private String parentDeviceId;
 
+    /**
+     * 等待处理的消息数量
+     * @since 1.3
+     */
+    private Integer pendingMessages;
+
+
     public static DeviceSessionInfo of(String serverId, DeviceSession session) {
         DeviceSessionInfo sessionInfo = new DeviceSessionInfo();
         sessionInfo.setServerId(serverId);
@@ -67,6 +75,11 @@ public class DeviceSessionInfo implements Serializable {
         //子设备
         if (session.isWrapFrom(ChildrenDeviceSession.class)) {
             sessionInfo.setParentDeviceId(session.unwrap(ChildrenDeviceSession.class).getParentDevice().getDeviceId());
+        }
+        if (session.isWrapFrom(Scannable.class)) {
+            sessionInfo.pendingMessages = session
+                .unwrap(Scannable.class)
+                .scan(Scannable.Attr.BUFFERED);
         }
 
         return sessionInfo;

@@ -83,7 +83,7 @@ public class TraceDeviceSession implements DeviceSession {
     }
 
     @Override
-    public <T extends DeviceSession> T unwrap(Class<T> type) {
+    public <T> T unwrap(Class<T> type) {
         return target.unwrap(type);
     }
 

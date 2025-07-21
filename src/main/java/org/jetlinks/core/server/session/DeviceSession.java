@@ -126,6 +126,16 @@ public interface DeviceSession {
     }
 
     /**
+     * 更新会话的最后的心跳时间
+     *
+     * @param time 时间戳,毫秒
+     * @since 1.2.5
+     */
+    default void keepAlive(long time) {
+        keepAlive();
+    }
+
+    /**
      * 设置心跳超时时间
      *
      * @param timeout 心跳超时时间
@@ -155,7 +165,7 @@ public interface DeviceSession {
      * @param <T>  类型泛型
      * @return 指定类型对会话
      */
-    default <T extends DeviceSession> T unwrap(Class<T> type) {
+    default <T> T unwrap(Class<T> type) {
         return type.cast(this);
     }
 

@@ -16,6 +16,7 @@ import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.Order;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 import reactor.util.function.Tuples;
@@ -252,7 +253,7 @@ public class MetadataUtils {
                     Attr.class
                 );
 
-            resolveAttrs(attrs,container::putIfAbsent);
+            resolveAttrs(attrs, container::putIfAbsent);
 
 
         }
@@ -300,8 +301,10 @@ public class MetadataUtils {
                             for (Map.Entry<String, Object> entry : annotationAttributes.entrySet()) {
                                 if (entry.getValue() instanceof Class<?>) {
                                     DataType parseType = parseType(ResolvableType.forClass(CastUtil.cast(entry.getValue())));
-                                    List<PropertyMetadata> properties = ((ObjectType) parseType).getProperties();
-                                    c.putIfAbsent(entry.getKey(), properties);
+                                    if (parseType != null) {
+                                        List<PropertyMetadata> properties = ((ObjectType) parseType).getProperties();
+                                        c.putIfAbsent(entry.getKey(), properties);
+                                    }
                                 } else {
                                     c.putIfAbsent(entry.getKey(), entry.getValue());
                                 }
@@ -423,16 +426,30 @@ public class MetadataUtils {
 
             ObjectType objectType = new ObjectType();
             Class<?> fClass = clazz;
+            Map<String, Integer> indexMap = new HashMap<>();
             ReflectionUtils.doWithFields(fClass, field -> {
+                Order order = AnnotationUtils.findAnnotation(field, Order.class);
+
                 if (owner != null && !distinct.add(Tuples.of(owner, field))) {
-                    objectType.addPropertyMetadata(withField0(fClass, field, ResolvableType.forClass(Map.class)));
+                    PropertyMetadata propertyMetadata = withField0(fClass, field, ResolvableType.forClass(Map.class));
+                    if (order != null) {
+                        indexMap.put(propertyMetadata.getId(), order.value());
+                    }
+                    objectType.addPropertyMetadata(propertyMetadata);
                     return;
                 }
                 Schema schema = getSchema(fClass, field);
                 if (schema != null && !schema.hidden()) {
-                    objectType.addPropertyMetadata(withField0(fClass, field, ResolvableType.forField(field, type)));
+                    PropertyMetadata propertyMetadata = withField0(fClass, field, ResolvableType.forField(field, type));
+                    if (order != null) {
+                        indexMap.put(propertyMetadata.getId(), order.value());
+                    }
+                    objectType.addPropertyMetadata(propertyMetadata);
                 }
             });
+            objectType
+                .getProperties()
+                .sort(Comparator.comparingLong(m -> indexMap.getOrDefault(m.getId(), Integer.MAX_VALUE)));
             return objectType;
         }
 

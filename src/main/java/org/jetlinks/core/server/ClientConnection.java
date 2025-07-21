@@ -1,9 +1,11 @@
 package org.jetlinks.core.server;
 
 import org.jetlinks.core.message.codec.EncodedMessage;
+import reactor.core.Scannable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.Nonnull;
 import java.net.InetSocketAddress;
 
 /**
@@ -12,7 +14,7 @@ import java.net.InetSocketAddress;
  * @author zhouhao
  * @since 1.1.6
  */
-public interface ClientConnection {
+public interface ClientConnection extends Scannable {
 
     /**
      * @return 客户端地址
@@ -52,5 +54,16 @@ public interface ClientConnection {
      */
     default void onDisconnect(Runnable callback) {
 
+    }
+
+    /**
+     * @param key a {@link Attr} to resolve for the component.
+     * @return value
+     * @see Attr#BUFFERED
+     * @since 1.3.2
+     */
+    @Override
+    default Object scanUnsafe(@Nonnull Attr key) {
+        return null;
     }
 }

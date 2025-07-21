@@ -37,6 +37,15 @@ public interface CommandConstant {
     ConfigKey<Boolean> responseFlux = ConfigKey.of("responseFlux", "Flux响应", Boolean.class);
 
     /**
+     * 标记命令响应为一个Flux流
+     *
+     * @see org.jetlinks.core.metadata.FunctionMetadata#expand(ConfigKey, Object)
+     * @see reactor.core.publisher.Flux
+     * @see CommandSupport#executeToFlux(Command)
+     */
+    ConfigKey<Boolean> responseReactive = ConfigKey.of("responseReactive", "响应式结果", Boolean.class);
+
+    /**
      * 标记命令为一个流式命令
      *
      * @see org.jetlinks.core.metadata.FunctionMetadata#expand(ConfigKey, Object)

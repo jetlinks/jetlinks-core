@@ -2,6 +2,7 @@ package org.jetlinks.core.message.property;
 
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Maps;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.message.CommonDeviceMessageReply;
@@ -30,6 +31,7 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
      * <p>
      * 注意: value如果是结构体(对象类型),请勿传入在协议包中自定义的对象,应该转为{@link Map}传入.
      */
+    @Schema(title = "回复的属性", description = "key为物模型中的属性ID,value为物模型对应的类型值")
     private Map<String, Object> properties;
 
     /**
@@ -37,6 +39,7 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
      *
      * @since 1.1.7
      */
+    @Schema(title = "属性源的时间戳", description = "表示不同属性值产生的时间戳,单位毫秒")
     private Map<String, Long> propertySourceTimes;
 
     /**
@@ -44,6 +47,7 @@ public class ReadPropertyMessageReply extends CommonDeviceMessageReply<ReadPrope
      *
      * @since 1.1.7
      */
+    @Schema(title = "属性状态信息")
     private Map<String, String> propertyStates;
 
     public static ReadPropertyMessageReply create() {
