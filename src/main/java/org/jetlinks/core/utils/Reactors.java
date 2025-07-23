@@ -111,7 +111,7 @@ public interface Reactors {
                 if (timeout.isZero()) {
                     return future.getNow(null);
                 }
-                return future.get(timeout.getNano(), TimeUnit.NANOSECONDS);
+                return future.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
             } finally {
                 future.cancel(true);
             }
