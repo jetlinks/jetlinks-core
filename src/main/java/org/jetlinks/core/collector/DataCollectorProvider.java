@@ -1,6 +1,8 @@
 package org.jetlinks.core.collector;
 
 import org.jetlinks.core.Wrapper;
+import org.jetlinks.core.collector.command.GetChannelConfigMetadataCommand;
+import org.jetlinks.core.collector.command.GetCollectorConfigMetadataCommand;
 import org.jetlinks.core.collector.subscribe.PointSubscriber;
 import org.jetlinks.core.command.Command;
 import org.jetlinks.core.command.CommandSupport;
@@ -30,6 +32,9 @@ import java.util.function.Consumer;
  *
  * @author zhouhao
  * @since 1.2.3
+ * @see GetChannelConfigMetadataCommand
+ * @see GetCollectorConfigMetadataCommand
+ * @see org.jetlinks.core.collector.command.GetPointConfigMetadataCommand
  */
 public interface DataCollectorProvider extends CommandSupport {
 
@@ -204,7 +209,7 @@ public interface DataCollectorProvider extends CommandSupport {
          * @see PointRuntime#read()
          * @see AccessMode#read
          */
-        Flux<Result<PointData>> collect(Collection<PointRuntime> points);
+        Flux<Result<PointData>> collect(Collection<? extends PointRuntime> points);
 
         /**
          * 获取采集器支持的特性

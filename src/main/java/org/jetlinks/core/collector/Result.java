@@ -38,6 +38,11 @@ public class Result<T> extends GenericHeaderSupport<Result<T>> implements Extern
      */
     private int code;
 
+
+    public Result<T> withPointId(String pointId){
+        return addHeader(CollectorConstants.Headers.pointId,pointId);
+    }
+
     public static Result<Void> success() {
         return success(null);
     }
