@@ -31,10 +31,10 @@ import java.util.function.Consumer;
  * 点位 {@link PointRuntime} 用于针对一个具体的数据点进行操作,如: 读取数据，写入数据等.
  *
  * @author zhouhao
- * @since 1.2.3
  * @see GetChannelConfigMetadataCommand
  * @see GetCollectorConfigMetadataCommand
  * @see org.jetlinks.core.collector.command.GetPointConfigMetadataCommand
+ * @since 1.2.3
  */
 public interface DataCollectorProvider extends CommandSupport {
 
@@ -267,6 +267,15 @@ public interface DataCollectorProvider extends CommandSupport {
          */
         Mono<Result<PointData>> write(PointData data);
 
+        /**
+         * 获取排序序号,值越小,越在前. 影响{@link CollectorRuntime#collect(Collection)}参数的顺序.
+         *
+         * @return 序号
+         * @see CollectorRuntime#collect(Collection)
+         */
+        default int getOrder() {
+            return 0;
+        }
     }
 
     /**
@@ -285,6 +294,7 @@ public interface DataCollectorProvider extends CommandSupport {
 
         /**
          * 当前状态
+         *
          * @return 状态
          */
         State state();

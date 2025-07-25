@@ -1,0 +1,205 @@
+package org.jetlinks.core.codec.internal;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import org.junit.Test;
+
+import static org.junit.Assert.*;
+
+public class FixedPointQ31_1Test {
+
+    private final FixedPointQ31_1 codec = new FixedPointQ31_1();
+    private static final float PRECISION = 0.5f; // Q31.1的精度
+
+    @Test
+    public void testForType() {
+        assertEquals(Float.class, codec.forType());
+    }
+
+    @Test
+    public void testBasicRoundTrip() {
+        // 测试基本往返转换
+        testRoundTrip(0.0f);
+        testRoundTrip(1.0f);
+        testRoundTrip(-1.0f);
+        testRoundTrip(1000.5f);
+        testRoundTrip(-1000.5f);
+        testRoundTrip(100000.0f);
+        testRoundTrip(-100000.0f);
+    }
+
+    @Test
+    public void testBoundaryValues() {
+        // 测试边界值：Q31.1的范围是-1073741824.0到1073741823.5
+        testRoundTrip(1073741823.5f);  // 最大正值
+        testRoundTrip(-1073741824.0f); // 最小负值
+
+        // 测试接近边界的值
+        testRoundTrip(1073741823.0f);
+        testRoundTrip(-1073741823.5f);
+        testRoundTrip(1000000000.0f);
+        testRoundTrip(-1000000000.0f);
+    }
+
+    @Test
+    public void testPrecision() {
+        // 测试精度：Q31.1格式只有0.5的精度
+
+        // 应该精确表示的值
+        testRoundTrip(0.5f);
+        testRoundTrip(1.5f);
+        testRoundTrip(2.5f);
+        testRoundTrip(-0.5f);
+        testRoundTrip(-1.5f);
+        testRoundTrip(100.5f);
+        testRoundTrip(-100.5f);
+
+        // 测试舍入：应该舍入到最近的0.5
+        assertRounded(0.3f, 0.5f);   // 0.3 -> 0.5
+        assertRounded(0.7f, 0.5f);   // 0.7 -> 0.5
+        assertRounded(0.8f, 1.0f);   // 0.8 -> 1.0
+        assertRounded(1.3f, 1.5f);   // 1.3 -> 1.5
+        assertRounded(1.7f, 1.5f);   // 1.7 -> 1.5
+        assertRounded(1.8f, 2.0f);   // 1.8 -> 2.0
+
+        // 测试大数值的舍入
+        assertRounded(1000.3f, 1000.5f);
+        assertRounded(1000.8f, 1001.0f);
+    }
+
+    @Test
+    public void testLargeValues() {
+        // 测试大数值（32位格式的优势）
+        testRoundTrip(1000000.0f);
+        testRoundTrip(-1000000.0f);
+        testRoundTrip(10000000.5f);
+        testRoundTrip(-10000000.5f);
+        testRoundTrip(100000000.0f);
+        testRoundTrip(-100000000.0f);
+    }
+
+    @Test
+    public void testZeroAndSign() {
+        // 测试零值
+        testRoundTrip(0.0f);
+        testRoundTrip(-0.0f);
+
+        // 测试符号处理
+        testRoundTrip(0.5f);
+        testRoundTrip(-0.5f);
+    }
+
+    @Test
+    public void testOverflow() {
+        // 测试溢出处理：超出范围的值应该被限制
+
+        ByteBuf buf = Unpooled.buffer(4);
+        
+
+        // 正向溢出
+        codec.encode(2.0e9f, buf); // 超过最大值
+        buf.readerIndex(0);
+        Float decoded = codec.decode(buf);
+        assertTrue("正向溢出应该被限制", decoded <= 1073741823.5f);
+
+        // 负向溢出
+        buf.clear();
+        codec.encode(-2.0e9f, buf); // 小于最小值
+        buf.readerIndex(0);
+        decoded = codec.decode(buf);
+        assertTrue("负向溢出应该被限制", decoded >= -1073741824.0f);
+    }
+
+    @Test
+    public void testBitPattern() {
+                // 测试特定的位模式
+        ByteBuf buf = Unpooled.buffer(4);
+        
+        // 编码1.0 (应该是 0x00000002 = 2 in fixed point)
+        codec.encode(1.0f, buf);
+        assertEquals(0x00, buf.getByte(0));
+        assertEquals(0x00, buf.getByte(1));
+        assertEquals(0x00, buf.getByte(2));
+        assertEquals(0x02, buf.getByte(3));
+
+        buf.clear();
+
+        // 编码-1.0 (应该是 0xFFFFFFFE = -2 in fixed point)
+        codec.encode(-1.0f, buf);
+        assertEquals((byte)0xFF, buf.getByte(0));
+        assertEquals((byte)0xFF, buf.getByte(1));
+        assertEquals((byte)0xFF, buf.getByte(2));
+        assertEquals((byte)0xFE, buf.getByte(3));
+
+        buf.clear();
+
+        // 编码0.5 (应该是 0x00000001 = 1 in fixed point)
+        codec.encode(0.5f, buf);
+        assertEquals(0x00, buf.getByte(0));
+        assertEquals(0x00, buf.getByte(1));
+        assertEquals(0x00, buf.getByte(2));
+        assertEquals(0x01, buf.getByte(3));
+    }
+
+    @Test
+    public void testEdgeCases() {
+        // 测试特殊情况
+        testRoundTrip(Float.MIN_VALUE); // 会被舍入到0
+
+                // 测试NaN和无穷大的处理（应该不会崩溃）
+        ByteBuf buf = Unpooled.buffer(4);
+        
+        // 这些应该不会抛出异常
+        codec.encode(Float.NaN, buf);
+        codec.encode(Float.POSITIVE_INFINITY, buf);
+        codec.encode(Float.NEGATIVE_INFINITY, buf);
+    }
+
+    @Test
+    public void testSequentialValues() {
+        // 测试连续的可表示值
+        for (int i = 0; i < 100; i++) {
+            float value = i * PRECISION;
+            testRoundTrip(value);
+            testRoundTrip(-value);
+        }
+
+        // 测试大范围的连续值
+        for (int i = 1000; i < 1100; i++) {
+            float value = i * PRECISION;
+            testRoundTrip(value);
+            testRoundTrip(-value);
+        }
+    }
+
+        private void testRoundTrip(float value) {
+        ByteBuf buf = Unpooled.buffer(4);
+        
+        // 编码
+        codec.encode(value, buf);
+        
+        // 重置读取位置
+        buf.readerIndex(0);
+        
+        // 解码
+        Float decoded = codec.decode(buf);
+
+        // 验证：由于Q31.1只有0.5的精度，需要考虑舍入误差
+        float expectedDiff = Math.abs(value - Math.round(value * 2) / 2.0f);
+        float actualDiff = Math.abs(decoded - Math.round(value * 2) / 2.0f);
+
+        assertTrue(String.format("往返转换失败: %f -> %f (期望舍入到最近0.5)", value, decoded),
+                  actualDiff <= 0.001f);
+    }
+
+        private void assertRounded(float input, float expected) {
+        ByteBuf buf = Unpooled.buffer(4);
+        
+        codec.encode(input, buf);
+        buf.readerIndex(0);
+        Float decoded = codec.decode(buf);
+
+        assertEquals(String.format("舍入失败: %f 应该舍入到 %f", input, expected),
+                    expected, decoded, 0.001f);
+    }
+}
