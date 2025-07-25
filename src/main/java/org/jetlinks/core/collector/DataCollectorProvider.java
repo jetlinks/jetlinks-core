@@ -167,6 +167,16 @@ public interface DataCollectorProvider extends CommandSupport {
          */
         String getId();
 
+        /**
+         * 测试,返回健康度.
+         *
+         * @return 测试结果
+         * @see Result#getCode()
+         */
+        default Mono<Result<Health>> test() {
+            return Mono.just(Result.success(Health.ok()));
+        }
+
     }
 
     /**
@@ -227,6 +237,16 @@ public interface DataCollectorProvider extends CommandSupport {
          */
         default boolean hasFeature(Feature feature) {
             return getFeatures().contains(feature);
+        }
+
+        /**
+         * 测试,返回健康度.
+         *
+         * @return 测试结果
+         * @see Result#getCode()
+         */
+        default Mono<Result<Health>> test() {
+            return Mono.just(Result.success(Health.ok()));
         }
     }
 

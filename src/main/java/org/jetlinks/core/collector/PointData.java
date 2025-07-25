@@ -1,6 +1,8 @@
 package org.jetlinks.core.collector;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.commons.codec.binary.Hex;
 import org.jetlinks.core.utils.SerializeUtils;
@@ -20,6 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Getter
 @Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class PointData implements Externalizable {
 
     /**
@@ -28,12 +32,7 @@ public class PointData implements Externalizable {
      * @see PointProperties#getId()
      * @see DataCollectorProvider.PointRuntime#getId()
      */
-    private String id;
-
-    /**
-     * 点位状态标识
-     */
-    private String state;
+    private String pointId;
 
     /**
      * 点位原始数据
@@ -44,6 +43,11 @@ public class PointData implements Externalizable {
      * 解析后的数据
      */
     private Object parsedData;
+
+    /**
+     * 点位状态标识
+     */
+    private String state;
 
     /**
      * 时间戳
@@ -73,7 +77,7 @@ public class PointData implements Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        SerializeUtils.writeNullableUTF(id, out);
+        SerializeUtils.writeNullableUTF(pointId, out);
         SerializeUtils.writeNullableUTF(state, out);
         SerializeUtils.writeObject(originData, out);
 
@@ -85,7 +89,7 @@ public class PointData implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        id = SerializeUtils.readNullableUTF(in);
+        pointId = SerializeUtils.readNullableUTF(in);
         state = SerializeUtils.readNullableUTF(in);
         originData = SerializeUtils.readObjectAs(in);
 
