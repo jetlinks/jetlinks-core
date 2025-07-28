@@ -14,7 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
-import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -219,7 +219,7 @@ public interface DataCollectorProvider extends CommandSupport {
          * @see PointRuntime#read()
          * @see AccessMode#read
          */
-        Flux<Result<PointData>> collect(Collection<? extends PointRuntime> points);
+        Flux<Result<PointData>> collect(List<? extends PointRuntime> points);
 
         /**
          * 获取采集器支持的特性
@@ -288,13 +288,13 @@ public interface DataCollectorProvider extends CommandSupport {
         Mono<Result<PointData>> write(PointData data);
 
         /**
-         * 获取排序序号,值越小,越在前. 影响{@link CollectorRuntime#collect(Collection)}参数的顺序.
+         * 获取排序序号,值越小,越在前. 影响{@link CollectorRuntime#collect(List)}参数的顺序.
          *
          * @return 序号
-         * @see CollectorRuntime#collect(Collection)
+         * @see CollectorRuntime#collect(List)
          */
         default int getOrder() {
-            return 0;
+            return Integer.MAX_VALUE;
         }
     }
 
