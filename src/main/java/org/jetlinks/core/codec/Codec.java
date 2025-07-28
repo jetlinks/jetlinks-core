@@ -2,7 +2,6 @@ package org.jetlinks.core.codec;
 
 import io.netty.buffer.ByteBuf;
 import org.hswebframework.web.i18n.LocaleUtils;
-import org.jetlinks.core.buffer.Buffer;
 
 import javax.annotation.Nonnull;
 

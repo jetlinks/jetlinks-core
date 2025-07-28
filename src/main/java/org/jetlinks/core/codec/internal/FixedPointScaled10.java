@@ -1,11 +1,9 @@
 package org.jetlinks.core.codec.internal;
 
 import io.netty.buffer.ByteBuf;
-import org.jetlinks.core.buffer.Buffer;
 import org.jetlinks.core.codec.Codec;
 
 import javax.annotation.Nonnull;
-import java.nio.ByteOrder;
 
 public class FixedPointScaled10 implements Codec<Float> {
 
