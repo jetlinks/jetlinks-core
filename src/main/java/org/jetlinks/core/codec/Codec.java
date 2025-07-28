@@ -6,15 +6,31 @@ import org.jetlinks.core.buffer.Buffer;
 
 import javax.annotation.Nonnull;
 
+/**
+ * 编解码接口,提供对对象和{@link ByteBuf}之间的编解码支持.
+ *
+ * @param <T> 类型
+ * @author zhouhao
+ * @since 1.2
+ */
 public interface Codec<T> {
 
+    /**
+     * 编解码针对的类型
+     *
+     * @return 类型
+     */
     Class<T> forType();
 
+    /**
+     * 编解码标识
+     *
+     * @return 标识
+     */
     String getId();
 
-
     /**
-     * 布局名称
+     * 名称
      *
      * @return 名称
      */
@@ -24,6 +40,11 @@ public interface Codec<T> {
             getId());
     }
 
+    /**
+     * 字节长度,标识编解码将会操作几个字节的数据,如果是动态数据将返回-1
+     *
+     * @return 字节长度
+     */
     int byteLength();
 
     /**

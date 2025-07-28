@@ -13,7 +13,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Codecs.FixedPointQ8_8(payload,BIG_ENDIAN)
+ * 编解码支持
+ *
+ * @author zhouhao
+ * @see Codecs.Internal
+ * @see Codecs#getNow(String)
+ * @since 1.2
  */
 @SuppressWarnings("all")
 @Slf4j
@@ -45,7 +50,19 @@ public final class Codecs {
         register(
             Internal.BOOL,
             Internal.INT8,
-            Internal.INT16
+            Internal.INT16,
+            Internal.UnsignedInt16,
+            Internal.UnsignedInt32,
+            Internal.INT32,
+            Internal.INT64,
+            Internal.Ieee754Float32,
+            Internal.Ieee754Float64,
+            Internal.Q1_15,
+            Internal.Q1_31,
+            Internal.Q8_8,
+            Internal.Q15_1,
+            Internal.Q31_1,
+            Internal.FixedPointScaled10
         );
     }
 
