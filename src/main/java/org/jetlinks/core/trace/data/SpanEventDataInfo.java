@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.trace.data.EventData;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.utils.RecyclerUtils;
@@ -23,10 +24,13 @@ import java.util.function.Supplier;
 public class SpanEventDataInfo implements Externalizable {
     private static final long serialVersionUID = -1;
 
+    @Schema(title = "名称")
     private String name;
 
+    @Schema(title = "时间(纳秒)")
     private long timeNanos;
 
+    @Schema(title = "属性")
     private Map<String, Object> attributes;
 
     public static SpanEventDataInfo of(EventData eventData) {

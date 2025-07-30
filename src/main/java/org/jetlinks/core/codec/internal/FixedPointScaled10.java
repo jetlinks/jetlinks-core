@@ -7,41 +7,39 @@ import javax.annotation.Nonnull;
 
 public class FixedPointScaled10 implements Codec<Float> {
 
+    // (high + low) /10
+    @Override
+    public String getId() {
+        return "fix_scaled_10";
+    }
+
+    @Override
+    public int byteLength() {
+        return 2;
+    }
+
     @Override
     public Class<Float> forType() {
         return Float.class;
     }
 
     @Override
-    public void encode(Float body, ByteBuf buf, Endian endian) {
+    public ByteBuf encode(Float body, ByteBuf buf) {
         int intVal = (int) (body * 10);
 
         int high = intVal >> 8;
         int low = intVal & 0xff;
 
-        if (endian == Endian.Little) {
-            buf.writeByte(low);
-            buf.writeByte(high);
-        } else {
-            buf.writeByte(high);
-            buf.writeByte(low);
-        }
+        return buf.writeByte(high)
+                  .writeByte(low);
     }
 
     @Override
-    public Float decode(@Nonnull ByteBuf payload, Endian endian) {
+    public Float decode(@Nonnull ByteBuf payload) {
         byte high = payload.readByte();
         byte low = payload.readByte();
-        //默认大端.小端时,低字节在前.
-        if (endian == Endian.Little) {
-            byte tmp = low;
-            low = high;
-            high = tmp;
-        }
 
-        int fistValue = high << 8;
-        int secondValue = low;
-
-        return (fistValue + secondValue) / 10F;
+        // 修正运算符优先级问题：应该是(high << 8) + low
+        return ((high << 8) + (low & 0xFF)) / 10F;
     }
 }

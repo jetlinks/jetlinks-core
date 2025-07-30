@@ -3,6 +3,7 @@ package org.jetlinks.core.message.collector;
 import lombok.*;
 import org.jetlinks.core.utils.SerializeUtils;
 
+import javax.annotation.Nonnull;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -16,7 +17,7 @@ public class CollectorData implements Externalizable {
     /**
      * 采集器数据地址,如: /modbus/1/0/1 .
      */
-    @NonNull
+    @Nonnull
     private String address;
 
     /**
@@ -44,7 +45,7 @@ public class CollectorData implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        address = (String) SerializeUtils.readObject(in);
+        address = SerializeUtils.readObjectAs(in);
         value = SerializeUtils.readObject(in);
         state = (String) SerializeUtils.readObject(in);
         timestamp = (Long) SerializeUtils.readObject(in);
