@@ -41,6 +41,7 @@ public interface BlockingCommandSupport extends CommandSupport, Wrapper {
     default Optional<Object> executeToSingle(String commandId, Map<String, Object> parameters) {
         return this
             .executeToMono(commandId, parameters)
+            .contextCapture()
             .blockOptional();
     }
 
@@ -52,7 +53,10 @@ public interface BlockingCommandSupport extends CommandSupport, Wrapper {
      * @return 执行结果
      */
     default <T> Optional<T> executeToSingle(Command<? extends Mono<T>> command) {
-        return this.execute(command).blockOptional();
+        return this
+            .execute(command)
+            .contextCapture()
+            .blockOptional();
     }
 
 
@@ -67,6 +71,7 @@ public interface BlockingCommandSupport extends CommandSupport, Wrapper {
         return this
             .executeToFlux(commandId, parameters)
             .collectList()
+            .contextCapture()
             .block();
     }
 
@@ -79,7 +84,11 @@ public interface BlockingCommandSupport extends CommandSupport, Wrapper {
      * @return 执行结果
      */
     default <T> List<T> executeToList(Command<? extends Flux<T>> command) {
-        return this.execute(command).collectList().block();
+        return this
+            .execute(command)
+            .collectList()
+            .contextCapture()
+            .block();
     }
 
     /**
@@ -92,6 +101,7 @@ public interface BlockingCommandSupport extends CommandSupport, Wrapper {
     default Stream<Object> executeToStream(String commandId, Map<String, Object> parameters) {
         return this
             .executeToFlux(commandId, parameters)
+            .contextCapture()
             .toStream();
     }
 
@@ -103,7 +113,10 @@ public interface BlockingCommandSupport extends CommandSupport, Wrapper {
      * @return 执行结果
      */
     default <T> Stream<T> executeToStream(Command<? extends Flux<T>> command) {
-        return this.execute(command).toStream();
+        return this
+            .execute(command)
+            .contextCapture()
+            .toStream();
     }
 
 

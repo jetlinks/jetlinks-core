@@ -100,7 +100,7 @@ public interface Reactors {
             return (T) ((Callable<?>) mono).call();
         }
         // 执行阻塞hook
-        mono = ReactorHooks.doHook(mono);
+        mono = ReactorHooks.doHook(mono).contextCapture();
 
         boolean inNonBlocking = Schedulers.isInNonBlockingThread();
 
