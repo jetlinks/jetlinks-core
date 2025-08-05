@@ -1,5 +1,6 @@
 package org.jetlinks.core.command;
 
+import org.jetlinks.core.annotation.command.Anonymous;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.metadata.Metadata;
 
@@ -20,6 +21,25 @@ public interface CommandConstant {
     String EXPANDS_UNBOUNDED = "unbounded";
 
     /**
+     * 标记命令可以通过API直接访问
+     *
+     * @see org.jetlinks.core.metadata.FunctionMetadata#expand(String, Object)
+     * @see Anonymous
+     * @since 1.2.5
+     */
+    String EXPANDS_ANONYMOUS = "anonymous";
+
+    /**
+     * 标记命令可以通过API直接访问
+     *
+     * @see org.jetlinks.core.metadata.FunctionMetadata#expand(ConfigKey, Object)
+     * @see Anonymous
+     * @since 1.2.5
+     */
+    ConfigKey<Boolean> ANONYMOUS = ConfigKey.of(EXPANDS_ANONYMOUS, "是否运行匿名访问", Boolean.class);
+
+
+    /**
      * 标记命令为无界流
      *
      * @see org.jetlinks.core.metadata.FunctionMetadata#expand(ConfigKey, Object)
@@ -35,6 +55,24 @@ public interface CommandConstant {
      * @see CommandSupport#executeToFlux(Command)
      */
     ConfigKey<Boolean> responseFlux = ConfigKey.of("responseFlux", "Flux响应", Boolean.class);
+
+    /**
+     * 标记命令响应为一个Flux流
+     *
+     * @see org.jetlinks.core.metadata.FunctionMetadata#expand(ConfigKey, Object)
+     * @see reactor.core.publisher.Flux
+     * @see CommandSupport#executeToFlux(Command)
+     */
+    ConfigKey<Boolean> responseReactive = ConfigKey.of("responseReactive", "响应式结果", Boolean.class);
+
+    /**
+     * 标记命令为一个流式命令
+     *
+     * @see org.jetlinks.core.metadata.FunctionMetadata#expand(ConfigKey, Object)
+     * @see reactor.core.publisher.Flux
+     * @see CommandSupport#executeToFlux(Command)
+     */
+    ConfigKey<Boolean> STREAM = ConfigKey.of("_stream_req", "流失参数", Boolean.class);
 
     /**
      * 判断命令是否返回无界流
@@ -54,5 +92,25 @@ public interface CommandConstant {
      */
     static boolean isResponseFlux(Metadata metadata) {
         return metadata.getExpand(responseFlux).orElse(false);
+    }
+
+    /**
+     * 判断命令是否返回Flux流
+     *
+     * @param metadata 命令元数据
+     * @return true:Flux流, false:单值
+     */
+    static boolean isStream(Metadata metadata) {
+        return metadata.getExpand(STREAM).orElse(false);
+    }
+
+    /**
+     * 判断命令是否允许匿名访问
+     *
+     * @param metadata 命令元数据
+     * @return true: 允许, false: 不允许.
+     */
+    static boolean isAnonymous(Metadata metadata) {
+        return metadata.getExpand(ANONYMOUS).orElse(false);
     }
 }
