@@ -24,6 +24,30 @@ import static org.junit.Assert.*;
 public class SerializeUtilsTest {
 
 
+
+    @Test
+    @SneakyThrows
+    public void testImmutableList() {
+        Object obj = codec(List.of(1,2,3));
+        System.out.println(obj);
+        assertNotNull(obj);
+        assertTrue(obj instanceof List<?>);
+        assertEquals(3,((List<?>) obj).size());
+    }
+
+
+    @Test
+    @SneakyThrows
+    public void testImmutableMap() {
+
+        Map<Object,Object> v = Map.of(1,11,2,22);
+        Object obj = codec(v);
+        System.out.println(obj);
+        assertNotNull(obj);
+        assertTrue(obj instanceof Map<?,?>);
+        assertEquals(v,obj);
+    }
+
     @Test
     public void testDeepTransferCollection() {
 

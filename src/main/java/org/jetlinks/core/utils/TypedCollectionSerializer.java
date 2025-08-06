@@ -45,10 +45,11 @@ class TypedCollectionSerializer implements SerializeUtils.Serializer {
         Collection<Object> instance;
         // 已弃用
         if (type == -1) {
-            String name = input.readUTF();
-            size = input.readInt();
-            Class<Collection<Object>> tClass = SerializeUtils.getClass(name);
-            instance = tClass.getConstructor().newInstance();
+             throw new IllegalStateException("unsupported collection deserialize");
+//            String name = input.readUTF();
+//            size = input.readInt();
+//            Class<Collection<Object>> tClass = SerializeUtils.getClass(name);
+//            instance = tClass.getConstructor().newInstance();
         } else if (type == -2) {
             return input.readObject();
         } else {

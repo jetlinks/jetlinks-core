@@ -40,18 +40,19 @@ class TypedMapSerializer implements SerializeUtils.Serializer {
     public Object deserialize(ObjectInput input) {
         int type = input.readByte();
         if (type == -1) {
-            String name = input.readUTF();
-            Map<?, ?> instance;
-            try {
-                Class<Map<?, ?>> tClass = SerializeUtils.getClass(name);
-                instance = tClass.getConstructor().newInstance();
-            } catch (Throwable e) {
-                log.warn("can not create instance for class:{}", name, e);
-                instance = Maps.newHashMap();
-            }
-            Map<?, ?> fInstance = instance;
-            SerializeUtils.readMap(input, i -> fInstance);
-            return instance;
+            throw new IllegalStateException("unsupported map deserialize");
+//            String name = input.readUTF();
+//            Map<?, ?> instance;
+//            try {
+//                Class<Map<?, ?>> tClass = SerializeUtils.getClass(name);
+//                instance = tClass.getConstructor().newInstance();
+//            } catch (Throwable e) {
+//                log.warn("can not create instance for class:{}", name, e);
+//                instance = Maps.newHashMap();
+//            }
+//            Map<?, ?> fInstance = instance;
+//            SerializeUtils.readMap(input, i -> fInstance);
+//            return instance;
         } else if (type == -2) {
             return input.readObject();
         }
