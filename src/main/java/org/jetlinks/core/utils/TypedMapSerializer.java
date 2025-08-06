@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.util.LinkedMultiValueMap;
 
+import java.io.Externalizable;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serializable;
@@ -66,7 +67,7 @@ class TypedMapSerializer implements SerializeUtils.Serializer {
         Class<?> clazz = value.getClass();
         MapType type = MapType.findOrNull(clazz);
         if (type == null) {
-            if (map instanceof Serializable) {
+            if (map instanceof Externalizable) {
                 input.writeByte(-2);
                 input.writeObject(map);
                 return;

@@ -1,5 +1,6 @@
 package org.jetlinks.core.command;
 
+import org.jetlinks.core.annotation.command.Anonymous;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.metadata.Metadata;
 
@@ -18,6 +19,25 @@ public interface CommandConstant {
      * @see org.jetlinks.core.annotation.command.Unbounded
      */
     String EXPANDS_UNBOUNDED = "unbounded";
+
+    /**
+     * 标记命令可以通过API直接访问
+     *
+     * @see org.jetlinks.core.metadata.FunctionMetadata#expand(String, Object)
+     * @see Anonymous
+     * @since 1.2.5
+     */
+    String EXPANDS_ANONYMOUS = "anonymous";
+
+    /**
+     * 标记命令可以通过API直接访问
+     *
+     * @see org.jetlinks.core.metadata.FunctionMetadata#expand(ConfigKey, Object)
+     * @see Anonymous
+     * @since 1.2.5
+     */
+    ConfigKey<Boolean> ANONYMOUS = ConfigKey.of(EXPANDS_ANONYMOUS, "是否运行匿名访问", Boolean.class);
+
 
     /**
      * 标记命令为无界流
@@ -82,5 +102,15 @@ public interface CommandConstant {
      */
     static boolean isStream(Metadata metadata) {
         return metadata.getExpand(STREAM).orElse(false);
+    }
+
+    /**
+     * 判断命令是否允许匿名访问
+     *
+     * @param metadata 命令元数据
+     * @return true: 允许, false: 不允许.
+     */
+    static boolean isAnonymous(Metadata metadata) {
+        return metadata.getExpand(ANONYMOUS).orElse(false);
     }
 }

@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.Externalizable;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serializable;
@@ -71,7 +72,7 @@ class TypedCollectionSerializer implements SerializeUtils.Serializer {
         Class<?> clazz = value.getClass();
         CollectionType type = CollectionType.findOrNull(clazz);
         if (type == null) {
-            if (value instanceof Serializable) {
+            if (value instanceof Externalizable) {
                 output.writeByte(-2);
                 output.writeObject(value);
                 return;
@@ -145,6 +146,13 @@ class TypedCollectionSerializer implements SerializeUtils.Serializer {
                 if (value.clazz == clazz) {
                     return value;
                 }
+            }
+
+            //guava or Collections
+            String clazzName = clazz.getName();
+            if (clazzName.startsWith("java.util.Collections") ||
+                clazzName.startsWith("com.google")) {
+                return arrayList;
             }
 
             return null;
