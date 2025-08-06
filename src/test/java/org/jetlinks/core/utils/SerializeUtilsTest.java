@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Maps;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -22,6 +23,30 @@ import static org.junit.Assert.*;
 
 public class SerializeUtilsTest {
 
+
+    @Test
+    public void testDeepTransferCollection() {
+
+        {
+            Object val = codec(Maps.filterEntries(new HashMap<>(), Objects::nonNull).values());
+
+            assertTrue(val instanceof Collection);
+
+        }
+        {
+            Object val = codec(Maps.filterEntries(new HashMap<>(), Objects::nonNull).keySet());
+
+            assertTrue(val instanceof Set);
+        }
+
+        {
+            Object val = codec(Collections2.filter(Maps
+                                                       .filterEntries(new HashMap<>(), Objects::nonNull)
+                                                       .keySet(), Objects::nonNull));
+
+            assertTrue(val instanceof Collection);
+        }
+    }
 
     @Test
     public void testStackTraceElement() {
@@ -252,7 +277,16 @@ public class SerializeUtilsTest {
         System.out.println(deepMap);
     }
 
-    public static class CustomMap extends HashMap<String, Object> {
+    public static class CustomMap extends HashMap<String, Object> implements Externalizable {
+        @Override
+        public void writeExternal(ObjectOutput out) throws IOException {
+            SerializeUtils.writeKeyValue(this, out);
+        }
+
+        @Override
+        public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+            SerializeUtils.readKeyValue(in, this::put);
+        }
     }
 
 
@@ -302,7 +336,9 @@ public class SerializeUtilsTest {
         }
         ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
         try (ObjectInputStream obIn = new ObjectInputStream(input)) {
-            return SerializeUtils.readObject(obIn);
+            Object decode = SerializeUtils.readObject(obIn);
+            System.out.printf("codec from %s to %s \n", obj == null ? "null" : obj.getClass(), decode == null ? "null" : decode.getClass());
+            return decode;
         }
     }
 }
