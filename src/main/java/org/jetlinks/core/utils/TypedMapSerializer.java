@@ -14,6 +14,7 @@ import java.io.ObjectOutput;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Function;
 
@@ -72,12 +73,15 @@ class TypedMapSerializer implements SerializeUtils.Serializer {
                 input.writeObject(map);
                 return;
             }
-            input.writeByte(-1);
-            input.writeUTF(clazz.getName());
-        } else {
-            input.writeByte(type.ordinal());
+            if (map instanceof SortedMap) {
+                type = MapType.treeMap;
+            } else if (map instanceof ConcurrentMap) {
+                type = MapType.concurrentHashMap;
+            } else {
+                type = MapType.hashMap;
+            }
         }
-
+        input.writeByte(type.ordinal());
         SerializeUtils.writeKeyValue(map, input);
     }
 
@@ -86,13 +90,15 @@ class TypedMapSerializer implements SerializeUtils.Serializer {
         hashMap(Maps::newHashMapWithExpectedSize, HashMap.class),
         linkedHashMap(Maps::newLinkedHashMapWithExpectedSize, LinkedHashMap.class),
         concurrentHashMap(ConcurrentHashMap::new, ConcurrentHashMap.class),
-        identityHashMap(IdentityHashMap::new,IdentityHashMap.class),
+        identityHashMap(IdentityHashMap::new, IdentityHashMap.class),
         treeMap(ignore -> new TreeMap<>(), TreeMap.class),
         concurrentSkipListMap(ignore -> new ConcurrentSkipListMap<>(), ConcurrentSkipListMap.class),
         hashTable(ignore -> new Hashtable<>(), Hashtable.class),
-        httpHeaders(ignore->new HttpHeaders(), HttpHeaders.class),
-        multiValueMap(ignore->new LinkedMultiValueMap<>(), LinkedMultiValueMap.class),
-        fastJson(ignore->new JSONObject(), JSONObject.class)
+        httpHeaders(ignore -> new HttpHeaders(), HttpHeaders.class),
+        multiValueMap(ignore -> new LinkedMultiValueMap<>(), LinkedMultiValueMap.class),
+        fastJson(ignore -> new JSONObject(), JSONObject.class),
+
+        properties(ignore -> new Properties(), Properties.class),
 
 
         //
@@ -115,7 +121,7 @@ class TypedMapSerializer implements SerializeUtils.Serializer {
                 return hashMap;
             }
 
-            if(HttpHeaders.class.isAssignableFrom(clazz)){
+            if (HttpHeaders.class.isAssignableFrom(clazz)) {
                 return httpHeaders;
             }
 

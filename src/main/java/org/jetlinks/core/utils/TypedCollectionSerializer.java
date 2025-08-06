@@ -15,6 +15,7 @@ import java.io.ObjectOutput;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
@@ -42,6 +43,7 @@ class TypedCollectionSerializer implements SerializeUtils.Serializer {
         int type = input.readByte();
         int size;
         Collection<Object> instance;
+        // 已弃用
         if (type == -1) {
             String name = input.readUTF();
             size = input.readInt();
@@ -77,8 +79,12 @@ class TypedCollectionSerializer implements SerializeUtils.Serializer {
                 output.writeObject(value);
                 return;
             }
-            if (value instanceof Set) {
+            if (value instanceof SortedSet) {
+                type = CollectionType.treeSet;
+            } else if (value instanceof Set) {
                 type = CollectionType.hashSet;
+            } else if (value instanceof Queue) {
+                type = CollectionType.linkedList;
             } else {
                 type = CollectionType.arrayList;
             }
@@ -134,7 +140,12 @@ class TypedCollectionSerializer implements SerializeUtils.Serializer {
             .transform(Collections.emptySet(), e -> true)
             .getClass()),
         // fastjson
-        fastJson(ignore->new JSONArray(), JSONArray.class)
+        fastJson(ignore -> new JSONArray(), JSONArray.class),
+
+        // queue
+        priorityQueue(PriorityQueue::new, PriorityQueue.class),
+        arrayDeque(ArrayDeque::new, ArrayDeque.class),
+        concurrentLinkedQueue(ignore -> new ConcurrentLinkedQueue<>(), ConcurrentLinkedQueue.class),
 
         ;
         private final Function<Integer, Collection<Object>> instance;
@@ -146,13 +157,6 @@ class TypedCollectionSerializer implements SerializeUtils.Serializer {
                 if (value.clazz == clazz) {
                     return value;
                 }
-            }
-
-            //guava or Collections
-            String clazzName = clazz.getName();
-            if (clazzName.startsWith("java.util.Collections") ||
-                clazzName.startsWith("com.google")) {
-                return arrayList;
             }
 
             return null;
