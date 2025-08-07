@@ -15,7 +15,7 @@ public interface ContextCodec {
     }
 
     default Context deserialize(Context source, SerializedContext ctx) {
-        return Context.empty();
+        return source;
     }
 
 
