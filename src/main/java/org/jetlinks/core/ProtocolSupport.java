@@ -142,6 +142,18 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
     }
 
     /**
+     * 获取协议所有的配置信息定义
+     *
+     * @return 配置定义
+     * @see DeviceOperator#getConfigs(String...)
+     * @see DeviceOperator#setConfigs(Map)
+     * @since 1.2.5
+     */
+    default Flux<ConfigMetadata> getAllConfigMetadata(Transport transport) {
+        return getConfigMetadata(transport).flux();
+    }
+
+    /**
      * 获取协议初始化所需要的配置定义
      *
      * @return 配置定义
@@ -334,8 +346,8 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      * 获取自定义设备RPC调用责任链
      *
      * @return ThingRpcSupportChain
-     * @since 1.2.2
      * @see DeviceOperator#rpc()
+     * @since 1.2.2
      */
     default ThingRpcSupportChain getRpcChain() {
         return null;

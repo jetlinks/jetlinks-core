@@ -33,4 +33,12 @@ public interface ConfigMetadata extends ConfigScopeSupport, Serializable {
      * @return 新的配置
      */
     ConfigMetadata copy(ConfigScope... scopes);
+
+    /**
+     * 合并另外一个配置,并返回新配置
+     * @param another 配置
+     * @return 新的配置
+     * @since 1.2.5
+     */
+    ConfigMetadata merge(ConfigMetadata another);
 }
