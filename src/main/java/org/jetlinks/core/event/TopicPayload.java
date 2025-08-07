@@ -11,21 +11,28 @@ import org.jetlinks.core.Payload;
 import org.jetlinks.core.Routable;
 import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.metadata.Jsonable;
+import org.jetlinks.core.utils.SerializeUtils;
 import org.jetlinks.core.utils.TopicUtils;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
 @AllArgsConstructor(staticName = "of")
 @Slf4j
-public class TopicPayload implements Routable {
+public class TopicPayload implements Routable, Externalizable {
 
     private CharSequence topic;
 
     private Object payload;
 
     private Map<String, Object> headers;
+
+    public TopicPayload(){}
 
     public String getTopic() {
         return topic.toString();
@@ -206,5 +213,19 @@ public class TopicPayload implements Routable {
            return ((Routable) payload).routeKey();
         }
         return headers.get(Headers.routeKey.getKey());
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        SerializeUtils.writeObject(topic,out);
+        SerializeUtils.writeObject(payload,out);
+        SerializeUtils.writeKeyValue(headers,out);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        topic = SerializeUtils.readObjectAs(in);
+        payload = SerializeUtils.readObjectAs(in);
+        SerializeUtils.readKeyValue(in,this::addHeader);
     }
 }
