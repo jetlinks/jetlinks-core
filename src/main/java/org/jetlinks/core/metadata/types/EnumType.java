@@ -1,6 +1,9 @@
 package org.jetlinks.core.metadata.types;
 
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Maps;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,6 +15,8 @@ import org.jetlinks.core.metadata.ValidateResult;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.util.Optional.ofNullable;
 
 @Getter
 @Setter
@@ -181,5 +186,61 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
 
             return map;
         }
+    }
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        if (this.getElements() == null) {
+            return json;
+        }
+        json.put("elements", this
+                .getElements()
+                .stream()
+                .map(EnumType.Element::toMap).collect(Collectors.toList()));
+
+        if(this.getValueType()!=null){
+            json.put("valueType", this.getValueType().toJson());
+        }
+
+        json.put("multi", this.isMulti());
+        return json;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+        super.fromJson(json);
+        JSONArray arr = json.getJSONArray("elements");
+        if (arr != null) {
+            List<EnumType.Element> elements = new ArrayList<>(arr.size());
+            for (Object obj : arr) {
+                if (obj instanceof Map) {
+                    elements.add(
+                            EnumType.Element.of(
+                                    Maps.transformValues((Map<String, Object>) obj, String::valueOf)
+                            )
+                    );
+                } else if (obj instanceof EnumType.Element) {
+                    elements.add((EnumType.Element) obj);
+                }
+            }
+            this.setElements(elements);
+        }
+
+
+        ofNullable(json.get("valueType"))
+                .map(v -> {
+                    if (v instanceof Map) {
+                        return new JSONObject(((Map<String, Object>) v));
+                    }
+                    // {valueType:int}
+                    JSONObject eleType = new JSONObject();
+                    eleType.put("type", v);
+                    return eleType;
+                })
+                .map(DataTypes::fromJson)
+                .ifPresent(this::setValueType);
+
+        this.setMulti(json.getBooleanValue("multi"));
     }
 }

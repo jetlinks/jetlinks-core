@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,6 +11,8 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static java.util.Optional.ofNullable;
 
 @Getter
 @Setter
@@ -70,5 +73,25 @@ public abstract class AbstractType<Self extends AbstractType<Self>> implements D
     @Override
     public String toString() {
         return getType();
+    }
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = DataType.super.toJson();
+        json.put("description", getDescription());
+        json.put("expands", getExpands());
+        return json;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+        ofNullable(json.get("description"))
+                .map(String::valueOf)
+                .ifPresent(this::setDescription);
+
+        ofNullable(json.get("expands"))
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .ifPresent(this::setExpands);
     }
 }

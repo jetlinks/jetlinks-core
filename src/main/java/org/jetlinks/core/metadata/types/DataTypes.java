@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSONObject;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.UserType;
 
@@ -47,5 +48,11 @@ public class DataTypes {
             return null;
         }
         return supports.get(id);
+    }
+
+    public static DataType fromJson(JSONObject json) {
+        DataType dataType = DataTypes.lookup(json.getString("type")).get();
+        dataType.fromJson(json);
+        return dataType;
     }
 }

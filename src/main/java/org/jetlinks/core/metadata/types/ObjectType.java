@@ -12,6 +12,9 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+
+import static java.util.Optional.ofNullable;
 
 @Getter
 @Setter
@@ -128,5 +131,36 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
                 .stream()
                 .filter(prop -> prop.getId().equals(key))
                 .findAny();
+    }
+
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        if (this.getProperties() != null) {
+            json.put("properties", this
+                    .getProperties()
+                    .stream()
+                    .map(PropertyMetadata::toJson)
+                    .collect(Collectors.toList()));
+        }
+        return json;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+        super.fromJson(json);
+        ofNullable(json.getJSONArray("properties"))
+                .map(list -> list
+                        .stream()
+                        .map(JSON::toJSON)
+                        .map(JSONObject.class::cast)
+                        .<PropertyMetadata>map(j -> {
+                            SimplePropertyMetadata metadata = new SimplePropertyMetadata();
+                            metadata.fromJson(j);
+                            return metadata;
+                        })
+                        .collect(Collectors.toList()))
+                .ifPresent(this::setProperties);
     }
 }

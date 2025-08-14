@@ -1,9 +1,14 @@
 package org.jetlinks.core.metadata;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.types.AbstractType;
 
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static java.util.Optional.ofNullable;
 
 public class UserType extends AbstractType<UserType> {
 
@@ -49,5 +54,20 @@ public class UserType extends AbstractType<UserType> {
 
     public void setProperty(String property) {
         this.property = property;
+    }
+
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        json.put("property", this.getProperty());
+        return json;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+        super.fromJson(json);
+        ofNullable(json.getString("property"))
+                .ifPresent(this::setProperty);
     }
 }

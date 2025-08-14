@@ -2,6 +2,7 @@ package org.jetlinks.core.metadata.types;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.i18n.LocaleUtils;
@@ -13,7 +14,10 @@ import org.springframework.util.CollectionUtils;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import static java.util.Optional.ofNullable;
 
 @Getter
 @Setter
@@ -97,4 +101,32 @@ public class ArrayType extends AbstractType<ArrayType> implements DataType, Conv
         }
         return Collections.singletonList(value);
     }
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        if (this.getElementType()!=null) {
+            json.put("elementType", this.getElementType().toJson());
+        }
+        return json;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+        super.fromJson(json);
+        ofNullable(json.get("elementType"))
+                .map(v -> {
+                    if (v instanceof Map) {
+                        return new JSONObject(((Map) v));
+                    }
+                    //支持平铺类型，例如：elementType:boolean
+                    JSONObject eleType = new JSONObject();
+                    eleType.put("type", v);
+                    return eleType;
+                })
+                .map(DataTypes::fromJson)
+                .ifPresent(this::setElementType);
+    }
+
+
 }

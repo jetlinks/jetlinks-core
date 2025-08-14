@@ -1,5 +1,7 @@
 package org.jetlinks.core.metadata;
 
+import com.alibaba.fastjson.JSONObject;
+
 import java.util.Map;
 
 /**
@@ -8,7 +10,7 @@ import java.util.Map;
  * @author zhouhao
  * @since 1.0.0
  */
-public interface DataType extends Metadata, FormatSupport {
+public interface DataType extends Metadata, FormatSupport, Jsonable {
 
     /**
      * 验证是否合法
@@ -32,5 +34,12 @@ public interface DataType extends Metadata, FormatSupport {
     default Map<String, Object> getExpands() {
         return null;
     }
+
+    default JSONObject toJson() {
+        JSONObject json = new JSONObject();
+        json.put("type", getType());
+        return json;
+    }
+
 
 }
