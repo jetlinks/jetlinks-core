@@ -33,20 +33,20 @@ public class TestDeviceRegistry implements DeviceRegistry {
 
     @Override
     public Mono<DeviceOperator> getDevice(String deviceId) {
-        return Mono.fromSupplier(() -> operatorMap.get(deviceId));
+        return Mono.fromSupplier(() -> deviceId == null ? null : operatorMap.get(deviceId));
     }
 
     @Override
     public Mono<DeviceProductOperator> getProduct(String productId) {
-        return Mono.fromSupplier(() -> productOperatorMap.get(productId));
+        return Mono.fromSupplier(() -> productId == null ? null : productOperatorMap.get(productId));
     }
 
     @Override
     public Mono<DeviceOperator> register(DeviceInfo deviceInfo) {
         return Mono.defer(() -> {
             DefaultDeviceOperator operator = new DefaultDeviceOperator(
-                    deviceInfo.getId(),
-                    supports, manager, handler, this,interceptor
+                deviceInfo.getId(),
+                supports, manager, handler, this, interceptor
             );
             operatorMap.put(operator.getDeviceId(), operator);
 
@@ -86,18 +86,18 @@ public class TestDeviceRegistry implements DeviceRegistry {
     @Override
     public Mono<Void> unregisterDevice(String deviceId) {
         return Mono.justOrEmpty(deviceId)
-                .map(operatorMap::remove)
-                .then();
+                   .map(operatorMap::remove)
+                   .then();
     }
 
     @Override
     public Mono<Void> unregisterProduct(String productId) {
         return Mono.justOrEmpty(productId)
-                .map(productOperatorMap::remove)
-                .then();
+                   .map(productOperatorMap::remove)
+                   .then();
     }
 
-    public void addInterceptor(DeviceMessageSenderInterceptor interceptor){
+    public void addInterceptor(DeviceMessageSenderInterceptor interceptor) {
         this.interceptor.addInterceptor(interceptor);
     }
 }

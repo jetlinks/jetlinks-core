@@ -86,7 +86,7 @@ public class CommandMetadataResolver {
                     if (prop != null) {
                         Order order = AnnotationUtils.findAnnotation(method, Order.class);
                         if (order != null) {
-                            indexMap.put(prop.getId(), order.value());
+                            indexMap.putIfAbsent(prop.getId(), order.value());
                         }
                         inputsMap.putIfAbsent(method.getName(), prop);
                     }

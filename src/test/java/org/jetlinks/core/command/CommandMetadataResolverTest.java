@@ -17,6 +17,7 @@ import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.metadata.types.StringType;
 import org.junit.Test;
 import org.springframework.core.ResolvableType;
+import org.springframework.core.annotation.Order;
 import reactor.core.publisher.Mono;
 
 import java.lang.annotation.ElementType;
@@ -226,6 +227,7 @@ public class CommandMetadataResolverTest {
 
     public static class Test3Command extends Test1Command {
 
+        @Order(1)
         @Schema(description = "Str", hidden = true)
         @Selector(type = "device")
         public String getStr() {
@@ -246,8 +248,11 @@ public class CommandMetadataResolverTest {
         assertEquals(2, resolve.getInputs().size());
         Optional<Object> hidden = resolve
             .getInputs()
-            .get(0)
-            .getExpand("hidden");
+            .stream()
+            .filter(p->p.getId().equals("str"))
+            .findAny()
+            .flatMap(p->p.getExpand("hidden"))
+           ;
         assertTrue(hidden.isPresent());
         assertTrue(((boolean) hidden.get()));
     }

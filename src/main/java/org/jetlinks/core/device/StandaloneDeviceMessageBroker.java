@@ -78,7 +78,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
         return Mono.defer(() -> {
 
             String messageId = message.getMessageId();
-            if (StringUtils.isEmpty(messageId)) {
+            if (!StringUtils.hasText(messageId)) {
                 log.warn("reply message messageId is empty: {}", message);
                 return Mono.just(false);
             }
