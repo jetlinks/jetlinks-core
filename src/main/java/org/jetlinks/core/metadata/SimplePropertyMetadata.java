@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.commons.collections.MapUtils;
 import org.hswebframework.web.bean.FastBeanCopier;
+import org.jetlinks.core.metadata.types.DataTypes;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,16 @@ public class SimplePropertyMetadata implements PropertyMetadata {
 
     private Map<String, Object> expands;
 
+    public static SimplePropertyMetadata of(PropertyMetadata metadata) {
+        SimplePropertyMetadata simple = new SimplePropertyMetadata();
+        simple.setId(metadata.getId());
+        simple.setName(metadata.getName());
+        simple.setDescription(metadata.getDescription());
+        simple.setExpands(metadata.getExpands());
+        simple.setValueType(metadata.getValueType());
+        return simple;
+    }
+
     public static SimplePropertyMetadata of(String id, String name, DataType type) {
         SimplePropertyMetadata metadata = new SimplePropertyMetadata();
         metadata.setId(id);
@@ -36,8 +47,19 @@ public class SimplePropertyMetadata implements PropertyMetadata {
     }
 
     @Override
+    public JSONObject toJson() {
+        JSONObject json = FastBeanCopier.copy(this, JSONObject::new, "valueType");
+        json.put("valueType", valueType.toJson());
+        return json;
+    }
+
+    @Override
     public void fromJson(JSONObject json) {
-        throw new UnsupportedOperationException();
+        FastBeanCopier.copy(json, this, "valueType");
+        JSONObject object = json.getJSONObject("valueType");
+        if (object != null) {
+            valueType = DataTypes.fromJsonNow(object);
+        }
     }
 
     @Override

@@ -1,14 +1,19 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.ValidateResult;
+import org.jetlinks.core.metadata.unit.ValueUnits;
 import org.springframework.http.MediaType;
 
+import java.math.RoundingMode;
 import java.util.Optional;
+
+import static java.util.Optional.ofNullable;
 
 @Getter
 @Setter
@@ -72,5 +77,28 @@ public class FileType extends AbstractType<FileType> implements DataType, Conver
             }
             return Optional.empty();
         }
+    }
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        json.put("bodyType", this.getBodyType().name());
+        json.put("mediaType", this.getMediaType().toString());
+        return json;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+        super.fromJson(json);
+        Optional.ofNullable(json.get("bodyType"))
+                .map(String::valueOf)
+                .flatMap(FileType.BodyType::of)
+                .ifPresent(this::setBodyType);
+
+        Optional.ofNullable(json.get("mediaType"))
+                .map(String::valueOf)
+                .map(MediaType::parseMediaType)
+                .ifPresent(this::setMediaType);
+
     }
 }

@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.i18n.LocaleUtils;
@@ -7,6 +8,8 @@ import org.jetlinks.core.metadata.Converter;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.FormatSupport;
 import org.jetlinks.core.metadata.ValidateResult;
+
+import static java.util.Optional.ofNullable;
 
 @Getter
 @Setter
@@ -98,5 +101,31 @@ public class BooleanType extends AbstractType<BooleanType> implements DataType, 
         return "未知:" + value;
     }
 
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        json.put("trueText", this.getTrueText());
+        json.put("falseText", this.getFalseText());
+        json.put("trueValue", this.getTrueValue());
+        json.put("falseValue", this.getFalseValue());
+        return json;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+        super.fromJson(json);
+        ofNullable(json.getString("trueText"))
+                .ifPresent(this::setTrueText);
+        ofNullable(json.getString("falseText"))
+                .ifPresent(this::setFalseText);
+        ofNullable(json.getString("trueValue"))
+                .ifPresent(this::setTrueValue);
+        ofNullable(json.getString("falseValue"))
+                .ifPresent(this::setFalseValue);
+        ofNullable(json.getString("description"))
+                .ifPresent(this::setDescription);
+
+    }
 
 }

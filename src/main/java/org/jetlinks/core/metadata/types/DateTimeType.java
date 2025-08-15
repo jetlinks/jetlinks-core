@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+
+import static java.util.Optional.ofNullable;
 
 @Getter
 @Setter
@@ -130,4 +133,22 @@ public class DateTimeType extends AbstractType<DateTimeType> implements DataType
     }
 
 
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        json.put("format", this.getFormat());
+        json.put("tz", this.getZoneId().toString());
+        return json;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+        super.fromJson(json);
+        ofNullable(json.getString("format"))
+                .ifPresent(this::setFormat);
+        ofNullable(json.getString("tz"))
+                .map(ZoneId::of)
+                .ifPresent(this::setZoneId);
+
+    }
 }

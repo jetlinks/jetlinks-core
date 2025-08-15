@@ -1,5 +1,6 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.i18n.LocaleUtils;
@@ -8,13 +9,17 @@ import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.UnitSupported;
 import org.jetlinks.core.metadata.ValidateResult;
 import org.jetlinks.core.metadata.unit.ValueUnit;
+import org.jetlinks.core.metadata.unit.ValueUnits;
 import org.jetlinks.core.utils.NumberUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Date;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+
+import static java.util.Optional.ofNullable;
 
 @Getter
 @Setter
@@ -237,6 +242,36 @@ public abstract class NumberType<N extends Number> extends AbstractType<NumberTy
             return mapper.apply(decimal);
         }
         return mapper.apply(decimal.setScale(scale, mode));
+    }
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject json = super.toJson();
+        json.put("max", this.getMax());
+        json.put("min", this.getMin());
+        json.put("scale", this.getScale());
+        json.put("round", this.getRound().name());
+        if (this.getUnit() != null) {
+            json.put("unit", this.getUnit().getId());
+        }
+        return json;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+        super.fromJson(json);
+        ofNullable(json.getDouble("max"))
+                .ifPresent(this::setMax);
+        ofNullable(json.getDouble("min"))
+                .ifPresent(this::setMin);
+        ofNullable(json.getInteger("scale"))
+                .ifPresent(this::setScale);
+        ofNullable(json.getString("unit"))
+                .flatMap(ValueUnits::lookup)
+                .ifPresent(this::setUnit);
+        ofNullable(json.getString("round"))
+                .map(RoundingMode::valueOf)
+                .ifPresent(this::setRound);
     }
 
 

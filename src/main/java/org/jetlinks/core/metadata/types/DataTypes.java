@@ -1,9 +1,11 @@
 package org.jetlinks.core.metadata.types;
 
+import com.alibaba.fastjson.JSONObject;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.UserType;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -47,5 +49,20 @@ public class DataTypes {
             return null;
         }
         return supports.get(id);
+    }
+
+    public static DataType fromJsonNow(JSONObject json) {
+        return fromJson(json).orElseThrow(() -> new UnsupportedOperationException("error.not_support_json"));
+    }
+
+    public static Optional<DataType> fromJson(JSONObject json) {
+        return Optional
+                .ofNullable(json.getString("type"))
+                .map(DataTypes::lookup)
+                .map(Supplier::get)
+                .map(d -> {
+                    d.fromJson(json);
+                    return d;
+                });
     }
 }
