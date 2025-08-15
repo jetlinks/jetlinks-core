@@ -44,7 +44,7 @@ public interface ThingType extends TopicSupport {
 
     @Override
     default SharedPathString getTopicPrefix0(String templateId, String thingId) {
-        return SharedPathString.of(new String[]{getId(), templateId, thingId});
+        return SharedPathString.of(new String[]{"", getId(), templateId, thingId});
     }
 
     /**
