@@ -124,7 +124,7 @@ public class ArrayType extends AbstractType<ArrayType> implements DataType, Conv
                     eleType.put("type", v);
                     return eleType;
                 })
-                .map(DataTypes::fromJson)
+                .map(DataTypes::fromJsonNow)
                 .ifPresent(this::setElementType);
     }
 

@@ -8,8 +8,27 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Date;
 
+import static org.junit.Assert.assertEquals;
 
-public class DateTimeTypeTest {
+
+public class DateTimeTypeTest  extends JsonableTestBase<DateTimeType> {
+
+    @Override
+    protected DateTimeType newInstance() {
+        return new DateTimeType();
+    }
+
+    @Override
+    protected void fillSampleData(DateTimeType instance) {
+        instance.setFormat("yyyy-MM-dd HH:mm:ss");
+        instance.setZoneId(ZoneId.of("Asia/Shanghai"));
+    }
+
+    @Override
+    protected void assertSampleData(DateTimeType instance) {
+        assertEquals("yyyy-MM-dd HH:mm:ss", instance.getFormat());
+        assertEquals(ZoneId.of("Asia/Shanghai"), instance.getZoneId());
+    }
 
     @Test
     public void test() {
@@ -22,7 +41,7 @@ public class DateTimeTypeTest {
 
         timeType.setFormat("yyyy-MM-dd");
 
-        Assert.assertEquals(timeType.format(Date.from(LocalDateTime.of(2019, 8, 10, 0, 0)
+        assertEquals(timeType.format(Date.from(LocalDateTime.of(2019, 8, 10, 0, 0)
                         .toInstant(ZoneOffset.of("+8")))),
                 "2019-08-10");
 
@@ -56,7 +75,7 @@ public class DateTimeTypeTest {
         DateTimeType timeType = new DateTimeType();
         Date date = timeType.convert(""+ts);
 
-       Assert.assertEquals(date.getTime(),ts);
+       assertEquals(date.getTime(),ts);
 
     }
 }

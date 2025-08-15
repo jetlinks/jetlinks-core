@@ -4,7 +4,12 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class IntTypeTest {
+public class IntTypeTest extends JsonableTestBase.Empty<IntType> {
+
+    @Override
+    protected IntType newInstance() {
+        return new IntType();
+    }
 
     @Test
     public void testFloat() {

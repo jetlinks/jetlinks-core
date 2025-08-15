@@ -5,6 +5,7 @@ import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.UserType;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -50,9 +51,18 @@ public class DataTypes {
         return supports.get(id);
     }
 
-    public static DataType fromJson(JSONObject json) {
-        DataType dataType = DataTypes.lookup(json.getString("type")).get();
-        dataType.fromJson(json);
-        return dataType;
+    public static DataType fromJsonNow(JSONObject json) {
+        return fromJson(json).orElseThrow(() -> new UnsupportedOperationException("error.not_support_json"));
+    }
+
+    public static Optional<DataType> fromJson(JSONObject json) {
+        return Optional
+                .ofNullable(json.getString("type"))
+                .map(DataTypes::lookup)
+                .map(Supplier::get)
+                .map(d -> {
+                    d.fromJson(json);
+                    return d;
+                });
     }
 }

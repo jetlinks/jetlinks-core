@@ -8,7 +8,12 @@ import java.util.Map;
 
 import static org.junit.Assert.*;
 
-public class GeoShapeTypeTest {
+public class GeoShapeTypeTest extends JsonableTestBase.Empty<GeoShapeType> {
+
+    @Override
+    protected GeoShapeType newInstance() {
+        return new GeoShapeType();
+    }
 
     @Test
     public void testPoint() {

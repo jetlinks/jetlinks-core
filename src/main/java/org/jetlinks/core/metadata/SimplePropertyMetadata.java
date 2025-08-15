@@ -48,7 +48,7 @@ public class SimplePropertyMetadata implements PropertyMetadata {
         FastBeanCopier.copy(json, this, "valueType");
         JSONObject object = json.getJSONObject("valueType");
         if (object != null) {
-            valueType = DataTypes.fromJson(object);
+            valueType = DataTypes.fromJsonNow(object);
         }
     }
 

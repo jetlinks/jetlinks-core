@@ -3,7 +3,12 @@ package org.jetlinks.core.metadata.types;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class DoubleTypeTest {
+public class DoubleTypeTest extends JsonableTestBase.Empty<DoubleType> {
+
+    @Override
+    protected DoubleType newInstance() {
+        return new DoubleType();
+    }
 
     @Test
     public void test() {

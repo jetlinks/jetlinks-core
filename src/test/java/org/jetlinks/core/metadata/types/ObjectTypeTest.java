@@ -1,14 +1,46 @@
 package org.jetlinks.core.metadata.types;
 
+import org.jetlinks.core.metadata.PropertyMetadata;
+import org.jetlinks.core.metadata.SimplePropertyMetadata;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 
-public class ObjectTypeTest {
+import static org.junit.Assert.assertNotNull;
 
+public class ObjectTypeTest extends JsonableTestBase<ObjectType> {
+
+    @Override
+    protected ObjectType newInstance() {
+        return new ObjectType();
+    }
+
+    @Override
+    protected void fillSampleData(ObjectType instance) {
+        List<PropertyMetadata> list = Arrays.asList(
+                SimplePropertyMetadata.of("id", "ID", new StringType()),
+                SimplePropertyMetadata.of("info", "详情", new ObjectType())
+        );
+        instance.setProperties(list);
+    }
+
+    @Override
+    protected void assertSampleData(ObjectType instance) {
+        List<PropertyMetadata> properties = instance.getProperties();
+        assertNotNull(properties);
+        Assert.assertEquals(2, properties.size());
+        PropertyMetadata id = properties.get(0);
+        Assert.assertEquals("id", id.getId());
+        Assert.assertEquals("ID", id.getName());
+        Assert.assertEquals(StringType.ID, id.getValueType().getId());
+        PropertyMetadata info = properties.get(1);
+        Assert.assertEquals("info", info.getId());
+        Assert.assertEquals("详情", info.getName());
+        Assert.assertEquals(ObjectType.ID, info.getValueType().getId());
+
+
+    }
 
     @Test
     public void testJSON() {

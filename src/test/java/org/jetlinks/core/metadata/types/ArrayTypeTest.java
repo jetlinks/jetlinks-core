@@ -6,8 +6,25 @@ import org.junit.Test;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-public class ArrayTypeTest {
+public class ArrayTypeTest extends JsonableTestBase<ArrayType> {
+
+    @Override
+    protected ArrayType newInstance() {
+        return new ArrayType();
+    }
+
+    @Override
+    protected void fillSampleData(ArrayType instance) {
+        instance.setElementType(StringType.GLOBAL);
+    }
+
+    @Override
+    protected void assertSampleData(ArrayType instance) {
+        assertNotNull(instance.getElementType());
+        assertEquals(StringType.ID, instance.getElementType().getId());
+    }
 
     @Test
     public void test() {

@@ -238,7 +238,7 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
                     eleType.put("type", v);
                     return eleType;
                 })
-                .map(DataTypes::fromJson)
+                .map(DataTypes::fromJsonNow)
                 .ifPresent(this::setValueType);
 
         this.setMulti(json.getBooleanValue("multi"));
