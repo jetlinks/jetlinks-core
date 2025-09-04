@@ -8,6 +8,7 @@ import org.hswebframework.web.i18n.LocaleUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -168,11 +169,20 @@ public enum UnifyUnit implements ValueUnit, I18nEnumDict<String> {
         return o -> String.format(strTemplate, o);
     }
 
+    private static final Map<String,UnifyUnit> idMapping = new HashMap<>();
+
+    static {
+        for (UnifyUnit value : values()) {
+            idMapping.put(value.getId(),value);
+        }
+    }
+
     public static UnifyUnit of(String value) {
-        return Stream.of(UnifyUnit.values())
-                .filter(unifyUnit -> unifyUnit.getId().equals(value) || unifyUnit.getSymbol().equals(value))
-                .findFirst()
-                .orElse(null);
+        return idMapping.get(value);
+//        return Stream.of(UnifyUnit.values())
+//                .filter(unifyUnit -> unifyUnit.getId().equals(value) || unifyUnit.getSymbol().equals(value))
+//                .findFirst()
+//                .orElse(null);
     }
 
     @Override
