@@ -7,12 +7,14 @@ import org.jetlinks.core.config.ConfigKeyValue;
 import org.springframework.core.io.Resource;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StreamUtils;
+import org.springframework.util.StringUtils;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Getter
 @Setter
@@ -108,15 +110,50 @@ public class DefaultConfigMetadata implements ConfigMetadata {
     public DefaultConfigMetadata copy(ConfigScope... scopes) {
         DefaultConfigMetadata configMetadata = new DefaultConfigMetadata(name, description);
         configMetadata.scopes = this.scopes;
+        configMetadata.document = this.document;
         if (scopes == null || scopes.length == 0) {
             configMetadata.properties = new ArrayList<>(properties);
         } else {
             configMetadata.properties =
-                    this.properties
-                            .stream()
-                            .filter(conf -> conf.hasAnyScope(scopes))
-                            .collect(Collectors.toList());
+                this.properties
+                    .stream()
+                    .filter(conf -> conf.hasAnyScope(scopes))
+                    .collect(Collectors.toList());
         }
+
+        return configMetadata;
+    }
+
+    @Override
+    public ConfigMetadata merge(ConfigMetadata another) {
+        DefaultConfigMetadata configMetadata = new DefaultConfigMetadata(name, description);
+
+        ConfigScope[] scope = Stream
+            .concat(Stream.of(getScopes()), Stream.of(another.getScopes()))
+            .toArray(ConfigScope[]::new);
+
+        if (scope.length == 0) {
+            scope = all;
+        }
+        configMetadata.scopes = scope;
+        configMetadata.document = this.document;
+        String anotherDocument;
+
+        if (another instanceof DefaultConfigMetadata
+            && StringUtils.hasText((anotherDocument = ((DefaultConfigMetadata) another).document))) {
+            if (configMetadata.document == null) {
+                configMetadata.document = anotherDocument;
+            } else {
+                configMetadata.document += "\n" + anotherDocument;
+            }
+        }
+
+        configMetadata.properties = Stream
+            .concat(
+                this.getProperties().stream(),
+                another.getProperties().stream()
+            ).collect(Collectors.toList());
+
 
         return configMetadata;
     }

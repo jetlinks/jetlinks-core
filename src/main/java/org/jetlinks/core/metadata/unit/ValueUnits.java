@@ -6,6 +6,7 @@ import reactor.core.Disposable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -22,6 +23,7 @@ public class ValueUnits {
     private static final List<ValueUnitSupplier> suppliers = new CopyOnWriteArrayList<>();
 
     static {
+        // 内置标准单位
         ValueUnits.register(new ValueUnitSupplier() {
             @Override
             public Optional<ValueUnit> getById(String id) {
@@ -33,6 +35,15 @@ public class ValueUnits {
                 return Arrays.asList(UnifyUnit.values());
             }
         });
+
+        //SPI方式拓展
+        ServiceLoader
+            .load(ValueUnitSupplier.class)
+            .forEach(ValueUnits::register);
+
+    }
+
+    private ValueUnits() {
     }
 
     /**
@@ -59,7 +70,7 @@ public class ValueUnits {
                 if (unit.isPresent()) {
                     return unit;
                 }
-            }catch (Error ignore){
+            } catch (Error ignore) {
                 suppliers.remove(supplier);
             }
         }
@@ -77,16 +88,16 @@ public class ValueUnits {
      */
     public static List<ValueUnit> getAllUnit() {
         return suppliers
-                .stream()
-                .flatMap(supplier -> {
-                    try {
-                        return supplier.getAll().stream();
-                    } catch (Error err) {
-                        //由协议包自定义的单位,当协议被卸载时可能会报错
-                        suppliers.remove(supplier);
-                    }
-                    return Stream.empty();
-                })
-                .collect(Collectors.toList());
+            .stream()
+            .flatMap(supplier -> {
+                try {
+                    return supplier.getAll().stream();
+                } catch (Error err) {
+                    //由协议包自定义的单位,当协议被卸载时可能会报错
+                    suppliers.remove(supplier);
+                }
+                return Stream.empty();
+            })
+            .collect(Collectors.toList());
     }
 }

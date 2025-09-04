@@ -17,7 +17,7 @@ public class SymbolValueUnit implements ValueUnit {
         if (value == null) {
             return null;
         }
-        return value + "" + symbol;
+        return value + symbol;
     }
 
     @Override
