@@ -17,7 +17,11 @@ public final class StringBuilderUtils {
     };
 
     private static StringBuilder takeBuilder() {
-        return cacheBuilder.get();
+        StringBuilder sb = cacheBuilder.get();
+        if (sb.length() != 0) {
+            return new StringBuilder();
+        }
+        return sb;
     }
 
     public static <T, T2, T3, T4> String buildString(T data, T2 data2, T3 data3, T4 data4, Consumer5<T, T2, T3, T4, StringBuilder> builderFunction) {

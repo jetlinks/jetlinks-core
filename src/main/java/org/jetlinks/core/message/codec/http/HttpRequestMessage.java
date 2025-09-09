@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import org.jetlinks.core.message.codec.EncodedMessage;
+import org.jetlinks.core.utils.CharsetUtils;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.util.CollectionUtils;
@@ -138,12 +139,13 @@ public interface HttpRequestMessage extends EncodedMessage {
             });
         } else {
             ByteBuf payload = getPayload();
-            if (payload.readableBytes() == 0) {
+            if (!payload.isReadable()) {
                 return builder.toString();
             }
             builder.append("\n");
-            if (ByteBufUtil.isText(payload, StandardCharsets.UTF_8)) {
-                builder.append(payload.toString(StandardCharsets.UTF_8));
+            String text = payload.toString(StandardCharsets.UTF_8);
+            if (CharsetUtils.isHumanFriendly(text)) {
+                builder.append(text);
             } else {
                 ByteBufUtil.appendPrettyHexDump(builder, payload);
             }

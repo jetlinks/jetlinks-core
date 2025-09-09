@@ -2,7 +2,10 @@ package org.jetlinks.core.message.codec;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttProperties;
+import org.apache.commons.codec.binary.Hex;
+import org.jetlinks.core.utils.CharsetUtils;
 import org.jetlinks.core.utils.StringBuilderUtils;
 
 import javax.annotation.Nonnull;
@@ -49,6 +52,7 @@ public interface MqttMessage extends EncodedMessage {
 
     /**
      * 获取Topic
+     *
      * @return topic
      */
     @Nonnull
@@ -56,6 +60,7 @@ public interface MqttMessage extends EncodedMessage {
 
     /**
      * 获取clientId
+     *
      * @return clientId
      */
     String getClientId();
@@ -69,6 +74,7 @@ public interface MqttMessage extends EncodedMessage {
 
     /**
      * 获取QoS
+     *
      * @return qos
      */
     default int getQosLevel() {
@@ -85,6 +91,7 @@ public interface MqttMessage extends EncodedMessage {
 
     /**
      * 获取MQTT 5 指定的自定义属性
+     *
      * @return 自定义属性
      * @see io.netty.handler.codec.mqtt.MqttProperties
      */
@@ -101,11 +108,18 @@ public interface MqttMessage extends EncodedMessage {
                        .append("retain: ").append(isRetain()).append("\n")
                        .append("will: ").append(isWill()).append("\n\n");
                 ByteBuf payload = getPayload();
-                if (ByteBufUtil.isText(payload, StandardCharsets.UTF_8)) {
-                    builder.append(payload.toString(StandardCharsets.UTF_8));
+                if (payload.isReadable()) {
+                    String text = payload.toString(StandardCharsets.UTF_8);
+                    if (CharsetUtils.isHumanFriendly(text)) {
+                        builder.append(text);
+                    } else {
+                        ByteBufUtil.appendPrettyHexDump(builder, payload);
+                    }
                 } else {
-                    ByteBufUtil.appendPrettyHexDump(builder, payload);
+                    builder.append("<released>");
                 }
+
             });
     }
+
 }
