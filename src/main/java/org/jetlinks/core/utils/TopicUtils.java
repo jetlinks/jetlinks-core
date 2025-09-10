@@ -1,6 +1,8 @@
 package org.jetlinks.core.utils;
 
-import io.netty.util.concurrent.FastThreadLocal;
+import lombok.SneakyThrows;
+import org.hswebframework.web.recycler.Recyclable;
+import org.hswebframework.web.recycler.Recycler;
 import org.jetlinks.core.lang.SeparatedCharSequence;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.ConcurrentReferenceHashMap;
@@ -142,19 +144,11 @@ public class TopicUtils {
         return splitCache.computeIfAbsent(topic, TopicUtils::doSplit);
     }
 
-    private static final FastThreadLocal<List<String>> SHARE_SPLIT = new FastThreadLocal<List<String>>() {
-        @Override
-        protected List<String> initialValue() {
-            return new ArrayList<>(8);
-        }
-    };
-
-    private static final FastThreadLocal<StringBuilder> SHARE_BUILDER = new FastThreadLocal<StringBuilder>() {
-        @Override
-        protected StringBuilder initialValue() {
-            return new StringBuilder(8);
-        }
-    };
+    private static final Recycler<List<String>> SHARE_SPLIT = Recycler.create(
+        ArrayList::new,
+        List::clear,
+        256
+    );
 
     private static String[] doSplit(String topic) {
         return split(topic, PATH_SPLITTER);
@@ -164,36 +158,37 @@ public class TopicUtils {
         return split(topic, pattern, (index, part) -> part);
     }
 
+    @SneakyThrows
     public static String[] split(String topic,
                                  char pattern,
                                  BiFunction<Integer, String, String> converter) {
-        List<String> list = SHARE_SPLIT.get();
-        StringBuilder builder = SHARE_BUILDER.get();
-        try {
-            int len = topic.length();
-            int total = 0;
+       try(Recyclable<List<String>> listContainer = SHARE_SPLIT.take(true);
+           Recyclable<StringBuilder> builderContainer = StringBuilderUtils.sharedBuilder.take(true)){
+           StringBuilder builder = builderContainer.get();
+           List<String> list = listContainer.get();
+           int len = topic.length();
+           int total = 0;
 
-            for (int i = 0; i < len; i++) {
-                char ch = topic.charAt(i);
-                if (ch == pattern) {
-                    list.add(converter.apply(total, builder.toString()));
-                    builder.setLength(0);
-                    total++;
-                } else {
-                    builder.append(ch);
-                }
-            }
+           for (int i = 0; i < len; i++) {
+               char ch = topic.charAt(i);
+               if (ch == pattern) {
+                   list.add(converter.apply(total, builder.toString()));
+                   builder.setLength(0);
+                   total++;
+               } else {
+                   builder.append(ch);
+               }
+           }
 
-            if (builder.length() > 0) {
-                list.add(converter.apply(total, builder.toString()));
-                total++;
-            }
+           if (!builder.isEmpty()) {
+               list.add(converter.apply(total, builder.toString()));
+               total++;
+           }
 
-            return list.toArray(new String[total]);
-        } finally {
-            builder.setLength(0);
-            list.clear();
-        }
+           return list.toArray(new String[total]);
+       }
+
+
     }
 
 
