@@ -108,6 +108,11 @@ public class TraceDeviceSession implements DeviceSession {
     }
 
     @Override
+    public boolean isChanged(DeviceSession another) {
+        return target.isChanged(another);
+    }
+
+    @Override
     public Mono<Boolean> send(ToDeviceMessageContext context) {
         return target.send(context);
     }

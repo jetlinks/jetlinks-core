@@ -27,7 +27,10 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.function.BiConsumer;
 
@@ -404,8 +407,16 @@ public class MetadataUtils {
             if (clazz == double.class || clazz == Double.class) {
                 return new DoubleType();
             }
-            if (clazz == Date.class || clazz == LocalDateTime.class) {
+            if (Date.class.isAssignableFrom(clazz)
+                || clazz == Instant.class
+                || clazz == LocalDateTime.class) {
                 return new DateTimeType();
+            }
+            if (clazz == LocalDate.class) {
+                return new DateTimeType().format("yyyy-MM-dd");
+            }
+            if (clazz == LocalTime.class) {
+                return new DateTimeType().format("HH:mm:ss");
             }
             if (clazz == Boolean.class || clazz == boolean.class) {
                 return new BooleanType();

@@ -11,7 +11,10 @@ import org.hswebframework.web.validator.CreateGroup;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.Expands;
 import org.jetlinks.core.annotation.ui.Selector;
+import org.jetlinks.core.metadata.DataType;
+import org.jetlinks.core.metadata.types.DateTimeType;
 import org.jetlinks.core.metadata.types.ObjectType;
+import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AliasFor;
@@ -20,6 +23,7 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -49,6 +53,13 @@ public class MetadataUtilsTest {
         ObjectType type = (ObjectType) MetadataUtils.parseType(ResolvableType.forType(CollectionsTest.class));
 
         System.out.println(JSON.toJSONString(type, SerializerFeature.PrettyFormat));
+    }
+
+    @Test
+    public void testDateTimeType(){
+       DataType dataType = MetadataUtils.parseType(ResolvableType.forType(Timestamp.class));
+
+        Assert.assertTrue(dataType instanceof DateTimeType);
     }
 
 

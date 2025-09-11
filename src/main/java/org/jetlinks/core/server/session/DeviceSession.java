@@ -15,6 +15,7 @@ import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.function.Function;
 
 import static org.jetlinks.core.trace.DeviceTracer.SpanName.*;
 import static org.jetlinks.core.trace.FluxTracer.create;
@@ -103,8 +104,13 @@ public interface DeviceSession {
      * 设置close回调
      *
      * @param call 回调
+     * @see org.jetlinks.core.device.session.DeviceSessionManager#listenEvent(Function)
+     * @deprecated 已弃用 since 1.3.1
      */
-    void onClose(Runnable call);
+    @Deprecated
+    default void onClose(Runnable call) {
+
+    }
 
     /**
      * @return 会话连接的服务ID
@@ -121,6 +127,9 @@ public interface DeviceSession {
         return Optional.empty();
     }
 
+    /**
+     * 执行心跳保活
+     */
     default void keepAlive() {
         ping();
     }

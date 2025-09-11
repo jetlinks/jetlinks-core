@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
  * 已编码的消息,通常为来自设备或者发向设备的原始报文.
  *
  * @author zhouhao
+ * @see SimpleEncodedMessage
  * @see MqttMessage
  * @see CoapMessage
  * @see org.jetlinks.core.message.codec.http.HttpExchangeMessage
@@ -29,6 +30,15 @@ public interface EncodedMessage {
      */
     @Nonnull
     ByteBuf getPayload();
+
+    /**
+     * 获取消息长度(字节)
+     *
+     * @return 长度
+     */
+    default long getLength() {
+        return getPayload().readableBytes();
+    }
 
     default String payloadAsString() {
         return getPayload().toString(StandardCharsets.UTF_8);
@@ -73,6 +83,7 @@ public interface EncodedMessage {
         return simple(data, MessagePayloadType.BINARY);
     }
 
+    @Deprecated
     static EncodedMessage simple(ByteBuf data, MessagePayloadType payloadType) {
         return SimpleEncodedMessage.of(data, payloadType);
     }
