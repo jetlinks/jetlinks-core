@@ -45,7 +45,6 @@ public class MetadataUtilsTest {
 
         System.out.println(JSON.toJSONString(type, SerializerFeature.PrettyFormat));
 
-        // tshark -i any -f "tcp port 28400" -Y "tcp.flags.reset == 1 or tcp.flags.fin == 1"
     }
 
     @Test

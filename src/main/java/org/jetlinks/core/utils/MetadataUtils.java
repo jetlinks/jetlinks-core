@@ -27,11 +27,13 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
 /**
@@ -398,29 +400,26 @@ public class MetadataUtils {
             if (clazz == int.class || clazz == Integer.class) {
                 return new IntType();
             }
-            if (clazz == long.class || clazz == Long.class) {
+            if (clazz == long.class || clazz == Long.class || clazz == BigInteger.class) {
                 return new LongType();
             }
             if (clazz == float.class || clazz == Float.class) {
                 return new FloatType();
             }
-            if (clazz == double.class || clazz == Double.class) {
-                return new DoubleType();
-            }
-            if (Date.class.isAssignableFrom(clazz)
-                || clazz == Instant.class
-                || clazz == LocalDateTime.class) {
-                return new DateTimeType();
-            }
-            if (clazz == LocalDate.class) {
-                return new DateTimeType().format("yyyy-MM-dd");
-            }
-            if (clazz == LocalTime.class) {
-                return new DateTimeType().format("HH:mm:ss");
-            }
-            if (clazz == Boolean.class || clazz == boolean.class) {
+            if (clazz == Boolean.class || clazz == boolean.class || clazz == AtomicBoolean.class) {
                 return new BooleanType();
             }
+
+            // 其他数字类型默认double
+            if (Number.class.isAssignableFrom(clazz)) {
+                return new DoubleType();
+            }
+
+            // 时间类型
+            if (DateTimeType.isSupported(clazz)) {
+                return DateTimeType.fromJavaType(clazz);
+            }
+
             if (clazz.isEnum()) {
                 EnumType enumType = new EnumType();
                 for (Object constant : clazz.getEnumConstants()) {
