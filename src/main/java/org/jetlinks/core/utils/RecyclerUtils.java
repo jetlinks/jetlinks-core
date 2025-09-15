@@ -108,6 +108,7 @@ public class RecyclerUtils {
         return (type.getName() + ".pool." + key).replace("$$", ".").replace("$", ".");
     }
 
+    @Deprecated
     public static <T> RecyclableDequeue<T> dequeue() {
         return RecyclableDequeue.newInstance();
     }

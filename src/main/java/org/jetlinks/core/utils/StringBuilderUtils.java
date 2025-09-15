@@ -9,8 +9,7 @@ import java.util.function.BiConsumer;
 
 public final class StringBuilderUtils {
 
-    public static final Recycler<StringBuilder> sharedBuilder =
-        Recycler.create(StringBuilder::new, sb -> sb.setLength(0), 256);
+    public static final Recycler<StringBuilder> sharedBuilder = Recycler.stringBuilder();
 
 
     public static <T, T2, T3, T4> String buildString(T data, T2 data2, T3 data3, T4 data4, Consumer5<T, T2, T3, T4, StringBuilder> builderFunction) {

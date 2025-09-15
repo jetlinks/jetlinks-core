@@ -1,11 +1,10 @@
 package org.jetlinks.core.topic;
 
 import com.google.common.collect.Collections2;
-import lombok.AccessLevel;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.apache.commons.collections4.MapUtils;
+import org.hswebframework.web.recycler.Recyclable;
+import org.hswebframework.web.recycler.Recycler;
 import org.jetlinks.core.lang.SeparatedCharSequence;
 import org.jetlinks.core.lang.SharedPathString;
 import org.jetlinks.core.utils.RecyclableDequeue;
@@ -31,6 +30,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.*;
 
 public final class Topic<T> implements SeparatedCharSequence {
+    static final Recycler<Deque<Topic<?>>> SHARED_QUEUE =
+        Recycler.create(ArrayDeque::new, Collection::clear, 256);
 
     private int $hash;
 
@@ -504,6 +505,8 @@ public final class Topic<T> implements SeparatedCharSequence {
             || TopicUtils.match(self, parts);
     }
 
+
+    @SneakyThrows
     public static <T, ARG0, ARG1, ARG2, ARG3> void find(
         String[] topicParts,
         Topic<T> topicPart,
@@ -511,8 +514,12 @@ public final class Topic<T> implements SeparatedCharSequence {
         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
 
-        RecyclableDequeue<Topic<T>> cache = RecyclerUtils.dequeue();
-        try {
+        @SuppressWarnings("all")
+        Recyclable<Deque<Topic<T>>> recyclable = (Recyclable)SHARED_QUEUE.take(true);
+
+        try{
+            Deque<Topic<T>> cache = recyclable.get();
+
             cache.add(topicPart);
 
             String nextPart = null;
@@ -572,8 +579,8 @@ public final class Topic<T> implements SeparatedCharSequence {
             }
 
         } finally {
+            recyclable.recycle();
             end.accept(arg0, arg1, arg2, arg3);
-            cache.recycle();
         }
     }
 
@@ -584,8 +591,11 @@ public final class Topic<T> implements SeparatedCharSequence {
         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
 
-        RecyclableDequeue<Topic<T>> cache = RecyclerUtils.dequeue();
+        @SuppressWarnings("all")
+        Recyclable<Deque<Topic<T>>> recyclable = (Recyclable)SHARED_QUEUE.take(true);
         try {
+            Deque<Topic<T>> cache = recyclable.get();
+
             cache.add(topicPart);
 
             String nextPart = null;
@@ -646,8 +656,8 @@ public final class Topic<T> implements SeparatedCharSequence {
             }
 
         } finally {
+            recyclable.recycle();
             end.accept(arg0, arg1, arg2, arg3);
-            cache.recycle();
         }
     }
 
