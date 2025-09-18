@@ -13,7 +13,7 @@ import java.util.Map;
 
 import static org.jetlinks.core.device.DeviceConfigKey.metadata;
 
-class DefaultThingTemplate implements ThingTemplate, StorageConfigurable {
+public class DefaultThingTemplate implements ThingTemplate, StorageConfigurable {
 
     private final String id;
 
@@ -31,27 +31,35 @@ class DefaultThingTemplate implements ThingTemplate, StorageConfigurable {
                                 String id,
                                 ConfigStorageManager storageManager,
                                 ThingMetadataCodec metadataCodec) {
+        this(thingType, id, storageManager.getStorage("thing-template:" + thingType.getId() + ":" + id), metadataCodec);
+    }
+
+    public DefaultThingTemplate(ThingType thingType,
+                                String id,
+                                Mono<ConfigStorage> storageMono,
+                                ThingMetadataCodec metadataCodec) {
         this.id = id;
-        this.storageMono = storageManager.getStorage("thing-template:" + thingType.getId() + ":" + id);
+        this.storageMono = storageMono;
         this.metadataCodec = metadataCodec;
         this.metadataMono = this
-                //获取最后更新物模型的时间
-                .getConfig(ThingsConfigKeys.lastMetadataTimeKey)
-                .flatMap(i -> {
-                    //如果时间一致,则直接返回物模型缓存.
-                    if (i.equals(lastMetadataTime) && i != -1 && metadataCache != null) {
-                        return Mono.just(metadataCache);
-                    }
-                    lastMetadataTime = i;
+            //获取最后更新物模型的时间
+            .getConfig(ThingsConfigKeys.lastMetadataTimeKey)
+            .flatMap(i -> {
+                //如果时间一致,则直接返回物模型缓存.
+                if (i.equals(lastMetadataTime) && i != -1 && metadataCache != null) {
+                    return Mono.just(metadataCache);
+                }
+                lastMetadataTime = i;
 
-                    //加载真实的物模型
-                    return this
-                            .getConfig(metadata)
-                            .flatMap(metadataCodec::decode)
-                            .doOnNext(metadata -> metadataCache = metadata);
+                //加载真实的物模型
+                return this
+                    .getConfig(metadata)
+                    .flatMap(metadataCodec::decode)
+                    .doOnNext(metadata -> metadataCache = metadata);
 
-                });
+            });
     }
+
 
     @Override
     public Mono<? extends Configurable> getParent() {
@@ -86,9 +94,9 @@ class DefaultThingTemplate implements ThingTemplate, StorageConfigurable {
         if (conf.containsKey(metadata.getKey())) {
             configs.put(ThingsConfigKeys.lastMetadataTimeKey.getKey(), lastMetadataTime = System.currentTimeMillis());
             return StorageConfigurable.super
-                    .setConfigs(configs)
-                    .doOnNext(suc -> this.metadataCache = null)
-                    .thenReturn(true);
+                .setConfigs(configs)
+                .doOnNext(suc -> this.metadataCache = null)
+                .thenReturn(true);
         }
         return StorageConfigurable.super.setConfigs(configs);
     }
@@ -96,7 +104,7 @@ class DefaultThingTemplate implements ThingTemplate, StorageConfigurable {
     @Override
     public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
         return this.metadataCodec
-                .encode(metadata)
-                .flatMap(this::updateMetadata);
+            .encode(metadata)
+            .flatMap(this::updateMetadata);
     }
 }

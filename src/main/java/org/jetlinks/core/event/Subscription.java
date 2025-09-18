@@ -200,6 +200,14 @@ public class Subscription implements Externalizable {
 
         private final String text;
 
+        //仅订阅本地的消息
+        public static final Feature[] justLocal = {
+            Feature.local
+        };
+        //仅订阅其他节点的消息
+        public static final Feature[] justBroker = {
+            Feature.broker
+        };
         //订阅本地和集群的消息
         public static final Feature[] clusterFeatures = {
             Feature.local,

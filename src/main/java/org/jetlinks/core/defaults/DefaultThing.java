@@ -20,7 +20,7 @@ import java.util.function.Function;
 import static org.jetlinks.core.device.DeviceConfigKey.metadata;
 import static org.jetlinks.core.things.ThingsConfigKeys.lastMetadataTimeKey;
 
-class DefaultThing implements Thing, StorageConfigurable {
+public class DefaultThing implements Thing, StorageConfigurable {
 
     @Getter
     private final String id;
@@ -53,6 +53,28 @@ class DefaultThing implements Thing, StorageConfigurable {
              metadataCodec,
              registry,
              rpcFactory);
+    }
+
+    public DefaultThing(ThingType thingType,
+                        String id,
+                        Mono<ConfigStorage> storageSupplier,
+                        ThingMetadataCodec metadataCodec,
+                        Mono<ThingTemplate> template,
+                        Function<Thing, ThingRpcSupport> rpcFactory) {
+        this.id = id;
+        this.type = thingType;
+        this.storageMono = storageSupplier;
+        this.metadataCodec = metadataCodec;
+        this.rpcFactory = rpcFactory;
+        this.templateMono = template;
+
+        this.metadataMono = templateMetadata()
+            .flatMap(tmpMetadata -> selfMetadata()
+                .<ThingMetadata>map(self -> {
+                    //组合物模型
+                    return new CompositeThingMetadata(tmpMetadata, self);
+                })
+                .defaultIfEmpty(tmpMetadata));
     }
 
     public DefaultThing(ThingType thingType,

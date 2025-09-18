@@ -40,8 +40,16 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
         this.manager = manager;
         this.metadataCodec = metadataCodec;
         this.rpcSupportFactory = rpcSupportFactory;
-        registryInfo = manager.getStorage("thing_reg:" + thingType.getId());
-        templateRegistryInfo = manager.getStorage("thing_temp_reg:" + thingType.getId());
+        registryInfo = manager.getStorage(createThingStorageId());
+        templateRegistryInfo = manager.getStorage(createTemplateStorageId());
+    }
+
+    protected String createThingStorageId(){
+        return "thing_reg:" + thingType.getId();
+    }
+
+    protected String createTemplateStorageId(){
+        return "thing_temp_reg:" + thingType.getId();
     }
 
     @Override
@@ -64,11 +72,11 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
                 .map(ignore -> thingCache.computeIfAbsent(thingId, this::createThing));
     }
 
-    protected DefaultThing createThing(String id) {
+    private DefaultThing createThing(String id) {
         return new DefaultThing(thingType, id, manager, metadataCodec, this, rpcSupportFactory);
     }
 
-    protected DefaultThingTemplate createTemplate(String id) {
+    private DefaultThingTemplate createTemplate(String id) {
         return new DefaultThingTemplate(thingType, id, manager, metadataCodec);
     }
 
