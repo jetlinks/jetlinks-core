@@ -4,10 +4,17 @@ import lombok.AllArgsConstructor;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.stream.Collector;
 
 public class LocalRpcManager implements RpcManager {
 
@@ -26,10 +33,10 @@ public class LocalRpcManager implements RpcManager {
     @Override
     public <T> Disposable registerService(String serviceId, T rpcService) {
         RpcServiceInfo<T> serviceInfo = new RpcServiceInfo<>(
-                serviceId,
-                rpcService.getClass().getSimpleName(),
-                currentServerId(),
-                rpcService);
+            serviceId,
+            rpcService.getClass().getSimpleName(),
+            currentServerId(),
+            rpcService);
         services.put(serviceId, serviceInfo);
         return () -> services.remove(serviceId, serviceInfo);
     }
@@ -43,6 +50,32 @@ public class LocalRpcManager implements RpcManager {
                        }
                        return null;
                    });
+    }
+
+
+    @SuppressWarnings("all")
+    @Override
+    public <T, I> Mono<I> selectService(Class<I> service,
+                                        Collector<RpcService<I>, T, Optional<RpcService<I>>> selector,
+                                        Mono<I> fallback) {
+        I proxy = (I) Proxy.newProxyInstance(
+            getClass().getClassLoader(),
+            new Class[]{service},
+            new InvocationHandler() {
+                @Override
+                public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                    RpcService<I> call =services
+                        .values()
+                        .stream()
+                        .filter(e-> service.isInstance(e.service))
+                        .map(info-> (RpcService<I>)info)
+                        .collect(selector)
+                        .orElse(null);
+                    return method.invoke(call.service(), args);
+                }
+            }
+        );
+        return Mono.just(proxy);
     }
 
     @Override
@@ -72,15 +105,15 @@ public class LocalRpcManager implements RpcManager {
     @Override
     public <I> Mono<I> getService(String serverNodeId, Class<I> service) {
         return selectService(service)
-                .map(RpcService::service);
+            .map(RpcService::service);
     }
 
     @Override
     public <I> Mono<I> getService(String serverNodeId, String serviceId, Class<I> service) {
         return getServices(serviceId, service)
-                .take(1)
-                .singleOrEmpty()
-                .map(RpcService::service);
+            .take(1)
+            .singleOrEmpty()
+            .map(RpcService::service);
     }
 
     @Override

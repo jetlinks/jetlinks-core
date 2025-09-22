@@ -4,6 +4,14 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.lang.reflect.Method;
+import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collector;
+
 /**
  * RPC服务管理器,统一管理注册RPC接口
  *
@@ -54,6 +62,17 @@ public interface RpcManager {
      * @return 选择结果
      */
     <I> Mono<RpcService<I>> selectService(Class<I> service);
+
+    /**
+     * 选择一个服务
+     *
+     * @param service 服务类型
+     * @param <I>     服务类型
+     * @return 选择结果
+     */
+    <T,I> Mono<I> selectService(Class<I> service,
+                                Collector<RpcService<I>, T, Optional<RpcService<I>>> selector,
+                                Mono<I> fallback);
 
     /**
      * 根据路由key选择一个服务,相同key会选择相同的服务.
