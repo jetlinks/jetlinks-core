@@ -30,6 +30,16 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
         return SimpleFunctionMetadata.of(id, name, null, null, inputs, output, false);
     }
 
+    public static SimpleFunctionMetadata of(FunctionMetadata metadata) {
+        return SimpleFunctionMetadata.of(metadata.getId(),
+                                         metadata.getName(),
+                                         metadata.getDescription(),
+                                         metadata.getExpands() == null ? null : new HashMap<>(metadata.getExpands()),
+                                        new ArrayList<>(metadata.getInputs()),
+                                         metadata.getOutput(),
+                                         metadata.isAsync());
+    }
+
     public SimpleFunctionMetadata copy() {
         return of(id,
                   name,
