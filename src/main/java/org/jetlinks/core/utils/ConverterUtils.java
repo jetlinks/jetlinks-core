@@ -6,6 +6,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
 import lombok.SneakyThrows;
 import org.apache.commons.collections4.MapUtils;
 import org.hswebframework.web.bean.FastBeanCopier;
@@ -242,6 +243,9 @@ public class ConverterUtils {
             try (DataBuffer.ByteBufferIterator iterator = ((DataBuffer) obj).readableByteBuffers()) {
                 ByteBuffer byteBuffer = iterator.next();
                 buf.writeBytes(byteBuffer);
+            } catch (Throwable err) {
+                ReferenceCountUtil.safeRelease(buf);
+                throw err;
             }
             return buf;
         }
