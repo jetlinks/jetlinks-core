@@ -25,6 +25,7 @@ public interface MessageHandler {
      * @param serverId 服务ID,在集群时,不同的节点serverId不同 {@link ServerNode#getId()}
      * @return 发往设备的消息指令流
      */
+    @Deprecated
     Flux<Message> handleSendToDeviceMessage(String serverId);
 
     /**
@@ -33,7 +34,7 @@ public interface MessageHandler {
      * @param serverId 服务ID,在集群时,不同的节点serverId不同 {@link ServerNode#getId()}
      * @return 发往设备的消息指令流
      */
-    default Disposable handleSendToDeviceMessage(String serverId, Function<Message, Mono<Void>> handler) {
+    default Disposable handleSendToDeviceMessage(String serverId, Function<Message, Mono<Integer>> handler) {
         return handleSendToDeviceMessage(serverId)
             .flatMap(handler)
             .subscribe();

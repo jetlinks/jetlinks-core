@@ -33,7 +33,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
 
     private final Map<String, AtomicInteger> partCache = new ConcurrentHashMap<>();
 
-    private final List<Function<Message, Mono<Void>>> handlers = new CopyOnWriteArrayList<>();
+    private final List<Function<Message, Mono<Integer>>> handlers = new CopyOnWriteArrayList<>();
 
     @Setter
     private ReplyFailureHandler replyFailureHandler = (error, message) -> StandaloneDeviceMessageBroker.log.info("unhandled reply message:{}", message, error);
@@ -60,7 +60,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
     }
 
     @Override
-    public Disposable handleSendToDeviceMessage(String serverId, Function<Message, Mono<Void>> handler) {
+    public Disposable handleSendToDeviceMessage(String serverId, Function<Message, Mono<Integer>> handler) {
         handlers.add(handler);
         return () -> handlers.remove(handler);
     }
@@ -157,7 +157,7 @@ public class StandaloneDeviceMessageBroker implements DeviceOperationBroker, Mes
         }
 
         if (size == 1) {
-            return handlers.get(0).apply(msg);
+            return handlers.get(0).apply(msg).then();
         }
 
         return Flux

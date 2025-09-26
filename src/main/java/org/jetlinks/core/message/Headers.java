@@ -3,6 +3,7 @@ package org.jetlinks.core.message;
 import org.jetlinks.core.Routable;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
+import org.jetlinks.core.server.session.DeviceSessionSelector;
 
 import java.util.concurrent.TimeUnit;
 
@@ -257,6 +258,14 @@ public interface Headers {
      * 设备注销时是否同步删除设备
      */
     HeaderKey<Object> deleteOnUnRegister = HeaderKey.of("deleteOnUnRegister", false, Boolean.class);
+
+    /**
+     * 当设备存在多个会话时,使用
+     */
+    HeaderKey<Byte> sessionSelector = HeaderKey.of(
+        "sessionSelector",
+        DeviceSessionSelector.any,
+        Byte.class);
 
 
     /**
