@@ -238,7 +238,12 @@ public class ConverterUtils {
         }
 
         if (obj instanceof DataBuffer) {
-            return Unpooled.wrappedBuffer(((DataBuffer) obj).asByteBuffer());
+            ByteBuf buf = Unpooled.buffer(((DataBuffer) obj).readableByteCount());
+            try (DataBuffer.ByteBufferIterator iterator = ((DataBuffer) obj).readableByteBuffers()) {
+                ByteBuffer byteBuffer = iterator.next();
+                buf.writeBytes(byteBuffer);
+            }
+            return buf;
         }
 
         if (obj instanceof ByteBuffer) {
@@ -297,7 +302,7 @@ public class ConverterUtils {
             }
             return newHeader;
         }
-        return ConverterUtils.convert(headers,HttpHeaders.class);
+        return ConverterUtils.convert(headers, HttpHeaders.class);
     }
 
 }
