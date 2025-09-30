@@ -1,6 +1,7 @@
 package org.jetlinks.core.server.session;
 
 import io.netty.util.internal.ThreadLocalRandom;
+import jakarta.annotation.Nonnull;
 import lombok.AllArgsConstructor;
 import lombok.Generated;
 import lombok.Getter;
@@ -8,17 +9,23 @@ import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.device.session.DeviceSessionManager;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
+import org.jetlinks.core.message.DeviceMessage;
+import org.jetlinks.core.message.Headers;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.server.ClientConnection;
+import org.jetlinks.core.utils.Reactors;
 import reactor.core.Disposable;
 import reactor.core.Disposables;
+import reactor.core.Scannable;
 import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BinaryOperator;
 
 /**
  * 支持多个客户端连接的设备会话
@@ -30,8 +37,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @AllArgsConstructor
 public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
     extends CopyOnWriteArrayList<C>
-    implements DeviceSession {
-    private final Disposable.Composite disposable = Disposables.composite();
+    implements DeviceSession, Scannable {
+    protected final Disposable.Composite disposable = Disposables.composite();
 
     @Getter
     @Generated
@@ -81,13 +88,51 @@ public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
 
     @Override
     public Mono<Boolean> send(EncodedMessage encodedMessage) {
+        return Mono
+            .deferContextual(ctx -> this
+                .send(ctx.getOrDefault(DeviceMessage.class, null), encodedMessage)
+                .then(Reactors.ALWAYS_TRUE));
+    }
+
+    public Mono<Void> send(DeviceMessage source, EncodedMessage encodedMessage) {
+        int selector = source == null ? DeviceSessionSelector.any : source.getHeaderOrDefault(Headers.sessionSelector);
+        // oldest
+        if (selector == DeviceSessionSelector.oldest) {
+            return this
+                .takeConnection(DeviceSessionSelector.connectionOldest())
+                .sendMessage(encodedMessage);
+        }
+        // latest
+        if (selector == DeviceSessionSelector.latest) {
+            return this
+                .takeConnection(DeviceSessionSelector.connectionLatest())
+                .sendMessage(encodedMessage);
+        }
+        // hash
+        if (selector == DeviceSessionSelector.hashed) {
+            return this
+                .takeConnection(DeviceSessionSelector.hashedOperator(s -> s, source))
+                .sendMessage(encodedMessage);
+        }
+        // minimumLoad
+        if (selector == DeviceSessionSelector.minimumLoad) {
+            return this
+                .takeConnection(DeviceSessionSelector.connectionMinimumLoad())
+                .sendMessage(encodedMessage);
+        }
+
+        // any
         C connection = takeConnection();
         if (connection == null) {
             return Mono.error(new DeviceOperationException.NoStackTrace(ErrorCode.CONNECTION_LOST));
         }
-        return Mono
-            .defer(() -> connection.sendMessage(encodedMessage))
-            .thenReturn(true);
+        return connection.sendMessage(encodedMessage);
+    }
+
+    protected C takeConnection(BinaryOperator<C> reducer) {
+        return stream()
+            .reduce(reducer)
+            .orElseThrow(() -> new DeviceOperationException.NoStackTrace(ErrorCode.CONNECTION_LOST));
     }
 
     @Override
@@ -156,5 +201,23 @@ public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
             handleDisconnect(connection);
         } while (true);
 
+    }
+
+    @Override
+    public Object scanUnsafe(@Nonnull Attr key) {
+        if (key == Attr.BUFFERED) {
+            return this
+                .stream()
+                .mapToInt(conn -> conn.scan(Attr.BUFFERED))
+                .sum();
+        }
+        if (key == Attr.LARGE_BUFFERED) {
+            return this
+                .stream()
+                .mapToLong(conn -> conn.scan(Attr.LARGE_BUFFERED))
+                .sum();
+        }
+
+        return null;
     }
 }

@@ -60,6 +60,18 @@ public interface DeviceOperationBroker {
      * @return 有多少服务收到了此消息
      * @see DeviceOperator#getConnectionServerId()
      */
+   default Mono<Integer> send(String deviceGatewayServerId, DeviceMessage message){
+       return send(deviceGatewayServerId,Mono.just(message));
+   }
+
+
+    /**
+     * 发送设备消息到指定到服务
+     *
+     * @param deviceGatewayServerId 设备所在服务ID {@link ServerNode#getId()}
+     * @return 有多少服务收到了此消息
+     * @see DeviceOperator#getConnectionServerId()
+     */
     Mono<Integer> send(String deviceGatewayServerId, Publisher<? extends Message> message);
 
     /**

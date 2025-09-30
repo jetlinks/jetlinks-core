@@ -61,7 +61,11 @@ public interface Headers {
     /**
      * 指定发送消息的超时时间
      */
-    HeaderKey<Long> timeout = HeaderKey.of("timeout", TimeUnit.SECONDS.toMillis(10), Long.class);
+    HeaderKey<Long> timeout = HeaderKey
+        .of("timeout",
+            TimeUnit.SECONDS
+                .toMillis(Integer.getInteger("jetlinks.device.message.default-timeout", 10)),
+            Long.class);
 
     /**
      * 是否合并历史属性数据,设置此消息头后,将会把历史最新的消息合并到消息体里
@@ -282,6 +286,8 @@ public interface Headers {
         from.getHeader(force).ifPresent(val -> to.addHeader(force, val));
         from.getHeader(ignore).ifPresent(val -> to.addHeader(ignore, val));
         from.getHeader(ignoreLog).ifPresent(val -> to.addHeader(ignoreLog, val));
+        from.getHeader(multiGateway).ifPresent(val -> to.addHeader(multiGateway, val));
+        from.getHeader(sessionSelector).ifPresent(val -> to.addHeader(sessionSelector, val));
 
     }
 }
