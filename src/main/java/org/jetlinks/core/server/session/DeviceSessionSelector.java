@@ -42,7 +42,11 @@ public interface DeviceSessionSelector {
     byte hashed = 4;
 
     /**
-     * 最小负载
+     * 最小负载,选择未处理消息最少的会话进行发送.
+     *
+     * @see DeviceSessionInfo#getPendingMessages()
+     * @see ClientConnection#scanUnsafe(Scannable.Attr)
+     * @see reactor.core.Scannable.Attr#BUFFERED
      */
     byte minimumLoad = 5;
 
@@ -77,7 +81,7 @@ public interface DeviceSessionSelector {
 
     @SuppressWarnings("unchecked")
     static <T extends ClientConnection> BinaryOperator<T> connectionOldest() {
-        return (BinaryOperator<T>)  CONNECTION_OLDEST;
+        return (BinaryOperator<T>) CONNECTION_OLDEST;
     }
 
     BinaryOperator<ClientConnection> CONNECTION_LATEST = BinaryOperator
@@ -85,7 +89,7 @@ public interface DeviceSessionSelector {
 
     @SuppressWarnings("unchecked")
     static <T extends ClientConnection> BinaryOperator<T> connectionLatest() {
-        return (BinaryOperator<T>)  CONNECTION_LATEST;
+        return (BinaryOperator<T>) CONNECTION_LATEST;
     }
 
 
