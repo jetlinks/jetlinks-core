@@ -118,6 +118,10 @@ public interface PropertyMessage extends Externalizable {
             });
     }
 
+    default Property getCompletePropertyOrNull(String property) {
+        return getCompleteProperty(property).orElse(null);
+    }
+
     /**
      * 获取全部完整的属性信息
      *
