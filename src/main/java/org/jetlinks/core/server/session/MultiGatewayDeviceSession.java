@@ -1,9 +1,16 @@
 package org.jetlinks.core.server.session;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
 import io.netty.util.internal.ThreadLocalRandom;
 import jakarta.annotation.Nonnull;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.device.DeviceRegistry;
 import org.jetlinks.core.device.session.DeviceSessionManager;
 import org.jetlinks.core.enums.ErrorCode;
 import org.jetlinks.core.exception.DeviceOperationException;
@@ -22,10 +29,13 @@ import reactor.core.Disposables;
 import reactor.core.Scannable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuples;
 
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BinaryOperator;
@@ -34,7 +44,7 @@ import static org.jetlinks.core.server.session.DeviceSessionSelector.*;
 
 @Slf4j
 public class MultiGatewayDeviceSession extends CopyOnWriteArrayList<DeviceSession>
-    implements DeviceSession, Disposable, Scannable {
+    implements DeviceSession, Disposable, Scannable, PersistentSession {
 
 
     private final long connectTime = System.currentTimeMillis();
@@ -336,5 +346,99 @@ public class MultiGatewayDeviceSession extends CopyOnWriteArrayList<DeviceSessio
         }
 
         return null;
+    }
+
+    @Override
+    public String getProvider() {
+        return Provider.ID;
+    }
+
+    @AllArgsConstructor
+   public static class Provider implements DeviceSessionProvider {
+        static final String ID = "multi_gateway";
+        private final DeviceSessionManager sessionManager;
+
+        @Override
+        public String getId() {
+            return ID;
+        }
+
+        @Override
+        public Mono<PersistentSession> deserialize(byte[] sessionData, DeviceRegistry registry) {
+            try {
+                ByteBuf buf = Unpooled.wrappedBuffer(sessionData);
+                byte[] deviceId = new byte[buf.readUnsignedShort()];
+                buf.readBytes(deviceId);
+                return registry
+                    .getDevice(new String(deviceId))
+                    .<PersistentSession>flatMap(device -> {
+                        MultiGatewayDeviceSession session = new MultiGatewayDeviceSession(device, sessionManager);
+                        List<Mono<?>> sessions = new ArrayList<>(2);
+                        while (buf.isReadable()) {
+                            byte[] provider = new byte[buf.readUnsignedShort()];
+                            buf.readBytes(provider);
+                            byte[] data = new byte[buf.readInt()];
+                            buf.readBytes(data);
+                            DeviceSessionProviders
+                                .lookup(new String(provider))
+                                .ifPresent(_provider -> sessions
+                                    .add(
+                                        _provider
+                                            .deserialize(data, registry)
+                                            .doOnNext(session::register)
+                                    ));
+                        }
+
+                        return Flux.merge(sessions)
+                                   .then(Mono.just(session));
+
+                    })
+                    .doFinally((ignore) -> ReferenceCountUtil.safeRelease(buf));
+            } catch (Throwable e) {
+                return Mono.error(e);
+            }
+        }
+
+        @Override
+        public Mono<byte[]> serialize(PersistentSession session, DeviceRegistry registry) {
+            MultiGatewayDeviceSession sessions = session.unwrap(MultiGatewayDeviceSession.class);
+            return Flux
+                .fromIterable(sessions)
+                .filter(_session -> _session.isWrapFrom(PersistentSession.class))
+                .flatMap(_session -> {
+                    PersistentSession s = _session.unwrap(PersistentSession.class);
+                    DeviceSessionProvider provider = DeviceSessionProviders.lookup(s.getProvider()).orElse(null);
+                    if (provider != null) {
+                        return provider
+                            .serialize(s, registry)
+                            .map(bytes -> Tuples.of(provider.getId(), bytes));
+                    }
+                    return Mono.empty();
+                })
+                .reduceWith(
+                    () -> {
+                        ByteBuf buf = ByteBufAllocator.DEFAULT.heapBuffer(1024);
+                        byte[] deviceId = sessions.getDeviceId().getBytes();
+                        buf.writeShort(deviceId.length);
+                        buf.writeBytes(deviceId);
+                        return buf;
+                    },
+                    (buf, tp2) -> {
+                        byte[] provider = tp2.getT1().getBytes();
+                        buf.writeShort(provider.length);
+                        buf.writeBytes(provider);
+                        buf.writeInt(tp2.getT2().length);
+                        buf.writeBytes(tp2.getT2());
+                        return buf;
+                    })
+                .map(buf -> {
+                    try {
+                        return ByteBufUtil.getBytes(buf);
+                    } finally {
+                        buf.release();
+                    }
+                });
+
+        }
     }
 }
