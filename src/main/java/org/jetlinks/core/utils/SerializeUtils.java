@@ -801,6 +801,10 @@ public class SerializeUtils {
             @SneakyThrows
             void write(Object value, ObjectOutput output) {
                 ByteBuf buf = ((ByteBuf) value);
+                if (!buf.isReadable()) {
+                    output.writeInt(0);
+                    return;
+                }
                 byte[] bytes = ByteBufUtil.getBytes(buf);
                 ReferenceCountUtil.safeRelease(buf);
 
@@ -812,6 +816,9 @@ public class SerializeUtils {
             @SneakyThrows
             Object read(ObjectInput input) {
                 int len = input.readInt();
+                if (len == 0) {
+                    return Unpooled.EMPTY_BUFFER;
+                }
                 byte[] bytes = new byte[len];
                 input.readFully(bytes);
                 return Unpooled.wrappedBuffer(bytes);

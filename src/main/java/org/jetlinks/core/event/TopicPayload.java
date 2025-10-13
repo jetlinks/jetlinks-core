@@ -76,6 +76,10 @@ public class TopicPayload implements Payload, Routable, Externalizable {
         return headers == null ? null : headers.get(key);
     }
 
+    public Object removeHeader(String key) {
+        return headers == null ? null : headers.remove(key);
+    }
+
     @Nonnull
     @Override
     public ByteBuf getBody() {
