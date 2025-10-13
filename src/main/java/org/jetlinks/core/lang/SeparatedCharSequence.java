@@ -53,6 +53,24 @@ public interface SeparatedCharSequence extends CharSequence,
     SeparatedCharSequence replace(int index, CharSequence newChar);
 
     /**
+     * 替换指定索引位置的字符序列，并返回新的字符序列,不会修改原字符序列
+     *
+     * @return 字符序列
+     */
+    default SeparatedCharSequence replace(int i0, CharSequence r0, int i1, CharSequence r1) {
+        return replace(i0, r0).replace(i1, r1);
+    }
+
+    /**
+     * 替换指定索引位置的字符序列，并返回新的字符序列,不会修改原字符序列
+     *
+     * @return 字符序列
+     */
+    default SeparatedCharSequence replace(int i0, CharSequence r0, int i1, CharSequence r1, int i2, CharSequence r2) {
+        return replace(i0, r0, i1, r1).replace(i2, r2);
+    }
+
+    /**
      * 追加字符到字符序列尾部,并返回新的字符序列,不会修改原字符序列
      *
      * @param c 字符
