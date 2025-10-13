@@ -81,6 +81,10 @@ public class TopicPayload implements Routable, Externalizable {
         return headers == null ? null : headers.get(key);
     }
 
+    public Object removeHeader(String key) {
+        return headers == null ? null : headers.remove(key);
+    }
+
     @Deprecated
     public boolean release() {
         return true;
