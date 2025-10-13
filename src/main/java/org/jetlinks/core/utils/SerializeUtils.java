@@ -801,7 +801,7 @@ public class SerializeUtils {
             @SneakyThrows
             void write(Object value, ObjectOutput output) {
                 ByteBuf buf = ((ByteBuf) value);
-                if (!buf.isReadable()) {
+                if (!buf.isReadable() || buf.refCnt() == 0) {
                     output.writeInt(0);
                     return;
                 }
