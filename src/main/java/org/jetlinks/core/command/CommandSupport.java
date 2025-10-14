@@ -9,6 +9,7 @@ import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -157,10 +158,7 @@ public interface CommandSupport extends Wrapper {
      * @return 命令元数据信息
      */
     default Mono<FunctionMetadata> getCommandMetadata(String commandId) {
-        return this
-            .getCommandMetadata()
-            .filter(cmd -> Objects.equals(cmd.getId(), commandId))
-            .singleOrEmpty();
+        return getCommandMetadata(commandId, Collections.emptyMap());
     }
 
     /**

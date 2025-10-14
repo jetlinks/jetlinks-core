@@ -1,16 +1,27 @@
 package org.jetlinks.core.monitor;
 
-import lombok.AllArgsConstructor;
 import org.jetlinks.core.monitor.logger.Logger;
 import org.jetlinks.core.monitor.metrics.Metrics;
+import org.jetlinks.core.monitor.recorder.Recorder;
 import org.jetlinks.core.monitor.tracer.Tracer;
 
-@AllArgsConstructor
 public class DefaultMonitor implements Monitor {
 
     private final Logger logger;
     private final Tracer tracer;
     private final Metrics metrics;
+    private final Recorder recorder;
+
+    public DefaultMonitor(Logger logger, Tracer tracer, Metrics metrics) {
+        this(logger, tracer, metrics, Recorder.noop());
+    }
+
+    public DefaultMonitor(Logger logger, Tracer tracer, Metrics metrics, Recorder recorder) {
+        this.logger = logger;
+        this.tracer = tracer;
+        this.metrics = metrics;
+        this.recorder = recorder;
+    }
 
     @Override
     public Logger logger() {
@@ -25,5 +36,10 @@ public class DefaultMonitor implements Monitor {
     @Override
     public Metrics metrics() {
         return metrics;
+    }
+
+    @Override
+    public Recorder recorder() {
+        return recorder;
     }
 }

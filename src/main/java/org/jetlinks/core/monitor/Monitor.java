@@ -2,6 +2,7 @@ package org.jetlinks.core.monitor;
 
 import org.jetlinks.core.monitor.logger.Logger;
 import org.jetlinks.core.monitor.metrics.Metrics;
+import org.jetlinks.core.monitor.recorder.Recorder;
 import org.jetlinks.core.monitor.tracer.Tracer;
 
 import java.util.function.Supplier;
@@ -52,4 +53,26 @@ public interface Monitor {
      */
     Metrics metrics();
 
+    /**
+     * 记录器接口,用于记录操作执行等信息
+     *
+     * <pre>{@code
+     * ActionRecorder<Void> recorder= monitor
+     *   .recorder()
+     *   .action("execute");
+     *
+     * // .....
+     *
+     *
+     * //完成
+     * recorder.complete();
+     * }</pre>
+     *
+     * @return Recorder
+     * @see Recorder
+     * @see org.jetlinks.core.monitor.recorder.ActionRecorder
+     */
+    default Recorder recorder() {
+        return Recorder.noop();
+    }
 }
