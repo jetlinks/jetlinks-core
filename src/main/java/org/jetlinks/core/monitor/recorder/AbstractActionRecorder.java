@@ -149,7 +149,7 @@ public abstract class AbstractActionRecorder<E> extends AtomicBoolean implements
         record.setTimestamp(System.currentTimeMillis());
         startWithNanos = System.nanoTime();
 
-        Context ctx = context.get(Context.class);
+        Context ctx = context.getOrDefault(Context.class,Context.current());
         SpanContext spanContext = Span.fromContext(ctx).getSpanContext();
         if (spanContext.isValid()) {
             record.setTraceId(spanContext.getTraceId());
