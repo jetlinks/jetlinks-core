@@ -59,8 +59,9 @@ public class ExceptionUtils {
     public static void writeStackTraceElement(StringBuilder builder,
                                               StackTraceElement[] elements) {
         int unimportantCount = 0;
+        int total = 0;
         for (StackTraceElement element : elements) {
-            if (compactEnabled && isUnimportant(element)) {
+            if (compactEnabled && total++ > 2 && isUnimportant(element)) {
                 unimportantCount++;
                 continue;
             }
