@@ -63,11 +63,9 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Getter
     private final String id;
 
-    private final DeviceOperationBroker handler;
+    final DeviceOperationBroker broker;
 
-    private final DeviceRegistry registry;
-
-    private final DeviceMessageSender messageSender;
+    final DeviceRegistry registry;
 
     private final Mono<ConfigStorage> storageMono;
 
@@ -83,6 +81,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     private volatile DeviceMetadata metadataCache;
 
+    final DeviceMessageSenderInterceptor interceptor;
+
     @Setter
     private ThingRpcSupportChain rpcChain;
 
@@ -90,32 +90,32 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
                                  ConfigStorageManager storageManager,
-                                 DeviceOperationBroker handler,
+                                 DeviceOperationBroker broker,
                                  DeviceRegistry registry) {
-        this(id, supports, storageManager, handler, registry, DeviceMessageSenderInterceptor.DO_NOTING);
+        this(id, supports, storageManager, broker, registry, DeviceMessageSenderInterceptor.DO_NOTING);
 
     }
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
                                  ConfigStorageManager storageManager,
-                                 DeviceOperationBroker handler,
+                                 DeviceOperationBroker broker,
                                  DeviceRegistry registry,
                                  DeviceMessageSenderInterceptor interceptor) {
-        this(id, supports, storageManager, handler, registry, interceptor, DEFAULT_STATE_CHECKER);
+        this(id, supports, storageManager, broker, registry, interceptor, DEFAULT_STATE_CHECKER);
     }
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
                                  ConfigStorageManager storageManager,
-                                 DeviceOperationBroker handler,
+                                 DeviceOperationBroker broker,
                                  DeviceRegistry registry,
                                  DeviceMessageSenderInterceptor interceptor,
                                  DeviceStateChecker deviceStateChecker) {
         this.id = id;
         this.registry = registry;
-        this.handler = handler;
-        this.messageSender = new DefaultDeviceMessageSender(handler, this, registry, interceptor);
+        this.broker = broker;
+        this.interceptor = interceptor;
         this.storageMono = storageManager.getStorage("device:" + id);
         this.parent = getReactiveStorage()
             .flatMap(store -> store.getConfigs(productIdAndVersionKey))
@@ -294,7 +294,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                         .getValue(stateKey)
                         .orElse(DeviceState.unknown);
 
-                    Mono<Byte> checker = handler
+                    Mono<Byte> checker = broker
                         .getDeviceState(server, Collections.singletonList(id))
                         .map(DeviceStateInfo::getState)
                         .singleOrEmpty()
@@ -513,7 +513,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public DeviceMessageSender messageSender() {
-        return messageSender;
+//        return new  new DefaultDeviceMessageSender(handler, this, registry, interceptor);
+        return new RpcDeviceMessageSender(this);
     }
 
     @Override
@@ -584,8 +585,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         return (msg) -> this
             .getProtocol()
             .flatMapMany(support -> {
-                //默认使用sender发送
-                ThingRpcSupport temp = (m) -> messageSender.send(convertToDeviceMessage(msg));
+                ThingRpcSupport temp = new ClusterDeviceRpcSupport(this);// (m) -> messageSender.send(convertToDeviceMessage(msg));
                 //自定义
                 ThingRpcSupportChain chain = support.getRpcChain();
                 if (chain != null) {
@@ -596,7 +596,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 //全局
                 if (rpcChain != null) {
                     ThingRpcSupport ftemp = temp;
-                    temp = m -> rpcChain.call(msg, ftemp);
+                    temp = m -> rpcChain.call(m, ftemp);
                 }
                 //执行
                 return temp.call(msg);

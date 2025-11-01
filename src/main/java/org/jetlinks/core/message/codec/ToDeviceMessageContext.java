@@ -47,7 +47,7 @@ public interface ToDeviceMessageContext extends MessageEncodeContext {
     }
 
     /**
-     * 断开设备与平台的连接
+     * 断开设备与平台的所有连接
      *
      * @return void
      */
@@ -148,6 +148,52 @@ public interface ToDeviceMessageContext extends MessageEncodeContext {
             @Override
             public Mono<Void> reply(@Nonnull Publisher<? extends DeviceMessage> replyMessage) {
                 return ToDeviceMessageContext.this.reply(replyMessage);
+            }
+        };
+    }
+
+    default ToDeviceMessageContext mutate(DeviceSession session){
+        return mutate(session,(DeviceMessage) getMessage());
+    }
+    /**
+     * Creates a new instance of ToDeviceMessageContext with the provided DeviceSession.
+     *
+     * @param session the DeviceSession to be used for creating the new context
+     * @return a new ToDeviceMessageContext instance that uses the given DeviceSession for its operations
+     */
+    default ToDeviceMessageContext mutate(DeviceSession session,DeviceMessage message){
+        return new ToDeviceMessageContext() {
+            @Override
+            public Mono<Boolean> sendToDevice(@Nonnull EncodedMessage message) {
+                return session.send(message);
+            }
+
+            @Override
+            public Mono<Void> disconnect() {
+                return Mono.fromRunnable(session::close);
+            }
+
+            @Nonnull
+            @Override
+            public DeviceSession getSession() {
+                return session;
+            }
+
+            @Override
+            public Mono<DeviceSession> getSession(String deviceId) {
+                return ToDeviceMessageContext.this.getSession(deviceId);
+            }
+
+            @Nonnull
+            @Override
+            public Message getMessage() {
+                return message;
+            }
+
+            @Nullable
+            @Override
+            public DeviceOperator getDevice() {
+                return session.getOperator();
             }
         };
     }

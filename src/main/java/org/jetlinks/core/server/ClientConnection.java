@@ -56,6 +56,10 @@ public interface ClientConnection extends Scannable {
 
     }
 
+    default long connectTime(){
+        return 0;
+    }
+
     /**
      * @param key a {@link Attr} to resolve for the component.
      * @return value

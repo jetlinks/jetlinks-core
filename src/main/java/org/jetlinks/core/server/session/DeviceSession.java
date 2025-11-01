@@ -2,10 +2,8 @@ package org.jetlinks.core.server.session;
 
 import org.jetlinks.core.command.Command;
 import org.jetlinks.core.device.DeviceOperator;
-import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.codec.*;
 import org.jetlinks.core.trace.DeviceTracer;
-import org.jetlinks.core.trace.DeviceTracer.SpanName;
 import org.jetlinks.core.trace.TraceHolder;
 import org.jetlinks.core.utils.Reactors;
 import reactor.core.publisher.Mono;
@@ -17,7 +15,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Function;
 
-import static org.jetlinks.core.trace.DeviceTracer.SpanName.*;
+import static org.jetlinks.core.trace.DeviceTracer.SpanName.encode0;
 import static org.jetlinks.core.trace.FluxTracer.create;
 
 /**
@@ -64,7 +62,7 @@ public interface DeviceSession {
      *
      * @param encodedMessage 消息
      * @return 是否成功
-     * @see org.jetlinks.core.message.codec.MqttMessage
+     * @see MqttMessage
      */
     Mono<Boolean> send(EncodedMessage encodedMessage);
 
@@ -80,6 +78,7 @@ public interface DeviceSession {
      *
      * @return void
      */
+    @Deprecated
     Transport getTransport();
 
     /**
@@ -104,13 +103,9 @@ public interface DeviceSession {
      * 设置close回调
      *
      * @param call 回调
-     * @see org.jetlinks.core.device.session.DeviceSessionManager#listenEvent(Function)
-     * @deprecated 已弃用 since 1.3.1
+     * @deprecated {@link org.jetlinks.core.device.session.DeviceSessionManager#listenEvent(Function)}
      */
-    @Deprecated
-    default void onClose(Runnable call) {
-
-    }
+    void onClose(Runnable call);
 
     /**
      * @return 会话连接的服务ID
@@ -127,9 +122,6 @@ public interface DeviceSession {
         return Optional.empty();
     }
 
-    /**
-     * 执行心跳保活
-     */
     default void keepAlive() {
         ping();
     }

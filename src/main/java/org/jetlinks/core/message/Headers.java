@@ -3,6 +3,7 @@ package org.jetlinks.core.message;
 import org.jetlinks.core.Routable;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
+import org.jetlinks.core.server.session.DeviceSessionSelector;
 
 import java.util.concurrent.TimeUnit;
 
@@ -60,7 +61,11 @@ public interface Headers {
     /**
      * 指定发送消息的超时时间
      */
-    HeaderKey<Long> timeout = HeaderKey.of("timeout", TimeUnit.SECONDS.toMillis(10), Long.class);
+    HeaderKey<Long> timeout = HeaderKey
+        .of("timeout",
+            TimeUnit.SECONDS
+                .toMillis(Integer.getInteger("jetlinks.device.message.default-timeout", 10)),
+            Long.class);
 
     /**
      * 是否合并历史属性数据,设置此消息头后,将会把历史最新的消息合并到消息体里
@@ -258,6 +263,14 @@ public interface Headers {
      */
     HeaderKey<Object> deleteOnUnRegister = HeaderKey.of("deleteOnUnRegister", false, Boolean.class);
 
+    /**
+     * 当设备存在多个会话时,使用
+     */
+    HeaderKey<Byte> sessionSelector = HeaderKey.of(
+        "sessionSelector",
+        DeviceSessionSelector.any,
+        Byte.class);
+
 
     /**
      * copy有意义的header到新到消息中,比如标记异步,超时等信息
@@ -273,6 +286,8 @@ public interface Headers {
         from.getHeader(force).ifPresent(val -> to.addHeader(force, val));
         from.getHeader(ignore).ifPresent(val -> to.addHeader(ignore, val));
         from.getHeader(ignoreLog).ifPresent(val -> to.addHeader(ignoreLog, val));
+        from.getHeader(multiGateway).ifPresent(val -> to.addHeader(multiGateway, val));
+        from.getHeader(sessionSelector).ifPresent(val -> to.addHeader(sessionSelector, val));
 
     }
 }
