@@ -32,6 +32,16 @@ public interface BlockingCommandSupport extends CommandSupport, Wrapper {
     }
 
     /**
+     * 包装一个命令支持为阻塞式的命令支持
+     *
+     * @param target 命令支持
+     * @return BlockingCommandSupport
+     */
+    static BlockingCommandSupport of(Mono<CommandSupport> target) {
+        return new AsyncBlockingCommandSupport(target);
+    }
+
+    /**
      * 执行响应式命令并阻塞获取单个执行结果
      *
      * @param commandId  命令ID
