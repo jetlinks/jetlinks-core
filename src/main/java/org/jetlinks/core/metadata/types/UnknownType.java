@@ -9,7 +9,7 @@ import org.jetlinks.core.metadata.ValidateResult;
  * @since 1.0.0
  */
 public class UnknownType implements DataType {
-
+    public static final UnknownType GLOBAL = new UnknownType();
     @Override
     public ValidateResult validate(Object value) {
         return ValidateResult.success();

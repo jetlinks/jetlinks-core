@@ -30,6 +30,10 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
         return new ReplacedSeparatedCharSequence3(this, i0, r0, i1, r1, i2, r2);
     }
 
+    public SeparatedCharSequence replace(int i0, CharSequence r0, int i1, CharSequence r1, int i2, CharSequence r2, int i3, CharSequence r3) {
+        return new ReplacedSeparatedCharSequence4(this, i0, r0, i1, r1, i2, r2, i3, r3);
+    }
+
     public SeparatedCharSequence append(CharSequence... csq) {
         if (csq == null || csq.length == 0) {
             return this;

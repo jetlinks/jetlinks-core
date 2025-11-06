@@ -31,7 +31,20 @@ public class DefaultThingTemplate implements ThingTemplate, StorageConfigurable 
                                 String id,
                                 ConfigStorageManager storageManager,
                                 ThingMetadataCodec metadataCodec) {
-        this(thingType, id, storageManager.getStorage("thing-template:" + thingType.getId() + ":" + id), metadataCodec);
+        this(thingType,
+             id,
+             storageManager.getStorage("thing-template:" + thingType.getId() + ":" + id),
+             metadataCodec);
+    }
+
+    public DefaultThingTemplate(ThingType thingType,
+                                String id,
+                                ConfigStorageManager storageManager,
+                                ThingMetadataManager metadataManager) {
+        this.id = id;
+        this.storageMono = storageManager.getStorage("thing-template:" + thingType.getId() + ":" + id);
+        this.metadataCodec = null;
+        this.metadataMono = Mono.defer(() -> metadataManager.getThingMetadata(this.id));
     }
 
     public DefaultThingTemplate(ThingType thingType,
@@ -103,6 +116,9 @@ public class DefaultThingTemplate implements ThingTemplate, StorageConfigurable 
 
     @Override
     public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
+        if (metadataCodec == null) {
+            return Mono.error(new UnsupportedOperationException("unsupported update metadata"));
+        }
         return this.metadataCodec
             .encode(metadata)
             .flatMap(this::updateMetadata);

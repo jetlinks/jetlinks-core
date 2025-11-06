@@ -57,6 +57,23 @@ public class DefaultThing implements Thing, StorageConfigurable {
 
     public DefaultThing(ThingType thingType,
                         String id,
+                        ConfigStorageManager storageManager,
+                        ThingMetadataManager manager,
+                        ThingsRegistry registry,
+                        Function<Thing, ThingRpcSupport> rpcFactory) {
+        this.id = id;
+        this.type = thingType;
+        this.storageMono = storageManager.getStorage("thing:" + thingType.getId() + ":" + id);
+        this.metadataCodec = null;
+        this.rpcFactory = rpcFactory;
+        this.templateMono = this
+            .getSelfConfig(ThingsConfigKeys.templateId)
+            .flatMap(templateId -> registry.getTemplate(this.type, templateId));
+        this.metadataMono = Mono.defer(() -> manager.getThingMetadata(id));
+    }
+
+    public DefaultThing(ThingType thingType,
+                        String id,
                         Mono<ConfigStorage> storageSupplier,
                         ThingMetadataCodec metadataCodec,
                         Mono<ThingTemplate> template,
@@ -67,7 +84,6 @@ public class DefaultThing implements Thing, StorageConfigurable {
         this.metadataCodec = metadataCodec;
         this.rpcFactory = rpcFactory;
         this.templateMono = template;
-
         this.metadataMono = templateMetadata()
             .flatMap(tmpMetadata -> selfMetadata()
                 .<ThingMetadata>map(self -> {
@@ -150,6 +166,9 @@ public class DefaultThing implements Thing, StorageConfigurable {
 
     @Override
     public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
+        if (this.metadataCodec == null) {
+            return Mono.error(new UnsupportedOperationException("unsupported update metadata"));
+        }
         return this.metadataCodec
             .encode(metadata)
             .flatMap(this::updateMetadata);

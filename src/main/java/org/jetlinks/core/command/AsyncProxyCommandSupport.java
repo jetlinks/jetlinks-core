@@ -36,10 +36,27 @@ public class AsyncProxyCommandSupport implements CommandSupport {
     }
 
     @Override
+    public Flux<Object> executeToFlux(String commandId, Map<String, Object> parameters) {
+        return asyncCommand
+            .flatMapMany(support -> support.executeToFlux(commandId, parameters));
+    }
+
+    @Override
+    public Flux<Object> executeToFlux(String commandId, Map<String, Object> parameters, Flux<Object> stream) {
+        return asyncCommand
+            .flatMapMany(support -> support.executeToFlux(commandId, parameters, stream));
+    }
+
+    @Override
+    public Mono<Object> executeToMono(String commandId, Map<String, Object> parameters) {
+        return asyncCommand
+            .flatMap(support -> support.executeToMono(commandId, parameters));
+    }
+
+    @Override
     public final Flux<Object> executeToFlux(Command<?> command) {
 
-        if (command instanceof ProxyCommand) {
-            ProxyCommand cmd = ((ProxyCommand) command);
+        if (command instanceof ProxyCommand cmd) {
             return asyncCommand
                 .flatMapMany(support -> support
                     .createCommandAsync(cmd.getCommandId())
@@ -54,8 +71,7 @@ public class AsyncProxyCommandSupport implements CommandSupport {
     @Override
     public final Mono<Object> executeToMono(Command<?> command) {
 
-        if (command instanceof ProxyCommand) {
-            ProxyCommand cmd = ((ProxyCommand) command);
+        if (command instanceof ProxyCommand cmd) {
             return asyncCommand
                 .flatMap(support -> support
                     .createCommandAsync(cmd.getCommandId())

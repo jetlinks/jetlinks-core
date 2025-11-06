@@ -29,8 +29,22 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
     private final ConfigStorageManager manager;
 
     private final ThingMetadataCodec metadataCodec;
+    private final ThingMetadataManager metadataManager;
 
     private final Function<Thing, ThingRpcSupport> rpcSupportFactory;
+
+    public SimpleThingsRegistrySupport(ThingType thingType,
+                                       ConfigStorageManager manager,
+                                       ThingMetadataManager metadataManager,
+                                       Function<Thing, ThingRpcSupport> rpcSupportFactory) {
+        this.thingType = thingType;
+        this.manager = manager;
+        this.metadataCodec = null;
+        this.metadataManager = metadataManager;
+        this.rpcSupportFactory = rpcSupportFactory;
+        registryInfo = manager.getStorage(createThingStorageId());
+        templateRegistryInfo = manager.getStorage(createTemplateStorageId());
+    }
 
     public SimpleThingsRegistrySupport(ThingType thingType,
                                        ConfigStorageManager manager,
@@ -39,16 +53,17 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
         this.thingType = thingType;
         this.manager = manager;
         this.metadataCodec = metadataCodec;
+        this.metadataManager = null;
         this.rpcSupportFactory = rpcSupportFactory;
         registryInfo = manager.getStorage(createThingStorageId());
         templateRegistryInfo = manager.getStorage(createTemplateStorageId());
     }
 
-    protected String createThingStorageId(){
+    protected String createThingStorageId() {
         return "thing_reg:" + thingType.getId();
     }
 
-    protected String createTemplateStorageId(){
+    protected String createTemplateStorageId() {
         return "thing_temp_reg:" + thingType.getId();
     }
 
@@ -67,16 +82,22 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
     public Mono<Thing> getThing(@Nonnull String thingType, @Nonnull String thingId) {
         checkThingType(thingType);
         return registryInfo
-                .flatMap(storage -> storage.getConfig(thingId))
-                .switchIfEmpty(Mono.fromRunnable(() -> thingCache.remove(thingId)))
-                .map(ignore -> thingCache.computeIfAbsent(thingId, this::createThing));
+            .flatMap(storage -> storage.getConfig(thingId))
+            .switchIfEmpty(Mono.fromRunnable(() -> thingCache.remove(thingId)))
+            .map(ignore -> thingCache.computeIfAbsent(thingId, this::createThing));
     }
 
     private DefaultThing createThing(String id) {
+        if (metadataCodec == null) {
+            return new DefaultThing(thingType, id, manager, metadataManager, this, rpcSupportFactory);
+        }
         return new DefaultThing(thingType, id, manager, metadataCodec, this, rpcSupportFactory);
     }
 
     private DefaultThingTemplate createTemplate(String id) {
+        if (metadataCodec == null) {
+            return new DefaultThingTemplate(thingType, id, manager, metadataManager);
+        }
         return new DefaultThingTemplate(thingType, id, manager, metadataCodec);
     }
 
@@ -99,18 +120,18 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
 
         //FIXME 版本比对?
         return registryInfo
-                .flatMap(storage -> storage.setConfig(info.getId(), System.currentTimeMillis()))
-                .then(thing.setConfigs(configs))
-                .thenReturn(thing);
+            .flatMap(storage -> storage.setConfig(info.getId(), System.currentTimeMillis()))
+            .then(thing.setConfigs(configs))
+            .thenReturn(thing);
     }
 
     @Override
     public Mono<ThingTemplate> getTemplate(@Nonnull String thingType, @Nonnull String templateId) {
         checkThingType(thingType);
         return templateRegistryInfo
-                .flatMap(storage -> storage.getConfig(templateId))
-                .switchIfEmpty(Mono.fromRunnable(() -> templateCache.remove(templateId)))
-                .map(ignore -> templateCache.computeIfAbsent(templateId, this::createTemplate));
+            .flatMap(storage -> storage.getConfig(templateId))
+            .switchIfEmpty(Mono.fromRunnable(() -> templateCache.remove(templateId)))
+            .map(ignore -> templateCache.computeIfAbsent(templateId, this::createTemplate));
     }
 
     @Override
@@ -155,25 +176,25 @@ public class SimpleThingsRegistrySupport implements ThingsRegistrySupport {
 
         //FIXME 版本比对?
         return templateRegistryInfo
-                .flatMap(storage -> storage.setConfig(info.getId(), System.currentTimeMillis()))
-                .then(thing.setConfigs(configs))
-                .thenReturn(thing);
+            .flatMap(storage -> storage.setConfig(info.getId(), System.currentTimeMillis()))
+            .then(thing.setConfigs(configs))
+            .thenReturn(thing);
     }
 
     @Override
     public Mono<Void> unregisterTemplate(@Nonnull String thingType, @Nonnull String thingId) {
         checkThingType(thingType);
         return Flux
-                .merge(
-                        Mono.justOrEmpty(templateCache.remove(thingId))
-                            .flatMap(DefaultThingTemplate::getReactiveStorage)
-                            .flatMap(ConfigStorage::clear)
-                        ,
-                        templateRegistryInfo
-                                .flatMap(storage -> storage.remove(thingId))
+            .merge(
+                Mono.justOrEmpty(templateCache.remove(thingId))
+                    .flatMap(DefaultThingTemplate::getReactiveStorage)
+                    .flatMap(ConfigStorage::clear)
+                ,
+                templateRegistryInfo
+                    .flatMap(storage -> storage.remove(thingId))
 
-                )
-                .then();
+            )
+            .then();
     }
 
 
