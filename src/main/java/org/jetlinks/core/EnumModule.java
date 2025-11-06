@@ -5,7 +5,6 @@ import org.hswebframework.web.i18n.LocaleUtils;
 
 public interface EnumModule extends Module, I18nEnumDict<String> {
 
-
     @Override
     default String getValue() {
         return name();
