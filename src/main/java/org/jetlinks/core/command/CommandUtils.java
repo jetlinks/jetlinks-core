@@ -176,7 +176,8 @@ public class CommandUtils {
      * @see CommandUtils#getCommandResponseType(Class)
      */
     public static ResolvableType getCommandResponseType(Command<?> cmd) {
-        return getCommandResponseType(cmd.getClass());
+        ResolvableType defined = cmd.responseType();
+        return defined == null ? getCommandResponseType(cmd.getClass()) : defined;
     }
 
     /**
@@ -187,7 +188,7 @@ public class CommandUtils {
      * @see CommandUtils#getCommandResponseDataType(Class)
      */
     public static ResolvableType getCommandResponseDataType(Command<?> cmd) {
-        return getCommandResponseDataType(cmd.getClass());
+        return getCommandResponseDataType(cmd.responseType());
     }
 
     /**

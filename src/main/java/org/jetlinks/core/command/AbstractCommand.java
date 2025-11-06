@@ -9,6 +9,7 @@ import org.jetlinks.core.metadata.Jsonable;
 import org.jetlinks.core.utils.ConverterUtils;
 import org.jetlinks.core.utils.SerializeUtils;
 import org.springframework.core.ResolvableType;
+import reactor.core.publisher.Mono;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -22,6 +23,16 @@ import java.util.Map;
 @EqualsAndHashCode(of = "properties")
 public abstract class AbstractCommand<Response, Self extends AbstractCommand<Response, Self>>
     implements Command<Response>, Jsonable, Externalizable {
+
+   protected static final ResolvableType INTEGER_RESPONSE_TYPE = ResolvableType
+        .forClassWithGenerics(
+            Mono.class, Integer.class
+        );
+
+    protected static final ResolvableType VOID_RESPONSE_TYPE = ResolvableType
+        .forClassWithGenerics(
+            Mono.class, Void.class
+        );
 
     private Map<String, Object> properties;
 

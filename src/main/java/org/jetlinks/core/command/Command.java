@@ -86,7 +86,7 @@ public interface Command<Response> extends Wrapper, Serializable {
             return with((Map<String, Object>) parameterObject);
         }
 
-        if(parameterObject instanceof Command){
+        if (parameterObject instanceof Command) {
             return with(((Command<?>) parameterObject));
         }
 
@@ -198,4 +198,14 @@ public interface Command<Response> extends Wrapper, Serializable {
     default <T> T as(Type type) {
         return ConverterUtils.convert(this, type);
     }
+
+    /**
+     * 获取命令返回类型,通常与命令泛型一致.
+     *
+     * @return 返回值类型
+     */
+    default ResolvableType responseType() {
+        return CommandUtils.getCommandResponseType(this.getClass());
+    }
+
 }
