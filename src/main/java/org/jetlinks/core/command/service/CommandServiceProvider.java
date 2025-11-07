@@ -1,5 +1,6 @@
 package org.jetlinks.core.command.service;
 
+import org.jetlinks.core.command.CommandSupport;
 import org.jetlinks.core.monitor.Monitor;
 import reactor.core.publisher.Mono;
 
@@ -11,12 +12,17 @@ import java.util.Map;
  * @author zhouhao
  * @since 1.3.2
  */
-public interface CommandServiceProvider {
+public interface CommandServiceProvider extends CommandSupport {
 
     /**
      * @return 服务提供商标识
      */
     String getId();
+
+    /**
+     * @return 服务描述
+     */
+    ServiceDescription getDescription();
 
     /**
      * 创建命令服务

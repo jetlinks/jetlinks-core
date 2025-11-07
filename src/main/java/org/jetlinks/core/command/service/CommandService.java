@@ -15,9 +15,9 @@ import reactor.core.publisher.Mono;
 public interface CommandService extends CommandSupport {
 
     /**
-     * @return ID
+     * @return 服务描述
      */
-    String getId();
+    ServiceDescription getDescription();
 
     /**
      * @return 支持的模块
@@ -32,14 +32,5 @@ public interface CommandService extends CommandSupport {
      */
     Mono<CommandSupport> getModule(String module);
 
-    /**
-     * 获取支持阻塞操作的模块命令支持
-     *
-     * @param module 模块标识
-     * @return BlockingCommandSupport
-     */
-    default BlockingCommandSupport getModuleNow(String module) {
-        return BlockingCommandSupport.of(getModule(module));
-    }
 
 }
