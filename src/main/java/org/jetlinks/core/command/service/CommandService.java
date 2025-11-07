@@ -32,5 +32,15 @@ public interface CommandService extends CommandSupport {
      */
     Mono<CommandSupport> getModule(String module);
 
+    /**
+     * 获取模块命令支持,用于执行模块命令.
+     *
+     * @param module 模块定义
+     * @return CommandSupport
+     */
+    default Mono<CommandSupport> getModule(Module module) {
+        return getModule(module.getId());
+    }
+
 
 }
