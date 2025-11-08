@@ -1,5 +1,8 @@
 package org.jetlinks.core;
 
+import java.util.Collections;
+import java.util.Map;
+
 /**
  * 功能模块接口,用于定义个功能模块
  *
@@ -27,4 +30,11 @@ public interface Module {
      * @return 描述
      */
     String getDescription();
+
+    /**
+     * @return 模块元数据信息
+     */
+    default Map<String, Object> getMetadata() {
+        return Collections.emptyMap();
+    }
 }
