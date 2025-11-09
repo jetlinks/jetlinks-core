@@ -16,7 +16,7 @@ import static java.lang.annotation.ElementType.*;
  * @see org.jetlinks.core.annotation.ui.Selector
  * @since 1.2.3
  */
-@Target({ANNOTATION_TYPE, FIELD, METHOD, PARAMETER})
+@Target({ANNOTATION_TYPE, TYPE, FIELD, METHOD, PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Repeatable(Expands.List.class)

@@ -2,7 +2,6 @@ package org.jetlinks.core.command.service;
 
 import org.jetlinks.core.Module;
 import org.jetlinks.core.command.CommandSupport;
-import org.jetlinks.core.command.blocking.BlockingCommandSupport;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -15,14 +14,11 @@ import reactor.core.publisher.Mono;
 public interface CommandService extends CommandSupport {
 
     /**
+     * 获取服务描述
+     *
      * @return 服务描述
      */
-    ServiceDescription getDescription();
-
-    /**
-     * @return 支持的模块
-     */
-    Flux<Module> getModules();
+    Mono<ServiceDescription> getDescription();
 
     /**
      * 获取模块命令支持,用于执行模块命令.

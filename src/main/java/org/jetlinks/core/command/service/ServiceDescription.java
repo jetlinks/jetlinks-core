@@ -4,7 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.ModuleInfo;
 
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -34,6 +36,9 @@ public class ServiceDescription {
     @Schema(title = "版本")
     private String version;
 
-    @Schema(title = "其他信息")
-    private Map<String, Object> others;
+    @Schema(title = "模块信息")
+    private List<ModuleInfo> modules;
+
+    @Schema(title = "元数据信息")
+    private Map<String, Object> metadata;
 }

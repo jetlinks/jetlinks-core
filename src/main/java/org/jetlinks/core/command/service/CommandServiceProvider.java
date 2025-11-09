@@ -12,7 +12,7 @@ import java.util.Map;
  * @author zhouhao
  * @since 1.3.2
  */
-public interface CommandServiceProvider extends CommandSupport {
+public interface CommandServiceProvider extends CommandSupport,CommandServiceSupport {
 
     /**
      * @return 服务提供商标识
@@ -22,7 +22,7 @@ public interface CommandServiceProvider extends CommandSupport {
     /**
      * @return 服务描述
      */
-    ServiceDescription getDescription();
+    Mono<ServiceDescription> getDescription();
 
     /**
      * 创建命令服务
