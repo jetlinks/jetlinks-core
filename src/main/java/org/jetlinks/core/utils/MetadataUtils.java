@@ -1,5 +1,6 @@
 package org.jetlinks.core.utils;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import com.google.common.collect.Sets;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.apache.commons.collections4.CollectionUtils;
@@ -35,6 +36,7 @@ import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 /**
  * 物模型工具类
@@ -212,6 +214,24 @@ public class MetadataUtils {
             return new MetadataParser().withType0(null, type);
         }
 
+        static String resolveJsonViewName(Class<?> clazz) {
+            String name = clazz.getCanonicalName();
+            return name.contains(".") ? name.substring(name.lastIndexOf(".") + 1) : name;
+        }
+
+        static void parseJsonView(Annotation[] annotation,
+                                  Map<String, Object> container) {
+            for (Annotation ann : annotation) {
+                if (ann instanceof JsonView view) {
+                    container.put(
+                        "jsonView",
+                        Arrays.stream(view.value())
+                              .map(MetadataParser::resolveJsonViewName)
+                              .collect(Collectors.toSet()));
+                }
+            }
+        }
+
         static void parseJsr303(Annotation[] annotation,
                                 Map<String, Object> container) {
             List<Map<String, Object>> validators = new ArrayList<>();
@@ -302,13 +322,26 @@ public class MetadataUtils {
                         if (ann.annotationType() != Expands.class &&
                             ann.annotationType() != Expands.List.class) {
                             AnnotationAttributes annotationAttributes = AnnotationUtils
-                                .getAnnotationAttributes(ann, false, true);
+                                .getAnnotationAttributes(ann, false, false);
                             for (Map.Entry<String, Object> entry : annotationAttributes.entrySet()) {
                                 if (entry.getValue() instanceof Class<?>) {
                                     DataType parseType = parseType(ResolvableType.forClass(CastUtil.cast(entry.getValue())));
-                                    if (parseType != null) {
-                                        List<PropertyMetadata> properties = ((ObjectType) parseType).getProperties();
+                                    if (parseType instanceof ObjectType objectType) {
+                                        List<PropertyMetadata> properties = objectType.getProperties();
                                         c.putIfAbsent(entry.getKey(), properties);
+                                    } else if (parseType != null) {
+                                        c.putIfAbsent(entry.getKey(), parseType);
+                                    }
+                                } else if (entry.getValue() instanceof Annotation _ann) {
+                                    if (_ann instanceof org.jetlinks.core.annotation.DataType _dataType) {
+                                        Class<?> clazz = _dataType.value();
+                                        Class<?>[] gen = _dataType.generics();
+                                        ResolvableType type = gen.length == 0 ? ResolvableType.forType(clazz) :
+                                            ResolvableType.forClassWithGenerics(clazz, gen);
+                                        c.put(entry.getKey(), parseType(type));
+                                    } else {
+                                        c.put(entry.getKey(),
+                                              MetadataUtils.parseExpands(_ann));
                                     }
                                 } else {
                                     c.putIfAbsent(entry.getKey(), entry.getValue());
@@ -324,6 +357,7 @@ public class MetadataUtils {
             }
 
             parseJsr303(annotation, container);
+            parseJsonView(annotation, container);
         }
 
         static void parseExpands(AnnotatedElement element,
@@ -459,7 +493,9 @@ public class MetadataUtils {
             });
             objectType
                 .getProperties()
-                .sort(Comparator.comparingLong(m -> indexMap.getOrDefault(m.getId(), Integer.MAX_VALUE)));
+                .sort(Comparator.comparingLong(m -> indexMap
+                    .getOrDefault(m.getId(), Objects.equals(m.getId(), "id") ? Integer.MIN_VALUE : Integer.MAX_VALUE)));
+            objectType.setExpands(MetadataUtils.parseExpands(fClass));
             return objectType;
         }
 

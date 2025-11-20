@@ -2,18 +2,21 @@ package org.jetlinks.core.utils;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.fasterxml.jackson.annotation.JsonView;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.validator.CreateGroup;
+import org.jetlinks.core.JsonViews;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.Expands;
 import org.jetlinks.core.annotation.ui.Selector;
 import org.jetlinks.core.metadata.DataType;
 import org.jetlinks.core.metadata.types.DateTimeType;
 import org.jetlinks.core.metadata.types.ObjectType;
+import org.jetlinks.core.utils.json.ObjectMappers;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.ResolvableType;
@@ -34,7 +37,7 @@ public class MetadataUtilsTest {
 
 
     @Test
-    public void testParseExpands(){
+    public void testParseExpands() {
 
     }
 
@@ -43,7 +46,7 @@ public class MetadataUtilsTest {
 
         ObjectType type = (ObjectType) MetadataUtils.parseType(ResolvableType.forType(TestEntity.class));
 
-        System.out.println(JSON.toJSONString(type, SerializerFeature.PrettyFormat));
+        System.out.println(ObjectMappers.toJsonString(type));
 
     }
 
@@ -55,8 +58,8 @@ public class MetadataUtilsTest {
     }
 
     @Test
-    public void testDateTimeType(){
-       DataType dataType = MetadataUtils.parseType(ResolvableType.forType(Timestamp.class));
+    public void testDateTimeType() {
+        DataType dataType = MetadataUtils.parseType(ResolvableType.forType(Timestamp.class));
 
         Assert.assertTrue(dataType instanceof DateTimeType);
     }
@@ -70,6 +73,11 @@ public class MetadataUtilsTest {
 
         @AliasFor(annotation = Selector.class)
         boolean multiple() default false;
+
+        org.jetlinks.core.annotation.DataType dataType()
+            default @org.jetlinks.core.annotation.DataType(
+            CollectionsTest.class
+        );
 
         CustomAnnotation custom() default @CustomAnnotation;
 
@@ -94,7 +102,7 @@ public class MetadataUtilsTest {
     public static class TestEntity {
 
         @Schema(title = "设备ID")
-        @DeviceSelector(multiple = true,custom = @CustomAnnotation(x = "2"))
+        @DeviceSelector(multiple = true, custom = @CustomAnnotation(x = "2"))
         @NotBlank(groups = CreateGroup.class)
         private String deviceId;
 
@@ -107,6 +115,7 @@ public class MetadataUtilsTest {
             @Attr(key = "k1", value = "v1"),
             @Attr(key = "k2", value = "v2")
         })
+        @JsonView({JsonViews.Create.class,JsonViews.Detail.class})
         public String getProductId() {
             return productId;
         }

@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.metadata.types.ObjectType;
+import org.jetlinks.core.utils.CompositeList;
 import org.jetlinks.core.utils.MetadataUtils;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -64,12 +65,18 @@ public class CommandMetadataResolver {
                     ResolvableType inputType = ResolvableType.forClass(inputSpec);
                     //输入类型有泛型,则使用泛型第一个类型进行解析.
                     if (inputType.getGenerics().length > 0) {
-                        return resolveInputs(ResolvableType.forClassWithGenerics(
-                            inputSpec,
-                            type.as(GenericInputCommand.class).getGeneric(0)));
+                        return new CompositeList<>(
+                            resolveByMethod(clazz),
+                            resolveInputs(ResolvableType.forClassWithGenerics(
+                                inputSpec,
+                                type.as(GenericInputCommand.class).getGeneric(0)))
+                        );
                     }
                 }
-                return resolveInputs(ResolvableType.forClass(inputSpec));
+                return new CompositeList<>(
+                    resolveByMethod(clazz),
+                    resolveInputs(ResolvableType.forClass(inputSpec))
+                );
             }
 
             //基于泛型来解析
@@ -79,21 +86,7 @@ public class CommandMetadataResolver {
             }
             //AbstractCommand 基于方法来解析
             if (AbstractCommand.class.isAssignableFrom(clazz)) {
-                Map<String, PropertyMetadata> inputsMap = new LinkedHashMap<>();
-                Map<String, Integer> indexMap = new HashMap<>();
-                ReflectionUtils.doWithMethods(clazz, method -> {
-                    PropertyMetadata prop = tryResolveProperty(clazz, method);
-                    if (prop != null) {
-                        Order order = AnnotationUtils.findAnnotation(method, Order.class);
-                        if (order != null) {
-                            indexMap.putIfAbsent(prop.getId(), order.value());
-                        }
-                        inputsMap.putIfAbsent(method.getName(), prop);
-                    }
-                });
-                List<PropertyMetadata> list = Lists.newArrayList(inputsMap.values());
-                list.sort(Comparator.comparingLong(m -> indexMap.getOrDefault(m.getId(), Integer.MAX_VALUE)));
-                return list;
+                return resolveByMethod(clazz);
             }
         }
         DataType objectType = MetadataUtils.parseType(type);
@@ -101,6 +94,24 @@ public class CommandMetadataResolver {
             return ((ObjectType) objectType).getProperties();
         }
         return Collections.emptyList();
+    }
+
+    private static List<PropertyMetadata> resolveByMethod(Class<?> clazz) {
+        Map<String, PropertyMetadata> inputsMap = new LinkedHashMap<>();
+        Map<String, Integer> indexMap = new HashMap<>();
+        ReflectionUtils.doWithMethods(clazz, method -> {
+            PropertyMetadata prop = tryResolveProperty(clazz, method);
+            if (prop != null) {
+                Order order = AnnotationUtils.findAnnotation(method, Order.class);
+                if (order != null) {
+                    indexMap.putIfAbsent(prop.getId(), order.value());
+                }
+                inputsMap.putIfAbsent(method.getName(), prop);
+            }
+        });
+        List<PropertyMetadata> list = Lists.newArrayList(inputsMap.values());
+        list.sort(Comparator.comparingLong(m -> indexMap.getOrDefault(m.getId(), Integer.MAX_VALUE)));
+        return list;
     }
 
     /**
