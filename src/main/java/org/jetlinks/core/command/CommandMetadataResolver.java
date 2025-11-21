@@ -55,45 +55,59 @@ public class CommandMetadataResolver {
      * @return DataType
      */
     public static List<PropertyMetadata> resolveInputs(ResolvableType type) {
+        Map<String, PropertyMetadata> distinct = new LinkedHashMap<>();
+
+        resolveInputs(type, distinct);
+
+        return new ArrayList<>(distinct.values());
+    }
+
+    private static void putTo(List<PropertyMetadata> list, Map<String, PropertyMetadata> container) {
+        for (PropertyMetadata propertyMetadata : list) {
+            container.put(propertyMetadata.getId(), propertyMetadata);
+        }
+    }
+
+    public static void resolveInputs(ResolvableType type, Map<String, PropertyMetadata> container) {
         Class<?> clazz = type.toClass();
         if (Command.class.isAssignableFrom(clazz)) {
             //尝试获取描述类
             Class<?> inputSpec = findInputSpec(clazz);
             if (inputSpec != null) {
+                putTo(resolveByMethod(clazz), container);
                 if (GenericInputCommand.class.isAssignableFrom(clazz)
                     && GenericInputCommand.InputSpec.class.isAssignableFrom(inputSpec)) {
                     ResolvableType inputType = ResolvableType.forClass(inputSpec);
                     //输入类型有泛型,则使用泛型第一个类型进行解析.
                     if (inputType.getGenerics().length > 0) {
-                        return new CompositeList<>(
-                            resolveByMethod(clazz),
-                            resolveInputs(ResolvableType.forClassWithGenerics(
-                                inputSpec,
-                                type.as(GenericInputCommand.class).getGeneric(0)))
-                        );
+                        putTo(resolveInputs(ResolvableType.forClassWithGenerics(
+                            inputSpec,
+                            type.as(GenericInputCommand.class).getGeneric(0))), container);
+                        return;
                     }
                 }
-                return new CompositeList<>(
-                    resolveByMethod(clazz),
-                    resolveInputs(ResolvableType.forClass(inputSpec))
-                );
+                putTo(resolveInputs(ResolvableType.forClass(inputSpec)), container);
+                return;
             }
 
             //基于泛型来解析
             if (GenericInputCommand.class.isAssignableFrom(clazz)) {
-                return resolveInputs(type.as(GenericInputCommand.class)
-                                         .getGeneric(0));
+                putTo(resolveInputs(type.as(GenericInputCommand.class).getGeneric(0)), container);
+                return;
             }
+
             //AbstractCommand 基于方法来解析
             if (AbstractCommand.class.isAssignableFrom(clazz)) {
-                return resolveByMethod(clazz);
+                putTo(resolveByMethod(clazz), container);
+            }
+        } else {
+            DataType objectType = MetadataUtils.parseType(type);
+            if (objectType instanceof ObjectType) {
+                putTo(((ObjectType) objectType).getProperties(), container);
             }
         }
-        DataType objectType = MetadataUtils.parseType(type);
-        if (objectType instanceof ObjectType) {
-            return ((ObjectType) objectType).getProperties();
-        }
-        return Collections.emptyList();
+
+
     }
 
     private static List<PropertyMetadata> resolveByMethod(Class<?> clazz) {
@@ -105,6 +119,7 @@ public class CommandMetadataResolver {
                 Order order = AnnotationUtils.findAnnotation(method, Order.class);
                 if (order != null) {
                     indexMap.putIfAbsent(prop.getId(), order.value());
+                    prop.expand("order", order.value());
                 }
                 inputsMap.putIfAbsent(method.getName(), prop);
             }
