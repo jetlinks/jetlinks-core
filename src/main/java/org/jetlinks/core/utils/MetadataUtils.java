@@ -145,6 +145,35 @@ public class MetadataUtils {
         return MetadataParser.withType(type);
     }
 
+    public static DataType parseType(Object value) {
+        if (value instanceof Class<?> clazz) {
+            return MetadataParser.withType(ResolvableType.forClass(clazz));
+        }
+        if (value instanceof Map<?, ?> _map) {
+            return parseType(_map);
+        }
+        return MetadataParser.withType(ResolvableType.forClass(value.getClass()));
+    }
+
+    public static DataType parseType(Map<?, ?> map) {
+        ObjectType dataType = new ObjectType();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            String key = String.valueOf(entry.getKey());
+            Object value = entry.getValue();
+            SimplePropertyMetadata metadata = new SimplePropertyMetadata();
+            metadata.setId(key);
+            metadata.setName(key);
+            if (entry.getValue() != null) {
+                metadata.setValueType(parseType(value));
+            } else {
+                metadata.setValueType(new UnknownType());
+            }
+            dataType.addPropertyMetadata(metadata);
+        }
+        return dataType;
+    }
+
+
     /**
      * 解析拓展信息
      *
