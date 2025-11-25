@@ -6,7 +6,17 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import lombok.*;
+import org.hswebframework.web.authorization.exception.AccessDenyException;
+import org.hswebframework.web.authorization.exception.UnAuthorizedException;
+import org.hswebframework.web.authorization.token.TokenState;
+import org.hswebframework.web.exception.BusinessException;
+import org.hswebframework.web.exception.I18nSupportException;
+import org.hswebframework.web.exception.NotFoundException;
+import org.hswebframework.web.exception.ValidationException;
 import org.hswebframework.web.proxy.Proxy;
+import org.jetlinks.core.enums.ErrorCode;
+import org.jetlinks.core.exception.DeviceOperationException;
+import org.jetlinks.core.exception.RecursiveCallException;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.MessageType;
 import org.jetlinks.core.message.ThingMessage;
@@ -24,15 +34,14 @@ import static org.junit.Assert.*;
 public class SerializeUtilsTest {
 
 
-
     @Test
     @SneakyThrows
     public void testImmutableList() {
-        Object obj = codec(List.of(1,2,3));
+        Object obj = codec(List.of(1, 2, 3));
         System.out.println(obj);
         assertNotNull(obj);
         assertTrue(obj instanceof List<?>);
-        assertEquals(3,((List<?>) obj).size());
+        assertEquals(3, ((List<?>) obj).size());
     }
 
 
@@ -40,12 +49,12 @@ public class SerializeUtilsTest {
     @SneakyThrows
     public void testImmutableMap() {
 
-        Map<Object,Object> v = Map.of(1,11,2,22);
+        Map<Object, Object> v = Map.of(1, 11, 2, 22);
         Object obj = codec(v);
         System.out.println(obj);
         assertNotNull(obj);
-        assertTrue(obj instanceof Map<?,?>);
-        assertEquals(v,obj);
+        assertTrue(obj instanceof Map<?, ?>);
+        assertEquals(v, obj);
     }
 
     @Test
@@ -337,6 +346,110 @@ public class SerializeUtilsTest {
 
         assertEquals(100, decode.getInt());
 
+    }
+
+    @Test
+    public void testExceptionSerialization() {
+        // 测试普通异常
+        RuntimeException runtimeException = new RuntimeException("测试异常");
+        Throwable decoded = (Throwable) codec(runtimeException);
+        assertNotNull(decoded);
+        assertEquals("测试异常", decoded.getMessage());
+        assertTrue(decoded instanceof BusinessException.NoStackTrace);
+
+        // 测试 BusinessException
+        BusinessException businessException = new BusinessException.NoStackTrace("业务异常", 400, "error.business", "arg1", "arg2");
+        decoded = (Throwable) codec(businessException);
+        assertNotNull(decoded);
+        assertTrue(decoded instanceof BusinessException.NoStackTrace);
+        BusinessException.NoStackTrace decodedBusiness = (BusinessException.NoStackTrace) decoded;
+        assertEquals(400, decodedBusiness.getStatus());
+        assertEquals("业务异常", decodedBusiness.getMessage());
+        // 注意：getI18nCode() 可能返回本地化后的消息，这里只验证消息和状态码
+        if (decodedBusiness instanceof I18nSupportException) {
+            I18nSupportException i18nException = (I18nSupportException) decodedBusiness;
+            // 验证 i18n 代码或消息不为空
+            assertNotNull(i18nException.getI18nCode());
+        }
+        assertNotNull(decodedBusiness.getArgs());
+        assertEquals(2, decodedBusiness.getArgs().length);
+
+        // 测试 NotFoundException
+        NotFoundException notFoundException = new NotFoundException.NoStackTrace("未找到", "arg1");
+        decoded = (Throwable) codec(notFoundException);
+        assertNotNull(decoded);
+        assertTrue(decoded instanceof NotFoundException.NoStackTrace);
+        assertEquals("未找到", decoded.getMessage());
+
+        // 测试 ValidationException
+        List<ValidationException.Detail> details = new ArrayList<>();
+        details.add(new ValidationException.Detail("field1", "错误1", "detail1"));
+        details.add(new ValidationException.Detail("field2", "错误2", "detail2"));
+        ValidationException validationException = new ValidationException.NoStackTrace("验证失败", details, "arg1");
+        decoded = (Throwable) codec(validationException);
+        assertNotNull(decoded);
+        assertTrue(decoded instanceof ValidationException.NoStackTrace);
+        ValidationException.NoStackTrace decodedValidation = (ValidationException.NoStackTrace) decoded;
+        assertEquals("验证失败", decodedValidation.getMessage());
+        List<ValidationException.Detail> decodedDetails = decodedValidation.getDetails();
+        assertNotNull(decodedDetails);
+        assertEquals(2, decodedDetails.size());
+        assertEquals("field1", decodedDetails.get(0).getProperty());
+        assertEquals("错误1", decodedDetails.get(0).getMessage());
+
+        // 测试 UnAuthorizedException
+        UnAuthorizedException unAuthorizedException = new UnAuthorizedException.NoStackTrace("未授权", TokenState.expired);
+        decoded = (Throwable) codec(unAuthorizedException);
+        assertNotNull(decoded);
+        assertTrue(decoded instanceof UnAuthorizedException.NoStackTrace);
+        UnAuthorizedException.NoStackTrace decodedUnauthorized = (UnAuthorizedException.NoStackTrace) decoded;
+        assertEquals("未授权", decodedUnauthorized.getMessage());
+        assertEquals(TokenState.expired, decodedUnauthorized.getState());
+
+        // 测试 AccessDenyException
+        AccessDenyException accessDenyException = new AccessDenyException.NoStackTrace("拒绝访问");
+        decoded = (Throwable) codec(accessDenyException);
+        assertNotNull(decoded);
+        assertTrue(decoded instanceof AccessDenyException.NoStackTrace);
+        assertEquals("拒绝访问", decoded.getMessage());
+
+        // 测试 DeviceOperationException
+        DeviceOperationException deviceException = new DeviceOperationException.NoStackTrace(ErrorCode.TIME_OUT, "设备操作超时");
+        decoded = (Throwable) codec(deviceException);
+        assertNotNull(decoded);
+        assertTrue(decoded instanceof DeviceOperationException.NoStackTrace);
+        DeviceOperationException.NoStackTrace decodedDevice = (DeviceOperationException.NoStackTrace) decoded;
+        assertEquals(ErrorCode.TIME_OUT, decodedDevice.getCode());
+        assertEquals("设备操作超时", decodedDevice.getMessage());
+
+        // 测试 RecursiveCallException
+        RecursiveCallException recursiveException = new RecursiveCallException("testOperation", 5);
+        decoded = (Throwable) codec(recursiveException);
+        assertNotNull(decoded);
+        assertTrue(decoded instanceof RecursiveCallException);
+        RecursiveCallException decodedRecursive = (RecursiveCallException) decoded;
+        assertEquals("testOperation", decodedRecursive.getOperation());
+        assertEquals(5, decodedRecursive.getMaxRecursive());
+
+        // 测试 I18nSupportException
+        I18nSupportException i18nException = new I18nSupportException.NoStackTrace("i18n错误", "arg1", "arg2");
+        decoded = (Throwable) codec(i18nException);
+        assertNotNull(decoded);
+        assertTrue(decoded instanceof I18nSupportException.NoStackTrace);
+        I18nSupportException.NoStackTrace decodedI18n = (I18nSupportException.NoStackTrace) decoded;
+        assertEquals("i18n错误", decodedI18n.getMessage());
+        // 注意：getI18nCode() 可能返回本地化后的消息，这里只验证 i18n 代码不为空
+        assertNotNull(decodedI18n.getI18nCode());
+        assertNotNull(decodedI18n.getArgs());
+        assertEquals(2, decodedI18n.getArgs().length);
+
+        // 测试带堆栈跟踪的异常
+        RuntimeException exceptionWithStackTrace = new RuntimeException("带堆栈的异常");
+        exceptionWithStackTrace.fillInStackTrace();
+        decoded = (Throwable) codec(exceptionWithStackTrace);
+        assertNotNull(decoded);
+        assertNotNull(decoded.getStackTrace());
+        assertTrue(decoded.getStackTrace().length > 0);
     }
 
     public enum EnumTest {

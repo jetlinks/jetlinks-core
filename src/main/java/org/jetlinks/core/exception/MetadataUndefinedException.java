@@ -6,7 +6,7 @@ import org.hswebframework.web.exception.I18nSupportException;
 
 @Getter
 @Setter
-public class MetadataUndefinedException extends I18nSupportException {
+public class MetadataUndefinedException extends I18nSupportException.NoStackTrace {
 
     private String deviceId;
 

@@ -4,7 +4,7 @@ import lombok.Getter;
 import org.hswebframework.web.exception.I18nSupportException;
 
 @Getter
-public class ProductNotActivatedException extends I18nSupportException {
+public class ProductNotActivatedException extends I18nSupportException.NoStackTrace {
     private String productId;
 
     public ProductNotActivatedException(String productId) {

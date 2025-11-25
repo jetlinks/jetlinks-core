@@ -51,6 +51,7 @@ public class SerializeUtils {
         }
         registerSerializer(new TypedMapSerializer());
         registerSerializer(new TypedCollectionSerializer());
+        registerSerializer(ExceptionSerializer.global);
 
         cache.put(StackTraceElement.class, InternalSerializers.StackTraceElement);
     }
@@ -292,6 +293,9 @@ public class SerializeUtils {
         }
         if (readyToSer instanceof SeparatedCharSequence) {
             return InternalSerializers.SeparatedCharSequenceSer;
+        }
+        if (readyToSer instanceof Throwable) {
+            return ExceptionSerializer.global;
         }
         return lookup(readyToSer.getClass());
     }

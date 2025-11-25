@@ -6,7 +6,7 @@ import org.hswebframework.web.exception.I18nSupportException;
 import java.util.Set;
 
 @Getter
-public class CyclicDependencyException extends I18nSupportException {
+public class CyclicDependencyException extends I18nSupportException.NoStackTrace {
 
     private final Set<?> ids;
 
