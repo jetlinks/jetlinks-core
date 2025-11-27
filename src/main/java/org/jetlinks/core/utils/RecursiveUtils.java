@@ -26,9 +26,11 @@ public class RecursiveUtils {
         public Context apply(Context context) {
             int num = context.<Integer>getOrEmpty(this).orElse(0);
             if (num > maxRecursive) {
-                throw new RecursiveCallException(operation,maxRecursive);
+                throw new RecursiveCallException(operation, maxRecursive);
             }
-            return context.put(this, num + 1);
+            return context
+                .put(this, num + 1)
+                .put(Validator.class, true);
         }
     }
 }
