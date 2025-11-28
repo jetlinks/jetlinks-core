@@ -12,6 +12,8 @@ public class ExceptionUtils {
             System.getProperty("jetlinks.exception.compact.enabled", "true")
         );
 
+    public static int maxStackLineSize = 25;
+
     // 无关紧要的异常栈信息
     private static final List<String> unimportantPackages = new CopyOnWriteArrayList<>(
         Arrays.asList(
@@ -131,6 +133,74 @@ public class ExceptionUtils {
     }
 
 
+    public static String throwableToString(Throwable e) {
+        return omitMessage(e.toString());
+    }
+
+    public static String omitMessage(String str) {
+        if (str == null || str.length() <= 4096) {
+            return str;
+        }
+        return headTail(str, maxStackLineSize);
+    }
+
+    private static String headTail(String text, int n) {
+        if (text == null || text.isEmpty()) return text;
+
+        int len = text.length();
+
+        // ---------- 1. 从头找前 N 行 ----------
+        int headEnd = -1;
+        int lineCount = 0;
+
+        for (int i = 0; i < len; i++) {
+            if (text.charAt(i) == '\n') {
+                lineCount++;
+                if (lineCount == n) {
+                    headEnd = i + 1; // 包含换行
+                    break;
+                }
+            }
+        }
+
+        // 如果总行数 <= 2N，直接返回
+        if (headEnd < 0) {
+            return text;
+        }
+
+        // ---------- 2. 从尾找后 N 行 ----------
+        int tailStart = -1;
+        lineCount = 0;
+
+        for (int i = len - 1; i >= 0; i--) {
+            if (text.charAt(i) == '\n') {
+                lineCount++;
+                if (lineCount == n) {
+                    tailStart = i + 1;
+                    break;
+                }
+            }
+        }
+
+        if (tailStart < 0 || tailStart <= headEnd) {
+            return text;
+        }
+
+        // ---------- 3. 统计省略的行数 ----------
+        int omitted = 0;
+        for (int i = headEnd; i < tailStart; i++) {
+            if (text.charAt(i) == '\n') {
+                omitted++;
+            }
+        }
+
+        // ---------- 4. 拼接最终结果 ----------
+
+        return text.substring(0, headEnd) +
+            "... omitted " + omitted + " lines ...\n" +
+            text.substring(tailStart, len);
+    }
+
     private static void getFullStackTrace(Throwable e, List<StackTraceElement> elements) {
 
         fillStackTrace(e, elements);
@@ -138,7 +208,7 @@ public class ExceptionUtils {
         for (Throwable throwable : e.getSuppressed()) {
             elements.add(
                 new StackTraceElement(
-                    "Suppressed: " + throwable,
+                    "Suppressed: " + throwableToString(throwable),
                     "",
                     null,
                     -1
@@ -151,7 +221,7 @@ public class ExceptionUtils {
         if (cause != null) {
             elements.add(
                 new StackTraceElement(
-                    "Caused by: " + cause,
+                    "Caused by: " + throwableToString(cause),
                     "",
                     null,
                     -1

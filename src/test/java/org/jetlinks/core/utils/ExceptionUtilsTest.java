@@ -1,19 +1,24 @@
 package org.jetlinks.core.utils;
 
+import lombok.SneakyThrows;
 import org.hswebframework.web.exception.NotFoundException;
 import org.hswebframework.web.exception.TraceSourceException;
 import org.junit.Test;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.StreamUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 import static org.junit.Assert.*;
 
 public class ExceptionUtilsTest {
-static {
-    ExceptionUtils.addUnimportantPackage("org.junit",
-                                         "com.intellij",
-                                         "sun.reflect");
-}
+    static {
+        ExceptionUtils.addUnimportantPackage("org.junit",
+                                             "com.intellij",
+                                             "sun.reflect");
+    }
+
     @Test
     public void testBenchmark() {
         StackTraceElement traceElement = new StackTraceElement(
@@ -49,4 +54,14 @@ static {
         }
     }
 
+    @Test
+    @SneakyThrows
+    public void testLongStack() {
+        String text = StreamUtils.copyToString(new ClassPathResource("stack.txt").getInputStream(), StandardCharsets.UTF_8);
+
+        String str = ExceptionUtils.throwableToString(new RuntimeException(text));
+
+        System.out.println(str.length());
+        System.out.println(str);
+    }
 }
