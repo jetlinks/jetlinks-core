@@ -243,7 +243,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                         () -> {
                             async.emitEmpty(Reactors.emitFailureHandler());
                         },
-                        Context.of(DefaultReactiveCacheContainer.class, this)
+                        Context.of(contextView).put(DefaultReactiveCacheContainer.class, this)
                     );
                 return async.asMono();
             }
