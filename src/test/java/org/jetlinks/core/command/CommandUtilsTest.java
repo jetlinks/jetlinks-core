@@ -2,6 +2,11 @@ package org.jetlinks.core.command;
 
 import org.junit.Test;
 import reactor.core.publisher.Flux;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
+
+import java.net.URI;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -16,17 +21,31 @@ public class CommandUtilsTest {
         assertFalse(CommandUtils.commandResponseMono(new TestCommand()));
 
 
-        assertEquals(String.class,CommandUtils.getCommandResponseDataType(new TestCommand()).toClass());
+        assertEquals(String.class, CommandUtils.getCommandResponseDataType(new TestCommand()).toClass());
 
-        TestCommand cmd = new  TestCommand();
+        TestCommand cmd = new TestCommand();
 
         assertEquals("test", cmd.createResponseData("test"));
         assertEquals("123", cmd.createResponseData(123));
 
     }
 
+    @Test
+    public void testUri() {
 
-    public static class TestCommand extends AbstractCommand<Flux<String>,TestCommand> {
+        String uri = CommandUtils.createCommandURI("testService", "test","Command");
+        System.out.println(uri);
+        List<Object> tp3 = CommandUtils
+            .resolveURL(URI.create(uri),
+                        List::of);
+        assertEquals("testService", tp3.get(0));
+        assertEquals("test", tp3.get(1));
+        assertEquals("Command", tp3.get(2));
+
+    }
+
+
+    public static class TestCommand extends AbstractCommand<Flux<String>, TestCommand> {
 
     }
 }

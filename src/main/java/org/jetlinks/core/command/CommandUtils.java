@@ -1,15 +1,20 @@
 package org.jetlinks.core.command;
 
 import org.hswebframework.web.bean.FastBeanCopier;
+import org.jetlinks.core.message.codec.http.HttpUtils;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.function.Function3;
+import reactor.function.Function4;
 
+import java.net.URI;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -280,5 +285,44 @@ public class CommandUtils {
 
         return metadata.expand(CommandConstant.responseFlux, commandResponseFlux(command))
                        .expand(CommandConstant.responseReactive, commandResponsePublisher(command));
+    }
+
+    public static <T> T resolveURL(
+        URI uri,
+        Function4<String, String, String, Map<String, String>, T> call) {
+        if (!Objects.equals(uri.getScheme(), "command")) {
+            throw new UnsupportedOperationException("unsupported schema:" + uri.getScheme());
+        }
+        String service = uri.getHost();
+        String path = uri.getPath();
+        String module, commandId;
+        String[] moduleOrCommand = path.split("/");
+        if (moduleOrCommand.length > 2) {
+            module = moduleOrCommand[1];
+            commandId = moduleOrCommand[2];
+        } else {
+            module = null;
+            commandId = moduleOrCommand[1];
+        }
+        return call.apply(service, module, commandId, HttpUtils.parseEncodedUrlParams(uri.getQuery()));
+    }
+
+    public static String createCommandURI(String service, String cmdId) {
+        return "command://" + service + "/" + cmdId;
+    }
+
+    public static String createCommandURI(String service, String module, String commandId) {
+        return "command://" + service + "/" + module + "/" + commandId;
+    }
+
+    public static String createCommandURI(String service, Command<?> cmd) {
+        String uri = "command://" + service + "/" + cmd.getCommandId();
+        return HttpUtils.appendUrlParameter(uri, cmd.asMap());
+    }
+
+    public static String createCommandURI(String service, String module, Command<?> cmd) {
+        String uri = "command://" + service + "/" + module + "/" + cmd.getCommandId();
+        // command://accountService/payment/NotifyRecharge?txId=123
+        return HttpUtils.appendUrlParameter(uri, cmd.asMap());
     }
 }
