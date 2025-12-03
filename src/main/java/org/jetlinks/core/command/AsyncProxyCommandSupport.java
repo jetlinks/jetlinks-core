@@ -23,16 +23,23 @@ public class AsyncProxyCommandSupport implements CommandSupport {
     @Override
     @SuppressWarnings("all")
     public <R> R execute(@Nonnull Command<R> command) {
-        //ProxyCommand 固定返回Flux
+        // ProxyCommand 固定返回Flux
         if (command instanceof ProxyCommand) {
             return (R) executeToFlux(command);
         }
-
+        // mono
         if (CommandUtils.commandResponseMono(command)) {
-            return (R) executeToMono(command);
+            return (R) (asyncCommand
+                .flatMap(
+                    support ->
+                       CommandUtils.convertResponseToMono(support.execute(command))
+                ));
         }
-
-        return (R) executeToFlux(command);
+        return (R) (asyncCommand
+            .flatMapMany(
+                support ->
+                    CommandUtils.convertResponseToFlux(support.execute(command))
+            ));
     }
 
     @Override
