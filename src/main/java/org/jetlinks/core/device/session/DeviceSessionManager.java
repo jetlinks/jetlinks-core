@@ -182,6 +182,13 @@ public interface DeviceSessionManager {
     Flux<DeviceSessionInfo> getSessionInfo();
 
     /**
+     * 获取指定设备的会话信息
+     *
+     * @return 会话信息
+     */
+    Flux<DeviceSessionInfo> getDeviceSessionInfo(String deviceId);
+
+    /**
      * 获取指定服务的会话信息
      *
      * @param serverId 服务ID
