@@ -1,8 +1,5 @@
 package org.jetlinks.core.utils;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.util.ReferenceCountUtil;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.Disposable;
@@ -227,6 +224,9 @@ public class FluxUtils {
         @SuppressWarnings("rawtypes")
         static final AtomicLongFieldUpdater<MergeOnBackpressureSubscriber> REQUESTED = AtomicLongFieldUpdater
             .newUpdater(MergeOnBackpressureSubscriber.class, "requested");
+        @SuppressWarnings("rawtypes")
+        static final AtomicLongFieldUpdater<MergeOnBackpressureSubscriber> REMAINDER = AtomicLongFieldUpdater
+            .newUpdater(MergeOnBackpressureSubscriber.class, "remainder");
 
         private final Supplier<C> containerSupplier;
         private final BiFunction<C, S, C> merger;
@@ -236,17 +236,18 @@ public class FluxUtils {
         private final CoreSubscriber<? super T> actual;
 
         private volatile long requested;
+        private volatile long remainder; // 剩余请求数量（已请求但未消费）
         private volatile int wip;
 
         private volatile boolean done;
         private volatile Throwable error;
         private volatile boolean cancelled;
 
-        private Subscription s;
+        private volatile Subscription s;
 
         private final Queue<S> queue = Queues.<S>unboundedMultiproducer().get();
 
-        private C currentContainer; // 当前正在累积的容器
+        private volatile C currentContainer; // 当前正在累积的容器
 
         MergeOnBackpressureSubscriber(Supplier<C> containerSupplier,
                                       BiFunction<C, S, C> merger,
@@ -281,6 +282,8 @@ public class FluxUtils {
 
         @Override
         public void onNext(@Nonnull S element) {
+            // 收到上游数据，减少 remainder（无论是否处理）
+            Operators.produced(REMAINDER, this, 1);
             if (done || cancelled) {
                 releaseElement(element);
                 return;
@@ -368,51 +371,30 @@ public class FluxUtils {
 
                     // 获取或创建当前容器
                     C container = currentContainer != null ? currentContainer : containerSupplier.get();
-                    boolean containerWasEmpty = currentContainer == null;
                     boolean hasMerged = false;
                     boolean shouldEmit = false;
 
                     // 合并数据，直到bufferPredicate返回false或队列为空
+                    // 重要：为了避免资源泄漏（如 ByteBuf 引用计数问题），采用"先poll再merge"的策略
+                    // 这确保了元素一旦从队列中取出，就必须被处理，避免 merger 消费资源后元素还留在队列中
                     while (!queue.isEmpty()) {
-                        S element = queue.peek();
+                        S element = queue.poll();
                         if (element == null) {
                             break;
                         }
 
-                        // 尝试合并元素
-                        // 注意：merger可能会修改原容器，所以我们需要确保merger不修改原容器
-                        // 或者merger返回新容器。如果merger修改了原容器，这是实现问题。
+                        // 合并元素到容器中
                         C newContainer = merger.apply(container, element);
 
-                        // 使用bufferPredicate判断是否可以继续缓冲
+                        // 使用bufferPredicate判断合并后的容器是否还可以继续缓冲
                         boolean canBuffer = bufferPredicate.test(newContainer);
-                        if (canBuffer) {
-                            // 可以继续缓冲，合并元素
-                            queue.poll(); // 确认消费元素
-                            container = newContainer;
-                            hasMerged = true;
-                            containerWasEmpty = false;
-                        } else {
-                            // 不能再缓冲了
-                            // 如果容器是空的（还没有合并任何元素），仍然合并这个元素（避免无限循环）
-                            if (containerWasEmpty) {
-                                queue.poll();
-                                container = newContainer;
-                                hasMerged = true;
-                            } else if (done) {
-                                // 上游已完成，强制合并剩余元素（确保流能结束）
-                                queue.poll();
-                                container = newContainer;
-                                hasMerged = true;
-                            } else {
-                                // 容器不为空且上游未完成，不合并这个元素
-                                // 注意：如果merger修改了原容器，此时container可能已经被修改了
-                                // 但根据接口约定，merger应该返回新容器而不修改原容器
-                                // 如果merger修改了原容器，这是merger实现的问题
-                                // 我们不使用newContainer，保持container不变
-                                // 元素保留在队列中，等待下次处理
-                            }
-                            // 标记应该发送（因为bufferPredicate返回false）
+
+                        // 更新容器
+                        container = newContainer;
+                        hasMerged = true;
+
+                        if (!canBuffer) {
+                            // 不能再缓冲了，标记应该发送
                             shouldEmit = true;
                             // 停止合并
                             break;
@@ -430,28 +412,25 @@ public class FluxUtils {
                     boolean hasBackpressureAfterProcessing = (r == 0) || !queueEmptyAfterProcessing;
 
                     // 发送条件判断：
-                    // 1. bufferPredicate返回false（不能再缓冲了）且容器不为空 -> 必须发送
+                    // 1. bufferPredicate返回false（不能再缓冲了） -> 必须发送
                     // 2. 没有背压且合并了元素 -> 立即发送（避免延迟）
                     // 3. 上游已完成且合并了元素 -> 立即发送（确保流能结束）
-                    // 4. 有背压且上游未完成 -> 保存容器状态，等待更多元素
-                    if (shouldEmit && !containerWasEmpty) {
-                        // bufferPredicate返回false，不能再缓冲，必须发送（容器不为空）
-                        T mapped = mapper.apply(container);
-                        a.onNext(mapped);
-                        currentContainer = null;
-                        e++;
-                        r = requested;
-                    } else if (hasMerged && (!hasBackpressureAfterProcessing || done) && !shouldEmit) {
-                        // 没有背压或上游已完成，且bufferPredicate还允许继续缓冲，立即发送（避免延迟）
-                        T mapped = mapper.apply(container);
-                        a.onNext(mapped);
-                        currentContainer = null;
-                        e++;
-                        r = requested;
+                    // 4. 有背压且上游未完成且可以继续缓冲 -> 保存容器状态，等待更多元素
+                    if (hasMerged) {
+                        boolean shouldSend = shouldEmit  // bufferPredicate返回false
+                            || !hasBackpressureAfterProcessing  // 没有背压
+                            || done;  // 上游已完成
+
+                        if (shouldSend && e < r) {
+                            // 有下游请求，发送容器
+                            T mapped = mapper.apply(container);
+                            a.onNext(mapped);
+                            currentContainer = null;
+                            e++;
+                            r = requested;
+                        }
+                        // 否则保存容器状态，等待更多元素或下游请求
                     }
-                    // 如果有背压且上游未完成，且合并了元素但bufferPredicate还允许继续缓冲，队列为空
-                    // 保存容器状态，等待更多元素，不发送
-                    // currentContainer已经在上面的hasMerged块中设置了
                 }
 
                 if (e != 0L) {
@@ -468,18 +447,22 @@ public class FluxUtils {
                     return;
                 }
 
+                // 如果还有请求且上游未完成，检查是否需要请求更多数据
+                // 只有当 remainder 低于阈值时才请求，避免过度请求
+                if (requested > 0 && !done && !cancelled) {
+                    long rem = remainder;
+                    // 如果 remainder 低于阈值（16），请求更多数据
+                    if (rem < 16) {
+                        long toRequest = queue.isEmpty() ? 32 : 16;
+                        Operators.addCap(REMAINDER, this, toRequest);
+                        this.s.request(toRequest);
+                    }
+                }
+
                 missed = WIP.addAndGet(this, -missed);
                 if (missed == 0) {
                     break;
                 }
-            }
-
-            // 如果还有请求且上游未完成，继续请求上游数据
-            if (requested > 0 && !done && !cancelled) {
-                // 如果队列为空，请求更多数据以保持数据流
-                // 如果队列不为空，也请求一些数据以预取（提高性能）
-                long toRequest = queue.isEmpty() ? 256 : 1;
-                this.s.request(toRequest);
             }
         }
 
@@ -488,11 +471,16 @@ public class FluxUtils {
             while ((element = queue.poll()) != null) {
                 releaseElement(element);
             }
+            if (null != currentContainer) {
+                Operators.onDiscard(currentContainer, currentContext());
+            }
         }
 
         void releaseElement(S element) {
             if (onDrop != null) {
                 onDrop.accept(element);
+            } else {
+                Operators.onDiscard(element, currentContext());
             }
         }
 
