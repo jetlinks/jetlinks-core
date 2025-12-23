@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.metadata.types.ObjectType;
-import org.jetlinks.core.utils.CompositeList;
 import org.jetlinks.core.utils.MetadataUtils;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -170,13 +169,19 @@ public class CommandMetadataResolver {
         SimpleFunctionMetadata metadata = new SimpleFunctionMetadata();
         Class<?> clazz = commandClazz.toClass();
 
-        metadata.setId(CommandUtils.getCommandIdByType(clazz));
         Schema schema = AnnotationUtils.findAnnotation(clazz, Schema.class);
         if (schema != null) {
+            if (StringUtils.hasText(schema.name())) {
+                //自定义命令id
+                metadata.setId(schema.name());
+            }
             metadata.setName(StringUtils.hasText(schema.title()) ? schema.title() : schema.description());
             metadata.setDescription(schema.description());
         } else {
             metadata.setName(metadata.getId());
+        }
+        if (metadata.getId() == null) {
+            metadata.setId(CommandUtils.getCommandIdByType(clazz));
         }
         metadata.setInputs(resolveInputs(commandClazz));
         metadata.setOutput(resolveOutput(outClazz));
