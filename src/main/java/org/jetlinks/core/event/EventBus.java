@@ -5,7 +5,10 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
+import reactor.util.context.Context;
+import reactor.util.context.ContextView;
 
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -56,6 +59,19 @@ public interface EventBus {
      * @return 事件流
      */
     <T> Flux<T> subscribe(Subscription subscription, Class<T> type);
+
+    /**
+     * 订阅主题并将事件数据转换为指定的类型
+     *
+     * @param subscription 订阅信息
+     * @param mapper       类型
+     * @param <T>          类型
+     * @return 事件流
+     */
+    default <T> Flux<T> subscribe(Subscription subscription, BiFunction<ContextView, TopicPayload, T> mapper) {
+        return subscribe(subscription)
+            .mapNotNull(topic -> mapper.apply(Context.empty(), topic));
+    }
 
     /**
      * 推送单个数据到事件流中,默认自动根据事件类型进行序列化
