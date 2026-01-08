@@ -2,6 +2,7 @@ package org.jetlinks.core.codec;
 
 import io.netty.buffer.ByteBuf;
 import org.hswebframework.web.i18n.LocaleUtils;
+import org.jetlinks.core.codec.internal.arrays.ArrayCodec;
 
 import javax.annotation.Nonnull;
 
@@ -45,6 +46,16 @@ public interface Codec<T> {
      * @return 字节长度
      */
     int byteLength();
+
+    /**
+     * 判断特定的字节长度是否受支持
+     *
+     * @param len len
+     * @return 是否支持
+     */
+    default boolean isByteLengthSupported(int len) {
+        return byteLength() == -1 || byteLength() == len;
+    }
 
     /**
      * 解码数据,注意: 方法不会释放ByteBuf.

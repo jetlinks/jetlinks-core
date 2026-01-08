@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.exception.BusinessException;
 import org.jetlinks.core.cache.Caches;
 import org.jetlinks.core.codec.internal.*;
+import org.jetlinks.core.codec.internal.arrays.ArrayCodec;
+import org.jetlinks.core.codec.internal.arrays.BitArray;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 
@@ -26,28 +28,46 @@ public final class Codecs {
 
     public interface Internal {
         Codec<Boolean> BOOL = new Bool();
+        Codec<Boolean[]> BOOL_ARRAY = new ArrayCodec<>(BOOL);
         Codec<Byte> INT8 = new Int8();
+        Codec<Byte[]> INT8_ARRAY = new ArrayCodec<>(INT8);
         Codec<Short> INT16 = new Int16();
+        Codec<Short[]> INT16_ARRAY = new ArrayCodec<>(INT16);
         Codec<Number> UnsignedInt16 = new UnsignedInt16();
+        Codec<Number[]> UnsignedInt16_ARRAY = new ArrayCodec<>(UnsignedInt16);
         Codec<Number> UnsignedInt32 = new UnsignedInt32();
+        Codec<Number[]> UnsignedInt32_ARRAY = new ArrayCodec<>(UnsignedInt32);
         Codec<Integer> INT32 = new Int32();
+        Codec<Integer[]> INT32_ARRAY = new ArrayCodec<>(INT32);
         Codec<Long> INT64 = new Int64();
+        Codec<Long[]> INT64_ARRAY = new ArrayCodec<>(INT64);
 
         Codec<Float> Ieee754Float32 = new Ieee754Float32();
+        Codec<Float[]> Ieee754Float32_ARRAY = new ArrayCodec<>(Ieee754Float32);
         Codec<Double> Ieee754Float64 = new Ieee754Float64();
+        Codec<Double[]> Ieee754Float64_ARRAY = new ArrayCodec<>(Ieee754Float64);
 
         Codec<Float> Q1_15 = new FixedPointQ1_15();
+        Codec<Float[]> Q1_15_ARRAY = new ArrayCodec<>(Q1_15);
         Codec<Float> Q1_31 = new FixedPointQ1_31();
+        Codec<Float[]> Q1_31_ARRAY = new ArrayCodec<>(Q1_31);
         Codec<Float> Q8_8 = new FixedPointQ8_8();
+        Codec<Float[]> Q8_8_ARRAY = new ArrayCodec<>(Q8_8);
         Codec<Float> Q15_1 = new FixedPointQ15_1();
+        Codec<Float[]> Q15_1_ARRAY = new ArrayCodec<>(Q15_1);
         Codec<Float> Q31_1 = new FixedPointQ31_1();
+        Codec<Float[]> Q31_1_ARRAY = new ArrayCodec<>(Q31_1);
         Codec<Float> FixedPointScaled10 = new FixedPointScaled10();
+        Codec<Float[]> FixedPointScaled10_ARRAY = new ArrayCodec<>(FixedPointScaled10);
+
+        Codec<Boolean[]> BIT_ARRAY = new BitArray();
     }
 
     private static Map<String, Codec<?>> mapping = new ConcurrentHashMap<>();
 
     static {
         register(
+            // 基础类型
             Internal.BOOL,
             Internal.INT8,
             Internal.INT16,
@@ -62,7 +82,25 @@ public final class Codecs {
             Internal.Q8_8,
             Internal.Q15_1,
             Internal.Q31_1,
-            Internal.FixedPointScaled10
+            Internal.FixedPointScaled10,
+            // 数组类型
+            Internal.BOOL_ARRAY,
+            Internal.INT8_ARRAY,
+            Internal.INT16_ARRAY,
+            Internal.UnsignedInt16_ARRAY,
+            Internal.UnsignedInt32_ARRAY,
+            Internal.INT32_ARRAY,
+            Internal.INT64_ARRAY,
+            Internal.Ieee754Float32_ARRAY,
+            Internal.Ieee754Float64_ARRAY,
+            Internal.Q1_15_ARRAY,
+            Internal.Q1_31_ARRAY,
+            Internal.Q8_8_ARRAY,
+            Internal.Q15_1_ARRAY,
+            Internal.Q31_1_ARRAY,
+            Internal.FixedPointScaled10_ARRAY,
+            // 位数组
+            Internal.BIT_ARRAY
         );
     }
 
