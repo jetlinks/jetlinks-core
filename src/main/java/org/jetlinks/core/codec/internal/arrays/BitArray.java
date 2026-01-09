@@ -31,6 +31,60 @@ public class BitArray implements Codec<Boolean[]> {
     }
 
     /**
+     * Merges non‑null bits from source into target
+     */
+    public static Boolean[] mergeBits(Boolean[] source, Boolean[] target) {
+        if (source == null || target == null) {
+            return target;
+        }
+
+        int length = Math.min(source.length, target.length);
+        for (int i = 0; i < length; i++) {
+            if (source[i] != null) {
+                target[i] = source[i];
+            }
+        }
+
+        return target;
+    }
+
+    /**
+     * 合并位数字到 ByteBuf
+     *
+     * @param bits   位数字
+     * @param origin 原始 ByteBuf
+     * @return 合并后的 ByteBuf
+     */
+    public static ByteBuf mergeBits(Boolean[] bits, ByteBuf origin) {
+        if (bits == null || bits.length == 0) {
+            return origin;
+        }
+
+        int size = bits.length;
+        int byteCount = (size + 7) / 8; // 向上取整，计算需要的字节数
+
+        // 遍历每8个布尔值，组成一个字节
+        for (int i = 0; i < byteCount; i++) {
+            byte b = 0;
+            int startIndex = i * 8;
+            // 从高位到低位（MSB first）设置每一位
+            for (int bit = 7; bit >= 0; bit--) {
+                int index = startIndex + (7 - bit);
+                if (index < size) {
+                    Boolean value = bits[index];
+                    // 支持 Boolean 类型，null 视为 false
+                    if (value != null && value) {
+                        b |= (byte) (1 << bit);
+                    }
+                }
+            }
+            origin.writeByte(b);
+        }
+
+        return origin;
+    }
+
+    /**
      * 解码：将字节数组的每一位转换为布尔值数组
      * 每个字节的8位从高位到低位（MSB first）依次转换
      *
