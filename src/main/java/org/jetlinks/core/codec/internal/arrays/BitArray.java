@@ -61,21 +61,30 @@ public class BitArray implements Codec<Boolean[]> {
         }
 
         int size = bits.length;
-        int byteCount = (size + 7) / 8; // 向上取整，计算需要的字节数
+        int fullBytes = size / 8;
 
-        // 遍历每8个布尔值，组成一个字节
-        for (int i = 0; i < byteCount; i++) {
-            byte b = 0;
-            int startIndex = i * 8;
-            // 从高位到低位（MSB first）设置每一位
-            for (int bit = 7; bit >= 0; bit--) {
-                int index = startIndex + (7 - bit);
-                if (index < size) {
-                    Boolean value = bits[index];
-                    // 支持 Boolean 类型，null 视为 false
-                    if (value != null && value) {
-                        b |= (byte) (1 << bit);
-                    }
+        // Writes full bytes representing bit array
+        for (int i = 0; i < fullBytes; i++) {
+            int offset = i * 8;
+            int b = 0;
+            if (Boolean.TRUE.equals(bits[offset])) b |= 0x80;
+            if (Boolean.TRUE.equals(bits[offset + 1])) b |= 0x40;
+            if (Boolean.TRUE.equals(bits[offset + 2])) b |= 0x20;
+            if (Boolean.TRUE.equals(bits[offset + 3])) b |= 0x10;
+            if (Boolean.TRUE.equals(bits[offset + 4])) b |= 0x08;
+            if (Boolean.TRUE.equals(bits[offset + 5])) b |= 0x04;
+            if (Boolean.TRUE.equals(bits[offset + 6])) b |= 0x02;
+            if (Boolean.TRUE.equals(bits[offset + 7])) b |= 0x01;
+            origin.writeByte(b);
+        }
+
+        int remaining = size % 8;
+        if (remaining > 0) {
+            int offset = fullBytes * 8;
+            int b = 0;
+            for (int i = 0; i < remaining; i++) {
+                if (Boolean.TRUE.equals(bits[offset + i])) {
+                    b |= (1 << (7 - i));
                 }
             }
             origin.writeByte(b);
@@ -94,17 +103,18 @@ public class BitArray implements Codec<Boolean[]> {
     @Override
     public Boolean[] decode(@Nonnull ByteBuf payload) {
         int size = payload.readableBytes();
-        int bitCount = size * 8;
-        Boolean[] result = new Boolean[bitCount];
-        int index = 0;
-
-        // 遍历每个字节
+        Boolean[] result = new Boolean[size * 8];
         for (int i = 0; i < size; i++) {
             byte b = payload.readByte();
-            // 从高位到低位（MSB first）提取每一位
-            for (int bit = 7; bit >= 0; bit--) {
-                result[index++] = (b & (1 << bit)) != 0;
-            }
+            int offset = i * 8;
+            result[offset] = (b & 0x80) != 0;
+            result[offset + 1] = (b & 0x40) != 0;
+            result[offset + 2] = (b & 0x20) != 0;
+            result[offset + 3] = (b & 0x10) != 0;
+            result[offset + 4] = (b & 0x08) != 0;
+            result[offset + 5] = (b & 0x04) != 0;
+            result[offset + 6] = (b & 0x02) != 0;
+            result[offset + 7] = (b & 0x01) != 0;
         }
 
         return result;
@@ -121,31 +131,6 @@ public class BitArray implements Codec<Boolean[]> {
      */
     @Override
     public ByteBuf encode(Boolean[] body, ByteBuf buf) {
-        if (body == null || body.length == 0) {
-            return buf;
-        }
-
-        int size = body.length;
-        int byteCount = (size + 7) / 8; // 向上取整，计算需要的字节数
-
-        // 遍历每8个布尔值，组成一个字节
-        for (int i = 0; i < byteCount; i++) {
-            byte b = 0;
-            int startIndex = i * 8;
-            // 从高位到低位（MSB first）设置每一位
-            for (int bit = 7; bit >= 0; bit--) {
-                int index = startIndex + (7 - bit);
-                if (index < size) {
-                    Boolean value = body[index];
-                    // 支持 Boolean 类型，null 视为 false
-                    if (value != null && value) {
-                        b |= (byte) (1 << bit);
-                    }
-                }
-            }
-            buf.writeByte(b);
-        }
-
-        return buf;
+        return mergeBits(body, buf);
     }
 }

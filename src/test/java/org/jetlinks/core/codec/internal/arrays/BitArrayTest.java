@@ -312,4 +312,108 @@ public class BitArrayTest {
             assertEquals(bits[i], decoded[i]);
         }
     }
+
+    @Test
+    public void testDecodeWithNullPayload() {
+        // 测试 null payload 应该抛出异常
+        try {
+            codec.decode(null);
+            fail("应该抛出 NullPointerException");
+        } catch (NullPointerException e) {
+            // 预期异常
+        }
+    }
+
+    @Test
+    public void testEncodeWithNullBuf() {
+        // 测试 null buf 应该抛出异常
+        Boolean[] bits = {true, false};
+        try {
+            codec.encode(bits, null);
+            fail("应该抛出 NullPointerException");
+        } catch (NullPointerException e) {
+            // 预期异常
+        }
+    }
+
+    @Test
+    public void testMergeBitsArray() {
+        // 1. source 为空
+        Boolean[] target = {false, false};
+        assertSame(target, BitArray.mergeBits(null, target));
+
+        // 2. target 为空
+        assertNull(BitArray.mergeBits(new Boolean[]{true}, (Boolean[]) null));
+
+        // 3. 正常合并
+        Boolean[] source = {true, null, false};
+        target = new Boolean[]{false, true, true, false};
+        BitArray.mergeBits(source, target);
+        assertArrayEquals(new Boolean[]{true, true, false, false}, target);
+
+        // 4. source 较长
+        source = new Boolean[]{true, true, true, true};
+        target = new Boolean[]{false, false};
+        BitArray.mergeBits(source, target);
+        assertArrayEquals(new Boolean[]{true, true}, target);
+
+        // 5. source 较短
+        source = new Boolean[]{true};
+        target = new Boolean[]{false, false};
+        BitArray.mergeBits(source, target);
+        assertArrayEquals(new Boolean[]{true, false}, target);
+    }
+
+    @Test
+    public void testMergeBitsByteBuf() {
+        // 1. bits 为空或长度为 0
+        ByteBuf buf = Unpooled.buffer();
+        assertSame(buf, BitArray.mergeBits(null, buf));
+        assertSame(buf, BitArray.mergeBits(new Boolean[0], buf));
+
+        // 2. 正常合并
+        buf = Unpooled.buffer();
+        Boolean[] bits = {true, false, true, null, true, false, false, true}; // 0b10101001 = 0xA9
+        BitArray.mergeBits(bits, buf);
+        assertEquals(1, buf.readableBytes());
+        assertEquals((byte) 0xA9, buf.readByte());
+
+        // 3. 超过 8 位
+        buf = Unpooled.buffer();
+        bits = new Boolean[]{
+            true, false, false, false, false, false, false, false, // 0x80
+            false, false, false, false, false, false, false, true  // 0x01
+        };
+        BitArray.mergeBits(bits, buf);
+        assertEquals(2, buf.readableBytes());
+        assertEquals((byte) 0x80, buf.readByte());
+        assertEquals((byte) 0x01, buf.readByte());
+    }
+
+    @Test
+    public void testPerformanceLargeArray() {
+        // 性能测试：大数组
+        int byteCount = 1000;
+        Boolean[] largeArray = new Boolean[byteCount * 8];
+        for (int i = 0; i < largeArray.length; i++) {
+            largeArray[i] = (i % 3 == 0);
+        }
+
+        ByteBuf buf = Unpooled.buffer();
+        long startTime = System.currentTimeMillis();
+        codec.encode(largeArray, buf);
+        long encodeTime = System.currentTimeMillis() - startTime;
+
+        buf.readerIndex(0);
+        startTime = System.currentTimeMillis();
+        Boolean[] decoded = codec.decode(buf);
+        long decodeTime = System.currentTimeMillis() - startTime;
+
+        assertEquals(largeArray.length, decoded.length);
+        assertArrayEquals(largeArray, decoded);
+
+        // 验证性能（编码和解码都应该在合理时间内完成）
+        assertTrue("编码时间过长: " + encodeTime + "ms", encodeTime < 1000);
+        assertTrue("解码时间过长: " + decodeTime + "ms", decodeTime < 1000);
+    }
 }

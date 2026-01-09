@@ -6,7 +6,9 @@ import org.jetlinks.core.codec.Codec;
 
 import javax.annotation.Nonnull;
 import java.lang.reflect.Array;
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * 数组编解码器抽象基类.
@@ -20,19 +22,21 @@ public class ArrayCodec<T> implements Codec<T[]> {
 
     protected final Codec<T> codec;
     protected final Class<T[]> arrayType;
+    protected final Class<T> componentType;
 
     /**
      * 构造函数
      *
      * @param codec 元素编解码器
      */
-    @SuppressWarnings("all")
+    @SuppressWarnings("unchecked")
     public ArrayCodec(Codec<T> codec) {
         if (codec == null) {
             throw new IllegalArgumentException("codec cannot be null");
         }
         this.codec = codec;
-        this.arrayType = (Class) newContainer(0).getClass();
+        this.componentType = codec.forType();
+        this.arrayType = (Class<T[]>) Array.newInstance(componentType, 0).getClass();
     }
 
     /**
@@ -41,10 +45,9 @@ public class ArrayCodec<T> implements Codec<T[]> {
      * @param length 数组长度
      * @return 数组实例
      */
-    @SuppressWarnings("all")
-    @SneakyThrows
+    @SuppressWarnings("unchecked")
     protected T[] newContainer(int length) {
-        return (T[]) Array.newInstance(codec.forType(), length);
+        return (T[]) Array.newInstance(componentType, length);
     }
 
     /**
@@ -74,6 +77,12 @@ public class ArrayCodec<T> implements Codec<T[]> {
         return -1;
     }
 
+    /**
+     * 判断是否支持指定长度的字节解码
+     *
+     * @param len 长度
+     * @return 是否支持
+     */
     @Override
     public boolean isByteLengthSupported(int len) {
         int elementLength = codec.byteLength();
@@ -98,17 +107,21 @@ public class ArrayCodec<T> implements Codec<T[]> {
     public T[] decode(@Nonnull ByteBuf payload) {
 
         int elementLength = codec.byteLength();
-        LinkedList<T> elements = new LinkedList<>();
 
         if (elementLength == -1) {
             // 动态长度：读取到 ByteBuf 为空
+            ArrayList<T> elements = new ArrayList<>();
             while (payload.isReadable()) {
                 Object decoded = codec.decode(payload);
                 elements.add(convertElement(decoded));
             }
+            return elements.toArray(newContainer(elements.size()));
         } else {
             // 固定长度：根据总字节数计算元素数量
             int totalBytes = payload.readableBytes();
+            if (totalBytes == 0) {
+                return newContainer(0);
+            }
             if (totalBytes % elementLength != 0) {
                 throw new IllegalArgumentException(
                     String.format("Invalid payload length: %d bytes, expected multiple of %d",
@@ -116,12 +129,13 @@ public class ArrayCodec<T> implements Codec<T[]> {
             }
 
             int elementCount = totalBytes / elementLength;
+            T[] elements = newContainer(elementCount);
             for (int i = 0; i < elementCount; i++) {
                 Object decoded = codec.decode(payload);
-                elements.add(convertElement(decoded));
+                elements[i] = convertElement(decoded);
             }
+            return elements;
         }
-        return elements.toArray(newContainer(elements.size()));
     }
 
     /**
@@ -143,19 +157,13 @@ public class ArrayCodec<T> implements Codec<T[]> {
         }
 
         // 遍历数组中的每个元素进行编码
-        for (T element : body) {
-            if (element == null) {
-                // 如果元素为 null，尝试编码 null 值
-                // 某些编解码器可能不支持 null，这里先尝试编码
-                try {
-                    codec.encode(null, buf);
-                } catch (Exception e) {
-                    throw new IllegalArgumentException(
-                        String.format("Cannot encode null element at index, codec: %s", codec.getId()), e);
-                }
-            } else {
-                // 使用元素编解码器编码
+        for (int i = 0; i < body.length; i++) {
+            T element = body[i];
+            try {
                 codec.encode(element, buf);
+            } catch (Exception e) {
+                throw new IllegalArgumentException(
+                    String.format("Cannot encode element at index %d, codec: %s", i, codec.getId()), e);
             }
         }
 
