@@ -13,7 +13,7 @@ public class Transports {
         transport.forEach(Transports::register);
         return () -> {
             for (Transport t : transport) {
-                all.remove(t.getId().toLowerCase(Locale.ROOT));
+                all.remove(t.getId().toUpperCase());
             }
         };
     }
