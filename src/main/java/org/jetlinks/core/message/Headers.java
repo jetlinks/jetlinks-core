@@ -258,6 +258,11 @@ public interface Headers {
      */
     HeaderKey<Object> deleteOnUnRegister = HeaderKey.of("deleteOnUnRegister", false, Boolean.class);
 
+    /**
+     * 忽略会话丢失时尝试恢复,直接发送给session.
+     */
+    HeaderKey<Boolean> ignoreSessionResume = HeaderKey.of("ignoreSessionResume", false, Boolean.class);
+
 
     /**
      * copy有意义的header到新到消息中,比如标记异步,超时等信息
