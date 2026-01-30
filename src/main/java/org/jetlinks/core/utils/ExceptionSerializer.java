@@ -65,6 +65,11 @@ public class ExceptionSerializer implements SerializeUtils.Serializer {
         return Throwable.class;
     }
 
+    public static void register(Class<? extends Throwable> error, ExceptionSerializerSupport support) {
+        supports.put(error, support);
+        supports.put(support.code(), support);
+    }
+
     @SneakyThrows
     public static Throwable deserialize(DataInput input, boolean includeStackTrace) {
         byte type = input.readByte();
