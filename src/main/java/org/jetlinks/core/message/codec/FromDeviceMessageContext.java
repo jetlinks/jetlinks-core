@@ -3,6 +3,7 @@ package org.jetlinks.core.message.codec;
 
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.device.DeviceRegistry;
+import org.jetlinks.core.device.identity.Identity;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.session.DeviceSession;
@@ -79,6 +80,11 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
             }
 
             @Override
+            public Mono<DeviceOperator> getDevice(Identity identity) {
+                return registry.getDevice(identity);
+            }
+
+            @Override
             public Mono<DeviceOperator> getDevice(String deviceId) {
                 return registry.getDevice(deviceId);
             }
@@ -107,6 +113,11 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
             }
 
             @Override
+            public Mono<DeviceOperator> getDevice(Identity identity) {
+                return registry.getDevice(identity);
+            }
+
+            @Override
             public Mono<Void> handleMessage(DeviceMessage message) {
                 return handler.apply(message);
             }
@@ -127,6 +138,11 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
             @Override
             public DeviceSession getSession() {
                 return session;
+            }
+
+            @Override
+            public Mono<DeviceOperator> getDevice(Identity identity) {
+                return registry.getDevice(identity);
             }
 
             @Nonnull

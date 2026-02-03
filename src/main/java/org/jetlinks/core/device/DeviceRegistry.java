@@ -1,5 +1,6 @@
 package org.jetlinks.core.device;
 
+import org.jetlinks.core.device.identity.Identity;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -104,9 +105,10 @@ public interface DeviceRegistry {
     Mono<Void> unregisterProduct(String productId);
 
     /**
-     * 注销指定版本的产品,注销后将无法通过{@link DeviceRegistry#getProduct(String,String)} 获取到产品信息
-     *<br>
+     * 注销指定版本的产品,注销后将无法通过{@link DeviceRegistry#getProduct(String, String)} 获取到产品信息
+     * <br>
      * 此操作将触发{@link  org.jetlinks.core.ProtocolSupport#onProductUnRegister(DeviceProductOperator)}
+     *
      * @param productId 产品ID
      * @param version   版本号
      * @return void
@@ -116,6 +118,18 @@ public interface DeviceRegistry {
         //默认不支持版本
         return unregisterProduct(productId);
     }
+
+    /**
+     * 根据设备身份信息获取设备
+     *
+     * @param identity 身份信息
+     * @return DeviceOperator
+     * @since 1.3.2
+     */
+    default Mono<DeviceOperator> getDevice(Identity identity) {
+        return getDevice(identity.getIdentifier());
+    }
+
 
 
 }

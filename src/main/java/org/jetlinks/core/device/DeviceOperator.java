@@ -5,6 +5,7 @@ import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.Value;
 import org.jetlinks.core.Values;
 import org.jetlinks.core.config.ConfigKey;
+import org.jetlinks.core.device.identity.Credential;
 import org.jetlinks.core.device.session.DeviceSessionManager;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.server.session.DeviceSession;

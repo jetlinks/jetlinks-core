@@ -1,6 +1,8 @@
 package org.jetlinks.core;
 
 import org.jetlinks.core.device.*;
+import org.jetlinks.core.device.identity.Identity;
+import org.jetlinks.core.device.identity.IdentityMetadata;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
@@ -330,6 +332,18 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
     default Mono<DeviceInfo> doBeforeDeviceCreate(Transport transport,
                                                   DeviceInfo deviceInfo) {
         return Mono.just(deviceInfo);
+    }
+
+    /**
+     * 根据配置解析设备身份信息
+     * @param transport Transport
+     * @param configuration configuration
+     * @return Identity
+     * @see DeviceFeatures#supportIdentity
+     */
+    default Mono<IdentityMetadata> resolveDeviceIdentity(Transport transport,
+                                                         Map<String,Object> configuration){
+        return Mono.empty();
     }
 
     /**

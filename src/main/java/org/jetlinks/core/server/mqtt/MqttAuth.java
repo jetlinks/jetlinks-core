@@ -1,6 +1,8 @@
 package org.jetlinks.core.server.mqtt;
 
-public interface MqttAuth {
+import org.jetlinks.core.device.identity.PasswordCredential;
+
+public interface MqttAuth extends PasswordCredential {
     String getUsername();
 
     String getPassword();

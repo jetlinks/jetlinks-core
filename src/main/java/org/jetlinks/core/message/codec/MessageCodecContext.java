@@ -3,6 +3,7 @@ package org.jetlinks.core.message.codec;
 
 import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.device.identity.Identity;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nullable;
@@ -50,6 +51,17 @@ public interface MessageCodecContext extends Wrapper {
     }
 
     /**
+     * 根据设备身份获取设备信息
+     *
+     * @param identity 身份信息
+     * @return 设备操作接口
+     * @since 1.3.2
+     */
+    default Mono<DeviceOperator> getDevice(Identity identity) {
+        return getDevice(identity.getIdentifier());
+    }
+
+    /**
      * 预留功能,获取配置信息
      *
      * @return 配置信息
@@ -66,7 +78,7 @@ public interface MessageCodecContext extends Wrapper {
      */
     default Optional<Object> getConfig(String key) {
         return Optional
-                .ofNullable(getConfiguration())
-                .map(conf -> conf.get(key));
+            .ofNullable(getConfiguration())
+            .map(conf -> conf.get(key));
     }
 }
