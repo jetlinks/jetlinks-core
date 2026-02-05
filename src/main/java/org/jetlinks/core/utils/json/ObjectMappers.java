@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import lombok.SneakyThrows;
 import org.springframework.core.ResolvableType;
+import org.springframework.core.codec.DecodingException;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.codec.json.Jackson2JsonDecoder;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
@@ -237,6 +238,37 @@ public class ObjectMappers {
                 writer.dispose();
             });
         });
+    }
+
+    /**
+     * 转换数据流为 jsonl 字节流(每行一个json,以\n分隔)
+     *
+     * @param objectStream 数据流
+     * @return jsonl字节流
+     */
+    public static Flux<byte[]> toJsonlStream(Flux<?> objectStream) {
+        return toJsonlStream(objectStream, JSON_MAPPER);
+    }
+
+    /**
+     * 转换数据流为 jsonl 字节流(每行一个json,以\n分隔)
+     *
+     * @param objectStream 数据流
+     * @param mapper       json转换器
+     * @return jsonl字节流
+     */
+    public static Flux<byte[]> toJsonlStream(Flux<?> objectStream, ObjectMapper mapper) {
+        return objectStream
+            .map(obj -> {
+                try {
+                    byte[] json = mapper.writeValueAsBytes(obj);
+                    byte[] out = Arrays.copyOf(json, json.length + 1);
+                    out[out.length - 1] = (byte) '\n';
+                    return out;
+                } catch (Exception e) {
+                    throw new DecodingException("Failed to encode jsonl", e);
+                }
+            });
     }
 
     private static OutputStream createStream(FluxSink<byte[]> sink, int bufferSize) {
