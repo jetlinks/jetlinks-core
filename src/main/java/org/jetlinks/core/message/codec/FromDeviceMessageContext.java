@@ -2,9 +2,11 @@ package org.jetlinks.core.message.codec;
 
 
 import org.jetlinks.core.device.DeviceOperator;
+import org.jetlinks.core.device.DevicePrincipal;
 import org.jetlinks.core.device.DeviceRegistry;
-import org.jetlinks.core.device.identity.Identity;
+import org.jetlinks.core.principal.Identity;
 import org.jetlinks.core.message.DeviceMessage;
+import org.jetlinks.core.principal.Principal;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.session.DeviceSession;
 import reactor.core.publisher.Mono;
@@ -80,8 +82,8 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
             }
 
             @Override
-            public Mono<DeviceOperator> getDevice(Identity identity) {
-                return registry.getDevice(identity);
+            public Mono<DevicePrincipal> resolveDevice(Principal principal) {
+                return registry.resolveDevice(principal);
             }
 
             @Override
@@ -113,10 +115,9 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
             }
 
             @Override
-            public Mono<DeviceOperator> getDevice(Identity identity) {
-                return registry.getDevice(identity);
+            public Mono<DevicePrincipal> resolveDevice(Principal principal) {
+                return registry.resolveDevice(principal);
             }
-
             @Override
             public Mono<Void> handleMessage(DeviceMessage message) {
                 return handler.apply(message);
@@ -141,10 +142,9 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
             }
 
             @Override
-            public Mono<DeviceOperator> getDevice(Identity identity) {
-                return registry.getDevice(identity);
+            public Mono<DevicePrincipal> resolveDevice(Principal principal) {
+                return registry.resolveDevice(principal);
             }
-
             @Nonnull
             @Override
             public EncodedMessage getMessage() {

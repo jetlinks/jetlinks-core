@@ -1,4 +1,4 @@
-package org.jetlinks.core.device.identity;
+package org.jetlinks.core.principal;
 
 public enum CredentialType {
 
@@ -10,10 +10,10 @@ public enum CredentialType {
     /**
      * @see PasswordCredential
      */
-    passwd,
+    password,
 
     /**
-     *
+     * 不支持凭证
      */
     none
 

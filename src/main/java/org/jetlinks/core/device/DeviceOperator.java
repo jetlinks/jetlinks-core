@@ -5,9 +5,12 @@ import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.Value;
 import org.jetlinks.core.Values;
 import org.jetlinks.core.config.ConfigKey;
-import org.jetlinks.core.device.identity.Credential;
 import org.jetlinks.core.device.session.DeviceSessionManager;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.principal.Credential;
+import org.jetlinks.core.principal.CredentialType;
+import org.jetlinks.core.principal.Identity;
+import org.jetlinks.core.principal.Principal;
 import org.jetlinks.core.server.session.DeviceSession;
 import org.jetlinks.core.things.Thing;
 import org.jetlinks.core.things.ThingType;
@@ -246,5 +249,10 @@ public interface DeviceOperator extends Thing {
     @Override
     default Mono<DeviceProductOperator> getTemplate() {
         return getProduct();
+    }
+
+    default Mono<Credential> getCredential(Identity identity,
+                                           CredentialType credentialType){
+        return Mono.empty();
     }
 }

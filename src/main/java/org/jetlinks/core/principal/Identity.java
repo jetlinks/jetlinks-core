@@ -1,8 +1,7 @@
-package org.jetlinks.core.device.identity;
+package org.jetlinks.core.principal;
 
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 
 public interface Identity {
 
@@ -14,8 +13,8 @@ public interface Identity {
     @Nonnull
     String getIdentifier();
 
-    // 身份证明
-    @Nullable
-    Credential getCredential();
 
+    static Identity create(String type,String identifier){
+        return new SimpleIdentity(type,identifier);
+    }
 }

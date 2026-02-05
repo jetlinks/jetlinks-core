@@ -4,8 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.jetlinks.core.device.identity.Credential;
-import org.jetlinks.core.device.identity.PasswordCredential;
+import org.jetlinks.core.principal.PasswordCredential;
 import org.jetlinks.core.message.codec.Transport;
 
 /**
@@ -16,7 +15,7 @@ import org.jetlinks.core.message.codec.Transport;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class MqttAuthenticationRequest implements AuthenticationRequest, PasswordCredential {
+public class MqttAuthenticationRequest implements AuthenticationRequest {
     private String clientId;
 
     private String username;

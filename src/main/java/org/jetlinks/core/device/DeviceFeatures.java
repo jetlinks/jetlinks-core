@@ -2,8 +2,11 @@ package org.jetlinks.core.device;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.jetlinks.core.device.identity.Identity;
+import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.metadata.Feature;
+import org.jetlinks.core.principal.Principal;
+
+import java.util.Map;
 
 @AllArgsConstructor
 @Getter
@@ -14,10 +17,12 @@ public enum DeviceFeatures implements Feature {
 
     /**
      * 标识协议以身份表示+平台提供的认证信息获取设备信息
-     * @see org.jetlinks.core.device.identity.DeviceIdentityManager
-     * @see DeviceRegistry#getDevice(Identity)
+     *
+     * @see DevicePrincipalManager
+     * @see DeviceRegistry#resolveDevice(Principal)
+     * @see org.jetlinks.core.ProtocolSupport#getDevicePrincipalMetadata(Transport, Map)
      */
-    supportIdentity("支持协议自定义设备身份信息");
+    supportPrincipal("支持平台管理设备凭证");
 
     private final String name;
 

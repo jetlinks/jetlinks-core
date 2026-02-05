@@ -1,6 +1,6 @@
 package org.jetlinks.core.device;
 
-import org.jetlinks.core.device.identity.Identity;
+import org.jetlinks.core.principal.Principal;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -122,14 +122,15 @@ public interface DeviceRegistry {
     /**
      * 根据设备身份信息获取设备
      *
-     * @param identity 身份信息
+     * @param principal 身份信息
      * @return DeviceOperator
      * @since 1.3.2
      */
-    default Mono<DeviceOperator> getDevice(Identity identity) {
-        return getDevice(identity.getIdentifier());
+    default Mono<DevicePrincipal> resolveDevice(Principal principal) {
+        return getDevice(principal.identity().getIdentifier())
+            .map(device ->
+                     DevicePrincipal.create(device, null));
     }
-
 
 
 }

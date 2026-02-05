@@ -1,8 +1,7 @@
 package org.jetlinks.core;
 
 import org.jetlinks.core.device.*;
-import org.jetlinks.core.device.identity.Identity;
-import org.jetlinks.core.device.identity.IdentityMetadata;
+import org.jetlinks.core.principal.PrincipalMetadata;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
@@ -335,15 +334,17 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
     }
 
     /**
-     * 根据配置解析设备身份信息
-     * @param transport Transport
-     * @param configuration configuration
+     * 获取设备凭证元数据,用于描述对应transport使用的凭证描述.
+     * <p>
+     * 平台将根据此描述来生成对应的凭证.
+     *
+     * @param deviceInfo deviceInfo 设备配置信息
      * @return Identity
-     * @see DeviceFeatures#supportIdentity
+     * @see DeviceFeatures#supportPrincipal
      */
-    default Mono<IdentityMetadata> resolveDeviceIdentity(Transport transport,
-                                                         Map<String,Object> configuration){
-        return Mono.empty();
+    default Flux<PrincipalMetadata> getDevicePrincipalMetadata(Transport transport,
+                                                               DeviceInfo deviceInfo) {
+        return Flux.empty();
     }
 
     /**

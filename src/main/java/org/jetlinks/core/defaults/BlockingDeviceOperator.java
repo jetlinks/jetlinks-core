@@ -8,6 +8,7 @@ import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigKeyValue;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.principal.Principal;
 import org.jetlinks.core.things.ThingMetadata;
 import org.jetlinks.core.things.ThingRpcSupport;
 import org.jetlinks.core.things.ThingType;
