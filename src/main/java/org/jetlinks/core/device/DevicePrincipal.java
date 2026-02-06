@@ -16,9 +16,9 @@ public interface DevicePrincipal extends Principal {
     DeviceOperator getDevice();
 
     /**
-     * @return 是否已经授权
+     * @return 身份是否已经验证
      */
-    boolean isAuthorized();
+    boolean isVerified();
 
     static DevicePrincipal create(DeviceOperator device, Principal principal) {
         return new SimpleDevicePrincipal(device, principal, false);
