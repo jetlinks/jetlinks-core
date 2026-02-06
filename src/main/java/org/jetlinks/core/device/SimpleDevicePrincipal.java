@@ -9,6 +9,12 @@ import org.jetlinks.core.principal.Principal;
 class SimpleDevicePrincipal implements DevicePrincipal {
     private final DeviceOperator device;
     private final Principal principal;
+    private final boolean authorized;
+
+    @Override
+    public boolean isAuthorized() {
+        return authorized;
+    }
 
     @Override
     public DeviceOperator getDevice() {
