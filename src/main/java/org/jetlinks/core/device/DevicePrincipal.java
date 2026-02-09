@@ -27,4 +27,11 @@ public interface DevicePrincipal extends Principal {
     static DevicePrincipal createAuthorized(DeviceOperator device, Principal principal) {
         return new SimpleDevicePrincipal(device, principal, true);
     }
+
+    static DevicePrincipal create(DeviceOperator device, DevicePrincipal principal) {
+        if (principal == null) {
+            return new SimpleDevicePrincipal(device, null, false);
+        }
+        return new SimpleDevicePrincipal(device, principal, principal.isVerified());
+    }
 }
