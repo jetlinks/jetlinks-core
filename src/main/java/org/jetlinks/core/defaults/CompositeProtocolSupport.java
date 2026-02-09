@@ -10,6 +10,7 @@ import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.*;
+import org.jetlinks.core.principal.PrincipalMetadata;
 import org.jetlinks.core.route.Route;
 import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.DeviceGatewayContext;
@@ -98,6 +99,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     private Map<String, List<Route>> routes = new ConcurrentHashMap<>();
     private Map<String, Supplier<String>> docFiles = new ConcurrentHashMap<>();
+
+    private Map<String, Function<DeviceInfo, Flux<PrincipalMetadata>>> principalMetadataResolver;
 
     private ThingRpcSupportChain rpcChain;
 
@@ -214,17 +217,17 @@ public class CompositeProtocolSupport implements ProtocolSupport {
                                                          String dataTypeId) {
 
         return Optional
-                .ofNullable(expandsConfigSupplier.get(transport.getId()))
-                .map(supplier -> supplier.getConfigMetadata(metadataType, metadataId, dataTypeId))
-                .orElse(Flux.empty());
+            .ofNullable(expandsConfigSupplier.get(transport.getId()))
+            .map(supplier -> supplier.getConfigMetadata(metadataType, metadataId, dataTypeId))
+            .orElse(Flux.empty());
     }
 
     @Override
     public Mono<DeviceMetadata> getDefaultMetadata(Transport transport) {
         return Optional
-                .ofNullable(defaultDeviceMetadata.get(transport.getId()))
-                .map(Supplier::get)
-                .orElse(Mono.empty());
+            .ofNullable(defaultDeviceMetadata.get(transport.getId()))
+            .map(Supplier::get)
+            .orElse(Mono.empty());
     }
 
     @Override
@@ -261,8 +264,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
                                                      @Nonnull DeviceOperator deviceOperation) {
         return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
                    .flatMap(at -> at
-                           .authenticate(request, deviceOperation)
-                           .defaultIfEmpty(AuthenticationResponse.error(400, "无法获取认证结果")))
+                       .authenticate(request, deviceOperation)
+                       .defaultIfEmpty(AuthenticationResponse.error(400, "无法获取认证结果")))
                    .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("不支持的认证请求:" + request)));
     }
 
@@ -272,8 +275,8 @@ public class CompositeProtocolSupport implements ProtocolSupport {
                                                      @Nonnull DeviceRegistry registry) {
         return Mono.justOrEmpty(authenticators.get(request.getTransport().getId()))
                    .flatMap(at -> at
-                           .authenticate(request, registry)
-                           .defaultIfEmpty(AuthenticationResponse.error(400, "无法获取认证结果")))
+                       .authenticate(request, registry)
+                       .defaultIfEmpty(AuthenticationResponse.error(400, "无法获取认证结果")))
                    .switchIfEmpty(Mono.error(() -> new UnsupportedOperationException("不支持的认证请求:" + request)));
     }
 
@@ -461,7 +464,7 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
 
     @SneakyThrows
-    public void setDocument(Transport transport, String documentUrlOrFile,ClassLoader loader) {
+    public void setDocument(Transport transport, String documentUrlOrFile, ClassLoader loader) {
         if (documentUrlOrFile.startsWith("http")) {
             setDocument(transport, () -> documentUrlOrFile);
         } else {
@@ -501,11 +504,11 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     @Override
     public Flux<Feature> getFeatures(Transport transport) {
         return Flux
-                .concat(
-                        Flux.fromIterable(globalFeatures),
-                        features.getOrDefault(transport.getId(), Flux.empty())
-                )
-                .distinct(Feature::getId);
+            .concat(
+                Flux.fromIterable(globalFeatures),
+                features.getOrDefault(transport.getId(), Flux.empty())
+            )
+            .distinct(Feature::getId);
     }
 
     @Override
@@ -520,5 +523,22 @@ public class CompositeProtocolSupport implements ProtocolSupport {
             return null;
         }
         return docFile.get();
+    }
+
+    public synchronized void addPrincipalMetadataResolver(Transport transport, Function<DeviceInfo, Flux<PrincipalMetadata>> resolver) {
+        if (principalMetadataResolver == null) {
+            principalMetadataResolver = new HashMap<>();
+        }
+        principalMetadataResolver.put(transport.getId(), resolver);
+    }
+
+    @Override
+    public Flux<PrincipalMetadata> getDevicePrincipalMetadata(Transport transport, DeviceInfo deviceInfo) {
+        if (principalMetadataResolver != null) {
+            Function<DeviceInfo, Flux<PrincipalMetadata>> resolver = principalMetadataResolver
+                .get(transport.getId());
+            return resolver == null ? Flux.empty() : resolver.apply(deviceInfo);
+        }
+        return ProtocolSupport.super.getDevicePrincipalMetadata(transport, deviceInfo);
     }
 }

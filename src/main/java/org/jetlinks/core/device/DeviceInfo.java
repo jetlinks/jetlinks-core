@@ -5,6 +5,7 @@ import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigKeyValue;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +20,8 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DeviceInfo implements Serializable {
+
+    @Serial
     private static final long serialVersionUID = -6849794470754667710L;
 
     /**

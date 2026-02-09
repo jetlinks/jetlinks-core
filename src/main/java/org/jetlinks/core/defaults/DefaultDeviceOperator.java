@@ -25,6 +25,9 @@ import org.jetlinks.core.message.state.DeviceStateCheckMessageReply;
 import org.jetlinks.core.metadata.CompositeDeviceMetadata;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.metadata.SimpleDeviceMetadata;
+import org.jetlinks.core.principal.Credential;
+import org.jetlinks.core.principal.CredentialType;
+import org.jetlinks.core.principal.Identity;
 import org.jetlinks.core.things.ThingMetadata;
 import org.jetlinks.core.things.ThingRpcSupport;
 import org.jetlinks.core.things.ThingRpcSupportChain;
@@ -82,6 +85,9 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private volatile long lastMetadataTime = -1;
 
     private volatile DeviceMetadata metadataCache;
+
+    @Setter
+    private DevicePrincipalManager principalManager;
 
     @Setter
     private ThingRpcSupportChain rpcChain;
@@ -533,6 +539,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
             );
     }
 
+
     @Override
     public Mono<Boolean> updateMetadata(ThingMetadata metadata) {
         if (metadata instanceof DeviceMetadata) {
@@ -577,6 +584,16 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         return this
             .getSelfConfig(parentGatewayId)
             .flatMap(registry::getDevice);
+    }
+
+
+    @Override
+    public Mono<Credential> getCredential(Identity identity, CredentialType credentialType) {
+        if (principalManager == null) {
+            return Mono.empty();
+        }
+        return principalManager
+            .getDeviceCredential(id, identity, credentialType);
     }
 
     @Override
