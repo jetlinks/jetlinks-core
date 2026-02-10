@@ -15,7 +15,11 @@ public interface DevicePrincipalManager {
 
     /**
      * 根据设备身份信息获取设备身份信息.
-     * 注意: 这里只获取身份,不验证验证.
+     * <p>
+     * 传入{@link org.jetlinks.core.principal.AuthenticationPrincipal} ,将进行平台内部的认证逻辑.
+     * 可根据{@link DevicePrincipal#isVerified()}判断是否认证成功.
+     * <p>
+     * 否则只会获取设备对应的凭证信息.
      *
      * @return 设备ID
      */
@@ -23,9 +27,10 @@ public interface DevicePrincipalManager {
 
     /**
      * 获取设备身份证明信息
+     *
      * @param deviceId 设备ID
      * @param identity identity
-     * @param type type
+     * @param type     type
      * @return Credential
      */
     Mono<Credential> getDeviceCredential(String deviceId, Identity identity, CredentialType type);

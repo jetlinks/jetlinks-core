@@ -6,4 +6,8 @@ package org.jetlinks.core.principal;
 public interface AuthenticationPrincipal extends Principal {
 
 
+    static AuthenticationPrincipal create(Identity identity, Credential credential) {
+        return new SimpleAuthenticationPrincipal(identity, credential);
+    }
+
 }
