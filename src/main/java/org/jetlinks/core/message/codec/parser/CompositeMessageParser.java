@@ -66,15 +66,6 @@ public class CompositeMessageParser extends AbstractMessageParser {
      */
     private final List<MessageFrameRule> rules;
 
-    /**
-     * 当检测到无效数据被丢弃时的回调监听器.
-     * 比如可以在这里打印日志、统计丢弃字节数等。
-     * <p>
-     * 传入的 {@link ByteBuf} 为只读切片，只在当前调用栈内有效，
-     * 监听器不得修改其 readerIndex/writeIndex，也不应跨线程保存引用。
-     */
-    private final Consumer<ByteBuf> discardListener;
-
     public CompositeMessageParser(List<MessageFrameRule> rules) {
         this(rules, null, 0L, 0);
     }
@@ -91,7 +82,12 @@ public class CompositeMessageParser extends AbstractMessageParser {
      */
     public CompositeMessageParser(List<MessageFrameRule> rules, Consumer<ByteBuf> discardListener,
                                   long maxIdleMs, int maxUnparsedBytes) {
-        this(rules, discardListener, AbstractMessageParser.DEFAULT_MAX_CUMULATION_BYTES, maxIdleMs, maxUnparsedBytes);
+        this(rules,
+             discardListener,
+             AbstractMessageParser.DEFAULT_MAX_CUMULATION_BYTES,
+             maxIdleMs,
+             maxUnparsedBytes,
+             org.jetlinks.core.monitor.Monitor.noop());
     }
 
     /**
@@ -100,13 +96,14 @@ public class CompositeMessageParser extends AbstractMessageParser {
      * @param maxCumulationBytes  累积缓冲区上限(字节)
      * @param maxIdleMs           空闲超时(毫秒), 0 表示不启用
      * @param maxUnparsedBytes    未解析数据长度上限(字节), 0 表示不启用
+     * @param monitor             监控实现, 可为 null(表示 {@link org.jetlinks.core.monitor.Monitor#noop()})
      */
     public CompositeMessageParser(List<MessageFrameRule> rules, Consumer<ByteBuf> discardListener,
-                                  int maxCumulationBytes, long maxIdleMs, int maxUnparsedBytes) {
-        super(maxCumulationBytes, maxIdleMs, maxUnparsedBytes);
+                                  int maxCumulationBytes, long maxIdleMs, int maxUnparsedBytes,
+                                  org.jetlinks.core.monitor.Monitor monitor) {
+        super(maxCumulationBytes, maxIdleMs, maxUnparsedBytes, monitor, discardListener);
         Objects.requireNonNull(rules, "rules");
         this.rules = Collections.unmodifiableList(new ArrayList<>(rules));
-        this.discardListener = discardListener;
     }
 
     public CompositeMessageParser(MessageFrameRule... rules) {
@@ -156,8 +153,9 @@ public class CompositeMessageParser extends AbstractMessageParser {
      * @return 解析器
      */
     public static CompositeMessageParser of(List<MessageFrameRule> rules, Consumer<ByteBuf> discardListener,
-                                           int maxCumulationBytes, long maxIdleMs, int maxUnparsedBytes) {
-        return new CompositeMessageParser(rules, discardListener, maxCumulationBytes, maxIdleMs, maxUnparsedBytes);
+                                           int maxCumulationBytes, long maxIdleMs, int maxUnparsedBytes,
+                                           org.jetlinks.core.monitor.Monitor monitor) {
+        return new CompositeMessageParser(rules, discardListener, maxCumulationBytes, maxIdleMs, maxUnparsedBytes, monitor);
     }
 
     /**
@@ -211,10 +209,7 @@ public class CompositeMessageParser extends AbstractMessageParser {
                 // 这种情况下，如果不消耗字节会死循环。
                 // 理论上由上层决定是否丢弃，但为了保持继续，这里跳过 1 字节。
                 // 在丢弃前先通知监听器。
-                if (discardListener != null) {
-                    ByteBuf discarded = buf.slice(originalReaderIndex, 1).asReadOnly();
-                    discardListener.accept(discarded);
-                }
+                notifyDiscard(buf.slice(originalReaderIndex, 1).asReadOnly());
                 buf.readerIndex(originalReaderIndex + 1);
                 continue;
             }
@@ -222,12 +217,9 @@ public class CompositeMessageParser extends AbstractMessageParser {
             // 有规则匹配到了头部但数据不足
             // 如果头部在当前位置之后，可以跳过之前的无效数据
             if (minStartIndex > originalReaderIndex) {
-                if (discardListener != null) {
-                    int discardLen = minStartIndex - originalReaderIndex;
-                    if (discardLen > 0) {
-                        ByteBuf discarded = buf.slice(originalReaderIndex, discardLen).asReadOnly();
-                        discardListener.accept(discarded);
-                    }
+                int discardLen = minStartIndex - originalReaderIndex;
+                if (discardLen > 0) {
+                    notifyDiscard(buf.slice(originalReaderIndex, discardLen).asReadOnly());
                 }
                 buf.readerIndex(minStartIndex);
                 continue;

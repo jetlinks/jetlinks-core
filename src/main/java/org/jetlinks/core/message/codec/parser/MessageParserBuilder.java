@@ -8,6 +8,7 @@ import org.jetlinks.core.message.codec.parser.rule.LengthFieldFrameRule;
 import org.jetlinks.core.message.codec.parser.rule.ModbusRtuFrameRule;
 import org.jetlinks.core.message.codec.parser.rule.ModbusTcpFrameRule;
 import org.jetlinks.core.message.codec.parser.rule.StartEndFrameRule;
+import org.jetlinks.core.monitor.Monitor;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -58,6 +59,11 @@ public final class MessageParserBuilder {
      * 累积缓冲区上限(字节), 0 表示使用默认 16MB. 见 {@link AbstractMessageParser}.
      */
     private int maxCumulationBytes;
+
+    /**
+     * 监控实现, 用于记录解析过程的日志、指标等. 默认为 {@link Monitor#noop()}.
+     */
+    private Monitor monitor = Monitor.noop();
 
     /**
      * 空闲超时(毫秒), 0 表示不启用. 见 {@link AbstractMessageParser}.
@@ -162,6 +168,19 @@ public final class MessageParserBuilder {
         this.maxCumulationBytes = maxCumulationBytes <= 0 ? 0 : maxCumulationBytes;
         this.maxIdleMs = maxIdleMs < 0 ? 0 : maxIdleMs;
         this.maxUnparsedBytes = maxUnparsedBytes < 0 ? 0 : maxUnparsedBytes;
+        return this;
+    }
+
+    /**
+     * 设置解析器使用的 {@link Monitor} 实现.
+     * <p>
+     * 可用于在解析过程中打印调试日志、记录指标、打点追踪等。
+     *
+     * @param monitor 监控实现, 传入 {@code null} 时等价于 {@link Monitor#noop()}
+     * @return this
+     */
+    public MessageParserBuilder monitor(Monitor monitor) {
+        this.monitor = monitor == null ? Monitor.noop() : monitor;
         return this;
     }
 
@@ -356,7 +375,7 @@ public final class MessageParserBuilder {
      */
     public MessageParser build() {
         int maxCum = maxCumulationBytes > 0 ? maxCumulationBytes : AbstractMessageParser.DEFAULT_MAX_CUMULATION_BYTES;
-        return CompositeMessageParser.of(rules, discardListener, maxCum, maxIdleMs, maxUnparsedBytes);
+        return CompositeMessageParser.of(rules, discardListener, maxCum, maxIdleMs, maxUnparsedBytes, monitor);
     }
 }
 

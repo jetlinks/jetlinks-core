@@ -1,11 +1,16 @@
 package org.jetlinks.core.message.codec.parser;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.MessageParser;
+import org.jetlinks.core.monitor.Monitor;
+import org.jetlinks.core.monitor.logger.Logger;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * 基于 {@link ByteBuf} 的粘拆包解析模板, 参考 Netty {@code ByteToMessageDecoder} 的实现思路:
@@ -27,13 +32,26 @@ import java.util.List;
  *     <li><b>未解析长度上限</b>：若未解析数据长度达到 {@code maxUnparsedBytes}，
  *     在当次解析结束后丢弃整段缓冲区，下次从新数据开始，避免单连接堆积过多无法识别的数据。</li>
  * </ul>
- *
+ * <p>
  * 子类只需关注如何从传入的 {@link ByteBuf} 中读取一帧或多帧数据, 并将解析出的帧写入容器即可.
  *
  * @author zhouhao
  * @since 1.3.2
  */
 public abstract class AbstractMessageParser implements MessageParser {
+
+    /**
+     * 监控接口, 可用于打印解析过程、统计度量等.
+     */
+    private final Monitor monitor;
+
+    /**
+     * 丢弃数据监听器, 当解析器决定丢弃部分字节时, 可通过该监听器拿到对应的切片.
+     * <p>
+     * 传入的 {@link ByteBuf} 为只读切片, 仅在当前调用栈内有效,
+     * 监听器不得修改其 readerIndex/writeIndex, 也不应跨线程保存引用.
+     */
+    private final Consumer<ByteBuf> discardListener;
 
     /**
      * 默认最大累积缓冲区大小: 16MB.
@@ -70,14 +88,14 @@ public abstract class AbstractMessageParser implements MessageParser {
     private volatile boolean disposed;
 
     protected AbstractMessageParser() {
-        this(DEFAULT_MAX_CUMULATION_BYTES, 0L, 0);
+        this(DEFAULT_MAX_CUMULATION_BYTES, 0L, 0, Monitor.noop(), null);
     }
 
     /**
      * @param maxCumulationBytes 最大累积缓冲区大小 (字节), 超出时抛出异常
      */
     protected AbstractMessageParser(int maxCumulationBytes) {
-        this(maxCumulationBytes, 0L, 0);
+        this(maxCumulationBytes, 0L, 0, Monitor.noop(), null);
     }
 
     /**
@@ -86,6 +104,21 @@ public abstract class AbstractMessageParser implements MessageParser {
      * @param maxUnparsedBytes   未解析数据长度上限(字节), 0 表示不启用
      */
     protected AbstractMessageParser(int maxCumulationBytes, long maxIdleMs, int maxUnparsedBytes) {
+        this(maxCumulationBytes, maxIdleMs, maxUnparsedBytes, Monitor.noop(), null);
+    }
+
+    /**
+     * @param maxCumulationBytes 最大累积缓冲区大小 (字节)
+     * @param maxIdleMs          空闲超时(毫秒), 0 表示不启用
+     * @param maxUnparsedBytes   未解析数据长度上限(字节), 0 表示不启用
+     * @param monitor            监控接口, 使用 {@link Monitor#noop()} 表示禁用
+     * @param discardListener    丢弃数据监听器, 可为 null
+     */
+    protected AbstractMessageParser(int maxCumulationBytes,
+                                    long maxIdleMs,
+                                    int maxUnparsedBytes,
+                                    Monitor monitor,
+                                    Consumer<ByteBuf> discardListener) {
         if (maxCumulationBytes <= 0) {
             throw new IllegalArgumentException("maxCumulationBytes must be > 0");
         }
@@ -95,6 +128,8 @@ public abstract class AbstractMessageParser implements MessageParser {
         this.maxCumulationBytes = maxCumulationBytes;
         this.maxIdleMs = maxIdleMs;
         this.maxUnparsedBytes = maxUnparsedBytes;
+        this.monitor = monitor == null ? Monitor.noop() : monitor;
+        this.discardListener = discardListener;
     }
 
     @Override
@@ -106,11 +141,14 @@ public abstract class AbstractMessageParser implements MessageParser {
         if (!payload.isReadable()) {
             return List.of();
         }
-
+        Logger logger = monitor.logger();
         // 兜底: 空闲超时 — 若已有未解析数据且超过 maxIdleMs 未消费, 丢弃累积缓冲区
         if (cumulation != null && cumulation.isReadable() && maxIdleMs > 0 && firstUnconsumedTime > 0) {
             long now = System.currentTimeMillis();
             if (now - firstUnconsumedTime >= maxIdleMs) {
+
+                logger.info("parser.idle.reset", cumulation.readableBytes(), ByteBufUtil.hexDump(cumulation));
+
                 cumulation.release();
                 cumulation = null;
                 firstUnconsumedTime = 0;
@@ -120,6 +158,9 @@ public abstract class AbstractMessageParser implements MessageParser {
         int incoming = payload.readableBytes();
         int existing = (cumulation == null || !cumulation.isReadable()) ? 0 : cumulation.readableBytes();
         if ((long) existing + (long) incoming > maxCumulationBytes) {
+
+            logger.warn("parser.out_of_buffer", existing + incoming, maxCumulationBytes);
+
             throw new IllegalStateException("Cumulation buffer exceeds max capacity: " + maxCumulationBytes + " bytes");
         }
 
@@ -132,7 +173,7 @@ public abstract class AbstractMessageParser implements MessageParser {
             cumulation.writeBytes(payload);
         }
 
-        List<ByteBuf> frames = new ArrayList<>();
+        List<ByteBuf> frames = new LinkedList<>();
 
         // 参考 Netty ByteToMessageDecoder 的循环解析逻辑:
         // 只要每次调用子类 handle 都能输出新的帧, 就继续尝试解析.
@@ -156,6 +197,7 @@ public abstract class AbstractMessageParser implements MessageParser {
         } else {
             // 兜底: 未解析长度上限 — 若剩余未解析数据超过阈值, 丢弃整段缓冲区
             if (maxUnparsedBytes > 0 && cumulation.readableBytes() >= maxUnparsedBytes) {
+                logger.warn("parser.unparsed.reset", maxUnparsedBytes, cumulation.readableBytes());
                 cumulation.release();
                 cumulation = null;
                 firstUnconsumedTime = 0;
@@ -163,13 +205,23 @@ public abstract class AbstractMessageParser implements MessageParser {
         }
 
         if (frames.isEmpty()) {
+            logger.debug("parser.handle.empty", cumulation == null ? 0 : cumulation.readableBytes());
             return List.of();
         }
+
+        logger.debug("parser.handle.result", frames.size());
 
         List<EncodedMessage> messages = new ArrayList<>(frames.size());
         for (ByteBuf frame : frames) {
             messages.add(newMessage(frame));
         }
+
+        monitor
+            .logger()
+            .trace("parser.handle.done",
+                   messages.size(),
+                   cumulation == null ? 0 : cumulation.readableBytes());
+
         return messages;
     }
 
@@ -192,6 +244,26 @@ public abstract class AbstractMessageParser implements MessageParser {
      */
     protected EncodedMessage newMessage(ByteBuf buf) {
         return EncodedMessage.simple(buf);
+    }
+
+    /**
+     * 获取监控接口, 便于子类在解析过程中记录日志、度量等.
+     *
+     * @return Monitor, 默认为 {@link Monitor#noop()}
+     */
+    protected Monitor monitor() {
+        return monitor;
+    }
+
+    /**
+     * 通知丢弃数据监听器.
+     *
+     * @param discarded 被丢弃的数据切片, 为只读且仅当前调用栈有效.
+     */
+    protected void notifyDiscard(ByteBuf discarded) {
+        if (discardListener != null && discarded != null && discarded.isReadable()) {
+            discardListener.accept(discarded);
+        }
     }
 
     @Override

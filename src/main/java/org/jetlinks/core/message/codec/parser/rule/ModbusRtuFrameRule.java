@@ -66,10 +66,7 @@ public class ModbusRtuFrameRule implements MessageFrameRule {
                 // 这里通过 CRC 校验来判断当前数据更像是请求还是响应，避免跨帧误拆。
 
                 // 请求固定长度 8: 地址(1)+功能码(1)+起始地址(2)+数量(2)+CRC(2)
-                boolean requestOk = false;
-                if (readable >= 8 && isCrcValid(buf, index, 8)) {
-                    requestOk = true;
-                }
+                boolean requestOk = readable >= 8 && isCrcValid(buf, index, 8);
 
                 // 响应: 地址(1)+功能码(1)+ByteCount(1)+数据(N)+CRC(2)，总长度 = 3+ByteCount+2 = 5+ByteCount
                 boolean responseOk = false;
@@ -99,7 +96,7 @@ public class ModbusRtuFrameRule implements MessageFrameRule {
                     return ParseResult.success(index, frame);
                 }
 
-                if (requestOk && responseOk) {
+                if (requestOk) {
                     // 同时通过 CRC 的情况极少，一般认为响应更长、信息更多，优先按响应处理。
                     buf.readerIndex(index + respLen);
                     ByteBuf frame = buf.slice(index, respLen).retain();
@@ -203,9 +200,6 @@ public class ModbusRtuFrameRule implements MessageFrameRule {
             return false;
         }
         int dataLength = frameLength - 2;
-        if (dataLength <= 0) {
-            return false;
-        }
         // 使用绝对下标：需保证 [index, index+frameLength) 均在可读范围内
         int readerIndex = buf.readerIndex();
         int readable = buf.readableBytes();

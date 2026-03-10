@@ -22,7 +22,7 @@ public interface MessageParser extends Disposable {
     List<? extends EncodedMessage> handle(EncodedMessage message);
 
     /**
-     * 释放资源
+     * 断开链接时被调用,释放资源.
      */
     @Override
     void dispose();
