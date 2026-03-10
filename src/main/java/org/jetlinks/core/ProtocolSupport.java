@@ -1,6 +1,8 @@
 package org.jetlinks.core;
 
 import org.jetlinks.core.device.*;
+import org.jetlinks.core.message.codec.MessageParser;
+import org.jetlinks.core.message.codec.MessageParserFactory;
 import org.jetlinks.core.principal.PrincipalMetadata;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
 import org.jetlinks.core.message.codec.Transport;
@@ -366,6 +368,17 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      */
     default ThingRpcSupportChain getRpcChain() {
         return null;
+    }
+
+    /**
+     * 获取自定义报文解析器.
+     *
+     * @param connection 客户端连接信息
+     * @param transport  通信方式
+     * @return PayloadParser
+     */
+    default Mono<MessageParserFactory> getMessageParser(Transport transport) {
+        return Mono.empty();
     }
 
     @Override
