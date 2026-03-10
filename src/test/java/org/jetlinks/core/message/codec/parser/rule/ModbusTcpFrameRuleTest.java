@@ -23,13 +23,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class ModbusTcpFrameRuleTest {
 
-    private static List<ByteBuf> executeRule(MessageFrameRule.FrameRule rule, ByteBuf... payloads) {
+    private static List<ByteBuf> executeRule(MessageFrameRule rule, ByteBuf... payloads) {
         CompositeMessageParser parser = CompositeMessageParser.of(rule);
         List<ByteBuf> result = new ArrayList<>();
         try {
             for (ByteBuf p : payloads) {
                 for (EncodedMessage msg : parser.handle(EncodedMessage.simple(p))) {
-                    result.add(msg.getPayload().retain());
+                    result.add(msg.getPayload());
                 }
             }
             return result;
@@ -47,7 +47,8 @@ public class ModbusTcpFrameRuleTest {
     public void matchRejectsLessThan7Bytes() {
         ModbusTcpFrameRule rule = new ModbusTcpFrameRule();
         ByteBuf buf = Unpooled.wrappedBuffer(new byte[]{0x00, 0x01, 0x00, 0x00, 0x00, 0x06});
-        assertFalse(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -55,7 +56,9 @@ public class ModbusTcpFrameRuleTest {
     public void matchAcceptsValidHeader() {
         ModbusTcpFrameRule rule = new ModbusTcpFrameRule();
         ByteBuf buf = Unpooled.wrappedBuffer(FRAME);
-        assertTrue(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        result.frame.release();
         buf.release();
     }
 
@@ -67,7 +70,8 @@ public class ModbusTcpFrameRuleTest {
         buf.writeShort(0x0001);  // 协议号 1 而非 0
         buf.writeShort(0x0006);
         buf.writeByte(0x11);
-        assertFalse(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -75,13 +79,13 @@ public class ModbusTcpFrameRuleTest {
     public void parseReturnsFullFrame() {
         ModbusTcpFrameRule rule = new ModbusTcpFrameRule();
         ByteBuf buf = Unpooled.wrappedBuffer(FRAME);
-        ByteBuf frame = rule.parse(buf);
-        assertNotNull(frame);
-        assertEquals(12, frame.readableBytes());
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        assertEquals(12, result.frame.readableBytes());
         byte[] actual = new byte[12];
-        frame.getBytes(frame.readerIndex(), actual);
+        result.frame.getBytes(result.frame.readerIndex(), actual);
         assertArrayEquals(FRAME, actual);
-        frame.release();
+        result.frame.release();
         buf.release();
     }
 
@@ -96,8 +100,8 @@ public class ModbusTcpFrameRuleTest {
         buf.writeByte(0x03);
         buf.writeByte(0x00);
         buf.writeByte(0x6B);
-        ByteBuf frame = rule.parse(buf);
-        assertNull(frame);
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -110,10 +114,10 @@ public class ModbusTcpFrameRuleTest {
         buf.writeShort(2);   // Length=2 -> 总长 6+2=8
         buf.writeByte(0x01);
         buf.writeByte(0x03);
-        ByteBuf frame = rule.parse(buf);
-        assertNotNull(frame);
-        assertEquals(8, frame.readableBytes());
-        frame.release();
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        assertEquals(8, result.frame.readableBytes());
+        result.frame.release();
         buf.release();
     }
 

@@ -3,43 +3,48 @@ package org.jetlinks.core.message.codec.parser;
 import io.netty.buffer.ByteBuf;
 
 /**
- * 报文帧解析规则接口定义.
- *
- * <p>仅包含通用接口, 具体规则实现在 {@code org.jetlinks.core.message.codec.parser.rule} 包中.</p>
+ * 报文帧解析规则接口定义(新版).
+ * <p>
+ * 单次调用既负责匹配又负责解析, 并支持返回重同步起始下标:
+ * <ul>
+ *     <li>{@code notMatch()}: 当前规则在现有数据中完全不适用(找不到帧头), 不修改 readerIndex;</li>
+ *     <li>{@code needMore(startIndex)}: 找到可能的帧头, 但数据不足, 建议从 {@code startIndex} 处开始等待更多数据;</li>
+ *     <li>{@code success(startIndex, frame)}: 从 {@code startIndex} 解析出一帧, 实现方须已将 readerIndex 推进到帧尾之后.</li>
+ * </ul>
  */
-public final class MessageFrameRule {
-
-    private MessageFrameRule() {
-    }
+public interface MessageFrameRule {
 
     /**
-     * 单条帧解析规则.
-     * <p>
-     * 约定:
-     * <ul>
-     *     <li>{@link #match(ByteBuf)} 不应改变 {@code readerIndex};</li>
-     *     <li>{@link #parse(ByteBuf)} 在返回 {@code null} 表示数据不足时, 不应改变 {@code readerIndex};</li>
-     *     <li>{@link #parse(ByteBuf)} 在成功返回帧时, 应正确推进 {@code readerIndex}.</li>
-     * </ul>
+     * 尝试从 {@code buf} 中解析一帧.
+     *
+     * @param buf 累积缓冲区
+     * @return 解析结果
      */
-    public interface FrameRule {
+    ParseResult parse(ByteBuf buf);
 
-        /**
-         * 判断当前缓冲区是否符合该规则.
-         *
-         * @param buf 累积缓冲区
-         * @return 是否匹配
-         */
-        boolean match(ByteBuf buf);
+    final class ParseResult {
+        public final int startIndex;
+        public final ByteBuf frame;
 
-        /**
-         * 按当前规则从缓冲区中解析一帧数据.
-         *
-         * @param buf 累积缓冲区
-         * @return 完整帧, 若返回 {@code null} 表示当前数据不足以构成一帧
-         */
-        ByteBuf parse(ByteBuf buf);
+        private ParseResult(int startIndex, ByteBuf frame) {
+            this.startIndex = startIndex;
+            this.frame = frame;
+        }
+
+        /** 当前规则在现有数据中完全不适用 */
+        public static ParseResult notMatch() {
+            return new ParseResult(-1, null);
+        }
+
+        /** 找到了潜在帧头, 但数据不足 */
+        public static ParseResult needMore(int startIndex) {
+            return new ParseResult(startIndex, null);
+        }
+
+        /** 成功从 {@code startIndex} 解析出一帧 */
+        public static ParseResult success(int startIndex, ByteBuf frame) {
+            return new ParseResult(startIndex, frame);
+        }
     }
-
 }
 

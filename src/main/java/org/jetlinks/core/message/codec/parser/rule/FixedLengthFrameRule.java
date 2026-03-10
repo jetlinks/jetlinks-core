@@ -9,7 +9,7 @@ import java.util.function.Predicate;
 /**
  * 固定长度帧规则.
  */
-public class FixedLengthFrameRule implements MessageFrameRule.FrameRule {
+public class FixedLengthFrameRule implements MessageFrameRule {
 
     /**
      * 常用 4 字节固定长度规则, 例如心跳 ping 等.
@@ -32,16 +32,17 @@ public class FixedLengthFrameRule implements MessageFrameRule.FrameRule {
     }
 
     @Override
-    public boolean match(ByteBuf buf) {
-        return buf.readableBytes() >= length && matcher.test(buf);
-    }
-
-    @Override
-    public ByteBuf parse(ByteBuf buf) {
-        if (buf.readableBytes() < length) {
-            return null;
+    public ParseResult parse(ByteBuf buf) {
+        if (!matcher.test(buf)) {
+            return ParseResult.notMatch();
         }
-        return buf.readRetainedSlice(length);
+        int start = buf.readerIndex();
+        int readable = buf.readableBytes();
+        if (readable < length) {
+            return ParseResult.needMore(start);
+        }
+        ByteBuf frame = buf.readRetainedSlice(length);
+        return ParseResult.success(start, frame);
     }
 }
 

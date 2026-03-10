@@ -1,5 +1,6 @@
 package org.jetlinks.core.message.codec.parser;
 
+import io.netty.buffer.ByteBuf;
 import org.jetlinks.core.message.codec.MessageParser;
 import org.jetlinks.core.message.codec.parser.rule.DelimiterFrameRule;
 import org.jetlinks.core.message.codec.parser.rule.FixedLengthFrameRule;
@@ -12,9 +13,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
- * {@link MessageParser} 构建器, 基于 DSL 方式组合并复用各类 {@link MessageFrameRule.FrameRule}.
+ * {@link MessageParser} 构建器, 基于 DSL 方式组合并复用各类 {@link MessageFrameRule}.
  * <p>
  * 典型用法:
  * <pre>{@code
@@ -29,12 +31,43 @@ import java.util.Objects;
  *
  * <p>内部默认使用 {@link CompositeMessageParser} 实现, 默认累积缓冲区上限为 16MB.</p>
  *
+ * <p><b>兜底配置</b>（可选，用于异常或脏数据场景）：</p>
+ * <ul>
+ *     <li>{@link #maxCumulationBytes(int)} 累积缓冲区上限(字节)，超出抛异常</li>
+ *     <li>{@link #maxIdleMs(long)} 空闲超时(毫秒)，超时后丢弃未解析数据</li>
+ *     <li>{@link #maxUnparsedBytes(int)} 未解析数据长度上限(字节)，超限后丢弃整段缓冲区</li>
+ *     <li>{@link #fallback(long, int)} 一次性设置空闲超时与未解析上限</li>
+ * </ul>
+ *
  * @author zhouhao
  * @since 1.3.2
  */
 public final class MessageParserBuilder {
 
-    private final List<MessageFrameRule.FrameRule> rules = new ArrayList<>();
+    private final List<MessageFrameRule> rules = new ArrayList<>();
+
+    /**
+     * 当底层 {@link CompositeMessageParser} 丢弃无效数据时的回调监听器.
+     * <p>
+     * 传入的 {@link ByteBuf} 为只读切片, 仅在当前调用栈内有效,
+     * 监听器不得修改其 readerIndex/writeIndex, 也不应跨线程保存引用.
+     */
+    private Consumer<ByteBuf> discardListener;
+
+    /**
+     * 累积缓冲区上限(字节), 0 表示使用默认 16MB. 见 {@link AbstractMessageParser}.
+     */
+    private int maxCumulationBytes;
+
+    /**
+     * 空闲超时(毫秒), 0 表示不启用. 见 {@link AbstractMessageParser}.
+     */
+    private long maxIdleMs;
+
+    /**
+     * 未解析数据长度上限(字节), 0 表示不启用. 见 {@link AbstractMessageParser}.
+     */
+    private int maxUnparsedBytes;
 
     private MessageParserBuilder() {
     }
@@ -52,9 +85,83 @@ public final class MessageParserBuilder {
      * @param rule 规则实现
      * @return this
      */
-    public MessageParserBuilder addRule(MessageFrameRule.FrameRule rule) {
+    public MessageParserBuilder addRule(MessageFrameRule rule) {
         Objects.requireNonNull(rule, "rule");
         this.rules.add(rule);
+        return this;
+    }
+
+    /**
+     * 设置当检测到无效数据被丢弃时的回调监听器.
+     * <p>
+     * 例如可用于打印日志、统计丢弃的字节数等.
+     *
+     * @param listener 丢弃数据监听器
+     * @return this
+     */
+    public MessageParserBuilder doOnDiscard(Consumer<ByteBuf> listener) {
+        this.discardListener = listener;
+        return this;
+    }
+
+    /**
+     * 设置累积缓冲区上限(字节): 单连接粘包缓冲超过该值时抛出 {@link IllegalStateException}.
+     *
+     * @param maxCumulationBytes 字节数, 0 表示使用默认 16MB
+     * @return this
+     */
+    public MessageParserBuilder maxCumulationBytes(int maxCumulationBytes) {
+        this.maxCumulationBytes = maxCumulationBytes <= 0 ? 0 : maxCumulationBytes;
+        return this;
+    }
+
+    /**
+     * 设置空闲超时(毫秒): 若缓冲区中未解析数据存在超过该时长, 下次 handle 时丢弃累积数据并从新数据重新开始.
+     *
+     * @param maxIdleMs 毫秒, 0 表示不启用
+     * @return this
+     */
+    public MessageParserBuilder maxIdleMs(long maxIdleMs) {
+        this.maxIdleMs = maxIdleMs < 0 ? 0 : maxIdleMs;
+        return this;
+    }
+
+    /**
+     * 设置未解析数据长度上限(字节): 当缓冲区中未解析数据达到该长度时, 当次解析结束后丢弃整段缓冲区.
+     *
+     * @param maxUnparsedBytes 字节数, 0 表示不启用
+     * @return this
+     */
+    public MessageParserBuilder maxUnparsedBytes(int maxUnparsedBytes) {
+        this.maxUnparsedBytes = maxUnparsedBytes < 0 ? 0 : maxUnparsedBytes;
+        return this;
+    }
+
+    /**
+     * 一次性设置兜底策略: 空闲超时与未解析长度上限.
+     *
+     * @param maxIdleMs        空闲超时(毫秒), 0 表示不启用
+     * @param maxUnparsedBytes 未解析数据长度上限(字节), 0 表示不启用
+     * @return this
+     */
+    public MessageParserBuilder fallback(long maxIdleMs, int maxUnparsedBytes) {
+        this.maxIdleMs = maxIdleMs < 0 ? 0 : maxIdleMs;
+        this.maxUnparsedBytes = maxUnparsedBytes < 0 ? 0 : maxUnparsedBytes;
+        return this;
+    }
+
+    /**
+     * 一次性设置兜底策略: 累积缓冲区上限、空闲超时、未解析长度上限.
+     *
+     * @param maxCumulationBytes 累积缓冲区上限(字节), 0 表示使用默认 16MB
+     * @param maxIdleMs          空闲超时(毫秒), 0 表示不启用
+     * @param maxUnparsedBytes   未解析数据长度上限(字节), 0 表示不启用
+     * @return this
+     */
+    public MessageParserBuilder fallback(int maxCumulationBytes, long maxIdleMs, int maxUnparsedBytes) {
+        this.maxCumulationBytes = maxCumulationBytes <= 0 ? 0 : maxCumulationBytes;
+        this.maxIdleMs = maxIdleMs < 0 ? 0 : maxIdleMs;
+        this.maxUnparsedBytes = maxUnparsedBytes < 0 ? 0 : maxUnparsedBytes;
         return this;
     }
 
@@ -248,7 +355,8 @@ public final class MessageParserBuilder {
      * @return 解析器, 若未添加任何规则则返回一个空规则的 {@link CompositeMessageParser}
      */
     public MessageParser build() {
-        return CompositeMessageParser.of(rules);
+        int maxCum = maxCumulationBytes > 0 ? maxCumulationBytes : AbstractMessageParser.DEFAULT_MAX_CUMULATION_BYTES;
+        return CompositeMessageParser.of(rules, discardListener, maxCum, maxIdleMs, maxUnparsedBytes);
     }
 }
 

@@ -20,7 +20,7 @@ import java.util.function.Predicate;
  * 示例: header=4(含 body_len 2 字节), body 长度在偏移 2 处 2 字节, 尾 CRC 2 字节:
  * <pre>new LengthFieldFrameRule(2, 2, 4, 2)</pre>
  */
-public class LengthFieldFrameRule implements MessageFrameRule.FrameRule {
+public class LengthFieldFrameRule implements MessageFrameRule {
 
     private final int lengthFieldOffset;
     private final int lengthFieldLength;
@@ -92,22 +92,14 @@ public class LengthFieldFrameRule implements MessageFrameRule.FrameRule {
     }
 
     @Override
-    public boolean match(ByteBuf buf) {
+    public ParseResult parse(ByteBuf buf) {
         if (!matcher.test(buf)) {
-            return false;
+            return ParseResult.notMatch();
         }
-        int readable = buf.readableBytes();
-        return readable >= headerLength
-            && readable >= (lengthFieldOffset + lengthFieldLength)
-            && readable > 0;
-    }
-
-    @Override
-    public ByteBuf parse(ByteBuf buf) {
         int start = buf.readerIndex();
         int readable = buf.readableBytes();
-        if (readable < (lengthFieldOffset + lengthFieldLength)) {
-            return null;
+        if (readable < headerLength || readable < (lengthFieldOffset + lengthFieldLength)) {
+            return ParseResult.needMore(start);
         }
 
         int fieldIndex = start + lengthFieldOffset;
@@ -123,9 +115,11 @@ public class LengthFieldFrameRule implements MessageFrameRule.FrameRule {
             throw new IllegalStateException("Negative frame length: " + frameLength);
         }
         if (buf.readableBytes() < frameLength) {
-            return null;
+            return ParseResult.needMore(start);
         }
-        return buf.readRetainedSlice(frameLength);
+        buf.readerIndex(start);
+        ByteBuf frame = buf.readRetainedSlice(frameLength);
+        return ParseResult.success(start, frame);
     }
 }
 

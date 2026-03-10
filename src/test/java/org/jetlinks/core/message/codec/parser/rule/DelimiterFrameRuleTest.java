@@ -23,13 +23,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class DelimiterFrameRuleTest {
 
-    private static List<ByteBuf> executeRule(MessageFrameRule.FrameRule rule, ByteBuf... payloads) {
+    private static List<ByteBuf> executeRule(MessageFrameRule rule, ByteBuf... payloads) {
         CompositeMessageParser parser = CompositeMessageParser.of(rule);
         List<ByteBuf> result = new ArrayList<>();
         try {
             for (ByteBuf p : payloads) {
                 for (EncodedMessage msg : parser.handle(EncodedMessage.simple(p))) {
-                    result.add(msg.getPayload().retain());
+                    result.add(msg.getPayload());
                 }
             }
             return result;
@@ -44,7 +44,9 @@ public class DelimiterFrameRuleTest {
     public void matchWhenDelimiterPresent() {
         DelimiterFrameRule rule = new DelimiterFrameRule(CRLF);
         ByteBuf buf = Unpooled.copiedBuffer("hello\r\n", StandardCharsets.US_ASCII);
-        assertTrue(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        result.frame.release();
         buf.release();
     }
 
@@ -52,7 +54,8 @@ public class DelimiterFrameRuleTest {
     public void matchWhenDelimiterAbsent() {
         DelimiterFrameRule rule = new DelimiterFrameRule(CRLF);
         ByteBuf buf = Unpooled.copiedBuffer("hello", StandardCharsets.US_ASCII);
-        assertFalse(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -60,7 +63,8 @@ public class DelimiterFrameRuleTest {
     public void matchWhenNotEnoughForDelimiter() {
         DelimiterFrameRule rule = new DelimiterFrameRule(CRLF);
         ByteBuf buf = Unpooled.copiedBuffer("a", StandardCharsets.US_ASCII);
-        assertFalse(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -68,10 +72,10 @@ public class DelimiterFrameRuleTest {
     public void parseReturnsFrameIncludingDelimiter() {
         DelimiterFrameRule rule = new DelimiterFrameRule(CRLF);
         ByteBuf buf = Unpooled.copiedBuffer("hello\r\n", StandardCharsets.US_ASCII);
-        ByteBuf frame = rule.parse(buf);
-        assertNotNull(frame);
-        assertEquals("hello\r\n", frame.toString(StandardCharsets.US_ASCII));
-        frame.release();
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        assertEquals("hello\r\n", result.frame.toString(StandardCharsets.US_ASCII));
+        result.frame.release();
         buf.release();
     }
 
@@ -79,8 +83,8 @@ public class DelimiterFrameRuleTest {
     public void parseReturnsNullWhenDelimiterNotPresent() {
         DelimiterFrameRule rule = new DelimiterFrameRule(CRLF);
         ByteBuf buf = Unpooled.copiedBuffer("hello", StandardCharsets.US_ASCII);
-        ByteBuf frame = rule.parse(buf);
-        assertNull(frame);
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -89,8 +93,8 @@ public class DelimiterFrameRuleTest {
         DelimiterFrameRule rule = new DelimiterFrameRule(CRLF);
         ByteBuf buf = Unpooled.copiedBuffer("he", StandardCharsets.US_ASCII);
         int idx = buf.readerIndex();
-        ByteBuf frame = rule.parse(buf);
-        assertNull(frame);
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         assertEquals(idx, buf.readerIndex());
         buf.release();
     }
@@ -104,11 +108,11 @@ public class DelimiterFrameRuleTest {
     public void parseExcludeDelimiterReturnsFrameWithoutDelimiter() {
         DelimiterFrameRule rule = new DelimiterFrameRule(CRLF, true);
         ByteBuf buf = Unpooled.copiedBuffer("hello\r\n", StandardCharsets.US_ASCII);
-        ByteBuf frame = rule.parse(buf);
-        assertNotNull(frame);
-        assertEquals("hello", frame.toString(StandardCharsets.US_ASCII));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        assertEquals("hello", result.frame.toString(StandardCharsets.US_ASCII));
         assertEquals(7, buf.readerIndex()); // consumed "hello" + "\r\n"
-        frame.release();
+        result.frame.release();
         buf.release();
     }
 
@@ -116,14 +120,14 @@ public class DelimiterFrameRuleTest {
     public void parseExcludeDelimiterConsumesDelimiter() {
         DelimiterFrameRule rule = new DelimiterFrameRule(CRLF, true);
         ByteBuf buf = Unpooled.copiedBuffer("a\r\nb\r\n", StandardCharsets.US_ASCII);
-        ByteBuf frame1 = rule.parse(buf);
-        assertNotNull(frame1);
-        assertEquals("a", frame1.toString(StandardCharsets.US_ASCII));
-        ByteBuf frame2 = rule.parse(buf);
-        assertNotNull(frame2);
-        assertEquals("b", frame2.toString(StandardCharsets.US_ASCII));
-        frame1.release();
-        frame2.release();
+        MessageFrameRule.ParseResult result1 = rule.parse(buf);
+        assertNotNull(result1.frame);
+        assertEquals("a", result1.frame.toString(StandardCharsets.US_ASCII));
+        MessageFrameRule.ParseResult result2 = rule.parse(buf);
+        assertNotNull(result2.frame);
+        assertEquals("b", result2.frame.toString(StandardCharsets.US_ASCII));
+        result1.frame.release();
+        result2.frame.release();
         buf.release();
     }
 

@@ -18,11 +18,32 @@ public class AbstractMessageParserTest {
             super(maxCumulationBytes);
         }
 
+        TestParser(int maxCumulationBytes, long maxIdleMs, int maxUnparsedBytes) {
+            super(maxCumulationBytes, maxIdleMs, maxUnparsedBytes);
+        }
+
         @Override
         protected void handle(ByteBuf buf, List<ByteBuf> container) {
             // 简单实现: 每次尽可能读取全部数据作为一帧
             if (buf.isReadable()) {
                 container.add(buf.readRetainedSlice(buf.readableBytes()));
+            }
+        }
+    }
+
+    /** 仅当缓冲区至少 minFrameSize 字节时才取一帧 */
+    static class MinSizeParser extends AbstractMessageParser {
+        private final int minFrameSize;
+
+        MinSizeParser(int maxCumulationBytes, long maxIdleMs, int maxUnparsedBytes, int minFrameSize) {
+            super(maxCumulationBytes, maxIdleMs, maxUnparsedBytes);
+            this.minFrameSize = minFrameSize;
+        }
+
+        @Override
+        protected void handle(ByteBuf buf, List<ByteBuf> container) {
+            if (buf.readableBytes() >= minFrameSize) {
+                container.add(buf.readRetainedSlice(minFrameSize));
             }
         }
     }
@@ -54,6 +75,31 @@ public class AbstractMessageParserTest {
         } finally {
             parser.dispose();
             buf.release();
+        }
+    }
+
+    /** 兜底: maxUnparsedBytes 超过阈值时丢弃缓冲区, 下次从新数据重新开始 */
+    @Test
+    public void shouldResetBufferWhenUnparsedBytesExceedsLimit() {
+        int maxUnparsed = 10;
+        MinSizeParser parser = new MinSizeParser(1024, 0, maxUnparsed, 20);
+        try {
+            // 发送 15 字节, 不足 20 不解析, 剩余 15 >= 10 触发重置
+            ByteBuf first = Unpooled.buffer(15);
+            first.writeZero(15);
+            List<? extends EncodedMessage> out1 = parser.handle(EncodedMessage.simple(first));
+            assertEquals(0, out1.size());
+            first.release();
+            // 再发送 20 字节, 应作为全新缓冲区解析出一帧 20 字节(而非 15+20=35)
+            ByteBuf second = Unpooled.buffer(20);
+            second.writeZero(20);
+            List<? extends EncodedMessage> out2 = parser.handle(EncodedMessage.simple(second));
+            assertEquals(1, out2.size());
+            assertEquals(20, out2.get(0).getPayload().readableBytes());
+            out2.get(0).getPayload().release();
+            second.release();
+        } finally {
+            parser.dispose();
         }
     }
 }

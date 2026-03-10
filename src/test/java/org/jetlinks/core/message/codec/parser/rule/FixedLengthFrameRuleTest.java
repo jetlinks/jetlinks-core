@@ -23,13 +23,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class FixedLengthFrameRuleTest {
 
-    private static List<ByteBuf> executeRule(MessageFrameRule.FrameRule rule, ByteBuf... payloads) {
+    private static List<ByteBuf> executeRule(MessageFrameRule rule, ByteBuf... payloads) {
         CompositeMessageParser parser = CompositeMessageParser.of(rule);
         List<ByteBuf> result = new ArrayList<>();
         try {
             for (ByteBuf p : payloads) {
                 for (EncodedMessage msg : parser.handle(EncodedMessage.simple(p))) {
-                    result.add(msg.getPayload().retain());
+                    result.add(msg.getPayload());
                 }
             }
             return result;
@@ -42,7 +42,9 @@ public class FixedLengthFrameRuleTest {
     public void matchWhenEnoughBytes() {
         FixedLengthFrameRule rule = new FixedLengthFrameRule(4);
         ByteBuf buf = Unpooled.copiedBuffer("abcd", StandardCharsets.US_ASCII);
-        assertTrue(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        result.frame.release();
         buf.release();
     }
 
@@ -50,7 +52,8 @@ public class FixedLengthFrameRuleTest {
     public void matchWhenNotEnoughBytes() {
         FixedLengthFrameRule rule = new FixedLengthFrameRule(4);
         ByteBuf buf = Unpooled.copiedBuffer("ab", StandardCharsets.US_ASCII);
-        assertFalse(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -58,7 +61,8 @@ public class FixedLengthFrameRuleTest {
     public void matchWithMatcherReject() {
         FixedLengthFrameRule rule = new FixedLengthFrameRule(2, buf -> buf.getByte(buf.readerIndex()) == 0x01);
         ByteBuf buf = Unpooled.buffer(2).writeByte(0x02).writeByte(0x03);
-        assertFalse(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -66,7 +70,9 @@ public class FixedLengthFrameRuleTest {
     public void matchWithMatcherAccept() {
         FixedLengthFrameRule rule = new FixedLengthFrameRule(2, buf -> buf.getByte(buf.readerIndex()) == 0x01);
         ByteBuf buf = Unpooled.buffer(2).writeByte(0x01).writeByte(0x02);
-        assertTrue(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        result.frame.release();
         buf.release();
     }
 
@@ -74,11 +80,11 @@ public class FixedLengthFrameRuleTest {
     public void parseReturnsFullFrame() {
         FixedLengthFrameRule rule = new FixedLengthFrameRule(4);
         ByteBuf buf = Unpooled.copiedBuffer("abcd", StandardCharsets.US_ASCII);
-        ByteBuf frame = rule.parse(buf);
-        assertNotNull(frame);
-        assertEquals(4, frame.readableBytes());
-        assertEquals("abcd", frame.toString(StandardCharsets.US_ASCII));
-        frame.release();
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        assertEquals(4, result.frame.readableBytes());
+        assertEquals("abcd", result.frame.toString(StandardCharsets.US_ASCII));
+        result.frame.release();
         buf.release();
     }
 
@@ -87,8 +93,8 @@ public class FixedLengthFrameRuleTest {
         FixedLengthFrameRule rule = new FixedLengthFrameRule(4);
         ByteBuf buf = Unpooled.copiedBuffer("ab", StandardCharsets.US_ASCII);
         int idx = buf.readerIndex();
-        ByteBuf frame = rule.parse(buf);
-        assertNull(frame);
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         assertEquals(idx, buf.readerIndex());
         buf.release();
     }

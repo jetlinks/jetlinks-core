@@ -25,13 +25,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class LengthFieldFrameRuleTest {
 
-    private static List<ByteBuf> executeRule(MessageFrameRule.FrameRule rule, ByteBuf... payloads) {
+    private static List<ByteBuf> executeRule(MessageFrameRule rule, ByteBuf... payloads) {
         CompositeMessageParser parser = CompositeMessageParser.of(rule);
         List<ByteBuf> result = new ArrayList<>();
         try {
             for (ByteBuf p : payloads) {
                 for (EncodedMessage msg : parser.handle(EncodedMessage.simple(p))) {
-                    result.add(msg.getPayload().retain());
+                    result.add(msg.getPayload());
                 }
             }
             return result;
@@ -48,7 +48,9 @@ public class LengthFieldFrameRuleTest {
         buf.writeShort(2);
         buf.writeByte(0xAB);
         buf.writeByte(0xCD);
-        assertTrue(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        result.frame.release();
         buf.release();
     }
 
@@ -58,7 +60,8 @@ public class LengthFieldFrameRuleTest {
         ByteBuf buf = Unpooled.buffer(3);
         buf.writeShort(0x0001);
         buf.writeByte(0);
-        assertFalse(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -70,10 +73,10 @@ public class LengthFieldFrameRuleTest {
         buf.writeShort(2);
         buf.writeByte(0xAB);
         buf.writeByte(0xCD);
-        ByteBuf frame = rule.parse(buf);
-        assertNotNull(frame);
-        assertEquals(6, frame.readableBytes());
-        frame.release();
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        assertEquals(6, result.frame.readableBytes());
+        result.frame.release();
         buf.release();
     }
 
@@ -87,8 +90,8 @@ public class LengthFieldFrameRuleTest {
         buf.writeByte(0);
         buf.writeByte(0);
         buf.writeByte(0);
-        ByteBuf frame = rule.parse(buf);
-        assertNull(frame);
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -100,10 +103,10 @@ public class LengthFieldFrameRuleTest {
         buf.writeByte(0x11);
         buf.writeByte(0x22);
         buf.writeByte(0x33);
-        ByteBuf frame = rule.parse(buf);
-        assertNotNull(frame);
-        assertEquals(4, frame.readableBytes());
-        frame.release();
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        assertEquals(4, result.frame.readableBytes());
+        result.frame.release();
         buf.release();
     }
 
@@ -124,10 +127,10 @@ public class LengthFieldFrameRuleTest {
         buf.writeByte(0xAB);
         buf.writeByte(0xCD);      // body
         buf.writeShort(0x1234);   // crc 2 字节
-        ByteBuf frame = rule.parse(buf);
-        assertNotNull(frame);
-        assertEquals(8, frame.readableBytes()); // 4 + 2 + 2
-        frame.release();
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        assertEquals(8, result.frame.readableBytes()); // 4 + 2 + 2
+        result.frame.release();
         buf.release();
     }
 
@@ -140,8 +143,8 @@ public class LengthFieldFrameRuleTest {
         buf.writeByte(0xAB);
         buf.writeByte(0xCD);
         buf.writeByte(0x12);      // 只有 1 字节尾, 还差 1 字节
-        ByteBuf frame = rule.parse(buf);
-        assertNull(frame);
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 

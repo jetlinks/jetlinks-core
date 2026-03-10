@@ -20,7 +20,7 @@ import java.util.function.Predicate;
  *
  * <p>提供默认协议号为 0 的静态实例 {@link #DEFAULT}, 避免重复创建规则对象.</p>
  */
-public class ModbusTcpFrameRule implements MessageFrameRule.FrameRule {
+public class ModbusTcpFrameRule implements MessageFrameRule {
 
     private final boolean checkProtocolId;
     private final int expectedProtocolId;
@@ -52,38 +52,33 @@ public class ModbusTcpFrameRule implements MessageFrameRule.FrameRule {
     }
 
     @Override
-    public boolean match(ByteBuf buf) {
+    public ParseResult parse(ByteBuf buf) {
         int readable = buf.readableBytes();
-        if (readable < 7) {
-            return false;
-        }
         int index = buf.readerIndex();
+        if (readable < 7) {
+            return ParseResult.needMore(index);
+        }
         if (checkProtocolId) {
             int proto = buf.getUnsignedShort(index + 2);
             if (proto != expectedProtocolId) {
-                return false;
+                return ParseResult.notMatch();
             }
         }
-        return matcher.test(buf);
-    }
-
-    @Override
-    public ByteBuf parse(ByteBuf buf) {
-        int readable = buf.readableBytes();
-        if (readable < 7) {
-            return null;
+        if (!matcher.test(buf)) {
+            return ParseResult.notMatch();
         }
-        int index = buf.readerIndex();
 
         int len = buf.getUnsignedShort(index + 4);
         int frameLength = 6 + len;
         if (frameLength <= 0) {
             throw new IllegalStateException("Illegal Modbus TCP frame length: " + frameLength);
         }
-        if (buf.readableBytes() < frameLength) {
-            return null;
+        if (readable < frameLength) {
+            return ParseResult.needMore(index);
         }
-        return buf.readRetainedSlice(frameLength);
+        buf.readerIndex(index + frameLength);
+        ByteBuf frame = buf.slice(index, frameLength).retain();
+        return ParseResult.success(index, frame);
     }
 }
 

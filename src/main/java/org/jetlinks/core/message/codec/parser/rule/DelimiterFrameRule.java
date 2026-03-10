@@ -17,7 +17,7 @@ import java.util.function.Predicate;
  *     <li>{@code true}: 截断分隔符, 解析后的报文不包含分隔符.</li>
  * </ul>
  */
-public class DelimiterFrameRule implements MessageFrameRule.FrameRule {
+public class DelimiterFrameRule implements MessageFrameRule {
 
     /**
      * 以 CRLF 结尾的通用规则, 帧内包含分隔符.
@@ -67,31 +67,15 @@ public class DelimiterFrameRule implements MessageFrameRule.FrameRule {
     }
 
     @Override
-    public boolean match(ByteBuf buf) {
+    public ParseResult parse(ByteBuf buf) {
         if (!matcher.test(buf)) {
-            return false;
+            return ParseResult.notMatch();
         }
-        int start = buf.readerIndex();
-        int end = start + buf.readableBytes() - delimiter.length + 1;
-        for (int i = start; i < end; i++) {
-            boolean ok = true;
-            for (int j = 0; j < delimiter.length; j++) {
-                if (buf.getByte(i + j) != delimiter[j]) {
-                    ok = false;
-                    break;
-                }
-            }
-            if (ok) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public ByteBuf parse(ByteBuf buf) {
         int start = buf.readerIndex();
         int readable = buf.readableBytes();
+        if (readable < delimiter.length) {
+            return ParseResult.needMore(start);
+        }
         int end = start + readable - delimiter.length + 1;
         for (int i = start; i < end; i++) {
             boolean ok = true;
@@ -101,26 +85,32 @@ public class DelimiterFrameRule implements MessageFrameRule.FrameRule {
                     break;
                 }
             }
-            if (ok) {
-                if (excludeDelimiter) {
-                    int frameLength = i - start;
-                    int totalNeed = frameLength + delimiter.length;
-                    if (buf.readableBytes() < totalNeed) {
-                        return null;
-                    }
-                    ByteBuf frame = buf.readRetainedSlice(frameLength);
-                    buf.skipBytes(delimiter.length);
-                    return frame;
-                } else {
-                    int frameLength = (i + delimiter.length) - start;
-                    if (buf.readableBytes() < frameLength) {
-                        return null;
-                    }
-                    return buf.readRetainedSlice(frameLength);
+            if (!ok) {
+                continue;
+            }
+
+            if (excludeDelimiter) {
+                int frameLength = i - start;
+                int totalNeed = frameLength + delimiter.length;
+                if (buf.readableBytes() < totalNeed) {
+                    return ParseResult.needMore(start);
                 }
+                buf.readerIndex(start);
+                ByteBuf frame = buf.readRetainedSlice(frameLength);
+                buf.skipBytes(delimiter.length);
+                return ParseResult.success(start, frame);
+            } else {
+                int frameLength = (i + delimiter.length) - start;
+                if (buf.readableBytes() < frameLength) {
+                    return ParseResult.needMore(start);
+                }
+                buf.readerIndex(start);
+                ByteBuf frame = buf.readRetainedSlice(frameLength);
+                return ParseResult.success(start, frame);
             }
         }
-        return null;
+        // 没有找到分隔符, 等待更多数据
+        return ParseResult.needMore(start);
     }
 }
 

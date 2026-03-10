@@ -14,7 +14,7 @@ import java.util.function.Predicate;
  * 帧格式: {@code start + 中间任意内容 + end}, 帧内包含 start 与 end 本身.
  * 从当前 readerIndex 起必须与 start 匹配, 并在其后首次出现 end 时截断为一帧.
  */
-public class StartEndFrameRule implements MessageFrameRule.FrameRule {
+public class StartEndFrameRule implements MessageFrameRule {
 
     private final byte[] start;
     private final byte[] end;
@@ -48,49 +48,21 @@ public class StartEndFrameRule implements MessageFrameRule.FrameRule {
     }
 
     @Override
-    public boolean match(ByteBuf buf) {
+    public ParseResult parse(ByteBuf buf) {
         if (!matcher.test(buf)) {
-            return false;
-        }
-        int readable = buf.readableBytes();
-        if (readable < start.length + end.length) {
-            return false;
+            return ParseResult.notMatch();
         }
         int index = buf.readerIndex();
-        for (int i = 0; i < start.length; i++) {
-            if (buf.getByte(index + i) != start[i]) {
-                return false;
-            }
-        }
-        int searchFrom = index + start.length;
-        int searchTo = index + readable - end.length + 1;
-        for (int i = searchFrom; i < searchTo; i++) {
-            boolean found = true;
-            for (int j = 0; j < end.length; j++) {
-                if (buf.getByte(i + j) != end[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public ByteBuf parse(ByteBuf buf) {
-        int index = buf.readerIndex();
         int readable = buf.readableBytes();
-        if (readable < start.length + end.length) {
-            return null;
+        if (readable < start.length) {
+            return ParseResult.needMore(index);
         }
         for (int i = 0; i < start.length; i++) {
             if (buf.getByte(index + i) != start[i]) {
-                return null;
+                return ParseResult.notMatch();
             }
         }
+        // 匹配到了 start，开始寻找 end
         int searchFrom = index + start.length;
         int searchTo = index + readable - end.length + 1;
         for (int i = searchFrom; i < searchTo; i++) {
@@ -103,12 +75,12 @@ public class StartEndFrameRule implements MessageFrameRule.FrameRule {
             }
             if (found) {
                 int frameLength = (i + end.length) - index;
-                if (buf.readableBytes() < frameLength) {
-                    return null;
-                }
-                return buf.readRetainedSlice(frameLength);
+                buf.readerIndex(index + frameLength);
+                ByteBuf frame = buf.slice(index, frameLength).retain();
+                return ParseResult.success(index, frame);
             }
         }
-        return null;
+        // 匹配了 start 但还没找到 end, 等待更多数据
+        return ParseResult.needMore(index);
     }
 }

@@ -23,13 +23,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class StartEndFrameRuleTest {
 
-    private static List<ByteBuf> executeRule(MessageFrameRule.FrameRule rule, ByteBuf... payloads) {
+    private static List<ByteBuf> executeRule(MessageFrameRule rule, ByteBuf... payloads) {
         CompositeMessageParser parser = CompositeMessageParser.of(rule);
         List<ByteBuf> result = new ArrayList<>();
         try {
             for (ByteBuf p : payloads) {
                 for (EncodedMessage msg : parser.handle(EncodedMessage.simple(p))) {
-                    result.add(msg.getPayload().retain());
+                    result.add(msg.getPayload());
                 }
             }
             return result;
@@ -45,7 +45,9 @@ public class StartEndFrameRuleTest {
             "_r".getBytes(StandardCharsets.US_ASCII)
         );
         ByteBuf buf = Unpooled.copiedBuffer("r_1_r", StandardCharsets.US_ASCII);
-        assertTrue(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        result.frame.release();
         buf.release();
     }
 
@@ -56,7 +58,8 @@ public class StartEndFrameRuleTest {
             "_r".getBytes(StandardCharsets.US_ASCII)
         );
         ByteBuf buf = Unpooled.copiedBuffer("r_1", StandardCharsets.US_ASCII);
-        assertFalse(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -67,7 +70,8 @@ public class StartEndFrameRuleTest {
             "_r".getBytes(StandardCharsets.US_ASCII)
         );
         ByteBuf buf = Unpooled.copiedBuffer("x_1_r", StandardCharsets.US_ASCII);
-        assertFalse(rule.match(buf));
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -78,10 +82,10 @@ public class StartEndFrameRuleTest {
             "_r".getBytes(StandardCharsets.US_ASCII)
         );
         ByteBuf buf = Unpooled.copiedBuffer("r_1_r", StandardCharsets.US_ASCII);
-        ByteBuf frame = rule.parse(buf);
-        assertNotNull(frame);
-        assertEquals("r_1_r", frame.toString(StandardCharsets.US_ASCII));
-        frame.release();
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNotNull(result.frame);
+        assertEquals("r_1_r", result.frame.toString(StandardCharsets.US_ASCII));
+        result.frame.release();
         buf.release();
     }
 
@@ -92,8 +96,8 @@ public class StartEndFrameRuleTest {
             "_r".getBytes(StandardCharsets.US_ASCII)
         );
         ByteBuf buf = Unpooled.copiedBuffer("r_1", StandardCharsets.US_ASCII);
-        ByteBuf frame = rule.parse(buf);
-        assertNull(frame);
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         buf.release();
     }
 
@@ -105,8 +109,8 @@ public class StartEndFrameRuleTest {
         );
         ByteBuf buf = Unpooled.copiedBuffer("r_", StandardCharsets.US_ASCII);
         int idx = buf.readerIndex();
-        ByteBuf frame = rule.parse(buf);
-        assertNull(frame);
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        assertNull(result.frame);
         assertEquals(idx, buf.readerIndex());
         buf.release();
     }

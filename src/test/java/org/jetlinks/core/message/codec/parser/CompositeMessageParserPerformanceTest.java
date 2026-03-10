@@ -31,7 +31,7 @@ public class CompositeMessageParserPerformanceTest {
     private static final int MEASURE_ITERATIONS = 100_000;
     private static final int STICKY_FRAMES_PER_BATCH = 100;
 
-    private static List<ByteBuf> executeRule(MessageFrameRule.FrameRule rule, ByteBuf... payloads) {
+    private static List<ByteBuf> executeRule(MessageFrameRule rule, ByteBuf... payloads) {
         CompositeMessageParser parser = CompositeMessageParser.of(rule);
         List<ByteBuf> result = new ArrayList<>();
         try {
@@ -46,7 +46,7 @@ public class CompositeMessageParserPerformanceTest {
         }
     }
 
-    private static List<ByteBuf> executeRule(List<MessageFrameRule.FrameRule> rules, ByteBuf... payloads) {
+    private static List<ByteBuf> executeRule(List<MessageFrameRule> rules, ByteBuf... payloads) {
         CompositeMessageParser parser = CompositeMessageParser.of(rules);
         List<ByteBuf> result = new ArrayList<>();
         try {
@@ -234,7 +234,7 @@ public class CompositeMessageParserPerformanceTest {
     // ---------- Composite 多规则粘包 ----------
     @Test
     public void compositeMultiRuleSticky() {
-        List<MessageFrameRule.FrameRule> rules = Arrays.asList(
+        List<MessageFrameRule> rules = Arrays.asList(
             new StartEndFrameRule("r_".getBytes(StandardCharsets.US_ASCII), "_r".getBytes(StandardCharsets.US_ASCII)),
             new FixedLengthFrameRule(4, buf -> buf.readableBytes() >= 4
                 && buf.getByte(buf.readerIndex()) == 'p' && buf.getByte(buf.readerIndex() + 1) == 'i'
