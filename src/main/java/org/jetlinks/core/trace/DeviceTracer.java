@@ -20,13 +20,26 @@ public interface DeviceTracer {
 
     interface SpanKey {
 
+        // 设备ID
         AttributeKey<String> deviceId = AttributeKey.stringKey("deviceId");
 
+        // 消息内容
         AttributeKey<String> message = AttributeKey.stringKey("message");
 
+        // 响应信息
         AttributeKey<String> response = AttributeKey.stringKey("response");
 
+        // 设备地址
         AttributeKey<String> address = AttributeKey.stringKey("address");
+
+        // 输入报文
+        AttributeKey<String> input = AttributeKey.stringKey("input"); //原始报文
+
+        // 输出报文
+        AttributeKey<String> output = AttributeKey.stringKey("output"); //编解码后的报文
+
+        // 额外信息
+        AttributeKey<String> tag = AttributeKey.stringKey("tag"); //额外信息
 
     }
 
@@ -51,68 +64,97 @@ public interface DeviceTracer {
         }
 
         static String connection(String deviceId) {
-            return operation(deviceId, "connection");
+            return operation(deviceId, OperationName.connection);
         }
 
         static SeparatedCharSequence connection0(String deviceId) {
-            return operation0(deviceId, "connection");
+            return operation0(deviceId, OperationName.connection);
         }
 
         static String auth(String deviceId) {
-            return operation(deviceId, "auth");
+            return operation(deviceId, OperationName.auth);
         }
 
         static SeparatedCharSequence auth0(String deviceId) {
-            return operation0(deviceId, "auth");
+            return operation0(deviceId, OperationName.auth);
         }
 
         static String decode(String deviceId) {
-            return operation(deviceId, "decode");
+            return operation(deviceId, OperationName.decode);
         }
 
         static SeparatedCharSequence decode0(String deviceId) {
-            return operation0(deviceId, "decode");
+            return operation0(deviceId, OperationName.decode);
         }
 
         static String encode(String deviceId) {
-            return operation(deviceId, "encode");
+            return operation(deviceId, OperationName.encode);
         }
 
         static SeparatedCharSequence encode0(String deviceId) {
-            return operation0(deviceId, "encode");
+            return operation0(deviceId, OperationName.encode);
         }
 
         static String request(String deviceId) {
-            return operation(deviceId, "request");
+            return operation(deviceId, OperationName.request);
         }
 
         static SeparatedCharSequence request0(String deviceId) {
-            return operation0(deviceId, "request");
+            return operation0(deviceId, OperationName.request);
         }
 
         static String response(String deviceId) {
-            return operation(deviceId, "response");
+            return operation(deviceId, OperationName.response);
         }
 
         static SeparatedCharSequence response0(String deviceId) {
-            return operation0(deviceId, "response");
+            return operation0(deviceId, OperationName.response);
         }
 
         static String downstream(String deviceId) {
-            return operation(deviceId, "downstream");
+            return operation(deviceId, OperationName.downstream);
         }
 
         static SeparatedCharSequence downstream0(String deviceId) {
-            return operation0(deviceId, "downstream");
+            return operation0(deviceId, OperationName.decode);
         }
 
         static String upstream(String deviceId) {
-            return operation(deviceId, "upstream");
+            return operation(deviceId, OperationName.upstream);
         }
 
         static SeparatedCharSequence upstream0(String deviceId) {
-            return operation0(deviceId, "upstream");
+            return operation0(deviceId, OperationName.upstream);
         }
+    }
+
+    // 操作
+    interface OperationName {
+
+        // 连接
+        String connection = "connection";
+
+        // 设备认证
+        String auth = "auth";
+
+        // 数据上报
+        String decode = "decode";
+
+        // 数据下发
+        String encode = "encode";
+
+        // 请求
+        String request = "request";
+
+        // 响应
+        String response = "response";
+
+        // 下行
+        String downstream = "downstream";
+
+        // 上行
+        String upstream = "upstream";
+
     }
 
 
