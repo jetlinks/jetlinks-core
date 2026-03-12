@@ -1,5 +1,6 @@
 package org.jetlinks.core.device;
 
+import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.principal.Principal;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -120,11 +121,33 @@ public interface DeviceRegistry {
     }
 
     /**
-     * 根据设备身份信息获取设备
+     * 根据设备凭证解析设备信息,用于通过自定义认证逻辑等场景获取平台内部设备信息.
+     * <p>
+     * ⚠️<b>
+     * 注意!!!
+     * <p>
+     * 传入{@link org.jetlinks.core.principal.AuthenticationPrincipal}则表示需要平台进行身份校验.
+     * 通过返回值{@link DevicePrincipal#isVerified()}判断校验结果.
+     * </p>
+     * <p>
+     * 为<code>true</code>时,表示平台已经识别出此设备并校验通过了.
+     * </p>
+     * 为<code>false</code>时,表示平台识别出了设备,但是没有进行身份校验,需要自己处理校验.
+     * <p>
+     * 当解析结果为empty时,表示设备不存在.或者身份不正确.可通过{@link Mono#switchIfEmpty(Mono)}进行处理.
+     * </p>
+     * </b>
+     * </p>
      *
      * @param principal 身份信息
-     * @return DeviceOperator
+     * @return 设备操作接口
+     * @see org.jetlinks.core.ProtocolSupport#getDevicePrincipalMetadata(Transport, DeviceInfo)
+     * @see org.jetlinks.core.device.DeviceFeatures#supportPrincipal
+     * @see org.jetlinks.core.principal.AuthenticationPrincipal
+     * @see org.jetlinks.core.principal.TokenCredential
+     * @see org.jetlinks.core.principal.PasswordCredential
      * @since 1.3.2
+     *
      */
     default Mono<DevicePrincipal> resolveDevice(Principal principal) {
         return getDevice(principal.identity().getIdentifier())

@@ -39,8 +39,6 @@ public class SimpleEncodedMessage implements EncodedMessage {
         if (payload == null || !payload.isReadable()) {
             return "<released>";
         }
-        StringBuilder builder = new StringBuilder();
-        ByteBufUtil.appendPrettyHexDump(builder, payload);
-        return _toString = builder.toString();
+        return _toString = ByteBufUtil.hexDump(payload);
     }
 }
