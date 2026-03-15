@@ -2,6 +2,7 @@ package org.jetlinks.core.message.codec;
 
 
 import org.jetlinks.core.Wrapper;
+import org.jetlinks.core.device.DeviceInfo;
 import org.jetlinks.core.device.DeviceOperator;
 import org.jetlinks.core.device.DevicePrincipal;
 import org.jetlinks.core.principal.Principal;
@@ -54,13 +55,30 @@ public interface MessageCodecContext extends Wrapper {
     /**
      * 根据设备凭证解析设备信息,用于通过自定义认证逻辑等场景获取平台内部设备信息.
      * <p>
-     * 注意!!! 此操作不会校验凭证,只会返回设备以及对应的凭证.需要自己在协议包中进行校验.
+     * ⚠️<b>
+     * 注意!!!
+     * <p>
+     * 传入{@link org.jetlinks.core.principal.AuthenticationPrincipal}则表示需要平台进行身份校验.
+     * 通过返回值{@link DevicePrincipal#isVerified()}判断校验结果.
+     * </p>
+     * <p>
+     * 为<code>true</code>时,表示平台已经识别出此设备并校验通过了.
+     * </p>
+     * 为<code>false</code>时,表示平台识别出了设备,但是没有进行身份校验,需要自己处理校验.
+     * <p>
+     * 当解析结果为empty时,表示设备不存在.或者身份不正确.可通过{@link Mono#switchIfEmpty(Mono)}进行处理.
+     * </p>
+     * </b>
+     * </p>
      *
      * @param principal 身份信息
      * @return 设备操作接口
-     * @since 1.3.2
-     * @see org.jetlinks.core.ProtocolSupport#getDevicePrincipalMetadata(Transport, Map)
+     * @see org.jetlinks.core.ProtocolSupport#getDevicePrincipalMetadata(Transport, DeviceInfo)
      * @see org.jetlinks.core.device.DeviceFeatures#supportPrincipal
+     * @see org.jetlinks.core.principal.AuthenticationPrincipal
+     * @see org.jetlinks.core.principal.TokenCredential
+     * @see org.jetlinks.core.principal.PasswordCredential
+     * @since 1.3.2
      *
      */
     default Mono<DevicePrincipal> resolveDevice(Principal principal) {

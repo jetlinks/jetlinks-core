@@ -7,6 +7,8 @@ import lombok.SneakyThrows;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.message.codec.DeviceMessageCodec;
+import org.jetlinks.core.message.codec.MessageParser;
+import org.jetlinks.core.message.codec.MessageParserFactory;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.metadata.*;
@@ -101,6 +103,7 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private Map<String, Supplier<String>> docFiles = new ConcurrentHashMap<>();
 
     private Map<String, Function<DeviceInfo, Flux<PrincipalMetadata>>> principalMetadataResolver;
+    private Map<String, Supplier<MessageParserFactory>> messageParserResolver;
 
     private ThingRpcSupportChain rpcChain;
 
@@ -540,5 +543,22 @@ public class CompositeProtocolSupport implements ProtocolSupport {
             return resolver == null ? Flux.empty() : resolver.apply(deviceInfo);
         }
         return ProtocolSupport.super.getDevicePrincipalMetadata(transport, deviceInfo);
+    }
+
+    public synchronized void setMessageParser(Transport transport,
+                                              Supplier<MessageParserFactory> factorySupplier) {
+        if (messageParserResolver == null) {
+            messageParserResolver = new HashMap<>();
+        }
+        messageParserResolver.put(transport.getId(), factorySupplier);
+    }
+
+    @Override
+    public Mono<MessageParserFactory> getMessageParser(Transport transport) {
+        if (messageParserResolver != null) {
+            Supplier<MessageParserFactory> resolver = messageParserResolver.get(transport.getId());
+            return resolver == null ? Mono.empty() : Mono.just(resolver.get());
+        }
+        return Mono.empty();
     }
 }
