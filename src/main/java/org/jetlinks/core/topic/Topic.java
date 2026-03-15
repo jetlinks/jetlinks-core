@@ -313,7 +313,7 @@ public final class Topic<T> implements SeparatedCharSequence {
         TopicFinder.find(this, topic, sink, end);
     }
 
-    public <ARG0, ARG1, ARG2, ARG3> void findTopic(CharSequence topic,
+    public <ARG0, ARG1, ARG2, ARG3> void findTopic(SeparatedCharSequence topic,
                                                    ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                    Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                    Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
@@ -326,6 +326,29 @@ public final class Topic<T> implements SeparatedCharSequence {
                                                    Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
         TopicFinder.find(this, topic, arg0, arg1, arg2, arg3, sink, end);
     }
+
+
+    @SneakyThrows
+    public static <T, ARG0, ARG1, ARG2, ARG3> void find(
+        SeparatedCharSequence topicParts,
+        Topic<T> topicPart,
+        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        TopicFinder.find(topicPart, topicParts, arg0, arg1, arg2, arg3, sink, end);
+    }
+
+
+    @SneakyThrows
+    public static <T, ARG0, ARG1, ARG2, ARG3> void find(
+        String topicParts,
+        Topic<T> topicPart,
+        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        TopicFinder.find(topicPart, topicParts, arg0, arg1, arg2, arg3, sink, end);
+    }
+
 
     @Override
     public char separator() {
