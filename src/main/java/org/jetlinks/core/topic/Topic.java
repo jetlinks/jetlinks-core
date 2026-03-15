@@ -90,6 +90,14 @@ public final class Topic<T> implements SeparatedCharSequence {
         this.part = RecyclerUtils.intern(part);
     }
 
+    public String getPart() {
+        return part;
+    }
+
+    public Map<String, Topic<T>> getChildrenMap() {
+        return child;
+    }
+
     private String[] getTopicsUnsafe() {
         return topic().unsafeSeparated();
     }
@@ -281,40 +289,14 @@ public final class Topic<T> implements SeparatedCharSequence {
     public void findTopic(String topic,
                           Consumer<Topic<T>> sink,
                           Runnable end) {
-        findTopic(topic,
-                  null,
-                  null,
-                  end,
-                  sink,
-                  (nil, nil2, _end, _sink, _topic) -> _sink.accept(_topic),
-                  (nil, nil2, _end, _sink) -> _end.run());
+        TopicFinder.find(this, topic, sink, end);
     }
 
     public <A> void findTopic(CharSequence topic,
                               A arg1,
                               BiConsumer<A, Topic<T>> sink,
                               Consumer<A> end) {
-        if (topic instanceof SeparatedCharSequence) {
-            find((SeparatedCharSequence) topic,
-                 this,
-                 arg1,
-                 null,
-                 end,
-                 sink,
-                 (a1, nil2, _end, _sink, _topic) ->
-                     _sink.accept(a1, _topic),
-                 (a1, nil2, _end, _sink) -> _end.accept(a1));
-        } else {
-            findTopic(topic.toString(),
-                      arg1,
-                      null,
-                      end,
-                      sink,
-                      (a1, nil2, _end, _sink, _topic) ->
-                          _sink.accept(a1, _topic),
-                      (a1, nil2, _end, _sink) ->
-                          _end.accept(a1));
-        }
+        TopicFinder.find(this, topic, arg1, sink, end);
     }
 
     public <A, B> void findTopic(CharSequence topic,
@@ -322,91 +304,27 @@ public final class Topic<T> implements SeparatedCharSequence {
                                  B arg2,
                                  Consumer3<A, B, Topic<T>> sink,
                                  BiConsumer<A, B> end) {
-        if (topic instanceof SeparatedCharSequence) {
-            find((SeparatedCharSequence) topic,
-                 this,
-                 arg1,
-                 arg2,
-                 end,
-                 sink,
-                 (a1, b, _end, _sink, _topic) ->
-                     _sink.accept(a1, b, _topic),
-                 (a1, b, _end, _sink) -> _end.accept(a1, b));
-        } else {
-            findTopic(topic.toString(),
-                      arg1,
-                      arg2,
-                      end,
-                      sink,
-                      (a1, b, _end, _sink, _topic) ->
-                          _sink.accept(a1, b, _topic),
-                      (a1, b, _end, _sink) ->
-                          _end.accept(a1, b));
-        }
+        TopicFinder.find(this, topic, arg1, arg2, sink, end);
     }
 
     public void findTopic(CharSequence topic,
                           Consumer<Topic<T>> sink,
                           Runnable end) {
-
-        if (topic instanceof SeparatedCharSequence) {
-            find((SeparatedCharSequence) topic,
-                 this,
-                 null,
-                 null,
-                 end,
-                 sink,
-                 (nil, nil2, _end, _sink, _topic) -> _sink.accept(_topic),
-                 (nil, nil2, _end, _sink) -> _end.run());
-        } else {
-            findTopic(topic.toString(),
-                      null,
-                      null,
-                      end,
-                      sink,
-                      (nil, nil2, _end, _sink, _topic) -> _sink.accept(_topic),
-                      (nil, nil2, _end, _sink) -> _end.run());
-        }
+        TopicFinder.find(this, topic, sink, end);
     }
 
     public <ARG0, ARG1, ARG2, ARG3> void findTopic(CharSequence topic,
                                                    ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                    Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                    Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
-        if (topic instanceof SeparatedCharSequence) {
-            find((SeparatedCharSequence) topic,
-                 this,
-                 arg0,
-                 arg1,
-                 arg2,
-                 arg3,
-                 sink,
-                 end);
-        } else {
-            findTopic(topic.toString(),
-                      arg0,
-                      arg1,
-                      arg2,
-                      arg3,
-                      sink,
-                      end);
-        }
+        TopicFinder.find(this, topic, arg0, arg1, arg2, arg3, sink, end);
     }
 
     public <ARG0, ARG1, ARG2, ARG3> void findTopic(String topic,
                                                    ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                    Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                    Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
-        String[] topics = TopicUtils.split(topic, false, false);
-
-        if (topic.charAt(0) != '/') {
-            String[] newTopics = new String[topics.length + 1];
-            newTopics[0] = "";
-            System.arraycopy(topics, 0, newTopics, 1, topics.length);
-            topics = newTopics;
-        }
-
-        find(topics, this, arg0, arg1, arg2, arg3, sink, end);
+        TopicFinder.find(this, topic, arg0, arg1, arg2, arg3, sink, end);
     }
 
     @Override
@@ -494,173 +412,6 @@ public final class Topic<T> implements SeparatedCharSequence {
             + ", subscribers: " + (subscribers == null ? 0 : subscribers.size())
             + ", children: " + (child == null ? 0 : child.size());
     }
-
-    private boolean match(String[] pars) {
-        return match(SharedPathString.of(pars));
-    }
-
-    private boolean match(SeparatedCharSequence parts) {
-        SeparatedCharSequence self = topics != null ? topics : this;
-        return TopicUtils.match(parts, self)
-            || TopicUtils.match(self, parts);
-    }
-
-
-    @SneakyThrows
-    public static <T, ARG0, ARG1, ARG2, ARG3> void find(
-        String[] topicParts,
-        Topic<T> topicPart,
-        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
-        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
-        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
-
-        @SuppressWarnings("all")
-        Recyclable<Deque<Topic<T>>> recyclable = (Recyclable)SHARED_QUEUE.take(true);
-
-        try{
-            Deque<Topic<T>> cache = recyclable.get();
-
-            cache.add(topicPart);
-
-            String nextPart = null;
-
-            while (!cache.isEmpty()) {
-                Topic<T> part = cache.poll();
-                if (part == null) {
-                    break;
-                }
-
-                if (part.match(topicParts)) {
-                    sink.accept(arg0, arg1, arg2, arg3, part);
-                }
-
-                Map<String, Topic<T>> child = part.child;
-                if (child == null) {
-                    continue;
-                }
-                //订阅了如 /device/**/event/*
-                if (part.part.equals("**")) {
-                    Topic<T> tmp = null;
-                    for (int i = part.depth; i < topicParts.length; i++) {
-                        tmp = child.get(topicParts[i]);
-                        if (tmp != null) {
-                            cache.add(tmp);
-                        }
-                    }
-                    if (null != tmp) {
-                        continue;
-                    }
-                }
-                if ("**".equals(nextPart) || "*".equals(nextPart)) {
-                    cache.addAll(child.values());
-                    continue;
-                }
-                Topic<T> next = child.get("**");
-                if (next != null) {
-                    cache.add(next);
-                }
-                next = child.get("*");
-                if (next != null) {
-                    cache.add(next);
-                }
-
-                if (part.depth + 1 >= topicParts.length) {
-                    continue;
-                }
-                nextPart = topicParts[part.depth + 1];
-                if (nextPart.equals("*") || nextPart.equals("**")) {
-                    cache.addAll(child.values());
-                    continue;
-                }
-                next = child.get(nextPart);
-                if (next != null) {
-                    cache.add(next);
-                }
-            }
-
-        } finally {
-            recyclable.recycle();
-            end.accept(arg0, arg1, arg2, arg3);
-        }
-    }
-
-    public static <T, ARG0, ARG1, ARG2, ARG3> void find(
-        SeparatedCharSequence topicParts,
-        Topic<T> topicPart,
-        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
-        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
-        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
-
-        @SuppressWarnings("all")
-        Recyclable<Deque<Topic<T>>> recyclable = (Recyclable)SHARED_QUEUE.take(true);
-        try {
-            Deque<Topic<T>> cache = recyclable.get();
-
-            cache.add(topicPart);
-
-            String nextPart = null;
-
-            while (!cache.isEmpty()) {
-                Topic<T> part = cache.poll();
-                if (part == null) {
-                    break;
-                }
-
-                if (part.match(topicParts)) {
-                    sink.accept(arg0, arg1, arg2, arg3, part);
-                }
-
-                Map<String, Topic<T>> child = part.child;
-                if (child == null) {
-                    continue;
-                }
-                int partsSize = topicParts.size();
-                //订阅了如 /device/**/event/*
-                if (part.part.equals("**")) {
-                    Topic<T> tmp = null;
-                    for (int i = part.depth; i < partsSize; i++) {
-                        tmp = child.get(topicParts.get(i).toString());
-                        if (tmp != null) {
-                            cache.add(tmp);
-                        }
-                    }
-                    if (null != tmp) {
-                        continue;
-                    }
-                }
-                if ("**".equals(nextPart) || "*".equals(nextPart)) {
-                    cache.addAll(child.values());
-                    continue;
-                }
-                Topic<T> next = child.get("**");
-                if (next != null) {
-                    cache.add(next);
-                }
-                next = child.get("*");
-                if (next != null) {
-                    cache.add(next);
-                }
-
-                if (part.depth + 1 >= partsSize) {
-                    continue;
-                }
-                nextPart = topicParts.get(part.depth + 1).toString();
-                if (nextPart.equals("*") || nextPart.equals("**")) {
-                    cache.addAll(child.values());
-                    continue;
-                }
-                next = child.get(nextPart);
-                if (next != null) {
-                    cache.add(next);
-                }
-            }
-
-        } finally {
-            recyclable.recycle();
-            end.accept(arg0, arg1, arg2, arg3);
-        }
-    }
-
 
     public long getTotalTopic() {
         Map<?, ?> child = this.child;

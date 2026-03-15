@@ -11,6 +11,8 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import java.io.File;
+
 public class BenchmarkRunner {
 
     public static void main(String[] args) throws RunnerException {
@@ -18,6 +20,7 @@ public class BenchmarkRunner {
     }
 
     public static void run(String include) throws RunnerException {
+        new File("target").mkdir();
         Options opt = new OptionsBuilder()
                 .include(include)
                 .threads(4)

@@ -1,0 +1,345 @@
+package org.jetlinks.core.topic;
+
+import org.hswebframework.web.recycler.Recyclable;
+import org.hswebframework.web.recycler.Recycler;
+import org.jetlinks.core.lang.SeparatedCharSequence;
+import org.jetlinks.core.utils.TopicUtils;
+import reactor.function.Consumer3;
+import reactor.function.Consumer4;
+import reactor.function.Consumer5;
+
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+
+/**
+ * Topic 搜索工具类，实现基于 DFS 的搜索算法.
+ *
+ * @author zhouhao
+ * @since 1.1.9
+ */
+public class TopicFinder {
+
+    private static final Recycler<Set<Topic<?>>> SHARED_SET =
+        Recycler.create(HashSet::new, Collection::clear, 256);
+
+    /**
+     * 使用 DFS（深度优先）算法搜索匹配 topic 的节点.
+     *
+     * @param root  根节点
+     * @param topic 搜索路径
+     * @param sink  匹配结果接收器
+     * @param end   搜索结束回调
+     * @param <T>   订阅者类型
+     */
+    public static <T> void find(Topic<T> root,
+                                String topic,
+                                Consumer<Topic<T>> sink,
+                                Runnable end) {
+        if(topic.isEmpty()){
+            sink.accept(root);
+            end.run();
+            return;
+        }
+
+        find(root, splitTopic(topic),
+             null, null, null, null,
+             (a, b, c, d, t) -> sink.accept(t),
+             (a, b, c, d) -> end.run());
+    }
+
+    public static <T> void find(Topic<T> root,
+                                CharSequence topic,
+                                Consumer<Topic<T>> sink,
+                                Runnable end) {
+        if (topic instanceof SeparatedCharSequence) {
+            find(root, (SeparatedCharSequence) topic,
+                 null, null, null, null,
+                 (a, b, c, d, t) -> sink.accept(t),
+                 (a, b, c, d) -> end.run());
+        } else {
+            find(root, topic.toString(), sink, end);
+        }
+    }
+
+    public static <T, ARG0, ARG1, ARG2, ARG3> void find(Topic<T> root,
+                                                        String topic,
+                                                        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+                                                        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+                                                        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        if(topic.isEmpty()){
+            sink.accept(arg0, arg1, arg2, arg3, root);
+            end.accept(arg0, arg1, arg2, arg3);
+            return;
+        }
+        find(root, splitTopic(topic), arg0, arg1, arg2, arg3, sink, end);
+    }
+
+    private static  String[] splitTopic(String topic){
+        String[] topics = TopicUtils.split(topic, false, false);
+        if (topic.charAt(0) != '/') {
+            String[] newTopics = new String[topics.length + 1];
+            newTopics[0] = "";
+            System.arraycopy(topics, 0, newTopics, 1, topics.length);
+            topics = newTopics;
+        }
+        return topics;
+    }
+
+    public static <T, A, B> void find(Topic<T> root,
+                                    CharSequence topic,
+                                    A arg1,
+                                    B arg2,
+                                    Consumer3<A, B, Topic<T>> sink,
+                                    BiConsumer<A, B> end) {
+        if (topic instanceof SeparatedCharSequence) {
+            find(root, (SeparatedCharSequence) topic, arg1, arg2, null, null,
+                 (a1, b, nil2, nil3, _topic) -> sink.accept(a1, b, _topic),
+                 (a1, b, nil2, nil3) -> end.accept(a1, b));
+        } else {
+            find(root, topic.toString(), arg1, arg2, null, null,
+                 (a1, b, nil2, nil3, _topic) -> sink.accept(a1, b, _topic),
+                 (a1, b, nil2, nil3) -> end.accept(a1, b));
+        }
+    }
+
+    public static <T, ARG0, ARG1, ARG2, ARG3> void find(Topic<T> root,
+                                                        CharSequence topic,
+                                                        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+                                                        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+                                                        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        if (topic instanceof SeparatedCharSequence) {
+            find(root, (SeparatedCharSequence) topic, arg0, arg1, arg2, arg3, sink, end);
+        } else {
+            find(root, topic.toString(), arg0, arg1, arg2, arg3, sink, end);
+        }
+    }
+
+    public static <T, A> void find(Topic<T> root,
+                                CharSequence topic,
+                                A arg1,
+                                BiConsumer<A, Topic<T>> sink,
+                                Consumer<A> end) {
+        if (topic instanceof SeparatedCharSequence) {
+            find(root, (SeparatedCharSequence) topic, arg1, null, null, null,
+                 (a1, nil1, nil2, nil3, _topic) -> sink.accept(a1, _topic),
+                 (a1, nil1, nil2, nil3) -> end.accept(a1));
+        } else {
+            find(root, TopicUtils.split(topic.toString(), false, false),
+                 arg1, null, null, null,
+                 (a1, nil1, nil2, nil3, _topic) -> sink.accept(a1, _topic),
+                 (a1, nil1, nil2, nil3) -> end.accept(a1));
+        }
+    }
+
+    public static <T, ARG0, ARG1, ARG2, ARG3> void find(Topic<T> root,
+                                                        SeparatedCharSequence topic,
+                                                        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+                                                        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+                                                        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        if (searchHasDoubleWildcard(topic)) {
+            Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
+            try {
+                findDFSInner(topic, 1, root, recyclableSet.get(),
+                             arg0, arg1, arg2, arg3, sink);
+            } finally {
+                recyclableSet.recycle();
+                end.accept(arg0, arg1, arg2, arg3);
+            }
+        } else {
+            findDFSInner(topic, 1, root, null,
+                         arg0, arg1, arg2, arg3, sink);
+            end.accept(arg0, arg1, arg2, arg3);
+        }
+    }
+
+    public static <T, ARG0, ARG1, ARG2, ARG3> void find(Topic<T> root,
+                                                        String[] topicParts,
+                                                        ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
+                                                        Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
+                                                        Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+
+        if (searchHasDoubleWildcard(topicParts)) {
+            Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
+            try {
+                findDFSInner(topicParts, 1, root, recyclableSet.get(),
+                             arg0, arg1, arg2, arg3, sink);
+            } finally {
+                recyclableSet.recycle();
+                end.accept(arg0, arg1, arg2, arg3);
+            }
+        } else {
+            findDFSInner(topicParts, 1, root, null,
+                         arg0, arg1, arg2, arg3, sink);
+            end.accept(arg0, arg1, arg2, arg3);
+        }
+    }
+
+    private static boolean searchHasDoubleWildcard(String[] parts) {
+        for (String p : parts) {
+            if ("**".equals(p)) return true;
+        }
+        return false;
+    }
+
+    private static boolean searchHasDoubleWildcard(SeparatedCharSequence parts) {
+        for (int i = 0, n = parts.size(); i < n; i++) {
+            if ("**".contentEquals(parts.get(i))) return true;
+        }
+        return false;
+    }
+
+    private static <T, ARG0, ARG1, ARG2, ARG3> void findDFSInner(
+        final String[] st,
+        final int idx,
+        final Topic<T> node,
+        final Set<Topic<T>> emitted,
+        final ARG0 arg0, final ARG1 arg1, final ARG2 arg2, final ARG3 arg3,
+        final Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink) {
+
+        if (idx >= st.length) {
+            if (emitted == null || emitted.add(node)) {
+                sink.accept(arg0, arg1, arg2, arg3, node);
+            }
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch != null) {
+                Topic<T> dstar = ch.get("**");
+                if (dstar != null) {
+                    findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
+                }
+            }
+            return;
+        }
+
+        final String searchPart = st[idx];
+
+        if ("**".equals(node.getPart())) {
+            findDFSInner(st, idx + 1, node, emitted, arg0, arg1, arg2, arg3, sink);
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch == null) return;
+            if ("**".equals(searchPart)) {
+                for (Topic<T> child : ch.values()) {
+                    findDFSInner(st, idx, child, emitted, arg0, arg1, arg2, arg3, sink);
+                }
+            } else if ("*".equals(searchPart)) {
+                for (Topic<T> child : ch.values()) {
+                    findDFSInner(st, idx + 1, child, emitted, arg0, arg1, arg2, arg3, sink);
+                }
+            } else {
+                Topic<T> exact = ch.get(searchPart);
+                if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
+                Topic<T> star = ch.get("*");
+                if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
+                Topic<T> innerDstar = ch.get("**");
+                if (innerDstar != null) findDFSInner(st, idx, innerDstar, emitted, arg0, arg1, arg2, arg3, sink);
+            }
+            return;
+        }
+
+        Map<String, Topic<T>> children = node.getChildrenMap();
+        if (children == null) {
+            if ("**".equals(searchPart) && idx == st.length - 1) {
+                if (emitted == null || emitted.add(node)) {
+                    sink.accept(arg0, arg1, arg2, arg3, node);
+                }
+            }
+            return;
+        }
+
+        if ("**".equals(searchPart)) {
+            findDFSInner(st, idx + 1, node, emitted, arg0, arg1, arg2, arg3, sink);
+            for (Topic<T> child : children.values()) {
+                findDFSInner(st, idx, child, emitted, arg0, arg1, arg2, arg3, sink);
+            }
+        } else if ("*".equals(searchPart)) {
+            for (Topic<T> child : children.values()) {
+                findDFSInner(st, idx + 1, child, emitted, arg0, arg1, arg2, arg3, sink);
+            }
+        } else {
+            Topic<T> exact = children.get(searchPart);
+            if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
+            Topic<T> star = children.get("*");
+            if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
+            Topic<T> dstar = children.get("**");
+            if (dstar != null) findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
+        }
+    }
+
+    private static <T, ARG0, ARG1, ARG2, ARG3> void findDFSInner(
+        final SeparatedCharSequence st,
+        final int idx,
+        final Topic<T> node,
+        final Set<Topic<T>> emitted,
+        final ARG0 arg0, final ARG1 arg1, final ARG2 arg2, final ARG3 arg3,
+        final Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink) {
+
+        final int stSize = st.size();
+
+        if (idx >= stSize) {
+            if (emitted == null || emitted.add(node)) {
+                sink.accept(arg0, arg1, arg2, arg3, node);
+            }
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch != null) {
+                Topic<T> dstar = ch.get("**");
+                if (dstar != null) {
+                    findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
+                }
+            }
+            return;
+        }
+
+        final String searchPart = st.get(idx).toString();
+
+        if ("**".equals(node.getPart())) {
+            findDFSInner(st, idx + 1, node, emitted, arg0, arg1, arg2, arg3, sink);
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch == null) return;
+            if ("**".equals(searchPart)) {
+                for (Topic<T> child : ch.values()) {
+                    findDFSInner(st, idx, child, emitted, arg0, arg1, arg2, arg3, sink);
+                }
+            } else if ("*".equals(searchPart)) {
+                for (Topic<T> child : ch.values()) {
+                    findDFSInner(st, idx + 1, child, emitted, arg0, arg1, arg2, arg3, sink);
+                }
+            } else {
+                Topic<T> exact = ch.get(searchPart);
+                if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
+                Topic<T> star = ch.get("*");
+                if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
+                Topic<T> innerDstar = ch.get("**");
+                if (innerDstar != null) findDFSInner(st, idx, innerDstar, emitted, arg0, arg1, arg2, arg3, sink);
+            }
+            return;
+        }
+
+        Map<String, Topic<T>> children = node.getChildrenMap();
+        if (children == null) {
+            if ("**".equals(searchPart) && idx == stSize - 1) {
+                if (emitted == null || emitted.add(node)) {
+                    sink.accept(arg0, arg1, arg2, arg3, node);
+                }
+            }
+            return;
+        }
+
+        if ("**".equals(searchPart)) {
+            findDFSInner(st, idx + 1, node, emitted, arg0, arg1, arg2, arg3, sink);
+            for (Topic<T> child : children.values()) {
+                findDFSInner(st, idx, child, emitted, arg0, arg1, arg2, arg3, sink);
+            }
+        } else if ("*".equals(searchPart)) {
+            for (Topic<T> child : children.values()) {
+                findDFSInner(st, idx + 1, child, emitted, arg0, arg1, arg2, arg3, sink);
+            }
+        } else {
+            Topic<T> exact = children.get(searchPart);
+            if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
+            Topic<T> star = children.get("*");
+            if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
+            Topic<T> dstar = children.get("**");
+            if (dstar != null) findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
+        }
+    }
+}

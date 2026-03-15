@@ -12,7 +12,9 @@ import reactor.test.StepVerifier;
 
 import java.io.*;
 import java.time.Duration;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class TopicTest {
@@ -250,8 +252,9 @@ public class TopicTest {
         root.findTopic("/1/org/2/dev/3")
             .doOnNext(System.out::println)
             .map(Topic::getTopic)
+            .collect(Collectors.toSet())
             .as(StepVerifier::create)
-            .expectNext("/**", "/1/org/**", "/1/org/2/dev/3")
+            .expectNext(Set.of("/**", "/1/org/**", "/1/org/2/dev/3"))
             .verifyComplete();
 
         Assert.assertNull(root.getTopic("/1/org/5").orElse(null));
