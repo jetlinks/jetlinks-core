@@ -57,13 +57,69 @@ public interface ByteLayout {
         AB_CD_EF_GH = ByteLayouts.AB_CD_EF_GH,
         GH_EF_CD_AB = ByteLayouts.GH_EF_CD_AB,
         BA_DC_FE_HG = ByteLayouts.BA_DC_FE_HG,
-        HG_FE_DC_BA = ByteLayouts.HG_FE_DC_BA
+        HG_FE_DC_BA = ByteLayouts.HG_FE_DC_BA,
+
+        // 其他常见布局
+        FE_HG_BA_DC = ByteLayouts.FE_HG_BA_DC,
+        DC_BA_HG_FE = ByteLayouts.DC_BA_HG_FE,
+
+        // 通用不定长布局
+        BIG_ENDIAN = ByteLayouts.BIG_ENDIAN,
+        LITTLE_ENDIAN = ByteLayouts.LITTLE_ENDIAN,
+        WORD_SWAP_2 = ByteLayouts.WORD_SWAP_2,
+        WORD_REVERSE_2 = ByteLayouts.WORD_REVERSE_2
     ;
     //@formatter:on
 
 
     static ByteLayout create(String id, int[] layout) {
         return new ByteLayoutImpl(id, layout);
+    }
+
+    /**
+     * 创建一个反转布局
+     *
+     * @param id     布局标识
+     * @param length 字节长度
+     * @return 布局
+     */
+    static ByteLayout reverse(String id, int length) {
+        return new ReverseByteLayout(id, length);
+    }
+
+    /**
+     * 创建一个字交换布局
+     *
+     * @param id          布局标识
+     * @param totalLength 总字节长度
+     * @param wordLength  每个字的字节长度
+     * @return 布局
+     */
+    static ByteLayout wordSwap(String id, int totalLength, int wordLength) {
+        return new WordSwapByteLayout(id, totalLength, wordLength);
+    }
+
+    /**
+     * 创建一个字内反转布局,按字长度进行内部反转。
+     *
+     * @param id          布局标识
+     * @param totalLength 总字节长度,如果为 -1 则表示不限制长度
+     * @param wordLength  字长度
+     * @return 布局
+     */
+    static ByteLayout wordReverse(String id, int totalLength, int wordLength) {
+        return new WordReverseByteLayout(id, totalLength, wordLength);
+    }
+
+    /**
+     * 创建一个不限制长度的字内反转布局。
+     *
+     * @param id         布局标识
+     * @param wordLength 字长度
+     * @return 布局
+     */
+    static ByteLayout wordReverse(String id, int wordLength) {
+        return wordReverse(id, -1, wordLength);
     }
 
     /**

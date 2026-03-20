@@ -42,19 +42,101 @@ public class ByteLayoutImplTest {
         // 测试8字节布局
         byte[] input = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 
-        testReorder(ByteLayoutImpl.AB_CD_EF_GH, input,
+        testReorder(ByteLayout.AB_CD_EF_GH, input,
                     new byte[]{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, "AB_CD_EF_GH");
 
-        testReorder(ByteLayoutImpl.GH_EF_CD_AB, input,
+        testReorder(ByteLayout.GH_EF_CD_AB, input,
                     new byte[]{0x07, 0x08, 0x05, 0x06, 0x03, 0x04, 0x01, 0x02}, "GH_EF_CD_AB");
 
-        testReorder(ByteLayoutImpl.BA_DC_FE_HG, input,
+        testReorder(ByteLayout.BA_DC_FE_HG, input,
                     new byte[]{0x02, 0x01, 0x04, 0x03, 0x06, 0x05, 0x08, 0x07}, "BA_DC_FE_HG");
 
-        testReorder(ByteLayoutImpl.HG_FE_DC_BA, input,
+        testReorder(ByteLayout.HG_FE_DC_BA, input,
                     new byte[]{0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01}, "HG_FE_DC_BA");
+
+        testReorder(ByteLayout.FE_HG_BA_DC, input,
+                    new byte[]{0x06, 0x05, 0x08, 0x07, 0x02, 0x01, 0x04, 0x03}, "FE_HG_BA_DC");
+
+        testReorder(ByteLayout.DC_BA_HG_FE, input,
+                    new byte[]{0x04, 0x03, 0x02, 0x01, 0x08, 0x07, 0x06, 0x05}, "DC_BA_HG_FE");
     }
 
+    @Test
+    public void testReverseLayout() {
+        byte[] input = {0x01, 0x02, 0x03, 0x04};
+        ByteLayout layout = ByteLayout.reverse("reverse4", 4);
+        testReorder(layout, input, new byte[]{0x04, 0x03, 0x02, 0x01}, "reverse4");
+
+        byte[] input8 = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+        layout = ByteLayout.reverse("reverse8", 8);
+        testReorder(layout, input8, new byte[]{0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01}, "reverse8");
+    }
+
+    @Test
+    public void testWordSwapLayout() {
+        byte[] input = {0x01, 0x02, 0x03, 0x04};
+        // 2字节为一个字，进行交换。 [0x01,0x02], [0x03,0x04] => [0x03,0x04], [0x01,0x02]
+        ByteLayout layout = ByteLayout.wordSwap("wordSwap4_2", 4, 2);
+        testReorder(layout, input, new byte[]{0x03, 0x04, 0x01, 0x02}, "wordSwap4_2");
+
+        byte[] input8 = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+        // 4字节为一个字，进行交换。
+        layout = ByteLayout.wordSwap("wordSwap8_4", 8, 4);
+        testReorder(layout, input8, new byte[]{0x05, 0x06, 0x07, 0x08, 0x01, 0x02, 0x03, 0x04}, "wordSwap8_4");
+
+        // 2字节为一个字，在8字节中进行反转交换。 [1,2],[3,4],[5,6],[7,8] => [7,8],[5,6],[3,4],[1,2]
+        layout = ByteLayout.wordSwap("wordSwap8_2", 8, 2);
+        testReorder(layout, input8, new byte[]{0x07, 0x08, 0x05, 0x06, 0x03, 0x04, 0x01, 0x02}, "wordSwap8_2");
+    }
+
+    @Test
+    public void testWordReverseLayout() {
+        byte[] input = {0x01, 0x02, 0x03, 0x04};
+        // 2字节为一个字，字内反转。 [0x01,0x02], [0x03,0x04] => [0x02,0x01], [0x04,0x03]
+        ByteLayout layout = ByteLayout.wordReverse("wordReverse2", 2);
+        testReorder(layout, input, new byte[]{0x02, 0x01, 0x04, 0x03}, "wordReverse2");
+
+        // 指定长度的字内反转
+        layout = ByteLayout.wordReverse("wordReverse4_2", 4, 2);
+        testReorder(layout, input, new byte[]{0x02, 0x01, 0x04, 0x03}, "wordReverse4_2");
+
+        byte[] input6 = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+        // 3字节为一个字，字内反转。 [0x01,0x02,0x03], [0x04,0x05,0x06] => [0x03,0x02,0x01], [0x06,0x05,0x04]
+        layout = ByteLayout.wordReverse("wordReverse3", 3);
+        testReorder(layout, input6, new byte[]{0x03, 0x02, 0x01, 0x06, 0x05, 0x04}, "wordReverse3");
+
+        // 测试长度不匹配抛出异常
+        try {
+            layout.reorder(Unpooled.wrappedBuffer(new byte[]{0x01, 0x02, 0x03, 0x04}));
+            fail("应该抛出异常");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("multiple of word length"));
+        }
+
+        // 测试指定长度大于缓冲区
+        try {
+            ByteLayout.wordReverse("tooLong", 8, 2)
+                      .reorder(Unpooled.wrappedBuffer(new byte[]{0x01, 0x02, 0x03, 0x04}));
+            fail("应该抛出异常");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("insufficient data"));
+        }
+    }
+
+
+    @Test
+    public void testGenericLayouts() {
+        byte[] input = {0x01, 0x02, 0x03, 0x04};
+        testReorder(ByteLayout.BIG_ENDIAN, input, new byte[]{0x01, 0x02, 0x03, 0x04}, "BIG_ENDIAN");
+        testReorder(ByteLayout.LITTLE_ENDIAN, input, new byte[]{0x04, 0x03, 0x02, 0x01}, "LITTLE_ENDIAN");
+        testReorder(ByteLayout.WORD_SWAP_2, input, new byte[]{0x03, 0x04, 0x01, 0x02}, "WORD_SWAP_2");
+        testReorder(ByteLayout.WORD_REVERSE_2, input, new byte[]{0x02, 0x01, 0x04, 0x03}, "WORD_REVERSE_2");
+
+        byte[] input8 = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+        testReorder(ByteLayout.LITTLE_ENDIAN, input8, new byte[]{0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01}, "LITTLE_ENDIAN_8");
+        testReorder(ByteLayout.WORD_SWAP_2, input8, new byte[]{0x07, 0x08, 0x05, 0x06, 0x03, 0x04, 0x01, 0x02}, "WORD_SWAP_2_8");
+        testReorder(ByteLayout.WORD_REVERSE_2, input8, new byte[]{0x02, 0x01, 0x04, 0x03, 0x06, 0x05, 0x08, 0x07}, "WORD_REVERSE_2_8");
+    }
 
     @Test
     public void testEndiannessConversion() {
@@ -260,6 +342,8 @@ public class ByteLayoutImplTest {
             case "GH_EF_CD_AB": return new int[]{6, 7, 4, 5, 2, 3, 0, 1};
             case "BA_DC_FE_HG": return new int[]{1, 0, 3, 2, 5, 4, 7, 6};
             case "HG_FE_DC_BA": return new int[]{7, 6, 5, 4, 3, 2, 1, 0};
+            case "FE_HG_BA_DC": return new int[]{5, 4, 7, 6, 1, 0, 3, 2};
+            case "DC_BA_HG_FE": return new int[]{3, 2, 1, 0, 7, 6, 5, 4};
             default: throw new IllegalArgumentException("Unknown layout: " + layoutName);
         }
     }
