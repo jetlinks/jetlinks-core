@@ -6,6 +6,7 @@ import org.jetlinks.core.cache.Caches;
 import org.jetlinks.core.codec.internal.*;
 import org.jetlinks.core.codec.internal.arrays.ArrayCodec;
 import org.jetlinks.core.codec.internal.arrays.BitArray;
+import org.jetlinks.core.codec.internal.arrays.LSBBitArray;
 import org.jetlinks.core.codec.internal.bcd.*;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
@@ -83,6 +84,13 @@ public final class Codecs {
         Codec<Integer[]> BCD32_ARRAY = new ArrayCodec<>(BCD32);
 
         /**
+         * 48 位 Packed BCD 编解码器.
+         * @see Bcd48
+         */
+        Codec<Long> BCD48 = new Bcd48();
+        Codec<Long[]> BCD48_ARRAY = new ArrayCodec<>(BCD48);
+
+        /**
          * 16 位 Unpacked BCD 编解码器.
          * @see UnpackedBcd16
          */
@@ -97,18 +105,37 @@ public final class Codecs {
         Codec<Integer[]> UnpackedBCD32_ARRAY = new ArrayCodec<>(UnpackedBCD32);
 
         /**
+         * 6 字节 BCD 日期时间编解码器.
+         * @see BcdDateTime6
+         */
+        Codec<java.time.LocalDateTime> BCD_DATE_TIME_6 = new BcdDateTime6();
+
+        /**
+         * 7 字节 BCD 日期时间编解码器.
+         * @see BcdDateTime7
+         */
+        Codec<java.time.LocalDateTime> BCD_DATE_TIME_7 = new BcdDateTime7();
+
+        /**
          * 8 字节 BCD 日期时间编解码器.
          * @see BcdDateTime8
          */
         Codec<java.time.LocalDateTime> BCD_DATE_TIME_8 = new BcdDateTime8();
 
         /**
+         * 4 字节 BCD 日期编解码器.
+         * @see BcdDate4
+         */
+        Codec<java.time.LocalDate> BCD_DATE_4 = new BcdDate4();
+        Codec<java.time.LocalDate[]> BCD_DATE_4_ARRAY = new ArrayCodec<>(BCD_DATE_4);
+
+        /**
          * 12 字节 BCD 日期时间编解码器.
          * @see BcdDateTime12
          */
         Codec<java.time.LocalDateTime> BCD_DATE_TIME_12 = new BcdDateTime12();
-
         Codec<Boolean[]> BIT_ARRAY = new BitArray();
+        Codec<Boolean[]> LSB_BIT_ARRAY = new LSBBitArray();
     }
 
     private static Map<String, Codec<?>> mapping = new ConcurrentHashMap<>();
@@ -135,9 +162,13 @@ public final class Codecs {
             Internal.BCD8,
             Internal.BCD16,
             Internal.BCD32,
+            Internal.BCD48,
             Internal.UnpackedBCD16,
             Internal.UnpackedBCD32,
+            Internal.BCD_DATE_TIME_6,
+            Internal.BCD_DATE_TIME_7,
             Internal.BCD_DATE_TIME_8,
+            Internal.BCD_DATE_4,
             Internal.BCD_DATE_TIME_12,
             // 数组类型
             Internal.BOOL_ARRAY,
@@ -159,10 +190,13 @@ public final class Codecs {
             Internal.BCD8_ARRAY,
             Internal.BCD16_ARRAY,
             Internal.BCD32_ARRAY,
+            Internal.BCD48_ARRAY,
             Internal.UnpackedBCD16_ARRAY,
             Internal.UnpackedBCD32_ARRAY,
+            Internal.BCD_DATE_4_ARRAY,
             // 位数组
-            Internal.BIT_ARRAY
+            Internal.BIT_ARRAY,
+            Internal.LSB_BIT_ARRAY
         );
     }
 
