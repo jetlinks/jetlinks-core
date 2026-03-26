@@ -34,4 +34,8 @@ public class PrincipalMetadata implements Serializable {
      */
     private CredentialType credentialType;
 
+    /**
+     * 凭证描述
+     */
+    private CredentialSpec credentialSpec;
 }
