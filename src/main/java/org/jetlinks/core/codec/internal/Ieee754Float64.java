@@ -13,7 +13,7 @@ public class Ieee754Float64 implements Codec<Double> {
 
     @Override
     public String getId() {
-        return "ieee754_float32";
+        return "ieee754_float64";
     }
 
     @Override
