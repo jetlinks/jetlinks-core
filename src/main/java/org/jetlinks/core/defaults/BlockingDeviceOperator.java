@@ -8,6 +8,9 @@ import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigKeyValue;
 import org.jetlinks.core.device.*;
 import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.principal.Credential;
+import org.jetlinks.core.principal.CredentialType;
+import org.jetlinks.core.principal.Identity;
 import org.jetlinks.core.principal.Principal;
 import org.jetlinks.core.things.ThingMetadata;
 import org.jetlinks.core.things.ThingRpcSupport;
@@ -542,6 +545,11 @@ public class BlockingDeviceOperator implements DeviceOperator {
         return Boolean.TRUE.equals(
             await(removeConfigs(key))
         );
+    }
+
+    public Credential getCredentialNow(Identity identity,
+                                       CredentialType credentialType) {
+        return await(DeviceOperator.super.getCredential(identity, credentialType));
     }
 
     @Override
