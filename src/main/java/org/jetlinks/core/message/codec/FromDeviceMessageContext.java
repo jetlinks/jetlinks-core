@@ -118,6 +118,7 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
             public Mono<DevicePrincipal> resolveDevice(Principal principal) {
                 return registry.resolveDevice(principal);
             }
+
             @Override
             public Mono<Void> handleMessage(DeviceMessage message) {
                 return handler.apply(message);
@@ -145,6 +146,7 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
             public Mono<DevicePrincipal> resolveDevice(Principal principal) {
                 return registry.resolveDevice(principal);
             }
+
             @Nonnull
             @Override
             public EncodedMessage getMessage() {
@@ -158,7 +160,7 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
 
             @Override
             public Mono<Void> handleMessage(DeviceMessage message) {
-                return handler.apply(message);
+                return Mono.defer(() -> handler.apply(message));
             }
         };
     }

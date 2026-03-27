@@ -126,6 +126,10 @@ public interface DeviceTracer {
         static SeparatedCharSequence upstream0(String deviceId) {
             return operation0(deviceId, OperationName.upstream);
         }
+
+        static SeparatedCharSequence handle(String deviceId) {
+            return operation0(deviceId, OperationName.handle);
+        }
     }
 
     // 操作
@@ -155,6 +159,8 @@ public interface DeviceTracer {
         // 上行
         String upstream = "upstream";
 
+        // 处理设备消息
+        String handle = "handle";
     }
 
 
