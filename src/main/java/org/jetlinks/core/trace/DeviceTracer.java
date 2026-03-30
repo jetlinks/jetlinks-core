@@ -116,7 +116,7 @@ public interface DeviceTracer {
         }
 
         static SeparatedCharSequence downstream0(String deviceId) {
-            return operation0(deviceId, OperationName.decode);
+            return operation0(deviceId, OperationName.downstream);
         }
 
         static String upstream(String deviceId) {

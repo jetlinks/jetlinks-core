@@ -100,7 +100,7 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
         return new FromDeviceMessageContext() {
             @Override
             public DeviceSession getSession() {
-                return session;
+                return session.isWrapFrom(TraceDeviceSession.class) ? session : TraceDeviceSession.of(session);
             }
 
             @Nonnull
@@ -139,7 +139,7 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
 
             @Override
             public DeviceSession getSession() {
-                return session;
+                return session.isWrapFrom(TraceDeviceSession.class) ? session : TraceDeviceSession.of(session);
             }
 
             @Override
