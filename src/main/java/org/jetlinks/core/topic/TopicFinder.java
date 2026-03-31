@@ -290,7 +290,7 @@ public class TopicFinder {
             return;
         }
 
-        final String searchPart = st.get(idx).toString();
+        final String searchPart = String.valueOf(st.get(idx));
 
         if ("**".equals(node.getPart())) {
             findDFSInner(st, idx + 1, node, emitted, arg0, arg1, arg2, arg3, sink);

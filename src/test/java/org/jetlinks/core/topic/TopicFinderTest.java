@@ -42,11 +42,16 @@ public class TopicFinderTest {
     }
 
     @Test
-    public void test(){
-//        root.append();
+    public void testNull() {
+        root.append("/**");
 
-        root.findTopic("/ext/ntp/k04a3JG9Sze/3639534830A6/request",
-                       topic->{},()->{});
+        root.findTopic(
+            SharedPathString
+                .of("/device/test")
+                .replace(0, null),
+            topic -> {
+            }, () -> {
+            });
     }
 
     // ========== 精确匹配 ==========

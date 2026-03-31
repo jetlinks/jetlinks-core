@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 
 public interface DeviceTracer {
 
-    static  <R> MonoTracer<R> fromMessage(Message message) {
+    static <R> MonoTracer<R> fromMessage(Message message) {
         return MonoTracer.createWith(message.getHeaders());
     }
 
@@ -51,19 +51,23 @@ public interface DeviceTracer {
         SharedPathString all_operations = SharedPathString.of("/device/*/*");
 
         static SeparatedCharSequence operation0(String deviceId, String operation) {
-            return all_operations.replace(2, deviceId, 3, operation);
+            return all_operations
+                .replace(2,
+                         String.valueOf(deviceId),
+                         3,
+                         String.valueOf(operation));
         }
 
         static String operation(String deviceId, String operation) {
             return StringBuilderUtils
-                    .buildString(deviceId, operation,
-                                 (str, opt, stringBuilder) -> {
-                                     stringBuilder
-                                             .append("/device/")
-                                             .append(str)
-                                             .append("/")
-                                             .append(opt);
-                                 });
+                .buildString(deviceId, operation,
+                             (str, opt, stringBuilder) -> {
+                                 stringBuilder
+                                     .append("/device/")
+                                     .append(str)
+                                     .append("/")
+                                     .append(opt);
+                             });
         }
 
         static String connection(String deviceId) {
