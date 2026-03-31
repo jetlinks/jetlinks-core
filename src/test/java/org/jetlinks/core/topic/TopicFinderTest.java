@@ -41,6 +41,14 @@ public class TopicFinderTest {
         root = Topic.createRoot();
     }
 
+    @Test
+    public void test(){
+//        root.append();
+
+        root.findTopic("/ext/ntp/k04a3JG9Sze/3639534830A6/request",
+                       topic->{},()->{});
+    }
+
     // ========== 精确匹配 ==========
 
     @Test
