@@ -7,6 +7,7 @@ import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.net.InetSocketAddress;
+import java.util.Objects;
 
 /**
  * 客户端连接
@@ -66,4 +67,20 @@ public interface ClientConnection extends Scannable {
     default Object scanUnsafe(@Nonnull Attr key) {
         return null;
     }
+
+    /**
+     * 获取连接监控指标
+     */
+    default ConnectionMetrics metrics() {
+        return null;
+    }
+
+    /**
+     * 获取连接ID
+     * @return ID
+     */
+    default String id(){
+        return Integer.toHexString(System.identityHashCode(this));
+    }
+
 }

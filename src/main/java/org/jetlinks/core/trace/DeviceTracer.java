@@ -26,6 +26,9 @@ public interface DeviceTracer {
         // 消息内容
         AttributeKey<String> message = AttributeKey.stringKey("message");
 
+        // 连接ID
+        AttributeKey<String> connectionId = AttributeKey.stringKey("connectionId");
+
         // 响应信息
         AttributeKey<String> response = AttributeKey.stringKey("response");
 
