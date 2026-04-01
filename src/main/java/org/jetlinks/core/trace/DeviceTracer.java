@@ -24,6 +24,9 @@ public interface DeviceTracer {
         AttributeKey<String> deviceId = AttributeKey.stringKey("deviceId");
 
         // 消息内容
+        AttributeKey<String> session = AttributeKey.stringKey("session");
+
+        // 消息内容
         AttributeKey<String> message = AttributeKey.stringKey("message");
 
         // 连接ID
@@ -76,6 +79,18 @@ public interface DeviceTracer {
 
         static SeparatedCharSequence connection0(String deviceId) {
             return operation0(deviceId, OperationName.connection);
+        }
+
+        static SeparatedCharSequence disconnect(String deviceId) {
+            return operation0(deviceId, OperationName.disconnect);
+        }
+
+        static SeparatedCharSequence sessionClosed(String deviceId) {
+            return operation0(deviceId, OperationName.sessionClosed);
+        }
+
+        static SeparatedCharSequence sessionCreated(String deviceId) {
+            return operation0(deviceId, OperationName.sessionCreated);
         }
 
         static String auth(String deviceId) {
@@ -145,6 +160,15 @@ public interface DeviceTracer {
         // 连接
         String connection = "connection";
 
+        // 连接断开
+        String disconnect = "disconnect";
+
+        // 会话关闭
+        String sessionClosed = "sessionClosed";
+
+        // 会话创建
+        String sessionCreated = "sessionCreated";
+
         // 设备认证
         String auth = "auth";
 
@@ -168,6 +192,9 @@ public interface DeviceTracer {
 
         // 处理设备消息
         String handle = "handle";
+
+        // 身份识别
+        String principal="principal";
     }
 
 
