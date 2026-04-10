@@ -3,6 +3,7 @@ package org.jetlinks.core.utils;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.Disposable;
+import reactor.core.Exceptions;
 import reactor.core.publisher.*;
 import reactor.core.publisher.Operators;
 import reactor.core.scheduler.Scheduler;
@@ -12,6 +13,7 @@ import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 
 import javax.annotation.Nonnull;
+import java.lang.reflect.Array;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -318,7 +320,10 @@ public class FluxUtils {
         @Override
         public void cancel() {
             cancelled = true;
-            s.cancel();
+            Subscription subscription = s;
+            if (subscription != null) {
+                subscription.cancel();
+            }
             drain();
         }
 
@@ -348,29 +353,33 @@ public class FluxUtils {
                     boolean d = done;
                     boolean empty = queue.isEmpty();
 
-                    // 在循环开始时判断是否有背压：requested == 0 或队列不为空
-                    // 这个判断需要在处理队列之前进行，因为处理过程中队列状态会变化
-                    boolean hasBackpressure = (r == 0) || !empty;
-
-                    if (d && empty) {
-                        terminate(a);
-                        return;
-                    }
-
                     if (empty) {
-                        // 如果队列为空且上游已完成，发送当前容器（如果有）
-                        if (done && currentContainer != null) {
-                            T mapped = mapper.apply(currentContainer);
-                            a.onNext(mapped);
-                            currentContainer = null; // 重置容器
+                        if (currentContainer != null) {
+                            if (!emitCurrent(a)) {
+                                return;
+                            }
                             e++;
-                            r = requested;
+                            continue;
+                        }
+                        if (d) {
+                            terminate(a);
+                            return;
                         }
                         break;
                     }
 
                     // 获取或创建当前容器
-                    C container = currentContainer != null ? currentContainer : containerSupplier.get();
+                    C container = currentContainer;
+                    if (container == null) {
+                        try {
+                            container = containerSupplier.get();
+                            currentContainer = container;
+                        } catch (Throwable ex) {
+                            fail(a, ex, null);
+                            return;
+                        }
+                    }
+
                     boolean hasMerged = false;
                     boolean shouldEmit = false;
 
@@ -384,14 +393,28 @@ public class FluxUtils {
                         }
 
                         // 合并元素到容器中
-                        C newContainer = merger.apply(container, element);
+                        C newContainer;
+                        try {
+                            newContainer = merger.apply(container, element);
+                        } catch (Throwable ex) {
+                            currentContainer = container;
+                            fail(a, ex, container);
+                            return;
+                        }
 
                         // 使用bufferPredicate判断合并后的容器是否还可以继续缓冲
-                        boolean canBuffer = bufferPredicate.test(newContainer);
-
                         // 更新容器
                         container = newContainer;
+                        currentContainer = container;
                         hasMerged = true;
+
+                        boolean canBuffer;
+                        try {
+                            canBuffer = bufferPredicate.test(container);
+                        } catch (Throwable ex) {
+                            fail(a, ex, container);
+                            return;
+                        }
 
                         if (!canBuffer) {
                             // 不能再缓冲了，标记应该发送
@@ -406,11 +429,6 @@ public class FluxUtils {
                         currentContainer = container;
                     }
 
-                    // 在处理完队列后，重新检查是否有背压
-                    // 因为处理过程中队列可能已经变为空
-                    boolean queueEmptyAfterProcessing = queue.isEmpty();
-                    boolean hasBackpressureAfterProcessing = (r == 0) || !queueEmptyAfterProcessing;
-
                     // 发送条件判断：
                     // 1. bufferPredicate返回false（不能再缓冲了） -> 必须发送
                     // 2. 没有背压且合并了元素 -> 立即发送（避免延迟）
@@ -418,16 +436,14 @@ public class FluxUtils {
                     // 4. 有背压且上游未完成且可以继续缓冲 -> 保存容器状态，等待更多元素
                     if (hasMerged) {
                         boolean shouldSend = shouldEmit  // bufferPredicate返回false
-                            || !hasBackpressureAfterProcessing  // 没有背压
+                            || queue.isEmpty()  // 没有积压数据
                             || done;  // 上游已完成
 
                         if (shouldSend && e < r) {
-                            // 有下游请求，发送容器
-                            T mapped = mapper.apply(container);
-                            a.onNext(mapped);
-                            currentContainer = null;
+                            if (!emitCurrent(a)) {
+                                return;
+                            }
                             e++;
-                            r = requested;
                         }
                         // 否则保存容器状态，等待更多元素或下游请求
                     }
@@ -442,7 +458,7 @@ public class FluxUtils {
                     return;
                 }
 
-                if (done && queue.isEmpty()) {
+                if (done && queue.isEmpty() && currentContainer == null) {
                     terminate(a);
                     return;
                 }
@@ -455,7 +471,10 @@ public class FluxUtils {
                     if (rem < 16) {
                         long toRequest = queue.isEmpty() ? 32 : 16;
                         Operators.addCap(REMAINDER, this, toRequest);
-                        this.s.request(toRequest);
+                        Subscription subscription = this.s;
+                        if (subscription != null) {
+                            subscription.request(toRequest);
+                        }
                     }
                 }
 
@@ -466,13 +485,67 @@ public class FluxUtils {
             }
         }
 
+        boolean emitCurrent(CoreSubscriber<? super T> a) {
+            C container = currentContainer;
+            if (container == null) {
+                return true;
+            }
+
+            T mapped;
+            try {
+                mapped = mapper.apply(container);
+            } catch (Throwable ex) {
+                currentContainer = null;
+                fail(a, ex, container);
+                return false;
+            }
+
+            try {
+                a.onNext(mapped);
+                currentContainer = null;
+                return true;
+            } catch (Throwable ex) {
+                currentContainer = null;
+                fail(a, ex, mapped);
+                return false;
+            }
+        }
+
         void cleanup() {
             S element;
             while ((element = queue.poll()) != null) {
                 releaseElement(element);
             }
-            if (null != currentContainer) {
-                Operators.onDiscard(currentContainer, currentContext());
+            C container = currentContainer;
+            currentContainer = null;
+            if (container != null) {
+                discardValue(container);
+            }
+        }
+
+        void fail(CoreSubscriber<? super T> a, Throwable ex, Object valueToDiscard) {
+            Exceptions.throwIfFatal(ex);
+
+            done = true;
+            cancelled = true;
+
+            Subscription subscription = this.s;
+            if (subscription != null) {
+                subscription.cancel();
+            }
+
+            currentContainer = null;
+            if (valueToDiscard != null) {
+                discardValue(valueToDiscard);
+            }
+            cleanup();
+
+            Throwable error = Operators.onOperatorError(subscription, ex, currentContext());
+
+            try {
+                a.onError(error);
+            } catch (Throwable signalError) {
+                Operators.onErrorDropped(Exceptions.addSuppressed(error, signalError), currentContext());
             }
         }
 
@@ -484,16 +557,61 @@ public class FluxUtils {
             }
         }
 
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        void discardValue(Object value) {
+            if (value == null) {
+                return;
+            }
+            if (value instanceof Iterable<?>) {
+                for (Object item : (Iterable<?>) value) {
+                    discardValue(item);
+                }
+                return;
+            }
+            Class<?> type = value.getClass();
+            if (type.isArray()) {
+                int length = Array.getLength(value);
+                for (int index = 0; index < length; index++) {
+                    discardValue(Array.get(value, index));
+                }
+                return;
+            }
+            if (onDrop != null) {
+                try {
+                    onDrop.accept((S) value);
+                    return;
+                } catch (ClassCastException ignore) {
+                } catch (Throwable ex) {
+                    Operators.onErrorDropped(ex, currentContext());
+                    return;
+                }
+            }
+            try {
+                Operators.onDiscard(value, currentContext());
+            } catch (Throwable ex) {
+                Operators.onErrorDropped(ex, currentContext());
+            }
+        }
+
         /**
          * 终止流：发送错误或完成信号
          */
         void terminate(CoreSubscriber<? super T> a) {
             cleanup();
             Throwable ex = error;
-            if (ex != null) {
-                a.onError(ex);
-            } else {
-                a.onComplete();
+            cancelled = true;
+            try {
+                if (ex != null) {
+                    a.onError(ex);
+                } else {
+                    a.onComplete();
+                }
+            } catch (Throwable signalError) {
+                if (ex != null) {
+                    Operators.onErrorDropped(Exceptions.addSuppressed(ex, signalError), currentContext());
+                } else {
+                    Operators.onErrorDropped(signalError, currentContext());
+                }
             }
         }
     }
