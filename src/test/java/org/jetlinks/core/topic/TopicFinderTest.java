@@ -41,6 +41,19 @@ public class TopicFinderTest {
         root = Topic.createRoot();
     }
 
+    @Test
+    public void testNull() {
+        root.append("/**");
+
+        root.findTopic(
+            SharedPathString
+                .of("/device/test")
+                .replace(0, null),
+            topic -> {
+            }, () -> {
+            });
+    }
+
     // ========== 精确匹配 ==========
 
     @Test

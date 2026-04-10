@@ -2,12 +2,7 @@ package org.jetlinks.core.message.codec.parser;
 
 import io.netty.buffer.ByteBuf;
 import org.jetlinks.core.message.codec.MessageParser;
-import org.jetlinks.core.message.codec.parser.rule.DelimiterFrameRule;
-import org.jetlinks.core.message.codec.parser.rule.FixedLengthFrameRule;
-import org.jetlinks.core.message.codec.parser.rule.LengthFieldFrameRule;
-import org.jetlinks.core.message.codec.parser.rule.ModbusRtuFrameRule;
-import org.jetlinks.core.message.codec.parser.rule.ModbusTcpFrameRule;
-import org.jetlinks.core.message.codec.parser.rule.StartEndFrameRule;
+import org.jetlinks.core.message.codec.parser.rule.*;
 import org.jetlinks.core.monitor.Monitor;
 
 import java.nio.charset.StandardCharsets;
@@ -366,6 +361,24 @@ public final class MessageParserBuilder {
      */
     public MessageParserBuilder modbusTcp() {
         return addRule(ModbusTcpFrameRule.DEFAULT);
+    }
+
+    /**
+     * 通用 XML 粘拆包规则, 复用 {@link XMLMessageFrameRule#INSTANCE}.
+     *
+     * @return this
+     */
+    public MessageParserBuilder xml() {
+        return addRule(XMLMessageFrameRule.INSTANCE);
+    }
+
+    /**
+     * 通用 XML 粘拆包规则, 复用 {@link XMLMessageFrameRule#INSTANCE}.
+     *
+     * @return this
+     */
+    public MessageParserBuilder json() {
+        return addRule(JSONMessageFrameRule.INSTANCE);
     }
 
     /**

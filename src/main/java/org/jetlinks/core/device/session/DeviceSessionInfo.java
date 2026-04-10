@@ -4,14 +4,19 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.server.session.ChildrenDeviceSession;
 import org.jetlinks.core.server.session.DeviceSession;
+import org.jetlinks.core.server.session.ClientConnectionSession;
 import reactor.core.Scannable;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
 public class DeviceSessionInfo implements Serializable {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
@@ -55,10 +60,15 @@ public class DeviceSessionInfo implements Serializable {
 
     /**
      * 等待处理的消息数量
+     *
      * @since 1.3
      */
-    private Integer pendingMessages;
+    private Long pendingMessages;
 
+    /**
+     * 连接信息
+     */
+    private List<DeviceConnectionInfo> connections;
 
     public static DeviceSessionInfo of(String serverId, DeviceSession session) {
         DeviceSessionInfo sessionInfo = new DeviceSessionInfo();
@@ -79,7 +89,16 @@ public class DeviceSessionInfo implements Serializable {
         if (session.isWrapFrom(Scannable.class)) {
             sessionInfo.pendingMessages = session
                 .unwrap(Scannable.class)
-                .scan(Scannable.Attr.BUFFERED);
+                .scanOrDefault(Scannable.Attr.LARGE_BUFFERED, 0L);
+        }
+
+        if (session.isWrapFrom(ClientConnectionSession.class)) {
+            sessionInfo.connections = session
+                .unwrap(ClientConnectionSession.class)
+                .getConnections()
+                .stream()
+                .map(DeviceConnectionInfo::of)
+                .collect(Collectors.toList());
         }
 
         return sessionInfo;

@@ -55,6 +55,8 @@ public final class Codecs {
         Codec<Float[]> Q1_31_ARRAY = new ArrayCodec<>(Q1_31);
         Codec<Float> Q8_8 = new FixedPointQ8_8();
         Codec<Float[]> Q8_8_ARRAY = new ArrayCodec<>(Q8_8);
+        Codec<Float> Q7_9 = new FixedPointQ7_9();
+        Codec<Float[]> Q7_9_ARRAY = new ArrayCodec<>(Q7_9);
         Codec<Float> Q15_1 = new FixedPointQ15_1();
         Codec<Float[]> Q15_1_ARRAY = new ArrayCodec<>(Q15_1);
         Codec<Float> Q31_1 = new FixedPointQ31_1();
@@ -155,6 +157,7 @@ public final class Codecs {
             Internal.Q1_15,
             Internal.Q1_31,
             Internal.Q8_8,
+            Internal.Q7_9,
             Internal.Q15_1,
             Internal.Q31_1,
             Internal.FixedPointScaled10,
@@ -183,6 +186,7 @@ public final class Codecs {
             Internal.Q1_15_ARRAY,
             Internal.Q1_31_ARRAY,
             Internal.Q8_8_ARRAY,
+            Internal.Q7_9_ARRAY,
             Internal.Q15_1_ARRAY,
             Internal.Q31_1_ARRAY,
             Internal.FixedPointScaled10_ARRAY,

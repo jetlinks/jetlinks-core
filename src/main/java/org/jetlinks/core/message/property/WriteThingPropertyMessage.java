@@ -29,12 +29,12 @@ public interface WriteThingPropertyMessage<T extends WriteThingPropertyMessageRe
     void addProperty(String key, Object value);
 
     default MessageType getMessageType() {
-        return MessageType.READ_PROPERTY;
+        return MessageType.WRITE_PROPERTY;
     }
 
     @Override
     default MessageType getReplyType() {
-        return MessageType.READ_PROPERTY_REPLY;
+        return MessageType.WRITE_PROPERTY_REPLY;
     }
 
     @Override

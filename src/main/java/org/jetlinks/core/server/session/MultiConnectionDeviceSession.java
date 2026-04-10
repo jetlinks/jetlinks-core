@@ -1,6 +1,7 @@
 package org.jetlinks.core.server.session;
 
 import io.netty.util.internal.ThreadLocalRandom;
+import jakarta.annotation.Nonnull;
 import lombok.AllArgsConstructor;
 import lombok.Generated;
 import lombok.Getter;
@@ -13,10 +14,13 @@ import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.server.ClientConnection;
 import reactor.core.Disposable;
 import reactor.core.Disposables;
+import reactor.core.Scannable;
 import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -30,7 +34,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @AllArgsConstructor
 public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
     extends CopyOnWriteArrayList<C>
-    implements DeviceSession {
+    implements DeviceSession, ClientConnectionSession, Scannable {
     private final Disposable.Composite disposable = Disposables.composite();
 
     @Getter
@@ -134,6 +138,10 @@ public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
     @Override
     public abstract void setKeepAliveTimeout(Duration timeout);
 
+    @Override
+    public Collection<? extends ClientConnection> getConnections() {
+        return Collections.unmodifiableCollection(this);
+    }
 
     protected final C takeConnection() {
         C connection;
@@ -157,4 +165,35 @@ public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
         } while (true);
 
     }
+
+    @Override
+    public boolean equals(Object o) {
+        return this == o;
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(this);
+    }
+
+
+    @Override
+    public Object scanUnsafe(@Nonnull Attr key) {
+        // 只支持获取buffer
+        if (key == Attr.BUFFERED) {
+            return this
+                .stream()
+                .mapToInt(conn -> conn.scanOrDefault(Attr.BUFFERED,0))
+                .sum();
+        }
+
+        if (key == Attr.LARGE_BUFFERED) {
+            return this
+                .stream()
+                .mapToLong(conn -> conn.scanOrDefault(Attr.BUFFERED,0))
+                .sum();
+        }
+        return null;
+    }
+
 }

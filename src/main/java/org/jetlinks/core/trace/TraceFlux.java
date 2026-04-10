@@ -9,6 +9,7 @@ import org.reactivestreams.Publisher;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
+import reactor.core.publisher.Operators;
 import reactor.function.Consumer3;
 import reactor.util.context.ContextView;
 
@@ -171,7 +172,7 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
             Context ctx = context
                 .<Context>getOrEmpty(Context.class)
                 .orElseGet(defaultContext)
-                .with(TraceHolder.SPAN_NAME,name);
+                .with(TraceHolder.SPAN_NAME, name);
 
             if (null != onSubscription) {
                 this.onSubscription.accept(context, builder);
@@ -183,14 +184,14 @@ public class TraceFlux<T> extends FluxOperator<T, T> {
                 .setParent(ctx)
                 .startSpan();
             try (Scope ignored = span.makeCurrent()) {
-                this.source.subscribe(new TraceSubscriber<>(now,actual, span, onNext, onComplete, onError, ctx));
+                this.source.subscribe(new TraceSubscriber<>(now, actual, span, onNext, onComplete, onError, ctx));
             } catch (Throwable e) {
-                actual.onError(e);
+                Operators.error(actual, e);
                 span.recordException(e);
                 span.end();
             }
         } catch (Throwable e) {
-            actual.onError(e);
+            Operators.error(actual, e);
         }
 
     }

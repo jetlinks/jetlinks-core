@@ -100,7 +100,7 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
         return new FromDeviceMessageContext() {
             @Override
             public DeviceSession getSession() {
-                return session;
+                return session.isWrapFrom(TraceDeviceSession.class) ? session : TraceDeviceSession.of(session);
             }
 
             @Nonnull
@@ -118,6 +118,7 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
             public Mono<DevicePrincipal> resolveDevice(Principal principal) {
                 return registry.resolveDevice(principal);
             }
+
             @Override
             public Mono<Void> handleMessage(DeviceMessage message) {
                 return handler.apply(message);
@@ -138,13 +139,14 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
 
             @Override
             public DeviceSession getSession() {
-                return session;
+                return session.isWrapFrom(TraceDeviceSession.class) ? session : TraceDeviceSession.of(session);
             }
 
             @Override
             public Mono<DevicePrincipal> resolveDevice(Principal principal) {
                 return registry.resolveDevice(principal);
             }
+
             @Nonnull
             @Override
             public EncodedMessage getMessage() {
@@ -158,7 +160,7 @@ public interface FromDeviceMessageContext extends MessageDecodeContext {
 
             @Override
             public Mono<Void> handleMessage(DeviceMessage message) {
-                return handler.apply(message);
+                return Mono.defer(() -> handler.apply(message));
             }
         };
     }

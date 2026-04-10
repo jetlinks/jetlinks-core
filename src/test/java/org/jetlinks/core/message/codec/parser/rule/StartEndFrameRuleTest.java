@@ -160,4 +160,60 @@ public class StartEndFrameRuleTest {
             for (ByteBuf b : frames) b.release();
         }
     }
+
+    /** 前后缀相同(@@): 粘包场景应可连续提取 */
+    @Test
+    public void samePrefixAndSuffixStickyPackets() {
+        StartEndFrameRule rule = new StartEndFrameRule(
+            "@@".getBytes(StandardCharsets.US_ASCII),
+            "@@".getBytes(StandardCharsets.US_ASCII)
+        );
+        ByteBuf buf = Unpooled.copiedBuffer("@@1@@@@2@@", StandardCharsets.US_ASCII);
+        List<ByteBuf> frames = executeRule(rule, buf);
+        try {
+            assertEquals(2, frames.size());
+            assertEquals("@@1@@", frames.get(0).toString(StandardCharsets.US_ASCII));
+            assertEquals("@@2@@", frames.get(1).toString(StandardCharsets.US_ASCII));
+        } finally {
+            for (ByteBuf b : frames) b.release();
+        }
+    }
+
+    /** 前后缀相同(@@): 拆包场景应等待补齐后再提取 */
+    @Test
+    public void samePrefixAndSuffixSplitPackets() {
+        StartEndFrameRule rule = new StartEndFrameRule(
+            "@@".getBytes(StandardCharsets.US_ASCII),
+            "@@".getBytes(StandardCharsets.US_ASCII)
+        );
+        ByteBuf first = Unpooled.copiedBuffer("@@1@", StandardCharsets.US_ASCII);
+        ByteBuf second = Unpooled.copiedBuffer("@", StandardCharsets.US_ASCII);
+        List<ByteBuf> frames = executeRule(rule, first, second);
+        try {
+            assertEquals(1, frames.size());
+            assertEquals("@@1@@", frames.get(0).toString(StandardCharsets.US_ASCII));
+        } finally {
+            for (ByteBuf b : frames) b.release();
+        }
+    }
+
+    /** 前后缀相同(@@): 允许空内容帧 */
+    @Test
+    public void samePrefixAndSuffixEmptyPayload() {
+        StartEndFrameRule rule = new StartEndFrameRule(
+            "@@".getBytes(StandardCharsets.US_ASCII),
+            "@@".getBytes(StandardCharsets.US_ASCII)
+        );
+        ByteBuf buf = Unpooled.copiedBuffer("@@@@", StandardCharsets.US_ASCII);
+        MessageFrameRule.ParseResult result = rule.parse(buf);
+        try {
+            assertNotNull(result.frame);
+            assertEquals("@@@@", result.frame.toString(StandardCharsets.US_ASCII));
+        } finally {
+            if (result.frame != null) {
+                result.frame.release();
+            }
+            buf.release();
+        }
+    }
 }

@@ -48,7 +48,7 @@ public class TraceDeviceSession implements DeviceSession {
                 .send(encodedMessage)
                 .as(MonoTracer
                             .create(DeviceTracer.SpanName.downstream0(getDeviceId()),
-                                    (builder -> builder.setAttribute(DeviceTracer.SpanKey.message, encodedMessage.toString())))
+                                    (builder -> builder.setAttributeLazy(DeviceTracer.SpanKey.message, encodedMessage::toString)))
                 );
     }
 

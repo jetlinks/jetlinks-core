@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 
 public interface DeviceTracer {
 
-    static  <R> MonoTracer<R> fromMessage(Message message) {
+    static <R> MonoTracer<R> fromMessage(Message message) {
         return MonoTracer.createWith(message.getHeaders());
     }
 
@@ -24,7 +24,13 @@ public interface DeviceTracer {
         AttributeKey<String> deviceId = AttributeKey.stringKey("deviceId");
 
         // 消息内容
+        AttributeKey<String> session = AttributeKey.stringKey("session");
+
+        // 消息内容
         AttributeKey<String> message = AttributeKey.stringKey("message");
+
+        // 连接ID
+        AttributeKey<String> connectionId = AttributeKey.stringKey("connectionId");
 
         // 响应信息
         AttributeKey<String> response = AttributeKey.stringKey("response");
@@ -48,19 +54,23 @@ public interface DeviceTracer {
         SharedPathString all_operations = SharedPathString.of("/device/*/*");
 
         static SeparatedCharSequence operation0(String deviceId, String operation) {
-            return all_operations.replace(2, deviceId, 3, operation);
+            return all_operations
+                .replace(2,
+                         String.valueOf(deviceId),
+                         3,
+                         String.valueOf(operation));
         }
 
         static String operation(String deviceId, String operation) {
             return StringBuilderUtils
-                    .buildString(deviceId, operation,
-                                 (str, opt, stringBuilder) -> {
-                                     stringBuilder
-                                             .append("/device/")
-                                             .append(str)
-                                             .append("/")
-                                             .append(opt);
-                                 });
+                .buildString(deviceId, operation,
+                             (str, opt, stringBuilder) -> {
+                                 stringBuilder
+                                     .append("/device/")
+                                     .append(str)
+                                     .append("/")
+                                     .append(opt);
+                             });
         }
 
         static String connection(String deviceId) {
@@ -69,6 +79,18 @@ public interface DeviceTracer {
 
         static SeparatedCharSequence connection0(String deviceId) {
             return operation0(deviceId, OperationName.connection);
+        }
+
+        static SeparatedCharSequence disconnect(String deviceId) {
+            return operation0(deviceId, OperationName.disconnect);
+        }
+
+        static SeparatedCharSequence sessionClosed(String deviceId) {
+            return operation0(deviceId, OperationName.sessionClosed);
+        }
+
+        static SeparatedCharSequence sessionCreated(String deviceId) {
+            return operation0(deviceId, OperationName.sessionCreated);
         }
 
         static String auth(String deviceId) {
@@ -116,7 +138,7 @@ public interface DeviceTracer {
         }
 
         static SeparatedCharSequence downstream0(String deviceId) {
-            return operation0(deviceId, OperationName.decode);
+            return operation0(deviceId, OperationName.downstream);
         }
 
         static String upstream(String deviceId) {
@@ -126,6 +148,10 @@ public interface DeviceTracer {
         static SeparatedCharSequence upstream0(String deviceId) {
             return operation0(deviceId, OperationName.upstream);
         }
+
+        static SeparatedCharSequence handle(String deviceId) {
+            return operation0(deviceId, OperationName.handle);
+        }
     }
 
     // 操作
@@ -133,6 +159,15 @@ public interface DeviceTracer {
 
         // 连接
         String connection = "connection";
+
+        // 连接断开
+        String disconnect = "disconnect";
+
+        // 会话关闭
+        String sessionClosed = "sessionClosed";
+
+        // 会话创建
+        String sessionCreated = "sessionCreated";
 
         // 设备认证
         String auth = "auth";
@@ -155,6 +190,11 @@ public interface DeviceTracer {
         // 上行
         String upstream = "upstream";
 
+        // 处理设备消息
+        String handle = "handle";
+
+        // 身份识别
+        String principal="principal";
     }
 
 

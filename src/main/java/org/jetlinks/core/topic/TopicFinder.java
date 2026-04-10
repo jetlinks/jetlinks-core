@@ -36,7 +36,7 @@ public class TopicFinder {
                                 String topic,
                                 Consumer<Topic<T>> sink,
                                 Runnable end) {
-        if(topic.isEmpty()){
+        if (topic.isEmpty()) {
             sink.accept(root);
             end.run();
             return;
@@ -67,7 +67,7 @@ public class TopicFinder {
                                                         ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
-        if(topic.isEmpty()){
+        if (topic.isEmpty()) {
             sink.accept(arg0, arg1, arg2, arg3, root);
             end.accept(arg0, arg1, arg2, arg3);
             return;
@@ -75,7 +75,7 @@ public class TopicFinder {
         find(root, splitTopic(topic), arg0, arg1, arg2, arg3, sink, end);
     }
 
-    private static  String[] splitTopic(String topic){
+    private static String[] splitTopic(String topic) {
         String[] topics = TopicUtils.split(topic, false, false);
         if (topic.charAt(0) != '/') {
             String[] newTopics = new String[topics.length + 1];
@@ -87,11 +87,11 @@ public class TopicFinder {
     }
 
     public static <T, A, B> void find(Topic<T> root,
-                                    CharSequence topic,
-                                    A arg1,
-                                    B arg2,
-                                    Consumer3<A, B, Topic<T>> sink,
-                                    BiConsumer<A, B> end) {
+                                      CharSequence topic,
+                                      A arg1,
+                                      B arg2,
+                                      Consumer3<A, B, Topic<T>> sink,
+                                      BiConsumer<A, B> end) {
         if (topic instanceof SeparatedCharSequence) {
             find(root, (SeparatedCharSequence) topic, arg1, arg2, null, null,
                  (a1, b, nil2, nil3, _topic) -> sink.accept(a1, b, _topic),
@@ -116,10 +116,10 @@ public class TopicFinder {
     }
 
     public static <T, A> void find(Topic<T> root,
-                                CharSequence topic,
-                                A arg1,
-                                BiConsumer<A, Topic<T>> sink,
-                                Consumer<A> end) {
+                                   CharSequence topic,
+                                   A arg1,
+                                   BiConsumer<A, Topic<T>> sink,
+                                   Consumer<A> end) {
         if (topic instanceof SeparatedCharSequence) {
             find(root, (SeparatedCharSequence) topic, arg1, null, null, null,
                  (a1, nil1, nil2, nil3, _topic) -> sink.accept(a1, _topic),
@@ -184,7 +184,8 @@ public class TopicFinder {
 
     private static boolean searchHasDoubleWildcard(SeparatedCharSequence parts) {
         for (int i = 0, n = parts.size(); i < n; i++) {
-            if ("**".contentEquals(parts.get(i))) return true;
+            CharSequence c = parts.get(i);
+            if (c != null && "**".contentEquals(c)) return true;
         }
         return false;
     }
@@ -289,7 +290,7 @@ public class TopicFinder {
             return;
         }
 
-        final String searchPart = st.get(idx).toString();
+        final String searchPart = String.valueOf(st.get(idx));
 
         if ("**".equals(node.getPart())) {
             findDFSInner(st, idx + 1, node, emitted, arg0, arg1, arg2, arg3, sink);
