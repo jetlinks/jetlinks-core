@@ -1,7 +1,9 @@
 package org.jetlinks.core.metadata;
 
+import com.alibaba.fastjson.JSONObject;
 import org.jetlinks.core.metadata.expand.LocaleResource;
 import org.jetlinks.core.metadata.types.StringType;
+import org.jetlinks.core.metadata.types.UnknownType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -29,6 +31,22 @@ public class PropertyMetadataTest {
         Assert.assertEquals("zh_name", MetadataConstants.Expand.getLocaleName(metadata, Locale.SIMPLIFIED_CHINESE));
         resource.addResource(Locale.SIMPLIFIED_CHINESE, "zh_CN_name");
         Assert.assertEquals("zh_CN_name", MetadataConstants.Expand.getLocaleName(metadata, Locale.SIMPLIFIED_CHINESE));
+    }
+
+    @Test
+    public void testUnknownValueTypeFallback() {
+        SimplePropertyMetadata metadata = new SimplePropertyMetadata();
+        metadata.setId("test");
+        metadata.setName("name");
+
+        Assert.assertEquals(UnknownType.ID, metadata.getValueType().getId());
+
+        JSONObject json = metadata.toJson();
+        Assert.assertEquals(UnknownType.ID, json.getJSONObject("valueType").getString("type"));
+
+        SimplePropertyMetadata another = new SimplePropertyMetadata();
+        another.fromJson(json);
+        Assert.assertEquals(UnknownType.ID, another.getValueType().getId());
     }
 
 }
