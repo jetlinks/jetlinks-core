@@ -25,6 +25,7 @@ public class DataTypes {
         supports.put(IntType.ID, IntType::new);
         supports.put(LongType.ID, LongType::new);
         supports.put(ObjectType.ID, ObjectType::new);
+        supports.put(UnknownType.ID, UnknownType::new);
 
         supports.put(StringType.ID, StringType::new);
         supports.put("text", StringType::new);

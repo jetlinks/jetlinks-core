@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.apache.commons.collections.MapUtils;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.metadata.types.DataTypes;
+import org.jetlinks.core.metadata.types.UnknownType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,11 @@ public class SimplePropertyMetadata implements PropertyMetadata {
     private String description;
 
     private Map<String, Object> expands;
+
+    @Override
+    public DataType getValueType() {
+        return valueType == null ? UnknownType.GLOBAL : valueType;
+    }
 
     public static SimplePropertyMetadata of(PropertyMetadata metadata) {
         SimplePropertyMetadata simple = new SimplePropertyMetadata();
@@ -49,7 +55,7 @@ public class SimplePropertyMetadata implements PropertyMetadata {
     @Override
     public JSONObject toJson() {
         JSONObject json = FastBeanCopier.copy(this, JSONObject::new, "valueType");
-        json.put("valueType", valueType.toJson());
+        json.put("valueType", getValueType().toJson());
         return json;
     }
 
