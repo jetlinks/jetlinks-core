@@ -145,34 +145,6 @@ public interface ActionRecorder<E> extends Function<Publisher<E>, Publisher<E>> 
     ActionRecorder<E> start(ContextView context);
 
     /**
-     * 直接记录已有的操作结果.
-     * <p>
-     * 默认实现会尽可能通过公开 API 回放记录内容,如果实现类支持更完整的结果透传,
-     * 可以覆盖此方法来保留原始记录中的更多上下文信息.
-     *
-     * @param record 已有的操作记录
-     * @return this
-     */
-    default ActionRecorder<E> record(ActionRecord record) {
-        if (record == null) {
-            return this;
-        }
-        if (record.getTags() != null) {
-            tags(record.getTags());
-        }
-        if (record.getAttributes() != null) {
-            attributes(record.getAttributes());
-        }
-        if (record.isCancel()) {
-            return cancel();
-        }
-        if (record.isHasError()) {
-            return error(new RuntimeException(record.getErrorDetail()));
-        }
-        return complete();
-    }
-
-    /**
      * 创建一个子操作
      *
      * @param action 子操作

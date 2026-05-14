@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-class NoopActionRecorder<E> implements ActionRecorder<E> {
+class NoopActionRecorder<E> implements ActionRecorder<E>, ActionRecordReplayer {
     public static final NoopActionRecorder<Object> INSTANCE = new NoopActionRecorder<>();
 
     private NoopActionRecorder() {
@@ -87,6 +87,10 @@ class NoopActionRecorder<E> implements ActionRecorder<E> {
     @Override
     public <T> ActionRecorder<T> child(CharSequence action) {
         return ActionRecorder.noop();
+    }
+
+    @Override
+    public void replay(ActionRecord record) {
     }
 
     @Override

@@ -27,7 +27,7 @@ public interface Recorder {
         if (record == null || record.getAction() == null) {
             return;
         }
-        action(record.getAction()).record(record);
+        ActionRecordReplayer.replay(action(record.getAction()), record);
     }
 
     /**

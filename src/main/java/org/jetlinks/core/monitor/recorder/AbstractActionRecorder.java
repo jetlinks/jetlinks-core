@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public abstract class AbstractActionRecorder<E> extends AtomicBoolean implements ActionRecorder<E> {
+public abstract class AbstractActionRecorder<E> extends AtomicBoolean implements ActionRecorder<E>, ActionRecordReplayer {
 
     protected final ActionRecord record;
     private long startWithNanos;
@@ -159,13 +159,12 @@ public abstract class AbstractActionRecorder<E> extends AtomicBoolean implements
     }
 
     @Override
-    public ActionRecorder<E> record(ActionRecord record) {
+    public void replay(ActionRecord record) {
         if (record == null) {
-            return this;
+            return;
         }
         if (compareAndSet(false, true)) {
             handle(record);
         }
-        return this;
     }
 }
