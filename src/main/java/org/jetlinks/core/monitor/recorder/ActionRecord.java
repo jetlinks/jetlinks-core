@@ -86,6 +86,8 @@ public class ActionRecord implements Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
+        SerializeUtils.writeObject(id, out);
+        SerializeUtils.writeObject(parentId, out);
         SerializeUtils.writeObject(action, out);
         SerializeUtils.writeObject(tags, out);
         SerializeUtils.writeObject(attributes, out);
@@ -104,6 +106,8 @@ public class ActionRecord implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        id = SerializeUtils.readObjectAs(in);
+        parentId = SerializeUtils.readObjectAs(in);
         action = SerializeUtils.readObjectAs(in);
         tags = SerializeUtils.readObjectAs(in);
         attributes = SerializeUtils.readObjectAs(in);
