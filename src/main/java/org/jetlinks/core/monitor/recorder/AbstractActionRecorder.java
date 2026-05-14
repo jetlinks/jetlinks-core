@@ -157,4 +157,15 @@ public abstract class AbstractActionRecorder<E> extends AtomicBoolean implements
         }
         return this;
     }
+
+    @Override
+    public ActionRecorder<E> record(ActionRecord record) {
+        if (record == null) {
+            return this;
+        }
+        if (compareAndSet(false, true)) {
+            handle(record);
+        }
+        return this;
+    }
 }
