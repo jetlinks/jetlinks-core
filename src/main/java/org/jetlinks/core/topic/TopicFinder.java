@@ -137,6 +137,12 @@ public class TopicFinder {
                                                         ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
+        if (!searchHasWildcard(topic)) {
+            findExactInner(topic, 1, root, arg0, arg1, arg2, arg3, sink);
+            end.accept(arg0, arg1, arg2, arg3);
+            return;
+        }
         if (searchHasDoubleWildcard(topic)) {
             Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
             try {
@@ -159,6 +165,12 @@ public class TopicFinder {
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
 
+        // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
+        if (!searchHasWildcard(topicParts)) {
+            findExactInner(topicParts, 1, root, arg0, arg1, arg2, arg3, sink);
+            end.accept(arg0, arg1, arg2, arg3);
+            return;
+        }
         if (searchHasDoubleWildcard(topicParts)) {
             Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
             try {
@@ -182,12 +194,165 @@ public class TopicFinder {
         return false;
     }
 
+    private static boolean searchHasWildcard(String[] parts) {
+        for (String p : parts) {
+            if ("*".equals(p) || "**".equals(p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean searchHasDoubleWildcard(SeparatedCharSequence parts) {
         for (int i = 0, n = parts.size(); i < n; i++) {
             CharSequence c = parts.get(i);
             if (c != null && "**".contentEquals(c)) return true;
         }
         return false;
+    }
+
+    private static boolean searchHasWildcard(SeparatedCharSequence parts) {
+        for (int i = 0, n = parts.size(); i < n; i++) {
+            CharSequence c = parts.get(i);
+            if (c == null) {
+                continue;
+            }
+            if (c.length() == 1 && c.charAt(0) == '*') {
+                return true;
+            }
+            if (c.length() == 2 && c.charAt(0) == '*' && c.charAt(1) == '*') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String topicPart(CharSequence part) {
+        return part instanceof String ? (String) part : String.valueOf(part);
+    }
+
+    private static <T, ARG0, ARG1, ARG2, ARG3> void findExactInner(
+        final String[] st,
+        final int idx,
+        final Topic<T> node,
+        final ARG0 arg0, final ARG1 arg1, final ARG2 arg2, final ARG3 arg3,
+        final Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink) {
+
+        if (idx >= st.length) {
+            sink.accept(arg0, arg1, arg2, arg3, node);
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch != null) {
+                Topic<T> dstar = ch.get("**");
+                if (dstar != null) {
+                    findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
+                }
+            }
+            return;
+        }
+
+        String searchPart = st[idx];
+
+        if ("**".equals(node.getPart())) {
+            findExactInner(st, idx + 1, node, arg0, arg1, arg2, arg3, sink);
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch == null) {
+                return;
+            }
+            Topic<T> exact = ch.get(searchPart);
+            if (exact != null) {
+                findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
+            }
+            Topic<T> star = ch.get("*");
+            if (star != null) {
+                findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
+            }
+            Topic<T> innerDstar = ch.get("**");
+            if (innerDstar != null) {
+                findExactInner(st, idx, innerDstar, arg0, arg1, arg2, arg3, sink);
+            }
+            return;
+        }
+
+        Map<String, Topic<T>> children = node.getChildrenMap();
+        if (children == null) {
+            return;
+        }
+
+        Topic<T> exact = children.get(searchPart);
+        if (exact != null) {
+            findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
+        }
+        Topic<T> star = children.get("*");
+        if (star != null) {
+            findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
+        }
+        Topic<T> dstar = children.get("**");
+        if (dstar != null) {
+            findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
+        }
+    }
+
+    private static <T, ARG0, ARG1, ARG2, ARG3> void findExactInner(
+        final SeparatedCharSequence st,
+        final int idx,
+        final Topic<T> node,
+        final ARG0 arg0, final ARG1 arg1, final ARG2 arg2, final ARG3 arg3,
+        final Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink) {
+
+        final int stSize = st.size();
+
+        if (idx >= stSize) {
+            sink.accept(arg0, arg1, arg2, arg3, node);
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch != null) {
+                Topic<T> dstar = ch.get("**");
+                if (dstar != null) {
+                    findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
+                }
+            }
+            return;
+        }
+
+        String searchPart = topicPart(st.get(idx));
+
+        if ("**".equals(node.getPart())) {
+            findExactInner(st, idx + 1, node, arg0, arg1, arg2, arg3, sink);
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch == null) {
+                return;
+            }
+            Topic<T> exact = ch.get(searchPart);
+            if (exact != null) {
+                findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
+            }
+            Topic<T> star = ch.get("*");
+            if (star != null) {
+                findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
+            }
+            Topic<T> innerDstar = ch.get("**");
+            if (innerDstar != null) {
+                findExactInner(st, idx, innerDstar, arg0, arg1, arg2, arg3, sink);
+            }
+            return;
+        }
+
+        Map<String, Topic<T>> children = node.getChildrenMap();
+        if (children == null) {
+            return;
+        }
+
+        Topic<T> exact = children.get(searchPart);
+        if (exact != null) {
+            findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
+        }
+        Topic<T> star = children.get("*");
+        if (star != null) {
+            findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
+        }
+        Topic<T> dstar = children.get("**");
+        if (dstar != null) {
+            findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
+        }
     }
 
     private static <T, ARG0, ARG1, ARG2, ARG3> void findDFSInner(

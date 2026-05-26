@@ -195,6 +195,16 @@ public class TopicFinderTest {
     }
 
     @Test
+    public void testExactSearchShouldStillTraverseWildcardSubscribers() {
+        root.append("device").append("001").subscribe("exact");
+        root.append("device").append("*").subscribe("star");
+        root.append("device").append("**").subscribe("dstar");
+
+        Set<String> matched = matchedPaths(root, "device/001");
+        Assert.assertEquals(Set.of("/device/001", "/device/*", "/device/**"), matched);
+    }
+
+    @Test
     public void testMixedStarAndDoubleStarInTree() {
         root.append("a").append("*").append("c").subscribe("s1");
         root.append("a").append("**").subscribe("s2");
