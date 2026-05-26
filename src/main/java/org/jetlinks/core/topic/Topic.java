@@ -47,6 +47,10 @@ public final class Topic<T> implements SeparatedCharSequence {
 
     private volatile ConcurrentMap<String, Topic<T>> child;
 
+    private volatile Topic<T> starChild;
+
+    private volatile Topic<T> doubleStarChild;
+
     private volatile ConcurrentMap<T, Integer> subscribers;
 
     public static <T> Topic<T> createRoot() {
@@ -81,6 +85,7 @@ public final class Topic<T> implements SeparatedCharSequence {
         this.parent = parent;
         if (null != parent) {
             this.depth = parent.depth + 1;
+            parent.tryCacheWildcardChild(this);
         } else {
             this.depth = 0;
         }
@@ -96,6 +101,14 @@ public final class Topic<T> implements SeparatedCharSequence {
 
     public Map<String, Topic<T>> getChildrenMap() {
         return child;
+    }
+
+    public Topic<T> getStarChild() {
+        return starChild;
+    }
+
+    public Topic<T> getDoubleStarChild() {
+        return doubleStarChild;
     }
 
     private String[] getTopicsUnsafe() {
@@ -237,6 +250,24 @@ public final class Topic<T> implements SeparatedCharSequence {
             }
         }
         return subscribers;
+    }
+
+    private void tryCacheWildcardChild(Topic<T> child) {
+        String part = child.part;
+        if (part.length() == 1 && part.charAt(0) == '*') {
+            starChild = child;
+        } else if (part.length() == 2 && part.charAt(0) == '*' && part.charAt(1) == '*') {
+            doubleStarChild = child;
+        }
+    }
+
+    private void removeCachedWildcardChild(Topic<T> child) {
+        if (starChild == child) {
+            starChild = null;
+        }
+        if (doubleStarChild == child) {
+            doubleStarChild = null;
+        }
     }
 
     private void ofTopic(String topic) {
@@ -486,7 +517,9 @@ public final class Topic<T> implements SeparatedCharSequence {
                 Topic<T> topic = children.getValue();
                 boolean cleaned = topic.cleanup(handler);
                 if (cleaned) {
-                    child.remove(children.getKey());
+                    if (child.remove(children.getKey(), topic)) {
+                        removeCachedWildcardChild(topic);
+                    }
                 }
                 if (handler != null) {
                     handler.accept(cleaned, topic);
@@ -497,6 +530,8 @@ public final class Topic<T> implements SeparatedCharSequence {
                 synchronized (this) {
                     if (child.isEmpty()) {
                         child = null;
+                        starChild = null;
+                        doubleStarChild = null;
                     }
                 }
             }
@@ -514,6 +549,8 @@ public final class Topic<T> implements SeparatedCharSequence {
         if (child != null) {
             child.values().forEach(Topic::clean);
             child().clear();
+            starChild = null;
+            doubleStarChild = null;
         }
     }
 

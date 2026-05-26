@@ -20,6 +20,10 @@ import java.util.function.Consumer;
  */
 public class TopicFinder {
 
+    private static final byte WILDCARD_NONE = 0;
+    private static final byte WILDCARD_SINGLE = 1;
+    private static final byte WILDCARD_DOUBLE = 2;
+
     private static final Recycler<Set<Topic<?>>> SHARED_SET =
         Recycler.create(HashSet::new, Collection::clear, 256);
 
@@ -137,13 +141,14 @@ public class TopicFinder {
                                                         ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        byte wildcardMode = detectWildcardMode(topic);
         // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
-        if (!searchHasWildcard(topic)) {
+        if (wildcardMode == WILDCARD_NONE) {
             findExactInner(topic, 1, root, arg0, arg1, arg2, arg3, sink);
             end.accept(arg0, arg1, arg2, arg3);
             return;
         }
-        if (searchHasDoubleWildcard(topic)) {
+        if (wildcardMode == WILDCARD_DOUBLE) {
             Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
             try {
                 findDFSInner(topic, 1, root, recyclableSet.get(),
@@ -165,13 +170,14 @@ public class TopicFinder {
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
 
+        byte wildcardMode = detectWildcardMode(topicParts);
         // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
-        if (!searchHasWildcard(topicParts)) {
+        if (wildcardMode == WILDCARD_NONE) {
             findExactInner(topicParts, 1, root, arg0, arg1, arg2, arg3, sink);
             end.accept(arg0, arg1, arg2, arg3);
             return;
         }
-        if (searchHasDoubleWildcard(topicParts)) {
+        if (wildcardMode == WILDCARD_DOUBLE) {
             Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
             try {
                 findDFSInner(topicParts, 1, root, recyclableSet.get(),
@@ -187,44 +193,32 @@ public class TopicFinder {
         }
     }
 
-    private static boolean searchHasDoubleWildcard(String[] parts) {
+    private static byte detectWildcardMode(String[] parts) {
+        byte mode = WILDCARD_NONE;
         for (String p : parts) {
-            if ("**".equals(p)) return true;
-        }
-        return false;
-    }
-
-    private static boolean searchHasWildcard(String[] parts) {
-        for (String p : parts) {
-            if ("*".equals(p) || "**".equals(p)) {
-                return true;
+            if ("*".equals(p)) {
+                mode = WILDCARD_SINGLE;
+            } else if ("**".equals(p)) {
+                return WILDCARD_DOUBLE;
             }
         }
-        return false;
+        return mode;
     }
 
-    private static boolean searchHasDoubleWildcard(SeparatedCharSequence parts) {
-        for (int i = 0, n = parts.size(); i < n; i++) {
-            CharSequence c = parts.get(i);
-            if (c != null && "**".contentEquals(c)) return true;
-        }
-        return false;
-    }
-
-    private static boolean searchHasWildcard(SeparatedCharSequence parts) {
+    private static byte detectWildcardMode(SeparatedCharSequence parts) {
+        byte mode = WILDCARD_NONE;
         for (int i = 0, n = parts.size(); i < n; i++) {
             CharSequence c = parts.get(i);
             if (c == null) {
                 continue;
             }
             if (c.length() == 1 && c.charAt(0) == '*') {
-                return true;
-            }
-            if (c.length() == 2 && c.charAt(0) == '*' && c.charAt(1) == '*') {
-                return true;
+                mode = WILDCARD_SINGLE;
+            } else if (c.length() == 2 && c.charAt(0) == '*' && c.charAt(1) == '*') {
+                return WILDCARD_DOUBLE;
             }
         }
-        return false;
+        return mode;
     }
 
     private static String topicPart(CharSequence part) {
@@ -240,12 +234,9 @@ public class TopicFinder {
 
         if (idx >= st.length) {
             sink.accept(arg0, arg1, arg2, arg3, node);
-            Map<String, Topic<T>> ch = node.getChildrenMap();
-            if (ch != null) {
-                Topic<T> dstar = ch.get("**");
-                if (dstar != null) {
-                    findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
-                }
+            Topic<T> dstar = node.getDoubleStarChild();
+            if (dstar != null) {
+                findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
             }
             return;
         }
@@ -262,11 +253,11 @@ public class TopicFinder {
             if (exact != null) {
                 findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
             }
-            Topic<T> star = ch.get("*");
+            Topic<T> star = node.getStarChild();
             if (star != null) {
                 findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
             }
-            Topic<T> innerDstar = ch.get("**");
+            Topic<T> innerDstar = node.getDoubleStarChild();
             if (innerDstar != null) {
                 findExactInner(st, idx, innerDstar, arg0, arg1, arg2, arg3, sink);
             }
@@ -282,11 +273,11 @@ public class TopicFinder {
         if (exact != null) {
             findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
         }
-        Topic<T> star = children.get("*");
+        Topic<T> star = node.getStarChild();
         if (star != null) {
             findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
         }
-        Topic<T> dstar = children.get("**");
+        Topic<T> dstar = node.getDoubleStarChild();
         if (dstar != null) {
             findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
         }
@@ -303,12 +294,9 @@ public class TopicFinder {
 
         if (idx >= stSize) {
             sink.accept(arg0, arg1, arg2, arg3, node);
-            Map<String, Topic<T>> ch = node.getChildrenMap();
-            if (ch != null) {
-                Topic<T> dstar = ch.get("**");
-                if (dstar != null) {
-                    findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
-                }
+            Topic<T> dstar = node.getDoubleStarChild();
+            if (dstar != null) {
+                findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
             }
             return;
         }
@@ -325,11 +313,11 @@ public class TopicFinder {
             if (exact != null) {
                 findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
             }
-            Topic<T> star = ch.get("*");
+            Topic<T> star = node.getStarChild();
             if (star != null) {
                 findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
             }
-            Topic<T> innerDstar = ch.get("**");
+            Topic<T> innerDstar = node.getDoubleStarChild();
             if (innerDstar != null) {
                 findExactInner(st, idx, innerDstar, arg0, arg1, arg2, arg3, sink);
             }
@@ -345,11 +333,11 @@ public class TopicFinder {
         if (exact != null) {
             findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
         }
-        Topic<T> star = children.get("*");
+        Topic<T> star = node.getStarChild();
         if (star != null) {
             findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
         }
-        Topic<T> dstar = children.get("**");
+        Topic<T> dstar = node.getDoubleStarChild();
         if (dstar != null) {
             findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
         }
@@ -367,12 +355,9 @@ public class TopicFinder {
             if (emitted == null || emitted.add(node)) {
                 sink.accept(arg0, arg1, arg2, arg3, node);
             }
-            Map<String, Topic<T>> ch = node.getChildrenMap();
-            if (ch != null) {
-                Topic<T> dstar = ch.get("**");
-                if (dstar != null) {
-                    findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
-                }
+            Topic<T> dstar = node.getDoubleStarChild();
+            if (dstar != null) {
+                findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
             }
             return;
         }
@@ -394,9 +379,9 @@ public class TopicFinder {
             } else {
                 Topic<T> exact = ch.get(searchPart);
                 if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
-                Topic<T> star = ch.get("*");
+                Topic<T> star = node.getStarChild();
                 if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
-                Topic<T> innerDstar = ch.get("**");
+                Topic<T> innerDstar = node.getDoubleStarChild();
                 if (innerDstar != null) findDFSInner(st, idx, innerDstar, emitted, arg0, arg1, arg2, arg3, sink);
             }
             return;
@@ -424,9 +409,9 @@ public class TopicFinder {
         } else {
             Topic<T> exact = children.get(searchPart);
             if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
-            Topic<T> star = children.get("*");
+            Topic<T> star = node.getStarChild();
             if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
-            Topic<T> dstar = children.get("**");
+            Topic<T> dstar = node.getDoubleStarChild();
             if (dstar != null) findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
         }
     }
@@ -445,12 +430,9 @@ public class TopicFinder {
             if (emitted == null || emitted.add(node)) {
                 sink.accept(arg0, arg1, arg2, arg3, node);
             }
-            Map<String, Topic<T>> ch = node.getChildrenMap();
-            if (ch != null) {
-                Topic<T> dstar = ch.get("**");
-                if (dstar != null) {
-                    findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
-                }
+            Topic<T> dstar = node.getDoubleStarChild();
+            if (dstar != null) {
+                findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
             }
             return;
         }
@@ -472,9 +454,9 @@ public class TopicFinder {
             } else {
                 Topic<T> exact = ch.get(searchPart);
                 if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
-                Topic<T> star = ch.get("*");
+                Topic<T> star = node.getStarChild();
                 if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
-                Topic<T> innerDstar = ch.get("**");
+                Topic<T> innerDstar = node.getDoubleStarChild();
                 if (innerDstar != null) findDFSInner(st, idx, innerDstar, emitted, arg0, arg1, arg2, arg3, sink);
             }
             return;
@@ -502,9 +484,9 @@ public class TopicFinder {
         } else {
             Topic<T> exact = children.get(searchPart);
             if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
-            Topic<T> star = children.get("*");
+            Topic<T> star = node.getStarChild();
             if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
-            Topic<T> dstar = children.get("**");
+            Topic<T> dstar = node.getDoubleStarChild();
             if (dstar != null) findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
         }
     }
