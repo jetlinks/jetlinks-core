@@ -116,6 +116,7 @@ public interface ThingMetadata extends Metadata, Jsonable {
         json.put("functions", getFunctions().stream().map(Jsonable::toJson).collect(Collectors.toList()));
         json.put("events", getEvents().stream().map(Jsonable::toJson).collect(Collectors.toList()));
         json.put("tags", getTags().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        json.put("modules", getModules().stream().map(Jsonable::toJson).collect(Collectors.toList()));
         json.put("expands", getExpands());
         return json;
     }

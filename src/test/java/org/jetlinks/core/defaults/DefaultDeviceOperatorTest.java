@@ -7,14 +7,19 @@ import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.message.property.ReadPropertyMessageReply;
+import com.alibaba.fastjson.JSONObject;
+import org.jetlinks.core.metadata.SimpleDeviceMetadata;
+import org.jetlinks.core.things.Thing;
 import org.jetlinks.core.utils.IdUtils;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 
 public class DefaultDeviceOperatorTest {
 
@@ -39,6 +44,84 @@ public class DefaultDeviceOperatorTest {
                 }
         );
     }
+
+    @Test
+    public void testGetModuleThingDefaultUnsupported() {
+        registry.register(DeviceInfo.builder()
+                                    .id("test-module-default")
+                                    .build())
+                .flatMapMany(device -> device.getModuleThings("module-a"))
+                .as(StepVerifier::create)
+                .expectError(UnsupportedOperationException.class)
+                .verify();
+    }
+
+    @Test
+    public void testGetModuleThingFromProvider() {
+        registry.register(DeviceInfo.builder()
+                                    .id("test-module-provider")
+                                    .build())
+                .cast(DefaultDeviceOperator.class)
+                .doOnNext(device -> device.setModuleThingProvider((parent, code) -> Flux.just(
+                    new TestDeviceModule(parent.getDeviceId(), code, "eth0"),
+                    new TestDeviceModule(parent.getDeviceId(), code, "eth1")
+                )))
+                .flatMapMany(device -> device.getModuleThings("network"))
+                .map(DeviceModule::getInstanceCode)
+                .as(StepVerifier::create)
+                .expectNext("eth0", "eth1")
+                .verifyComplete();
+    }
+
+    @Test
+    public void testGetModuleThingByInstanceFromProvider() {
+        registry.register(DeviceInfo.builder()
+                                    .id("test-module-provider-instance")
+                                    .build())
+                .cast(DefaultDeviceOperator.class)
+                .doOnNext(device -> device.setModuleThingProvider((parent, code) -> Flux.just(
+                    new TestDeviceModule(parent.getDeviceId(), code, "eth0"),
+                    new TestDeviceModule(parent.getDeviceId(), code, "eth1")
+                )))
+                .flatMap(device -> device.getModuleThing("network", "eth1"))
+                .map(DeviceModule::getId)
+                .as(StepVerifier::create)
+                .expectNext("test-module-provider-instance:eth1")
+                .verifyComplete();
+    }
+
+    @Test
+    public void testThingMetadataToJsonContainsModules() {
+        SimpleDeviceMetadata metadata = new SimpleDeviceMetadata();
+        metadata.setId("device");
+        metadata.setName("设备");
+
+        SimpleDeviceMetadata module = new SimpleDeviceMetadata();
+        module.setId("network");
+        module.setName("网络模块");
+
+        JSONObject json = new SimpleDeviceMetadata() {
+            @Override
+            public String getId() {
+                return metadata.getId();
+            }
+
+            @Override
+            public String getName() {
+                return metadata.getName();
+            }
+
+            @Override
+            public List<org.jetlinks.core.things.ThingMetadata> getModules() {
+                return Collections.singletonList(module);
+            }
+        }.toJson();
+
+        org.junit.Assert.assertTrue(json.containsKey("modules"));
+        org.junit.Assert.assertEquals(1, json.getJSONArray("modules").size());
+        org.junit.Assert.assertEquals("network", json.getJSONArray("modules").getJSONObject(0).getString("id"));
+    }
+
 
     @Test
     public void testParent(){
@@ -251,5 +334,122 @@ public class DefaultDeviceOperatorTest {
                 .expectNext(true)
                 .verifyComplete();
 
+    }
+
+    static class TestDeviceModule implements DeviceModule {
+        private final String deviceId;
+        private final String code;
+        private final String instanceCode;
+
+        TestDeviceModule(String deviceId, String code, String instanceCode) {
+            this.deviceId = deviceId;
+            this.code = code;
+            this.instanceCode = instanceCode;
+        }
+
+        @Override
+        public String getDeviceId() {
+            return deviceId;
+        }
+
+        @Override
+        public String getCode() {
+            return code;
+        }
+
+        @Override
+        public String getInstanceCode() {
+            return instanceCode;
+        }
+
+        @Override
+        public String getId() {
+            return deviceId + ":" + instanceCode;
+        }
+
+        @Override
+        public org.jetlinks.core.things.ThingType getType() {
+            return org.jetlinks.core.things.ThingType.of("device-module");
+        }
+
+        @Override
+        public Mono<? extends org.jetlinks.core.things.ThingTemplate> getTemplate() {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<Void> resetMetadata() {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<? extends org.jetlinks.core.things.ThingMetadata> getMetadata() {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<Boolean> updateMetadata(String metadata) {
+            return Mono.just(false);
+        }
+
+        @Override
+        public Mono<Boolean> updateMetadata(org.jetlinks.core.things.ThingMetadata metadata) {
+            return Mono.just(false);
+        }
+
+        @Override
+        public Mono<Value> getSelfConfig(String key) {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<Value> getConfig(String key) {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<org.jetlinks.core.Values> getSelfConfigs(java.util.Collection<String> keys) {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<org.jetlinks.core.Values> getConfigs(java.util.Collection<String> keys) {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<Boolean> setConfig(String key, Object value) {
+            return Mono.just(false);
+        }
+
+        @Override
+        public Mono<Boolean> setConfigs(java.util.Map<String, Object> conf) {
+            return Mono.just(false);
+        }
+
+        @Override
+        public Mono<Boolean> removeConfig(String key) {
+            return Mono.just(false);
+        }
+
+        @Override
+        public Mono<Value> getAndRemoveConfig(String key) {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<Boolean> removeConfigs(java.util.Collection<String> key) {
+            return Mono.just(false);
+        }
+
+        @Override
+        public Mono<Void> refreshConfig(java.util.Collection<String> keys) {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<Void> refreshAllConfig() {
+            return Mono.empty();
+        }
     }
 }
