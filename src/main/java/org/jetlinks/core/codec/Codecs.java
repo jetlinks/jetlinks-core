@@ -6,7 +6,9 @@ import org.jetlinks.core.cache.Caches;
 import org.jetlinks.core.codec.internal.*;
 import org.jetlinks.core.codec.internal.arrays.ArrayCodec;
 import org.jetlinks.core.codec.internal.arrays.BitArray;
+import org.jetlinks.core.codec.internal.arrays.LSBUInt1Array;
 import org.jetlinks.core.codec.internal.arrays.LSBBitArray;
+import org.jetlinks.core.codec.internal.arrays.UInt1Array;
 import org.jetlinks.core.codec.internal.bcd.*;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
@@ -138,6 +140,8 @@ public final class Codecs {
         Codec<java.time.LocalDateTime> BCD_DATE_TIME_12 = new BcdDateTime12();
         Codec<Boolean[]> BIT_ARRAY = new BitArray();
         Codec<Boolean[]> LSB_BIT_ARRAY = new LSBBitArray();
+        Codec<Integer[]> UINT1_ARRAY = new UInt1Array();
+        Codec<Integer[]> LSB_UINT1_ARRAY = new LSBUInt1Array();
     }
 
     private static Map<String, Codec<?>> mapping = new ConcurrentHashMap<>();
@@ -200,7 +204,9 @@ public final class Codecs {
             Internal.BCD_DATE_4_ARRAY,
             // 位数组
             Internal.BIT_ARRAY,
-            Internal.LSB_BIT_ARRAY
+            Internal.LSB_BIT_ARRAY,
+            Internal.UINT1_ARRAY,
+            Internal.LSB_UINT1_ARRAY
         );
     }
 
