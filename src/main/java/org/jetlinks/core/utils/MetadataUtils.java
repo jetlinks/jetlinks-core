@@ -230,6 +230,12 @@ public class MetadataUtils {
             "org.hibernate.validator.constraints"
         );
 
+        static final Set<String> requiredValidators = Sets.newHashSet(
+            "NotNull",
+            "NotBlank",
+            "NotEmpty"
+        );
+
         Set<Object> distinct = new HashSet<>();
 
         MetadataParser() {
@@ -271,7 +277,11 @@ public class MetadataUtils {
                             ann,
                             true,
                             true));
-                    validator.put("type", ann.annotationType().getSimpleName());
+                    String type = ann.annotationType().getSimpleName();
+                    validator.put("type", type);
+                    if (requiredValidators.contains(type)) {
+                        container.putIfAbsent("required", true);
+                    }
                     validator.compute("groups", (ignore, groups) -> {
                         if (groups instanceof String[]) {
                             @SuppressWarnings("all")
@@ -424,7 +434,6 @@ public class MetadataUtils {
                 if (StringUtils.hasText(schema.title())) {
                     metadata.setName(schema.title());
                 }
-
             }
             return metadata;
 

@@ -64,6 +64,24 @@ public class MetadataUtilsTest {
         Assert.assertTrue(dataType instanceof DateTimeType);
     }
 
+    @Test
+    public void testJsr303Required() {
+        ObjectType type = (ObjectType) MetadataUtils.parseType(ResolvableType.forType(RequiredEntity.class));
+
+        Assert.assertTrue(type
+                              .getProperty("deviceId")
+                              .orElseThrow()
+                              .getExpand("required")
+                              .map(Boolean.TRUE::equals)
+                              .orElse(false));
+        Assert.assertFalse(type
+                               .getProperty("productId")
+                               .orElseThrow()
+                               .getExpand("required")
+                               .map(Boolean.TRUE::equals)
+                               .orElse(false));
+    }
+
 
     @Target({FIELD, METHOD, PARAMETER})
     @Retention(RetentionPolicy.RUNTIME)
@@ -134,6 +152,18 @@ public class MetadataUtilsTest {
 
         @Schema(title = "collection集合")
         private Collection<String> collection;
+    }
+
+    @Getter
+    @Setter
+    public static class RequiredEntity {
+
+        @Schema(description = "设备ID")
+        @NotBlank
+        private String deviceId;
+
+        @Schema(description = "产品ID")
+        private String productId;
     }
 
 }
