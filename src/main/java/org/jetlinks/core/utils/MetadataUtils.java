@@ -2,6 +2,10 @@ package org.jetlinks.core.utils;
 
 import com.fasterxml.jackson.annotation.JsonView;
 import com.google.common.collect.Sets;
+import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.extensions.Extensions;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -12,6 +16,7 @@ import org.jetlinks.core.annotation.Expands;
 import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.metadata.types.*;
 import org.jetlinks.core.things.ThingsConfigKeys;
+import org.jetlinks.core.utils.json.ObjectMappers;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -29,10 +34,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
@@ -308,6 +309,83 @@ public class MetadataUtils {
             }
         }
 
+        static void parseSwagger(Annotation[] annotation,
+                                 Map<String, Object> container) {
+            Schema schema = null;
+            ExternalDocumentation doc = null;
+            List<Extension> extensions = new ArrayList<>();
+            for (Annotation ann : annotation) {
+                if (ann instanceof Schema _schema) {
+                    schema = _schema;
+                    extensions.addAll(Arrays.asList(_schema.extensions()));
+                }
+                if (ann instanceof ExternalDocumentation _doc) {
+                    doc = _doc;
+                    extensions.addAll(Arrays.asList(_doc.extensions()));
+                }
+                if (ann instanceof Extension _extension) {
+                    extensions.add(_extension);
+                }
+                if (ann instanceof Extensions _extensions) {
+                    extensions.addAll(Arrays.asList(_extensions.value()));
+                }
+            }
+
+            // 文档
+            {
+                ExternalDocumentation _doc = schema != null && StringUtils.hasText(schema.externalDocs().url())
+                    ? schema.externalDocs()
+                    : doc;
+
+                if (_doc != null && StringUtils.hasText(_doc.url())) {
+                    Object docRef = Map.of(
+                        "description", _doc.description(),
+                        "url", _doc.url()
+                    );
+                    container
+                        .compute("externalDocs", (_key, val) -> {
+                            if (val == null) {
+                                return List.of(docRef);
+                            }
+                            if (val instanceof Collection<?> v) {
+                                List<Object> docs = new ArrayList<>(v);
+                                docs.add(docRef);
+                                return docs;
+                            }
+                            return List.of(val, docRef);
+                        });
+                }
+            }
+            for (Extension extension : extensions) {
+                mergeSwaggerExtension(container, extension);
+            }
+        }
+
+        private static void mergeSwaggerExtension(Map<String, Object> container, Extension extension) {
+            if (extension == null || !StringUtils.hasText(extension.name())) {
+                return;
+            }
+            Map<String, Object> value = new LinkedHashMap<>();
+            for (ExtensionProperty property : extension.properties()) {
+                if (property != null && StringUtils.hasText(property.name())) {
+                    value.put(property.name(), swaggerExtensionPropertyValue(property));
+                }
+            }
+            container.put(extension.name(), value);
+        }
+
+        private static Object swaggerExtensionPropertyValue(ExtensionProperty property) {
+            String value = property.value();
+            if (!property.parseValue()) {
+                return value;
+            }
+            try {
+                return ObjectMappers.JSON_MAPPER.readValue(value, Object.class);
+            } catch (Exception ignore) {
+                return value;
+            }
+        }
+
         static void parseAttr(AnnotatedElement element,
                               Map<String, Object> container) {
 
@@ -397,6 +475,7 @@ public class MetadataUtils {
 
             parseJsr303(annotation, container);
             parseJsonView(annotation, container);
+            parseSwagger(annotation, container);
         }
 
         static void parseExpands(AnnotatedElement element,
@@ -423,8 +502,6 @@ public class MetadataUtils {
             // 在字段上定义的注解
             parseExpands(field, true, expands);
 
-            metadata.setExpands(expands);
-
             if (null != schema) {
                 if (StringUtils.hasText(schema.description())) {
                     metadata.setDescription(schema.description());
@@ -435,6 +512,8 @@ public class MetadataUtils {
                     metadata.setName(schema.title());
                 }
             }
+            metadata.setExpands(expands);
+
             return metadata;
 
         }
@@ -549,14 +628,18 @@ public class MetadataUtils {
         }
 
         private Schema getSchema(Class<?> owner, Field field) {
+            return getAnnotation(owner, field, Schema.class);
+        }
+
+        private <T extends Annotation> T getAnnotation(Class<?> owner, Field field, Class<T> annotation) {
             Method readMethod = getReadMethod(owner, field);
             if (readMethod != null) {
-                Schema schema = AnnotatedElementUtils.getMergedAnnotation(readMethod, Schema.class);
+                T schema = AnnotatedElementUtils.getMergedAnnotation(readMethod, annotation);
                 if (schema != null) {
                     return schema;
                 }
             }
-            return AnnotatedElementUtils.getMergedAnnotation(field, Schema.class);
+            return AnnotatedElementUtils.getMergedAnnotation(field, annotation);
         }
     }
 }

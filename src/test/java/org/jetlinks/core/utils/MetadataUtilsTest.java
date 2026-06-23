@@ -3,6 +3,9 @@ package org.jetlinks.core.utils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.fasterxml.jackson.annotation.JsonView;
+import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -29,6 +32,7 @@ import java.lang.annotation.Target;
 import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static java.lang.annotation.ElementType.*;
@@ -80,6 +84,38 @@ public class MetadataUtilsTest {
                                .getExpand("required")
                                .map(Boolean.TRUE::equals)
                                .orElse(false));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testSwaggerExternalDocsAndExtensions() throws Exception {
+        ObjectType type = (ObjectType) MetadataUtils.parseType(ResolvableType.forType(SwaggerEntity.class));
+
+        Map<String, Object> expands = type
+            .getProperty("document")
+            .orElseThrow()
+            .getExpands();
+
+        List<Map<String, Object>> externalDocs = (List<Map<String, Object>>) expands.get("externalDocs");
+        Assert.assertEquals(1, externalDocs.size());
+        Assert.assertEquals("工具帮助", externalDocs.get(0).get("description"));
+        Assert.assertEquals("/tools/document_generate/help.md", externalDocs.get(0).get("url"));
+
+        Map<String, Object> aiHelp = (Map<String, Object>) expands.get("x-ai-help");
+        Assert.assertEquals("/tools/document_generate/help.md", aiHelp.get("path"));
+        Assert.assertEquals("watermark", aiHelp.get("section"));
+
+        Map<String, Object> options = (Map<String, Object>) expands.get("x-options");
+        Assert.assertEquals(10, options.get("priority"));
+        Assert.assertEquals(Map.of("enabled", true), options.get("flags"));
+
+        Map<String, Object> methodExpands = MetadataUtils.parseExpands(SwaggerEntity.class.getMethod("generate"));
+        List<Map<String, Object>> methodDocs = (List<Map<String, Object>>) methodExpands.get("externalDocs");
+        Assert.assertEquals(1, methodDocs.size());
+        Assert.assertEquals("方法工具帮助", methodDocs.get(0).get("description"));
+        Assert.assertEquals("/tools/method_generate/help.md", methodDocs.get(0).get("url"));
+        Map<String, Object> methodHelp = (Map<String, Object>) methodExpands.get("x-ai-help");
+        Assert.assertEquals("/tools/method_generate/help.md", methodHelp.get("path"));
     }
 
 
@@ -164,6 +200,38 @@ public class MetadataUtilsTest {
 
         @Schema(description = "产品ID")
         private String productId;
+    }
+
+    @Getter
+    @Setter
+    public static class SwaggerEntity {
+
+        @Schema(
+            title = "文档参数",
+            externalDocs = @ExternalDocumentation(description = "工具帮助", url = "/tools/document_generate/help.md"),
+            extensions = {
+                @Extension(
+                    name = "x-ai-help",
+                    properties = {
+                        @ExtensionProperty(name = "path", value = "/tools/document_generate/help.md"),
+                        @ExtensionProperty(name = "section", value = "watermark")
+                    }
+                ),
+                @Extension(
+                    name = "x-options",
+                    properties = {
+                        @ExtensionProperty(name = "priority", value = "10", parseValue = true),
+                        @ExtensionProperty(name = "flags", value = "{\"enabled\":true}", parseValue = true)
+                    }
+                )
+            }
+        )
+        private String document;
+
+        @ExternalDocumentation(description = "方法工具帮助", url = "/tools/method_generate/help.md")
+        @Extension(name = "x-ai-help", properties = @ExtensionProperty(name = "path", value = "/tools/method_generate/help.md"))
+        public void generate() {
+        }
     }
 
 }
