@@ -13,6 +13,7 @@ import org.jetlinks.core.server.ClientConnection;
 import org.jetlinks.core.server.DeviceGatewayContext;
 import org.jetlinks.core.things.ThingRpcSupportChain;
 import org.springframework.core.Ordered;
+import org.springframework.core.io.Resource;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -163,6 +164,23 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      * @since 1.1.2
      */
     default Mono<ConfigMetadata> getInitConfigMetadata() {
+        return Mono.empty();
+    }
+
+    /**
+     * 解析固件包中的版本及协议私有元数据。
+     * <p>
+     * 调用方必须在返回的 {@link org.reactivestreams.Publisher} 终止前保持 {@code firmware} 资源有效。
+     * 实现必须关闭自行打开的流，且不得长期持有资源。发出结果表示成功解析；
+     * {@link Mono#empty()} 表示当前协议不解析固件元数据；发出错误表示已识别固件但内容非法，
+     * 错误由调用方处理且不会转入人工解析。默认实现不读取资源并返回空。
+     *
+     * @param firmware 待解析的固件资源，不可为空
+     * @return 固件元数据；空表示当前协议不解析，错误表示已识别固件但内容非法
+     * @since 1.3.2
+     * @see FirmwareMetadata
+     */
+    default Mono<FirmwareMetadata> parseFirmwareMetadata(Resource firmware) {
         return Mono.empty();
     }
 
