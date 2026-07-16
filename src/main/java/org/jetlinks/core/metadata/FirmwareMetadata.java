@@ -3,7 +3,6 @@ package org.jetlinks.core.metadata;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.ProtocolSupport;
-import org.springframework.core.io.Resource;
 
 import java.util.Map;
 
@@ -15,7 +14,7 @@ import java.util.Map;
  * 本对象只描述解析结果，不负责元数据持久化，也不负责固件升级判断。
  *
  * @since 1.3.2
- * @see ProtocolSupport#parseFirmwareMetadata(Resource)
+ * @see ProtocolSupport#parseFirmwareMetadata(FirmwareMetadataContext)
  */
 @Getter
 @Setter
