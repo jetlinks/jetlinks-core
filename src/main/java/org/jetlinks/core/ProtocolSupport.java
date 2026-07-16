@@ -171,12 +171,15 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
      * 解析固件包中的版本及协议私有元数据。
      * <p>
      * 调用方必须在返回的 {@link org.reactivestreams.Publisher} 终止前保持 {@code firmware} 资源有效。
-     * 实现必须关闭自行打开的流，且不得长期持有资源。发出结果表示成功解析；
+     * 实现必须关闭自行打开的流，且不得长期持有资源。实现涉及阻塞文件读取时，必须在返回链中
+     * 自行切换到允许阻塞的调度边界，调用方不会额外切换。发出结果表示成功解析，其中
+     * {@link FirmwareMetadata#getVersion()} 必须非空且非空白，协议私有 metadata 可为空；
      * {@link Mono#empty()} 表示当前协议不解析固件元数据；发出错误表示已识别固件但内容非法，
      * 错误由调用方处理且不会转入人工解析。默认实现不读取资源并返回空。
      *
      * @param firmware 待解析的固件资源，不可为空
-     * @return 固件元数据；空表示当前协议不解析，错误表示已识别固件但内容非法
+     * @return 固件元数据；成功结果的版本必须非空且非空白，空表示当前协议不解析，
+     * 错误表示已识别固件但内容非法
      * @since 1.3.2
      * @see FirmwareMetadata
      */
