@@ -167,6 +167,28 @@ public interface ProtocolSupport extends Disposable, Ordered, Comparable<Protoco
     }
 
     /**
+     * 解析固件包中的版本及协议私有元数据。
+     * <p>
+     * {@code context} 仅用于本次解析，协议实现不得缓存上下文或读取回调中获得的资源。
+     * 上下文负责关闭输入流及归档资源；协议实现只能在回调执行期间访问这些资源。
+     * 上下文读取操作同步且可能阻塞，阻塞调度边界由协议实现返回的 {@code Mono} 链负责。
+     * 发出结果表示成功解析，其中 {@link FirmwareMetadata#getVersion()} 必须非空且非空白，
+     * 协议私有 metadata 可为空；{@link Mono#empty()} 表示当前协议不解析固件元数据；
+     * 发出错误表示已识别固件但内容非法，错误由调用方处理且不会转入人工解析。
+     * 默认实现不读取上下文并返回空。
+     *
+     * @param context 本次固件元数据解析上下文，不可为空且不得缓存
+     * @return 固件元数据；成功结果的版本必须非空且非空白，空表示当前协议不解析，
+     * 错误表示已识别固件但内容非法
+     * @since 1.3.2
+     * @see FirmwareMetadata
+     * @see FirmwareMetadataContext
+     */
+    default Mono<FirmwareMetadata> parseFirmwareMetadata(FirmwareMetadataContext context) {
+        return Mono.empty();
+    }
+
+    /**
      * 初始化协议
      *
      * @param configuration 配置信息
