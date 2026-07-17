@@ -89,6 +89,10 @@ public class CompositeProtocolSupport implements ProtocolSupport {
     private Function<DeviceProductOperator, Mono<Void>> onProductUnRegister;
     private Function<DeviceProductOperator, Mono<Void>> onProductMetadataChanged;
 
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private Function<FirmwareMetadataContext, Mono<FirmwareMetadata>> firmwareMetadataParser;
+
     private BiFunction<DeviceOperator, Flux<DeviceOperator>, Mono<Void>> onChildBind;
     private BiFunction<DeviceOperator, Flux<DeviceOperator>, Mono<Void>> onChildUnbind;
 
@@ -153,6 +157,25 @@ public class CompositeProtocolSupport implements ProtocolSupport {
 
     public void addMessageCodecSupport(DeviceMessageCodec codec) {
         addMessageCodecSupport(codec.getSupportTransport(), codec);
+    }
+
+    /**
+     * 注册固件元数据解析器，并声明协议支持固件升级。
+     *
+     * @param parser 固件元数据解析器，不可为空；返回语义与
+     *               {@link ProtocolSupport#parseFirmwareMetadata(FirmwareMetadataContext)} 一致
+     * @since 1.3.2
+     */
+    public void addFirmwareSupport(Function<FirmwareMetadataContext, Mono<FirmwareMetadata>> parser) {
+        this.firmwareMetadataParser = parser;
+        addFeature(DeviceFeatures.supportFirmware);
+    }
+
+    @Override
+    public Mono<FirmwareMetadata> parseFirmwareMetadata(FirmwareMetadataContext context) {
+        return firmwareMetadataParser == null
+            ? ProtocolSupport.super.parseFirmwareMetadata(context)
+            : firmwareMetadataParser.apply(context);
     }
 
     public void removeMessageCodecSupport(Transport transport) {
