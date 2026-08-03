@@ -9,35 +9,39 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.jetlinks.core.codec.layout.ByteLayout.*;
-
+/**
+ * 预定义字节布局注册表。
+ *
+ * 内置布局实例由 {@link ByteLayout} 公共常量统一创建，本类只维护相同实例的 ID 索引，
+ * 并通过并发 Map 支持运行时注册和查询，不参与具体字节重排。
+ *
+ * @see ByteLayout
+ */
 public class ByteLayouts {
-    static final int A = 0, B = 1, C = 2, D = 3, E = 4, F = 5, G = 6, H = 7;
-
     //@formatter:off
     static final ByteLayout
         // 2字节
-        AB = new DirectByteLayout("AB",2),
-        BA = create("BA", new int[]{B, A}),
+        AB = ByteLayout.AB,
+        BA = ByteLayout.BA,
         // 4 字节
-        AB_CD =new DirectByteLayout("AB_CD",4),
-        CD_AB = create("CD_AB", new int[]{C, D, A, B}),
-        BA_DC = create("BA_DC", new int[]{B, A, D, C}),
-        DC_BA = create("DC_BA", new int[]{D, C, B, A}),
+        AB_CD = ByteLayout.AB_CD,
+        CD_AB = ByteLayout.CD_AB,
+        BA_DC = ByteLayout.BA_DC,
+        DC_BA = ByteLayout.DC_BA,
 
         // 8字节
-        AB_CD_EF_GH = new DirectByteLayout("AB_CD_EF_GH",8),
-        GH_EF_CD_AB = create("GH_EF_CD_AB", new int[]{G, H, E, F, C, D, A, B}),
-        BA_DC_FE_HG = create("BA_DC_FE_HG", new int[]{B, A, D, C, F, E, H, G}),
-        HG_FE_DC_BA = create("HG_FE_DC_BA", new int[]{H, G, F, E, D, C, B, A}),
+        AB_CD_EF_GH = ByteLayout.AB_CD_EF_GH,
+        GH_EF_CD_AB = ByteLayout.GH_EF_CD_AB,
+        BA_DC_FE_HG = ByteLayout.BA_DC_FE_HG,
+        HG_FE_DC_BA = ByteLayout.HG_FE_DC_BA,
 
-        FE_HG_BA_DC = create("FE_HG_BA_DC", new int[]{F, E, H, G, B, A, D, C}),
-        DC_BA_HG_FE = create("DC_BA_HG_FE", new int[]{D, C, B, A, H, G, F, E}),
+        FE_HG_BA_DC = ByteLayout.FE_HG_BA_DC,
+        DC_BA_HG_FE = ByteLayout.DC_BA_HG_FE,
 
-        BIG_ENDIAN = new DirectByteLayout("BIG_ENDIAN", -1),
-        LITTLE_ENDIAN = new ReverseByteLayout("LITTLE_ENDIAN", -1),
-        WORD_SWAP_2 = new WordSwapByteLayout("WORD_SWAP_2", -1, 2),
-        WORD_REVERSE_2 = new WordReverseByteLayout("WORD_REVERSE_2", -1, 2)
+        BIG_ENDIAN = ByteLayout.BIG_ENDIAN,
+        LITTLE_ENDIAN = ByteLayout.LITTLE_ENDIAN,
+        WORD_SWAP_2 = ByteLayout.WORD_SWAP_2,
+        WORD_REVERSE_2 = ByteLayout.WORD_REVERSE_2
             ;
     //@formatter:on
 
