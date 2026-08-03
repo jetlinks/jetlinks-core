@@ -417,4 +417,5 @@ java -Xms2g -Xmx2g -XX:+UseG1GC -XX:NativeMemoryTracking=summary \
   org.jetlinks.core.benchmark.DistinctDurationFluxMemoryStress 50000 8 1000 result-name
 ```
 
-- commit / PR：pending（本次未请求提交或推送）。
+- 实现 commit：`04a5f4ca004e821b6326678a2bb0242e63f81bfb`。
+- Pull Request：https://github.com/jetlinks/jetlinks-core/pull/92
