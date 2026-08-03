@@ -22,6 +22,8 @@ import org.hswebframework.web.i18n.LocaleUtils;
  *   <li><strong>4字节布局：</strong> AB_CD(正常), CD_AB(交换), BA_DC(部分交换), DA_BC(部分交换)</li>
  *   <li><strong>8字节布局：</strong> AB_CD_EF_GH(正常), GH_EF_CD_AB(交换), BA_DC_FE_HG(部分交换), HG_FE_DC_BA(完全反转)</li>
  * </ul>
+ * 预定义实例由本接口统一创建，{@link ByteLayouts} 只负责注册和查询，避免二者的
+ * 静态初始化顺序影响公共常量。
  *
  * <p><strong>使用示例：</strong>
  * <pre>{@code
@@ -45,29 +47,29 @@ public interface ByteLayout {
     //@formatter:off
      ByteLayout
         // 2字节
-        AB = ByteLayouts.AB,
-        BA = ByteLayouts.BA,
+        AB = new DirectByteLayout("AB", 2),
+        BA = create("BA", new int[]{1, 0}),
         // 4 字节
-        AB_CD = ByteLayouts.AB_CD,
-        CD_AB = ByteLayouts.CD_AB,
-        BA_DC = ByteLayouts.BA_DC,
-        DC_BA = ByteLayouts.DC_BA,
+        AB_CD = new DirectByteLayout("AB_CD", 4),
+        CD_AB = create("CD_AB", new int[]{2, 3, 0, 1}),
+        BA_DC = create("BA_DC", new int[]{1, 0, 3, 2}),
+        DC_BA = create("DC_BA", new int[]{3, 2, 1, 0}),
 
          // 8字节
-        AB_CD_EF_GH = ByteLayouts.AB_CD_EF_GH,
-        GH_EF_CD_AB = ByteLayouts.GH_EF_CD_AB,
-        BA_DC_FE_HG = ByteLayouts.BA_DC_FE_HG,
-        HG_FE_DC_BA = ByteLayouts.HG_FE_DC_BA,
+        AB_CD_EF_GH = new DirectByteLayout("AB_CD_EF_GH", 8),
+        GH_EF_CD_AB = create("GH_EF_CD_AB", new int[]{6, 7, 4, 5, 2, 3, 0, 1}),
+        BA_DC_FE_HG = create("BA_DC_FE_HG", new int[]{1, 0, 3, 2, 5, 4, 7, 6}),
+        HG_FE_DC_BA = create("HG_FE_DC_BA", new int[]{7, 6, 5, 4, 3, 2, 1, 0}),
 
         // 其他常见布局
-        FE_HG_BA_DC = ByteLayouts.FE_HG_BA_DC,
-        DC_BA_HG_FE = ByteLayouts.DC_BA_HG_FE,
+        FE_HG_BA_DC = create("FE_HG_BA_DC", new int[]{5, 4, 7, 6, 1, 0, 3, 2}),
+        DC_BA_HG_FE = create("DC_BA_HG_FE", new int[]{3, 2, 1, 0, 7, 6, 5, 4}),
 
         // 通用不定长布局
-        BIG_ENDIAN = ByteLayouts.BIG_ENDIAN,
-        LITTLE_ENDIAN = ByteLayouts.LITTLE_ENDIAN,
-        WORD_SWAP_2 = ByteLayouts.WORD_SWAP_2,
-        WORD_REVERSE_2 = ByteLayouts.WORD_REVERSE_2
+        BIG_ENDIAN = new DirectByteLayout("BIG_ENDIAN", -1),
+        LITTLE_ENDIAN = new ReverseByteLayout("LITTLE_ENDIAN", -1),
+        WORD_SWAP_2 = new WordSwapByteLayout("WORD_SWAP_2", -1, 2),
+        WORD_REVERSE_2 = new WordReverseByteLayout("WORD_REVERSE_2", -1, 2)
     ;
     //@formatter:on
 
