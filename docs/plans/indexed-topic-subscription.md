@@ -1,6 +1,6 @@
 # jetlinks-core 可动态更新的紧凑 Topic 订阅 SPI 设计
 
-状态：SPI 设计与本期 core 契约范围已确认；开发任务已制定，待开始实现。
+状态：SPI 设计与本期 core 契约范围已确认；`doOnSubscribe` 触发入口待确认后实现。
 
 公共 API 版本：`@since 1.2.6`。
 
@@ -370,6 +370,30 @@ public final class SubscriptionPlan {
     }
 }
 ```
+
+### 6.1 开发前待确认：本地订阅激活回调
+
+`SubscriptionPlan.from(subscription)` 需要保留旧 `Subscription#doOnSubscribe`，但
+当前签名只允许 builder 写入 callback，没有给其他模块的具体 EventBus 实现提供触发
+入口。仅在 Plan 内保存 callback 会形成永远无法执行的无效契约。
+
+推荐在 `SubscriptionPlan` 增加封装式触发入口：
+
+```java
+/**
+ * 通知本地订阅已经成功激活。
+ *
+ * 具体 EventBus 每次成功激活一个新句柄时调用一次；Plan 更新不重复调用。
+ * 未配置 callback 时为空操作，callback 异常沿当前激活调用链传播。
+ *
+ * @since 1.2.6
+ */
+public void subscribed();
+```
+
+不推荐直接暴露 `Runnable getDoOnSubscribe()`：触发时机和单次调用约束会分散到具体
+实现，调用方还可能持有并任意重复执行 callback。该入口只负责本地 callback，不参与
+Plan 值语义、编码或集群同步。
 
 约束：
 
@@ -1147,7 +1171,7 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
 
 - 依赖：`CORE-SPI-02`。
 - 产物：`SubscriptionPlan`、builder、`from(Subscription)`、`withRoutes`、固定属性
-  校验所需的值语义和本地 callback 保留逻辑。
+  校验所需的值语义和本地 callback 保留/触发逻辑。
 - 测试：topics、features、priority、time 和 callback 映射；`withRoutes` 仅替换
   Route Plan；callback 不参与 `equals/hashCode/toString`；所有数组和集合防御性
   复制；空 Route Plan 合法。
@@ -1155,7 +1179,8 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
   冻结 `Subscription` 的字段、`serialVersionUID` 与 `writeExternal/readExternal`
   格式。
 - 完成条件：旧 `Subscription` 无生产代码改动；新 Plan 能完整表达旧订阅语义；固定
-  属性差异必须被后续 `updatePlan` 明确拒绝的规则已写入 SPI Javadoc。
+  属性差异必须被后续 `updatePlan` 明确拒绝的规则已写入 SPI Javadoc；本地订阅激活
+  callback 通过已确认的封装入口触发，不暴露可任意执行的 `Runnable`。
 
 ### 16.5 `CORE-SPI-04`：订阅生命周期与更新结果契约
 
@@ -1236,4 +1261,4 @@ RouteTable、具体 codec、集群、MBean、tracing 或 benchmark。`Subscripti
 - Draft PR：[#94 docs(core): 固化动态 Topic 订阅 SPI 设计](https://github.com/jetlinks/jetlinks-core/pull/94)。
 - 文档验证：`git diff --check` 通过。
 - 生产代码与自动化测试：尚未开始，待开发任务确认后按 `CORE-SPI-01` 至
-  `CORE-SPI-08` 执行。
+  `CORE-SPI-08` 执行；当前等待确认 `SubscriptionPlan#subscribed()`。
