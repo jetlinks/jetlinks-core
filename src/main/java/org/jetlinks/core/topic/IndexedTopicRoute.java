@@ -112,10 +112,14 @@ public final class IndexedTopicRoute implements TopicRoute {
         if (allowedValues.isEmpty() || topic.separator() != TopicUtils.PATH_SPLITTER) {
             return false;
         }
-        int topicOffset = topic.size() > 0 && topic.get(0).length() == 0 ? 1 : 0;
+        CharSequence first = topic.size() > 0 ? topic.get(0) : null;
+        int topicOffset = topic.size() > 0 && first != null && first.length() == 0 ? 1 : 0;
         int valueIndex = topicOffset + matchingSegment;
-        if (valueIndex >= topic.size()
-            || !allowedValues.contains(String.valueOf(topic.get(valueIndex)))) {
+        if (valueIndex >= topic.size()) {
+            return false;
+        }
+        CharSequence segment = topic.get(valueIndex);
+        if (segment == null || !allowedValues.contains(segment instanceof String ? (String) segment : segment.toString())) {
             return false;
         }
         return PatternTopicRoute.matches(matchingPattern, topic);
