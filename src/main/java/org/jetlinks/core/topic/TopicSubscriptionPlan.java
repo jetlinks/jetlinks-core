@@ -41,6 +41,9 @@ public final class TopicSubscriptionPlan {
             if (route == null) {
                 throw new IllegalArgumentException("route cannot be null");
             }
+            if (!(route instanceof PatternTopicRoute) && !(route instanceof IndexedTopicRoute)) {
+                throw new IllegalArgumentException("unsupported route type: " + route.getClass().getName());
+            }
             unique.add(route);
         }
         List<TopicRoute> ordered = new ArrayList<>(unique);
