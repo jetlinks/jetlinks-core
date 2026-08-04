@@ -22,6 +22,56 @@ import java.util.function.Supplier;
 public interface EventBus {
 
     /**
+     * 使用结构化 Plan 创建可动态更新的事件流。
+     * <p>
+     * 具体实现应在返回的 EventStream 首次被订阅时激活路由。不支持结构化订阅的实现
+     * 继承默认方法即可显式失败，不能退化为无约束 wildcard 或取消重建伪句柄。
+     *
+     * @param plan 初始完整订阅快照，不能为 {@code null}
+     * @return 可更新、可取消的单下游事件流
+     * @throws UnsupportedOperationException 当前实现不支持结构化订阅
+     * @see SubscriptionPlan
+     * @see EventStream
+     * @since 1.2.6
+     */
+    default EventStream<TopicPayload> subscribe(SubscriptionPlan plan) {
+        if (plan == null) {
+            throw new IllegalArgumentException("plan cannot be null");
+        }
+        throw new UnsupportedOperationException(
+            "structured subscription plan is not supported"
+        );
+    }
+
+    /**
+     * 使用结构化 Plan 创建 handler 订阅。
+     * <p>
+     * handler 返回的 Mono 必须由实现组合进消息投递链，不能通过内部 subscribe 脱离
+     * 生命周期启动。实现必须保留生产者 Reactor Context，使 handler 可通过
+     * {@code Mono.deferContextual(...)} 延迟读取。
+     *
+     * @param plan 初始完整订阅快照，不能为 {@code null}
+     * @param handler 非阻塞处理器，不能为 {@code null}，也不能返回 {@code null}
+     * @return 可更新、可取消的订阅句柄
+     * @throws UnsupportedOperationException 当前实现不支持结构化订阅
+     * @see EventSubscription
+     * @since 1.2.6
+     */
+    default EventSubscription subscribe(
+        SubscriptionPlan plan,
+        Function<TopicPayload, Mono<Void>> handler) {
+        if (plan == null) {
+            throw new IllegalArgumentException("plan cannot be null");
+        }
+        if (handler == null) {
+            throw new IllegalArgumentException("handler cannot be null");
+        }
+        throw new UnsupportedOperationException(
+            "structured subscription plan is not supported"
+        );
+    }
+
+    /**
      * 从事件总线中订阅事件
      *
      * @param subscription 订阅信息
