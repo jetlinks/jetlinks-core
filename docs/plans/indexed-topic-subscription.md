@@ -76,7 +76,7 @@ owning repo：`jetlinks-core`。本期只开发 core 公共契约，不进入 su
 1. 公共 SPI 接口、方法签名、Javadoc、`@since` 和关联类型。
 2. 作为公共参数或返回值所必需的不可变值对象、builder、工厂方法和资源限制模型。
 3. 为保证值对象自身语义闭合所必需的标准化、参数校验、值语义和 Topic 匹配逻辑。
-4. EventBus default 方法的显式不支持行为，以及旧 API、序列化格式和 Java 8 编译
+4. EventBus default 方法的显式不支持行为，以及旧 API、序列化格式和当前 Java 17 编译
    兼容测试。
 
 本期“契约”不包含运行时基础设施：不维护注册索引，不执行真实消息投递，不实现
@@ -177,7 +177,7 @@ public interface EventBus {
 1. 动态更新是订阅生命周期的一部分，不应要求调用方先判断或转换到另一套 EventBus。
 2. `Subscription` 与 `SubscriptionPlan` 参数类型不同，不依赖返回类型重载，不存在
    方法签名冲突。
-3. Java 8 `default` 方法可保护已有第三方 `EventBus` 实现的二进制兼容；具体实现
+3. Java `default` 方法可保护已有第三方 `EventBus` 实现的二进制兼容；具体实现
    后续在各自 owning module 单独设计。
 4. 默认实现必须显式抛出 `UnsupportedOperationException`。不能把 indexed route
    展开成 wildcard，也不能返回一个表面可更新、实际取消重建的伪句柄。
@@ -268,7 +268,8 @@ public interface EventStream<T> extends EventSubscription {
 
 ### 5.3 更新结果
 
-项目当前使用 Java 8，不能使用 `record`。结果类型使用普通不可变类：
+目标分支当前使用 Java 17。结果类型仍使用普通不可变类，以保持公共 JavaBean getter
+和现有 core API 风格：
 
 ```java
 public final class SubscriptionUpdateResult {
@@ -348,6 +349,12 @@ public final class SubscriptionPlan {
         TopicSubscriptionPlan routePlan
     );
 
+    public boolean isUpdateCompatibleWith(
+        SubscriptionPlan nextPlan
+    );
+
+    public void subscribed();
+
     public void discard(TopicPayload payload);
 
     public void dropped(TopicPayload payload);
@@ -371,7 +378,7 @@ public final class SubscriptionPlan {
 }
 ```
 
-### 6.1 开发前待确认：本地订阅激活回调
+### 6.1 本地订阅激活回调
 
 `SubscriptionPlan.from(subscription)` 需要保留旧 `Subscription#doOnSubscribe`，但
 当前签名只允许 builder 写入 callback，没有给其他模块的具体 EventBus 实现提供触发
@@ -399,8 +406,9 @@ Plan 值语义、编码或集群同步。
 
 1. subscriber、features、priority、time 和本地 callback 在句柄生命周期内固定，
    只允许 `routePlan` 更新。
-2. `updatePlan(next)` 必须验证固定字段与初始 Plan 相同；不同则以参数错误结束，
-   提示调用方新建订阅。
+2. `updatePlan(next)` 必须先调用 `current.isUpdateCompatibleWith(next)` 验证固定字段。
+   callback 以引用比较，不暴露 callback，也不将其纳入值语义；不兼容时以参数错误
+   结束并提示调用方新建订阅。
 3. routes、features、allowed values 均做防御性复制，对外只暴露只读视图。
 4. `doOnSubscribe`、drop listener 仅在本地使用，不参与编码或
    `equals/hashCode/toString`，`withRoutes` 保留原回调引用。
@@ -415,7 +423,8 @@ Plan 值语义、编码或集群同步。
 
 ### 7.1 TopicRoute
 
-项目当前以 Java 8 编译，因此不使用 sealed interface：
+`TopicRoute` 作为普通接口，不使用 sealed interface，以便 RouteTable 能通过 SPI
+识别并显式拒绝未知实现：
 
 ```java
 /**
@@ -1109,7 +1118,7 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
    和本地回调。
 5. Subscription 不新增 structured Plan 字段，不改变 serialVersionUID。
 6. `SubscriptionUpdateResult` 和同步状态可由实现方构造和读取。
-7. SPI 泛型、重载和 Java 8 编译不存在擦除冲突。
+7. SPI 泛型、重载和当前 Java 17 编译不存在擦除冲突。
 
 ### 15.3 Codec 边界
 
@@ -1154,7 +1163,8 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
   `TopicFinder`/`TopicUtils` 的等价性；覆盖缺段、越界、非法变量、indexed 前
   `**`、非法 value、空 allowed values 和防御性复制。
 - 完成条件：Route 在构造时完成解析，`matches` 不重复解析 pattern；值语义、稳定
-  `equals/hashCode/toString` 和 Java 8 编译通过；公共契约明确未知 `TopicRoute` 不得
+  `equals/hashCode/toString` 和当前 Java 17 编译通过；公共契约明确未知
+  `TopicRoute` 不得
   被伪装成内置可编码类型。
 
 ### 16.3 `CORE-SPI-02`：TopicSubscriptionPlan
@@ -1233,8 +1243,9 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
 - 依赖：`CORE-SPI-01` 至 `CORE-SPI-07`。
 - 产物：公共 API Javadoc、统一 `@since 1.2.6`、必要 `@see`、最终测试证据和本文
   实现落点回填。
-- 验证命令：`mvn -pl jetlinks-core test`；同时执行 `git diff --check`，核对 Java 8、
-  泛型擦除、重载兼容和旧序列化 fixture。
+- 验证命令：在 `jetlinks-core` 模块根执行
+  `mvn -Dmaven.compiler.proc=full -Dproject.build.jdk=17 clean test`；同时执行
+  `git diff --check`，核对 Java 17、泛型擦除、重载兼容和旧序列化 fixture。
 - 完成条件：相关测试报告 0 failed；PR 描述列出测试类、通过/失败/跳过数量与覆盖率
   数据，或明确项目缺少覆盖率工具时的替代证据；本文只回填稳定的代码落点和验证
   摘要，不记录逐步执行日志。
@@ -1259,6 +1270,20 @@ RouteTable、具体 codec、集群、MBean、tracing 或 benchmark。`Subscripti
 
 - 设计与开发任务提交：`8166b900`。
 - Draft PR：[#94 docs(core): 固化动态 Topic 订阅 SPI 设计](https://github.com/jetlinks/jetlinks-core/pull/94)。
-- 文档验证：`git diff --check` 通过。
-- 生产代码与自动化测试：尚未开始，待开发任务确认后按 `CORE-SPI-01` 至
-  `CORE-SPI-08` 执行；当前等待确认 `SubscriptionPlan#subscribed()`。
+- core 契约实现：
+  - `src/main/java/org/jetlinks/core/event/EventBus.java`
+  - `src/main/java/org/jetlinks/core/event/SubscriptionPlan.java`
+  - `src/main/java/org/jetlinks/core/event/EventSubscription.java`
+  - `src/main/java/org/jetlinks/core/event/EventStream.java`
+  - `src/main/java/org/jetlinks/core/topic/TopicRoute.java`
+  - `src/main/java/org/jetlinks/core/topic/TopicSubscriptionPlan.java`
+  - `src/main/java/org/jetlinks/core/topic/TopicRouteTable.java`
+  - `src/main/java/org/jetlinks/core/topic/TopicSubscriptionPlanCodec.java`
+- 自动化验证：模块根执行
+  `mvn -Dmaven.compiler.proc=full -Dproject.build.jdk=17 clean test`，619 passed、
+  0 failed、0 errors、1 skipped；新增值对象关键类 JaCoCo line 93.3%、branch 81.7%。
+- 兼容验证：旧 `Subscription` Externalizable 固定字节 fixture 通过；仅实现旧抽象
+  方法的 `EventBus` fixture 仍可编译运行；`javap` 已核对新重载、泛型和 SPI 擦除签名。
+- Java 版本说明：目标 `1.3` 分支父 POM 使用 Java 17；强制 source 8 会被仓库既有
+  record、pattern matching 和 switch expression 阻断，因此本期按 Java 17 验证。
+- 文档与格式验证：`git diff --check` 通过。
