@@ -1,6 +1,6 @@
 # jetlinks-core 可动态更新的紧凑 Topic 订阅 SPI 设计
 
-状态：SPI 设计已确认；第一阶段开发任务已制定，待确认后实现。
+状态：SPI 设计与本期 core 契约范围已确认；开发任务已制定，待开始实现。
 
 公共 API 版本：`@since 1.2.6`。
 
@@ -68,7 +68,20 @@ Cancelable subscribe(
 
 ## 3. 影响范围与 owning module
 
-owning repo：`jetlinks-core`。本文只约束 core 公共契约与通用路由能力。
+owning repo：`jetlinks-core`。本期只开发 core 公共契约，不进入 supports、Components
+或任一 EventBus 具体实现。
+
+本期“契约”包含：
+
+1. 公共 SPI 接口、方法签名、Javadoc、`@since` 和关联类型。
+2. 作为公共参数或返回值所必需的不可变值对象、builder、工厂方法和资源限制模型。
+3. 为保证值对象自身语义闭合所必需的标准化、参数校验、值语义和 Topic 匹配逻辑。
+4. EventBus default 方法的显式不支持行为，以及旧 API、序列化格式和 Java 8 编译
+   兼容测试。
+
+本期“契约”不包含运行时基础设施：不维护注册索引，不执行真实消息投递，不实现
+更新并发控制、buffer/backpressure、跨边界 Context 传播、编解码 wire format 或
+集群同步。这些行为仅在 SPI Javadoc 中固化，留给后续具体实现验证。
 
 主要入口：
 
@@ -98,7 +111,8 @@ owning repo：`jetlinks-core`。本文只约束 core 公共契约与通用路由
 
 ## 4. 非目标
 
-1. 不实现 `InternalEventBus`、`ClusterEventBus` 或其他具体 EventBus。
+1. 不实现 `InternalEventBus`、`ClusterEventBus` 或其他具体 EventBus，也不新增用于
+   演示行为的内存 EventBus。
 2. 不设计集群 Envelope、RPC、能力协商、重连、tombstone 或同步重试；集群计划
    后续在 Components owning module 单独编写。
 3. 不决定业务层如何计算 allowed values。
@@ -107,7 +121,8 @@ owning repo：`jetlinks-core`。本文只约束 core 公共契约与通用路由
 6. 第一版不支持一个 `IndexedTopicRoute` 中的多个 indexed segment。
 7. 不允许动态修改 subscriber、features、priority、time 或本地回调；这些属性变化
    需要创建新订阅。
-8. 第一阶段不提供 `TopicRouteTable` 默认索引、具体 codec、MBean、tracing 或性能结论。
+8. 第一阶段不提供 `TopicRouteTable` 默认索引或内存实现、具体 codec、MBean、
+   tracing 或性能结论。
 
 ## 5. 公共 API 决策
 
@@ -1091,7 +1106,7 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
 3. buffer 重检、discard 不消耗 demand、cancel 无额外 onComplete。
 4. handler `Mono.deferContextual` 可读取生产者 Context，自身更新不死锁。
 
-## 16. 第一阶段开发任务与验证
+## 16. 本期 core 契约开发任务与验证
 
 ### 16.1 执行原则与顺序
 
@@ -1099,9 +1114,11 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
 2. 推荐顺序为 `CORE-SPI-01` → `CORE-SPI-02` → `CORE-SPI-03`；随后可独立执行
    `CORE-SPI-04`、`CORE-SPI-05`、`CORE-SPI-06`；最后执行 `CORE-SPI-07` 和
    `CORE-SPI-08`。
-3. 每个任务只固化 core 公共模型和 SPI。发现必须依赖具体 EventBus、集群协议或
-   默认索引才能成立时，先回写本文并重新确认，不在实现中临时补兼容或降级逻辑。
-4. 第一阶段完成前保持 PR 为 Draft；全部门禁通过并补齐 PR 测试证据后再决定是否
+3. 每个任务只固化 core 公共模型和 SPI。测试只验证可执行的值对象语义、API 兼容性
+   和签名；运行时并发、投递、索引或编码行为只写入 Javadoc，不创建伪实现来证明。
+4. 发现必须依赖具体 EventBus、集群协议、默认索引或 wire format 才能成立时，先
+   回写本文并重新确认，不在 core 契约中临时补实现、兼容或降级逻辑。
+5. 本期完成前保持 PR 为 Draft；全部门禁通过并补齐 PR 测试证据后再决定是否
    ready for review。
 
 ### 16.2 `CORE-SPI-01`：Topic Route 基础模型
@@ -1167,9 +1184,9 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
 - 依赖：`CORE-SPI-02`。
 - 产物：`TopicSubscriptionPlanCodec`、`TopicSubscriptionPlanDecodeLimits`；decode
   签名显式接收 `DataInput`、`payloadLength` 和 limits。
-- 测试：limits 拒绝零值、负值和非法整数边界；getter 保持不可变；最小 codec
-  fixture 冻结 version/encode/decode 签名，并验证 payload 长度门禁必须发生在分配
-  之前的公共契约。
+- 测试：limits 拒绝零值、负值和非法整数边界；getter 保持不可变；最小编译 fixture
+  冻结 version/encode/decode 签名。payload 长度门禁和分配顺序只在 SPI Javadoc 中
+  固化，留给后续具体 codec 的行为测试。
 - 完成条件：version 由 payload 外部元数据选择；调用方必须提供 frame 有界输入；
   core 不提供默认阈值、具体二进制格式、自动降级或兼容向量。
 
@@ -1197,10 +1214,11 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
   数据，或明确项目缺少覆盖率工具时的替代证据；本文只回填稳定的代码落点和验证
   摘要，不记录逐步执行日志。
 
-本阶段不修改 jetlinks-supports 或 Components，不实现具体 EventBus、默认 RouteTable、
-具体 codec、集群、MBean、tracing 或 benchmark。`SubscriptionPlan` 仅为不可变模型，
-第一阶段没有常驻资源，因此不新增 TraceHolder 或 MBean；后续具体投递、索引和集群
-实现必须重新评估这两项。完成后只在本文回填 core 测试结果和关键代码路径。
+本期不修改 jetlinks-supports 或 Components，不实现具体 EventBus、默认/内存
+RouteTable、具体 codec、集群、MBean、tracing 或 benchmark。`SubscriptionPlan` 仅为
+不可变模型，本期没有常驻资源和运行时链路，因此不新增 TraceHolder 或 MBean；后续
+具体投递、索引和集群实现必须重新评估这两项。完成后只在本文回填 core 契约测试
+结果和关键代码路径。
 
 ## 17. 已确认决策
 
@@ -1209,6 +1227,8 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
 3. 本文只包含 jetlinks-core SPI 设计和第一阶段固化工作。
 4. 集群实现计划后续单独写入 Components owning module，不在本文预设协议和实现。
 5. 如果后续需求改变公共签名、Route 边界或兼容策略，先更新本文并再次确认。
+6. 本期只开发 core 契约；不可变值对象及其必要校验、匹配和值语义属于契约，任何
+   具体 EventBus、RouteTable、codec 和集群运行时实现均不属于本期。
 
 ## 18. 当前交付
 
