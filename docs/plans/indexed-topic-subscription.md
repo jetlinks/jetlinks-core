@@ -1209,3 +1209,11 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
 3. 本文只包含 jetlinks-core SPI 设计和第一阶段固化工作。
 4. 集群实现计划后续单独写入 Components owning module，不在本文预设协议和实现。
 5. 如果后续需求改变公共签名、Route 边界或兼容策略，先更新本文并再次确认。
+
+## 18. 当前交付
+
+- 设计与开发任务提交：`8166b900`。
+- Draft PR：[#94 docs(core): 固化动态 Topic 订阅 SPI 设计](https://github.com/jetlinks/jetlinks-core/pull/94)。
+- 文档验证：`git diff --check` 通过。
+- 生产代码与自动化测试：尚未开始，待开发任务确认后按 `CORE-SPI-01` 至
+  `CORE-SPI-08` 执行。
