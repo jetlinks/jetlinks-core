@@ -1,6 +1,6 @@
 # jetlinks-core 可动态更新的紧凑 Topic 订阅 SPI 设计
 
-状态：设计已确认，第一阶段待实现。
+状态：SPI 设计已确认；第一阶段开发任务已制定，待确认后实现。
 
 公共 API 版本：`@since 1.2.6`。
 
@@ -694,14 +694,12 @@ public interface TopicRouteTableMetrics {
      * @since 1.2.6
      */
     long getUpdateFailureCount();
-
-    /**
-     * @return 因 Plan 已更新而被最终门禁拒绝的消息数
-     * @since 1.2.6
-     */
-    long getDiscardedAfterUpdateCount();
 }
 ```
+
+`TopicRouteTableMetrics` 只描述 Registration、索引结构和 Route Plan 更新，不包含
+消息投递计数。因 Plan 更新而被最终门禁拒绝的消息属于 EventBus 投递层指标，后续
+具体 EventBus 实现可在自身 metrics 或 MBean 中暴露，不能反向耦合进 RouteTable SPI。
 
 SPI 契约：
 
@@ -902,9 +900,14 @@ public interface TopicSubscriptionPlanCodec {
     /**
      * 解码并校验完整 Route Plan。
      *
-     * 未知版本、未知 Route 类型、非法长度或超过 limits 时必须显式失败。
+     * 未知 Route 类型、非法长度或超过 limits 时必须显式失败。
      *
-     * @param input 输入，生命周期由调用方管理
+     * 调用方必须先根据外部 frame 元数据选择对应版本的 codec，并把 input 限定在
+     * 当前 payload 的精确边界内。实现必须在任何集合或字符串分配前校验
+     * payloadLength。
+     *
+     * @param input 当前 payload 的有界输入，生命周期由调用方管理
+     * @param payloadLength 当前 payload 字节长度，不能为负数
      * @param limits 本次解码的强制资源限制，不能为 null
      * @return 完整不可变 Plan
      * @throws IOException 输入非法、截断、不支持或超过限制
@@ -912,6 +915,7 @@ public interface TopicSubscriptionPlanCodec {
      */
     TopicSubscriptionPlan decode(
         DataInput input,
+        int payloadLength,
         TopicSubscriptionPlanDecodeLimits limits
     ) throws IOException;
 }
@@ -947,14 +951,17 @@ public final class TopicSubscriptionPlanDecodeLimits {
 后续具体 codec 必须满足：
 
 1. 编码包含 Route type、标准化 pattern、indexed variable 和 values；codec version
-   由调用方在 payload 外部携带，不能重复猜测或自动降级。
+   由调用方在 payload 外部携带并选择对应 codec。未知 version 必须在调用 decode
+   前显式失败，不能猜测或自动降级。
 2. Route 与 value 使用确定性顺序，相同 Plan 生成稳定字节序列。
-3. decode 在分配集合前检查 route 数、allowed value 总数、单值长度和 frame 总长度。
+3. decode 先校验 `payloadLength >= 0` 且不超过 `maxPayloadLength`，再在分配集合前
+   检查 route 数、allowed value 总数和单值长度。
 4. 未知 codec version、未知 Route type、负数/溢出数量、非法 pattern 或截断 payload
    均显式失败。
 5. 限制同时作用于单 Route 和完整 Plan，防止多个 Route 绕过总量限制。
-6. `maxPayloadLength` 由上层在读取 frame 前执行，不能在已分配完整 payload 后才
-   检查。
+6. 调用方必须在读取 frame 前执行 `maxPayloadLength` 门禁，并向 decode 传入实际
+   `payloadLength` 及限定到该 frame 的 `DataInput`；codec 仍须独立执行相同上限
+   校验，不能在已分配完整 payload 后才检查。
 7. core 不提供猜测性的默认阈值。上层实现必须结合自身 frame、内存限制和真实
    数据规模构造 `TopicSubscriptionPlanDecodeLimits`。
 
@@ -1068,8 +1075,10 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
 ### 15.3 Codec 边界
 
 1. decode limits 拒绝零值、负值和整数边界非法参数。
-2. maxRoutes、maxIndexedValues、maxValueLength、maxPayloadLength 的语义被单元测试冻结。
-3. 本阶段不伪造具体二进制格式、协议兼容或性能测试。
+2. decode 方法显式接收 `payloadLength`，其负值和超过 `maxPayloadLength` 的失败语义
+   在公共契约中冻结；调用方负责提供限定在对应 frame 内的 `DataInput`。
+3. maxRoutes、maxIndexedValues、maxValueLength、maxPayloadLength 的语义被单元测试冻结。
+4. 本阶段不伪造具体二进制格式、协议兼容或性能测试。
 
 ### 15.4 后续实现验收条件
 
@@ -1082,23 +1091,116 @@ handler 若需要触发自身 Plan 更新，直接把 `updatePlan(...)` Mono 返
 3. buffer 重检、discard 不消耗 demand、cancel 无额外 onComplete。
 4. handler `Mono.deferContextual` 可读取生产者 Context，自身更新不死锁。
 
-## 16. 第一阶段实施范围与验证
+## 16. 第一阶段开发任务与验证
 
-1. 新增不可变 Route/Plan 模型和语法校验。
-2. 新增 RouteTable、Registration、metrics SPI，不提交默认索引实现。
-3. 新增 codec 和 decode limits SPI，不提交具体二进制 codec。
-4. 在 `EventBus` 增加 default 重载以及句柄/结果契约。
-5. 所有公共类型和 SPI 方法补完整 Javadoc、`@since 1.2.6` 和必要 `@see`。
-6. 补模型、匹配、不可变、默认失败和旧 Subscription 兼容测试。
+### 16.1 执行原则与顺序
 
-验证：
+1. 每个任务先新增或更新契约测试，再实现使测试通过；不为通过测试放宽已确认语义。
+2. 推荐顺序为 `CORE-SPI-01` → `CORE-SPI-02` → `CORE-SPI-03`；随后可独立执行
+   `CORE-SPI-04`、`CORE-SPI-05`、`CORE-SPI-06`；最后执行 `CORE-SPI-07` 和
+   `CORE-SPI-08`。
+3. 每个任务只固化 core 公共模型和 SPI。发现必须依赖具体 EventBus、集群协议或
+   默认索引才能成立时，先回写本文并重新确认，不在实现中临时补兼容或降级逻辑。
+4. 第一阶段完成前保持 PR 为 Draft；全部门禁通过并补齐 PR 测试证据后再决定是否
+   ready for review。
 
-```text
-mvn -pl jetlinks-core test
-```
+### 16.2 `CORE-SPI-01`：Topic Route 基础模型
 
-本阶段不修改 jetlinks-supports 或 Components，不实现集群、MBean、tracing 或
-benchmark。完成后只在本文回填 core 测试结果和关键代码路径。
+- 依赖：无。
+- 产物：`TopicRoute`、`PatternTopicRoute`、`IndexedTopicRoute`，以及 pattern
+  标准化、语法校验、单 indexed segment 定位和不可变 allowed values。
+- 测试：复用真实 `/org/{orgId}/device/**` 形状，覆盖 exact、`*`、`**` 与现有
+  `TopicFinder`/`TopicUtils` 的等价性；覆盖缺段、越界、非法变量、indexed 前
+  `**`、非法 value、空 allowed values 和防御性复制。
+- 完成条件：Route 在构造时完成解析，`matches` 不重复解析 pattern；值语义、稳定
+  `equals/hashCode/toString` 和 Java 8 编译通过；公共契约明确未知 `TopicRoute` 不得
+  被伪装成内置可编码类型。
+
+### 16.3 `CORE-SPI-02`：TopicSubscriptionPlan
+
+- 依赖：`CORE-SPI-01`。
+- 产物：`TopicSubscriptionPlan.empty/of/fromTopics`、OR 匹配、相同 Route 去重和
+  确定性顺序。
+- 测试：空 Plan、多 Route OR、同一 Topic 多 Route 命中、不同输入顺序等价、重复
+  Route 去重、输入集合修改不影响 Plan、返回集合不可修改。
+- 完成条件：Plan 是不可变值对象；相同语义形成稳定顺序；`fromTopics` 只创建
+  `PatternTopicRoute`，不把 `{variable}` 猜测成 indexed route。
+
+### 16.4 `CORE-SPI-03`：完整 SubscriptionPlan 与旧 Subscription 兼容
+
+- 依赖：`CORE-SPI-02`。
+- 产物：`SubscriptionPlan`、builder、`from(Subscription)`、`withRoutes`、固定属性
+  校验所需的值语义和本地 callback 保留逻辑。
+- 测试：topics、features、priority、time 和 callback 映射；`withRoutes` 仅替换
+  Route Plan；callback 不参与 `equals/hashCode/toString`；所有数组和集合防御性
+  复制；空 Route Plan 合法。
+- 兼容测试：保留现有 `SubscriptionTest`，增加历史 `Externalizable` 字节 fixture，
+  冻结 `Subscription` 的字段、`serialVersionUID` 与 `writeExternal/readExternal`
+  格式。
+- 完成条件：旧 `Subscription` 无生产代码改动；新 Plan 能完整表达旧订阅语义；固定
+  属性差异必须被后续 `updatePlan` 明确拒绝的规则已写入 SPI Javadoc。
+
+### 16.5 `CORE-SPI-04`：订阅生命周期与更新结果契约
+
+- 依赖：`CORE-SPI-03`。
+- 产物：`EventSubscription`、`EventStream`、`SubscriptionUpdateResult`、
+  `SubscriptionSynchronization`。
+- 测试：更新结果的 changed、revision、同步状态和诊断信息可稳定构造、读取和比较；
+  使用最小编译 fixture 冻结 `EventStream`、可取消句柄和完整 Plan 更新签名。
+- 完成条件：异步更新只暴露 `Mono<SubscriptionUpdateResult>`；不公开 delta 或
+  generation；公共 Javadoc 明确同 Plan 幂等、revision、更新/dispose 线性化以及
+  dispose 后不能重新激活、handler 自更新不得形成自等待。具体 EventBus 行为留给
+  后续实现测试，不用测试 fixture 伪造。
+
+### 16.6 `CORE-SPI-05`：TopicRouteTable 扩展点
+
+- 依赖：`CORE-SPI-02`。
+- 产物：`TopicRouteTable`、`TopicRouteRegistration`、`TopicRouteTableMetrics`。
+- 测试：使用最小编译 fixture 冻结 register/find/updatePlan/matches/dispose 签名、
+  泛型和 metrics 读取契约；revision、候选去重和并发语义只在 Javadoc 中固化，不为
+  尚不存在的索引实现编写伪行为测试。
+- 完成条件：SPI 保持同步内存边界，不引入 Reactor 或网络；metrics 只描述注册、
+  索引和 Plan 更新，不包含 EventBus 投递丢弃计数；不提交默认 RouteTable 实现。
+
+### 16.7 `CORE-SPI-06`：Route Plan Codec 扩展点与解码限制
+
+- 依赖：`CORE-SPI-02`。
+- 产物：`TopicSubscriptionPlanCodec`、`TopicSubscriptionPlanDecodeLimits`；decode
+  签名显式接收 `DataInput`、`payloadLength` 和 limits。
+- 测试：limits 拒绝零值、负值和非法整数边界；getter 保持不可变；最小 codec
+  fixture 冻结 version/encode/decode 签名，并验证 payload 长度门禁必须发生在分配
+  之前的公共契约。
+- 完成条件：version 由 payload 外部元数据选择；调用方必须提供 frame 有界输入；
+  core 不提供默认阈值、具体二进制格式、自动降级或兼容向量。
+
+### 16.8 `CORE-SPI-07`：EventBus 结构化订阅入口
+
+- 依赖：`CORE-SPI-03`、`CORE-SPI-04`。
+- 产物：在 `EventBus` 增加 `subscribe(SubscriptionPlan)` 与
+  `subscribe(SubscriptionPlan, Function<TopicPayload, Mono<Void>>)` 两个 default
+  重载。
+- 测试：只实现旧抽象方法的第三方兼容 fixture 继续编译运行；两个新 default 方法
+  默认抛 `UnsupportedOperationException`；handler 函数签名不存在泛型擦除或重载
+  歧义。
+- 完成条件：旧方法签名完全不变；不新增平行 EventBus 接口或 Context 专用 handler
+  类型；Javadoc 明确 handler Mono 必须进入投递链，并以 `Mono.deferContextual`
+  感知生产者 Context。
+
+### 16.9 `CORE-SPI-08`：公共契约与质量门禁
+
+- 依赖：`CORE-SPI-01` 至 `CORE-SPI-07`。
+- 产物：公共 API Javadoc、统一 `@since 1.2.6`、必要 `@see`、最终测试证据和本文
+  实现落点回填。
+- 验证命令：`mvn -pl jetlinks-core test`；同时执行 `git diff --check`，核对 Java 8、
+  泛型擦除、重载兼容和旧序列化 fixture。
+- 完成条件：相关测试报告 0 failed；PR 描述列出测试类、通过/失败/跳过数量与覆盖率
+  数据，或明确项目缺少覆盖率工具时的替代证据；本文只回填稳定的代码落点和验证
+  摘要，不记录逐步执行日志。
+
+本阶段不修改 jetlinks-supports 或 Components，不实现具体 EventBus、默认 RouteTable、
+具体 codec、集群、MBean、tracing 或 benchmark。`SubscriptionPlan` 仅为不可变模型，
+第一阶段没有常驻资源，因此不新增 TraceHolder 或 MBean；后续具体投递、索引和集群
+实现必须重新评估这两项。完成后只在本文回填 core 测试结果和关键代码路径。
 
 ## 17. 已确认决策
 
