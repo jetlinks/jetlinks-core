@@ -3,6 +3,7 @@ package org.jetlinks.core.event;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
@@ -183,6 +184,26 @@ public class EventBusBatchPublishTest {
                     .verifyComplete();
 
         assertEquals(1, sourceSubscriptions.get());
+    }
+
+    @Test
+    public void shouldCancelSharedSourceWhenBatchIsCancelled() {
+        RecordingEventBus eventBus = new RecordingEventBus();
+        AtomicInteger sourceSubscriptions = new AtomicInteger();
+        AtomicInteger sourceCancellations = new AtomicInteger();
+        Publisher<String> source = Flux.defer(() -> {
+            sourceSubscriptions.incrementAndGet();
+            return Flux.<String>never();
+        }).doOnCancel(sourceCancellations::incrementAndGet);
+
+        Disposable disposable = eventBus.publish(
+            Arrays.asList("/one", "/two"),
+            source
+        ).subscribe();
+
+        assertEquals(1, sourceSubscriptions.get());
+        disposable.dispose();
+        assertEquals(1, sourceCancellations.get());
     }
 
     @Test(expected = NullPointerException.class)
