@@ -52,7 +52,7 @@ public class EventBusBatchPublishTest {
     }
 
     @Test
-    public void shouldSnapshotTopicsAndSumLogicalCounts() {
+    public void shouldUseTopicCollectionDirectlyAndSumLogicalCounts() {
         RecordingEventBus eventBus = new RecordingEventBus();
         List<CharSequence> topics = new ArrayList<>(Arrays.asList("/one", "/two", "/one"));
 
@@ -60,6 +60,11 @@ public class EventBusBatchPublishTest {
         topics.clear();
 
         StepVerifier.create(result)
+                    .expectNext(0L)
+                    .verifyComplete();
+        assertTrue(eventBus.publishedTopics.isEmpty());
+
+        StepVerifier.create(eventBus.publish(Arrays.asList("/one", "/two", "/one"), "value"))
                     .expectNext(3L)
                     .verifyComplete();
         assertEquals(Arrays.asList("/one", "/two", "/one"), eventBus.publishedTopics);
@@ -247,11 +252,6 @@ public class EventBusBatchPublishTest {
         assertEquals(2, sourceSubscriptions.get());
         disposable.dispose();
         assertEquals(2, sourceCancellations.get());
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void shouldRejectNullTopicElement() {
-        new RecordingEventBus().publish(Arrays.asList("/one", null), "value");
     }
 
     private static final class RecordingEventBus implements EventBus {

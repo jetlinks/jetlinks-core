@@ -8,10 +8,7 @@ import reactor.core.scheduler.Scheduler;
 import reactor.util.context.Context;
 import reactor.util.context.ContextView;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -141,12 +138,13 @@ public interface EventBus {
     /**
      * 向多个 Topic 推送同一个事件，并返回所有 Topic 的逻辑订阅者数量之和。
      *
-     * <p>Topic 集合会在调用时复制并校验，空集合返回 {@code 0}。默认实现按 Topic
-     * 独立调用既有单 Topic API；具体实现可以提供更高效的批量路径。重复
+     * <p>默认实现直接遍历调用方提供的 Topic 集合，不创建输入快照；空集合返回
+     * {@code 0}。默认实现按 Topic 独立调用既有单 Topic API；具体实现可以提供更高效的
+     * 批量路径。重复
      * Topic 按输入元素分别推送，同一订阅者命中多个 Topic 时也分别计数和投递。本方法
      * 不提供事务回滚保证，部分 Topic 成功后其他 Topic 失败时不会撤销已完成的投递。
      *
-     * @param topics Topic 集合，不能为 {@code null}，元素不能为 {@code null}；调用时会复制快照
+     * @param topics Topic 集合
      * @param event 事件对象；同一对象引用可被多个 Topic 使用，允许为 {@code null}
      * @param <T> 事件类型
      * @return 所有 Topic 的逻辑订阅者数量之和
@@ -155,9 +153,8 @@ public interface EventBus {
      * @see #publish(Collection, Publisher)
      */
     default <T> Mono<Long> publish(Collection<? extends CharSequence> topics, T event) {
-        List<CharSequence> snapshot = snapshotTopics(topics);
         return Flux
-            .fromIterable(snapshot)
+            .fromIterable(topics)
             .flatMap(topic -> publish(topic, event))
             .reduce(0L, Long::sum);
     }
@@ -172,19 +169,17 @@ public interface EventBus {
      * 和非事务语义与
      * {@link #publish(Collection, Object)} 相同。
      *
-     * @param topics Topic 集合，不能为 {@code null}，元素不能为 {@code null}
-     * @param event 惰性事件生产器，不能为 {@code null}；生产结果允许为 {@code null}
+     * @param topics Topic 集合
+     * @param event 惰性事件生产器；生产结果允许为 {@code null}
      * @param <T> 事件类型
      * @return 所有 Topic 的逻辑订阅者数量之和
      * @since 1.3.2
      */
     default <T> Mono<Long> publish(Collection<? extends CharSequence> topics, Supplier<T> event) {
-        List<CharSequence> snapshot = snapshotTopics(topics);
-        Objects.requireNonNull(event, "event cannot be null");
-        if (snapshot.isEmpty()) {
+        if (topics.isEmpty()) {
             return Mono.just(0L);
         }
-        return Mono.defer(() -> publish(snapshot, event.get()));
+        return Mono.defer(() -> publish(topics, event.get()));
     }
 
     /**
@@ -195,20 +190,15 @@ public interface EventBus {
      * 返回值按 Topic 的逻辑订阅者数量求和，不会因事件流元素数量重复累加。其他计数、
      * 重复 Topic、错误、取消和非事务语义与 {@link #publish(Collection, Object)} 相同。
      *
-     * @param topics Topic 集合，不能为 {@code null}，元素不能为 {@code null}
-     * @param event 事件流，不能为 {@code null}
+     * @param topics Topic 集合
+     * @param event 事件流
      * @param <T> 事件类型
      * @return 所有 Topic 的逻辑订阅者数量之和
      * @since 1.3.2
      */
     default <T> Mono<Long> publish(Collection<? extends CharSequence> topics, Publisher<T> event) {
-        List<CharSequence> snapshot = snapshotTopics(topics);
-        Objects.requireNonNull(event, "event cannot be null");
-        if (snapshot.isEmpty()) {
-            return Mono.just(0L);
-        }
         return Flux
-            .fromIterable(snapshot)
+            .fromIterable(topics)
             .flatMap(topic -> publish(topic, event))
             .reduce(0L, Long::sum);
     }
@@ -279,15 +269,4 @@ public interface EventBus {
      */
     <T> Mono<Long> publish(String topic, T event, Scheduler scheduler);
 
-    /**
-     * 在默认实现中复制 Topic 集合，避免异步发布链持有调用方后续可能修改的集合。
-     */
-    static List<CharSequence> snapshotTopics(Collection<? extends CharSequence> topics) {
-        Objects.requireNonNull(topics, "topics cannot be null");
-        List<CharSequence> snapshot = new ArrayList<>(topics.size());
-        for (CharSequence topic : topics) {
-            snapshot.add(Objects.requireNonNull(topic, "topic cannot be null"));
-        }
-        return snapshot;
-    }
 }
