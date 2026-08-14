@@ -141,8 +141,8 @@ public interface EventBus {
     /**
      * 向多个 Topic 推送同一个事件，并返回所有 Topic 的逻辑订阅者数量之和。
      *
-     * <p>Topic 集合会在调用时复制并校验，空集合返回 {@code 0}。单元素集合直接复用
-     * 单 Topic 快路径；多元素集合按 Topic 独立匹配、共享订阅选择和优先级调度。重复
+     * <p>Topic 集合会在调用时复制并校验，空集合返回 {@code 0}。默认实现按 Topic
+     * 独立调用既有单 Topic API；具体实现可以提供更高效的批量路径。重复
      * Topic 按输入元素分别推送，同一订阅者命中多个 Topic 时也分别计数和投递。本方法
      * 不提供事务回滚保证，部分 Topic 成功后其他 Topic 失败时不会撤销已完成的投递。
      *
@@ -156,12 +156,6 @@ public interface EventBus {
      */
     default <T> Mono<Long> publish(Collection<? extends CharSequence> topics, T event) {
         List<CharSequence> snapshot = snapshotTopics(topics);
-        if (snapshot.isEmpty()) {
-            return Mono.just(0L);
-        }
-        if (snapshot.size() == 1) {
-            return publish(snapshot.get(0), event);
-        }
         return Flux
             .fromIterable(snapshot)
             .flatMap(topic -> publish(topic, event))
@@ -171,8 +165,11 @@ public interface EventBus {
     /**
      * 向多个 Topic 推送一个惰性事件生产器。
      *
-     * <p>Supplier 只在至少有一个 Topic 存在订阅者且批次真正开始投递时执行一次；其结果
-     * 会 fan-out 到所有匹配 Topic。其他计数、重复 Topic、错误、取消和非事务语义与
+     * <p>默认实现延迟执行一次 Supplier，再通过对象批量重载 fan-out，确保包括
+     * {@code null} 在内的生产结果与对象重载语义一致。空 Topic 集合不执行 Supplier；
+     * 默认实现无法预先判断非空 Topic 的逻辑订阅者，因此即使最终没有订阅者也可能执行
+     * Supplier；需要按候选延迟执行的实现应覆盖此方法。其他计数、重复 Topic、错误、取消
+     * 和非事务语义与
      * {@link #publish(Collection, Object)} 相同。
      *
      * @param topics Topic 集合，不能为 {@code null}，元素不能为 {@code null}
@@ -187,19 +184,16 @@ public interface EventBus {
         if (snapshot.isEmpty()) {
             return Mono.just(0L);
         }
-        if (snapshot.size() == 1) {
-            return publish(snapshot.get(0), event);
-        }
-        return publish(snapshot, Mono.fromSupplier(event));
+        return Mono.defer(() -> publish(snapshot, event.get()));
     }
 
     /**
      * 向多个 Topic 推送一个事件流。
      *
-     * <p>事件流在本批次内只订阅一次，并将每个元素 fan-out 到所有匹配 Topic；如果没有
-     * Topic 存在订阅者，则不会订阅事件流。返回值按 Topic 的逻辑订阅者快照统计，不会
-     * 因事件流元素数量重复累加。其他计数、重复 Topic、错误、取消和非事务语义与
-     * {@link #publish(Collection, Object)} 相同。
+     * <p>默认实现按 Topic 独立委托既有单 Topic API，因此事件流可能被订阅多次；事件源
+     * 不支持重复订阅，或需要单次订阅源、候选快照和延迟消费保证的实现应覆盖此方法。
+     * 返回值按 Topic 的逻辑订阅者数量求和，不会因事件流元素数量重复累加。其他计数、
+     * 重复 Topic、错误、取消和非事务语义与 {@link #publish(Collection, Object)} 相同。
      *
      * @param topics Topic 集合，不能为 {@code null}，元素不能为 {@code null}
      * @param event 事件流，不能为 {@code null}
@@ -213,27 +207,10 @@ public interface EventBus {
         if (snapshot.isEmpty()) {
             return Mono.just(0L);
         }
-        if (snapshot.size() == 1) {
-            return publish(snapshot.get(0), event);
-        }
-        // 先让每个单 Topic 发布完成候选判断，再连接一次上游。不能使用 replay()，否则
-        // 无界 Publisher 会把整个事件流缓存到内存；BatchEventPublisher 使用 publish() 的
-        // 有界背压协调，同时保留无订阅者时不订阅上游的语义。
-        return Mono.defer(() -> {
-            BatchEventPublisher<T> batch = new BatchEventPublisher<>(event, snapshot.size());
-            return Flux
-                .range(0, snapshot.size())
-                // 所有分支都必须先完成候选判断，才能安全连接单次上游；不能受 Reactor
-                // 默认 256 并发限制，否则超过 256 个 Topic 时会等待未启动分支而挂起。
-                .flatMap(index -> publish(snapshot.get(index), batch.branch(index))
-                    .doOnSuccess(count -> {
-                        if (count == null || count == 0L) {
-                            batch.markNoSubscriber(index);
-                        }
-                    }), snapshot.size())
-                .doFinally(ignore -> batch.cancel())
-                .reduce(0L, Long::sum);
-        });
+        return Flux
+            .fromIterable(snapshot)
+            .flatMap(topic -> publish(topic, event))
+            .reduce(0L, Long::sum);
     }
 
     /**

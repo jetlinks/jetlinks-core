@@ -9,6 +9,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,6 +33,17 @@ public class EventBusBatchPublishTest {
                     .expectNext(0L)
                     .verifyComplete();
         assertTrue(eventBus.publishedTopics.isEmpty());
+
+        AtomicInteger supplierCalls = new AtomicInteger();
+        StepVerifier.create(eventBus.publish(
+                        Collections.emptyList(),
+                        (Supplier<String>) () -> {
+                            supplierCalls.incrementAndGet();
+                            return "value";
+                        }))
+                    .expectNext(0L)
+                    .verifyComplete();
+        assertEquals(0, supplierCalls.get());
 
         StepVerifier.create(eventBus.publish(Collections.singletonList("/one"), "value"))
                     .expectNext(1L)
@@ -72,7 +84,25 @@ public class EventBusBatchPublishTest {
     }
 
     @Test
-    public void shouldSubscribePublisherOnceAndNotSubscribeWithoutSubscribers() {
+    public void shouldFanOutNullSupplierResultThroughObjectOverload() {
+        RecordingEventBus eventBus = new RecordingEventBus();
+        AtomicInteger supplierCalls = new AtomicInteger();
+
+        StepVerifier.create(eventBus.publish(
+                        Arrays.asList("/one", "/two"),
+                        (Supplier<String>) () -> {
+                            supplierCalls.incrementAndGet();
+                            return null;
+                        }))
+                    .expectNext(2L)
+                    .verifyComplete();
+
+        assertEquals(1, supplierCalls.get());
+        assertEquals(Arrays.asList("/one=null", "/two=null"), eventBus.received);
+    }
+
+    @Test
+    public void shouldDelegatePublisherPerTopicAndSkipUnusedBranches() {
         RecordingEventBus eventBus = new RecordingEventBus();
         AtomicInteger sourceSubscriptions = new AtomicInteger();
         Publisher<String> source = Flux.defer(() -> {
@@ -83,7 +113,7 @@ public class EventBusBatchPublishTest {
         StepVerifier.create(eventBus.publish(Arrays.asList("/one", "/two"), source))
                     .expectNext(2L)
                     .verifyComplete();
-        assertEquals(1, sourceSubscriptions.get());
+        assertEquals(2, sourceSubscriptions.get());
         List<String> received = new ArrayList<>(eventBus.received);
         Collections.sort(received);
         assertEquals(Arrays.asList("/one=a", "/one=b", "/two=a", "/two=b"), received);
@@ -129,11 +159,25 @@ public class EventBusBatchPublishTest {
         StepVerifier.create(result).expectNext(2L).verifyComplete();
         StepVerifier.create(result).expectNext(2L).verifyComplete();
 
-        assertEquals(2, sourceSubscriptions.get());
+        assertEquals(4, sourceSubscriptions.get());
     }
 
     @Test
-    public void shouldNotStartSourceWhenEveryBranchCancelsSynchronously() {
+    public void shouldFanOutWhenTopicPublishersSubscribeAsynchronously() {
+        RecordingEventBus eventBus = new RecordingEventBus();
+        eventBus.delayPublisherBranches = true;
+
+        StepVerifier.create(eventBus.publish(Arrays.asList("/one", "/two"), Flux.just("value")))
+                    .expectNext(2L)
+                    .verifyComplete();
+
+        List<String> received = new ArrayList<>(eventBus.received);
+        Collections.sort(received);
+        assertEquals(Arrays.asList("/one=value", "/two=value"), received);
+    }
+
+    @Test
+    public void shouldCompleteWhenEveryFallbackBranchCancelsSynchronously() {
         RecordingEventBus eventBus = new RecordingEventBus();
         eventBus.cancelPublisherBranches = true;
         AtomicInteger sourceSubscriptions = new AtomicInteger();
@@ -146,12 +190,11 @@ public class EventBusBatchPublishTest {
                         Arrays.asList("/one", "/two"),
                         source
                     ))
-                    // The logical count is the candidate snapshot count even when the
-                    // downstream cancels before the shared source is connected.
+                    // 默认实现只保证正确完成和逻辑计数，不承担候选快照与延迟连接优化。
                     .expectNext(2L)
                     .verifyComplete();
 
-        assertEquals(0, sourceSubscriptions.get());
+        assertEquals(2, sourceSubscriptions.get());
     }
 
     @Test
@@ -183,11 +226,11 @@ public class EventBusBatchPublishTest {
                     .expectNext(1L)
                     .verifyComplete();
 
-        assertEquals(1, sourceSubscriptions.get());
+        assertEquals(2, sourceSubscriptions.get());
     }
 
     @Test
-    public void shouldCancelSharedSourceWhenBatchIsCancelled() {
+    public void shouldCancelDelegatedSourcesWhenBatchIsCancelled() {
         RecordingEventBus eventBus = new RecordingEventBus();
         AtomicInteger sourceSubscriptions = new AtomicInteger();
         AtomicInteger sourceCancellations = new AtomicInteger();
@@ -201,9 +244,9 @@ public class EventBusBatchPublishTest {
             source
         ).subscribe();
 
-        assertEquals(1, sourceSubscriptions.get());
+        assertEquals(2, sourceSubscriptions.get());
         disposable.dispose();
-        assertEquals(1, sourceCancellations.get());
+        assertEquals(2, sourceCancellations.get());
     }
 
     @Test(expected = NullPointerException.class)
@@ -219,6 +262,7 @@ public class EventBusBatchPublishTest {
         private boolean consumePublisherWithoutSubscribers;
         private boolean cancelPublisherBranches;
         private boolean cancelFirstPublisherBranch;
+        private boolean delayPublisherBranches;
 
         private RecordingEventBus() {
             counts.put("/one", 1L);
@@ -292,9 +336,12 @@ public class EventBusBatchPublishTest {
                     return Mono.just(count);
                 });
             }
-            return Flux.from(event)
-                       .doOnNext(value -> received.add(topic + "=" + value))
-                       .then(Mono.just(count));
+            Mono<Long> result = Flux.from(event)
+                                    .doOnNext(value -> received.add(topic + "=" + value))
+                                    .then(Mono.just(count));
+            return delayPublisherBranches
+                ? Mono.delay(Duration.ofMillis("/one".equals(topic) ? 10 : 20)).then(result)
+                : result;
         }
 
         @Override
@@ -305,6 +352,7 @@ public class EventBusBatchPublishTest {
         @Override
         public <T> Mono<Long> publish(String topic, T event) {
             publishedTopics.add(topic);
+            received.add(topic + "=" + event);
             return Mono.just(counts.getOrDefault(topic, 1L));
         }
 
