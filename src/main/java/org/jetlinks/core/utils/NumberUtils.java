@@ -23,6 +23,10 @@ public class NumberUtils {
 
 
     public static String toEffectiveScaleString(double origin, int scale) {
+        return toEffectiveScaleString((Number) origin, scale);
+    }
+
+    public static String toEffectiveScaleString(Number origin, int scale) {
         Number num = convertEffectiveScaleNumber(origin, scale);
         if (num instanceof BigDecimal) {
             return ((BigDecimal) num).toPlainString();
@@ -32,19 +36,20 @@ public class NumberUtils {
             .toPlainString();
     }
 
-    public static Number convertEffectiveScaleNumber(double origin, int scale) {
-        if (origin == 0) {
+    public static Number convertEffectiveScaleNumber(Number origin, int scale) {
+        double originVal = origin.doubleValue();
+        if (originVal == 0) {
             return origin;
         }
         // 取整数部分
         double integerPart;
-        if (origin > 0) {
-            integerPart = Math.floor(origin);
+        if (originVal > 0) {
+            integerPart = Math.floor(originVal);
         } else {
-            integerPart = Math.ceil(origin);
+            integerPart = Math.ceil(originVal);
         }
         // 取小数部分
-        double decimalPart = origin - integerPart;
+        double decimalPart = originVal - integerPart;
         // 小数部分为0直接返回
         if (decimalPart == 0) {
             return origin;
@@ -52,7 +57,7 @@ public class NumberUtils {
         //原始值小于-1或者大于1,不用计算有效精度.
         if (integerPart != 0) {
             return BigDecimal
-                .valueOf(origin)
+                .valueOf(originVal)
                 .setScale(scale, RoundingMode.HALF_UP);
         }
         int n = scale;
@@ -68,6 +73,10 @@ public class NumberUtils {
         }
         return new BigDecimal(decimalPart)
             .setScale(n - 1, RoundingMode.HALF_UP);
+    }
+
+    public static Number convertEffectiveScaleNumber(double origin, int scale) {
+        return convertEffectiveScaleNumber((Number) origin, scale);
     }
 
 
