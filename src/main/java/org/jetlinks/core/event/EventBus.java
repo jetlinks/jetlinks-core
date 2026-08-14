@@ -8,6 +8,7 @@ import reactor.core.scheduler.Scheduler;
 import reactor.util.context.Context;
 import reactor.util.context.ContextView;
 
+import java.util.Collection;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -133,6 +134,74 @@ public interface EventBus {
      */
     @SuppressWarnings("all")
     <T> Mono<Long> publish(String topic, T event);
+
+    /**
+     * 向多个 Topic 推送同一个事件，并返回所有 Topic 的逻辑订阅者数量之和。
+     *
+     * <p>默认实现直接遍历调用方提供的 Topic 集合，不创建输入快照；空集合返回
+     * {@code 0}。默认实现按 Topic 独立调用既有单 Topic API；具体实现可以提供更高效的
+     * 批量路径。重复
+     * Topic 按输入元素分别推送，同一订阅者命中多个 Topic 时也分别计数和投递。本方法
+     * 不提供事务回滚保证，部分 Topic 成功后其他 Topic 失败时不会撤销已完成的投递。
+     *
+     * @param topics Topic 集合
+     * @param event 事件对象；同一对象引用可被多个 Topic 使用，允许为 {@code null}
+     * @param <T> 事件类型
+     * @return 所有 Topic 的逻辑订阅者数量之和
+     * @since 1.3.2
+     * @see #publish(Collection, Supplier)
+     * @see #publish(Collection, Publisher)
+     */
+    default <T> Mono<Long> publish(Collection<? extends CharSequence> topics, T event) {
+        return Flux
+            .fromIterable(topics)
+            .flatMap(topic -> publish(topic, event))
+            .reduce(0L, Long::sum);
+    }
+
+    /**
+     * 向多个 Topic 推送一个惰性事件生产器。
+     *
+     * <p>默认实现延迟执行一次 Supplier，再通过对象批量重载 fan-out，确保包括
+     * {@code null} 在内的生产结果与对象重载语义一致。空 Topic 集合不执行 Supplier；
+     * 默认实现无法预先判断非空 Topic 的逻辑订阅者，因此即使最终没有订阅者也可能执行
+     * Supplier；需要按候选延迟执行的实现应覆盖此方法。其他计数、重复 Topic、错误、取消
+     * 和非事务语义与
+     * {@link #publish(Collection, Object)} 相同。
+     *
+     * @param topics Topic 集合
+     * @param event 惰性事件生产器；生产结果允许为 {@code null}
+     * @param <T> 事件类型
+     * @return 所有 Topic 的逻辑订阅者数量之和
+     * @since 1.3.2
+     */
+    default <T> Mono<Long> publish(Collection<? extends CharSequence> topics, Supplier<T> event) {
+        if (topics.isEmpty()) {
+            return Mono.just(0L);
+        }
+        return Mono.defer(() -> publish(topics, event.get()));
+    }
+
+    /**
+     * 向多个 Topic 推送一个事件流。
+     *
+     * <p>默认实现按 Topic 独立委托既有单 Topic API，因此事件流可能被订阅多次；事件源
+     * 不支持重复订阅，或需要单次订阅源、候选快照和延迟消费保证的实现应覆盖此方法。
+     * 返回值按 Topic 的逻辑订阅者数量求和，不会因事件流元素数量重复累加。其他计数、
+     * 重复 Topic、错误、取消和非事务语义与 {@link #publish(Collection, Object)} 相同。
+     *
+     * @param topics Topic 集合
+     * @param event 事件流
+     * @param <T> 事件类型
+     * @return 所有 Topic 的逻辑订阅者数量之和
+     * @since 1.3.2
+     */
+    default <T> Mono<Long> publish(Collection<? extends CharSequence> topics, Publisher<T> event) {
+        return Flux
+            .fromIterable(topics)
+            .flatMap(topic -> publish(topic, event))
+            .reduce(0L, Long::sum);
+    }
 
     /**
      * 使用CharSequence作为topic进行推送,
