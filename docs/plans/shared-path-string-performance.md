@@ -228,3 +228,8 @@ warmup、5 次 1 秒 measurement、`GCProfiler`。吞吐提升由基线与最终
 - `target/shared-path-string-benchmark/jfr-append-final/`
 
 这些构建产物不提交，正式结果已回填本文件。
+
+## 交付信息
+
+- 实现提交：`eb9b582a4b535ad2e4605c6a199cd02e66fc8ac5`
+- Pull Request：https://github.com/jetlinks/jetlinks-core/pull/96
