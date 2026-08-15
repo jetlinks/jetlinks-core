@@ -166,6 +166,93 @@ public class SeparatedStringTest {
     }
 
     @Test
+    public void testAppendCompatibility() {
+        SharedPathString source = SharedPathString.of("/device/product/device", false);
+
+        String segment1 = new String("temperature_alarm");
+        String segment2 = new String("temperature_alarm");
+        SeparatedCharSequence appended1 = source.append(segment1);
+        SeparatedCharSequence appended2 = source.append(segment2);
+
+        assertEquals(AppendSeparatedCharSequence.class, appended1.getClass());
+        assertEquals("/device/product/device/temperature_alarm", appended1.toString());
+        assertEquals(5, appended1.size());
+        // 单段 append 现有语义会共享内容相同的 segment 引用。
+        assertSame(appended1.get(4), appended2.get(4));
+        assertEquals(appended1, appended2);
+        assertEquals(appended1.hashCode(), appended2.hashCode());
+        assertEquals(0, appended1.compareTo(appended2));
+
+        assertAppendResult(source, "", "/device/product/device/", 5,
+                           AppendSeparatedCharSequence.class);
+        assertAppendResult(source, "/", "/device/product/device/", 5,
+                           AppendSeparatedCharSequence.class);
+        assertAppendResult(source, "/message/event", "/device/product/device/message/event", 6,
+                           AppendSeparatedCharSequenceX.class);
+        assertAppendResult(source, "message/event", "/device/product/device/message/event", 6,
+                           AppendSeparatedCharSequenceX.class);
+        assertAppendResult(source, "message/event/", "/device/product/device/message/event", 6,
+                           AppendSeparatedCharSequenceX.class);
+        assertAppendResult(source, "/message/event/", "/device/product/device/message/event", 6,
+                           AppendSeparatedCharSequenceX.class);
+
+        SeparatedCharSequence customSeparator = SeparatedString.create('|', "left", "right");
+        assertAppendResult(customSeparator, "dynamic", "left|right|dynamic", 3,
+                           AppendSeparatedCharSequence.class);
+        assertAppendResult(customSeparator, "dynamic|next", "left|right|dynamic|next", 4,
+                           AppendSeparatedCharSequenceX.class);
+
+        StringBuilder mutable = new StringBuilder("event_before_mutation");
+        SeparatedCharSequence snapshot = source.append(mutable);
+        mutable.setLength(0);
+        mutable.append("event_after_mutation");
+        assertEquals("/device/product/device/event_before_mutation", snapshot.toString());
+
+        SeparatedCharSequence eventTopic = source
+            .append(SharedPathString.of("/message/event", false))
+            .append("temperature_alarm");
+        String expectedEventTopic = "/device/product/device/message/event/temperature_alarm";
+        assertEquals(expectedEventTopic, eventTopic.toString());
+        assertEquals(expectedEventTopic.length(), eventTopic.length());
+        assertTrue(eventTopic.contentEquals(expectedEventTopic));
+        assertFalse(eventTopic.contentEquals(
+            "/device/product/device/message/event/temperature_alarx"));
+        assertEquals(calculateLegacyHash(eventTopic), eventTopic.hashCode());
+
+        SeparatedCharSequence deep = SharedPathString.of("/device", false);
+        for (int i = 0; i < 8; i++) {
+            deep = deep.append("temperature_alarm");
+        }
+        String expectedDeep = "/device"
+            + "/temperature_alarm".repeat(8);
+        assertEquals(AppendSeparatedCharSequence.class, deep.getClass());
+        assertEquals(10, deep.size());
+        assertEquals(expectedDeep, deep.toString());
+        assertEquals(expectedDeep.length(), deep.length());
+        assertTrue(deep.contentEquals(expectedDeep));
+        assertEquals(calculateLegacyHash(deep), deep.hashCode());
+    }
+
+    private static int calculateLegacyHash(SeparatedCharSequence sequence) {
+        int hash = sequence.getClass().hashCode();
+        for (int i = 0, size = sequence.size(); i < size; i++) {
+            hash = 31 * hash + sequence.get(i).hashCode() + sequence.separator();
+        }
+        return hash;
+    }
+
+    private static void assertAppendResult(SeparatedCharSequence source,
+                                           String append,
+                                           String expected,
+                                           int expectedSize,
+                                           Class<?> expectedType) {
+        SeparatedCharSequence actual = source.append(append);
+        assertEquals(expectedType, actual.getClass());
+        assertEquals(expected, actual.toString());
+        assertEquals(expectedSize, actual.size());
+    }
+
+    @Test
     public void test3() {
         String str = "test/1/2";
 
