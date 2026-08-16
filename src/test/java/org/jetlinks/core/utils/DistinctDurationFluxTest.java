@@ -7,7 +7,11 @@ import reactor.test.StepVerifier;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -230,6 +234,95 @@ public class DistinctDurationFluxTest {
         ticker.set(40);
         assertTrue(store.add(new CollisionKey(40), 10, ticker::get));
         assertEquals(1, store.size());
+    }
+
+    @Test
+    public void shouldKeepCollisionWindowExactAcrossResizes() {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 1_000; key++) {
+            ticker.set(key);
+            CollisionKey value = new CollisionKey(key);
+            assertTrue(store.add(value, 64, ticker::get));
+            assertFalse(store.add(new CollisionKey(key), 64, ticker::get));
+            assertEquals(Math.min(key + 1, 64), store.size());
+        }
+
+        ticker.set(1_000);
+        assertFalse(store.add(new CollisionKey(999), 64, ticker::get));
+        assertTrue(store.add(new CollisionKey(900), 64, ticker::get));
+        assertEquals(64, store.size());
+    }
+
+    @Test
+    public void shouldKeepSmallLargeBoundaryWindowBounded() {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 1_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(new CollisionKey(key), 9, ticker::get));
+            assertEquals(Math.min(key + 1, 9), store.size());
+        }
+    }
+
+    @Test
+    public void shouldPreserveBoundaryDuplicateSemantics() {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 9; key++) {
+            ticker.set(key);
+            assertTrue(store.add(new CollisionKey(key), 9, ticker::get));
+        }
+
+        ticker.set(9);
+        assertFalse(store.add(new CollisionKey(8), 9, ticker::get));
+        assertEquals(8, store.size());
+        assertTrue(store.add(new CollisionKey(9), 9, ticker::get));
+        assertEquals(9, store.size());
+    }
+
+    @Test
+    public void shouldMatchFixedWindowReferenceUnderCollisionChurn() {
+        assertMatchesFixedWindowReference(CollisionKey::new);
+    }
+
+    @Test
+    public void shouldMatchFixedWindowReferenceUnderSpreadChurn() {
+        assertMatchesFixedWindowReference(value -> value);
+    }
+
+    private static void assertMatchesFixedWindowReference(Function<Integer, Object> keyFactory) {
+        final long durationNanos = 17;
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+        Map<Integer, Long> expected = new LinkedHashMap<>();
+        Random random = new Random(0x5EEDL);
+
+        for (int operation = 0; operation < 20_000; operation++) {
+            long now = ticker.addAndGet(random.nextInt(3));
+            int key = random.nextInt(128);
+
+            Iterator<Map.Entry<Integer, Long>> iterator = expected.entrySet().iterator();
+            while (iterator.hasNext()) {
+                if (now - iterator.next().getValue() >= durationNanos) {
+                    iterator.remove();
+                }
+            }
+
+            boolean expectedAdded = !expected.containsKey(key);
+            if (expectedAdded) {
+                expected.put(key, now);
+            }
+
+            assertEquals(
+                "operation=" + operation + ", key=" + key + ", now=" + now,
+                expectedAdded,
+                store.add(keyFactory.apply(key), durationNanos, ticker::get));
+            assertEquals(expected.size(), store.size());
+        }
     }
 
     private static void assertInvalidDuration(Duration duration) {

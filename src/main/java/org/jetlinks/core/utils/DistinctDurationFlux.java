@@ -161,26 +161,24 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
                 if (large.size == 0) {
                     state = null;
                 } else if (large.size == 1) {
-                    Object remainingKey = large.firstKey();
-                    state = new SingleState(remainingKey, large.timestamp(remainingKey));
-                } else if (large.size <= SMALL_CAPACITY) {
+                    LargeEntry remaining = large.firstEntry();
+                    state = new SingleState(remaining.key, remaining.timestamp);
+                } else if (large.size < SMALL_CAPACITY) {
                     SmallState small = new SmallState(large);
                     state = small;
                     if (small.contains(key)) {
                         return false;
                     }
-                    if (small.size < SMALL_CAPACITY) {
-                        small.add(key, now);
-                        return true;
-                    }
-                    state = new LargeState(small, key, now);
+                    small.add(key, now);
                     return true;
                 } else {
-                    if (large.contains(key)) {
-                        return false;
+                    boolean added = large.addIfAbsent(key, now);
+                    if (!added && large.size == SMALL_CAPACITY) {
+                        // A duplicate at the boundary can safely compact to SmallState. A new key
+                        // stays in LargeState and avoids rebuilding the 8/9-key boundary each time.
+                        state = new SmallState(large);
                     }
-                    large.add(key, now);
-                    return true;
+                    return added;
                 }
             }
 
@@ -314,18 +312,58 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
             table = new LargeEntry[16];
             resizeThreshold = (int) (table.length * LOAD_FACTOR);
             for (int i = 0; i < small.size; i++) {
-                add(small.keys[i], small.timestamps[i]);
+                addKnownAbsent(small.keys[i], small.timestamps[i]);
             }
-            add(key, timestamp);
+            addKnownAbsent(key, timestamp);
         }
 
-        private void add(Object key, long timestamp) {
+        private boolean addIfAbsent(Object key, long timestamp) {
+            int hash = spreadHash(key);
+            int bucket = bucket(hash, table.length);
+            LargeEntry entry = table[bucket];
+            LargeEntry tail = null;
+            while (entry != null) {
+                if (key == entry.key || key.equals(entry.key)) {
+                    return false;
+                }
+                tail = entry;
+                entry = entry.nextInBucket;
+            }
+
+            if (size + 1 > resizeThreshold) {
+                resize();
+                addKnownAbsent(key, timestamp, hash);
+                return true;
+            }
+
+            linkEntry(bucket, tail, new LargeEntry(key, timestamp));
+            return true;
+        }
+
+        private void addKnownAbsent(Object key, long timestamp) {
+            addKnownAbsent(key, timestamp, spreadHash(key));
+        }
+
+        private void addKnownAbsent(Object key, long timestamp, int hash) {
             if (size + 1 > resizeThreshold) {
                 resize();
             }
-            int bucket = bucket(key, table.length);
-            LargeEntry entry = new LargeEntry(key, timestamp, table[bucket]);
-            table[bucket] = entry;
+            int bucket = bucket(hash, table.length);
+            LargeEntry tail = table[bucket];
+            if (tail != null) {
+                while (tail.nextInBucket != null) {
+                    tail = tail.nextInBucket;
+                }
+            }
+            linkEntry(bucket, tail, new LargeEntry(key, timestamp));
+        }
+
+        private void linkEntry(int bucket, LargeEntry bucketTail, LargeEntry entry) {
+            if (bucketTail == null) {
+                table[bucket] = entry;
+            } else {
+                bucketTail.nextInBucket = entry;
+            }
             if (lastExpiry == null) {
                 firstExpiry = entry;
             } else {
@@ -335,20 +373,8 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
             size++;
         }
 
-        private boolean contains(Object key) {
-            return find(key) != null;
-        }
-
-        private long timestamp(Object key) {
-            LargeEntry entry = find(key);
-            if (entry == null) {
-                throw new IllegalStateException("missing duration distinct key");
-            }
-            return entry.timestamp;
-        }
-
-        private Object firstKey() {
-            return firstExpiry.key;
+        private LargeEntry firstEntry() {
+            return firstExpiry;
         }
 
         private void drainExpired(long now, long durationNanos) {
@@ -372,20 +398,17 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
             size = 0;
         }
 
-        private LargeEntry find(Object key) {
-            LargeEntry entry = table[bucket(key, table.length)];
-            while (entry != null) {
-                if (key.equals(entry.key)) {
-                    return entry;
-                }
-                entry = entry.nextInBucket;
-            }
-            return null;
-        }
-
         private void removeFromTable(LargeEntry removed) {
-            int bucket = bucket(removed.key, table.length);
+            int bucket = bucket(spreadHash(removed.key), table.length);
             LargeEntry entry = table[bucket];
+            // Bucket links follow insertion order, so expiry order normally removes the head.
+            if (entry == removed) {
+                table[bucket] = entry.nextInBucket;
+                entry.nextInBucket = null;
+                return;
+            }
+
+            // Keep a defensive slow path for an unexpected ordering violation.
             LargeEntry previous = null;
             while (entry != null) {
                 if (entry == removed) {
@@ -403,21 +426,50 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
         }
 
         private void resize() {
-            LargeEntry[] expanded = new LargeEntry[table.length << 1];
-            LargeEntry entry = firstExpiry;
-            while (entry != null) {
-                int bucket = bucket(entry.key, expanded.length);
-                entry.nextInBucket = expanded[bucket];
-                expanded[bucket] = entry;
-                entry = entry.nextExpiry;
+            LargeEntry[] previous = table;
+            LargeEntry[] expanded = new LargeEntry[previous.length << 1];
+            // Low/high splitting preserves insertion order inside every bucket, keeping the
+            // bucket head aligned with the global expiry queue after a resize.
+            for (int oldBucket = 0; oldBucket < previous.length; oldBucket++) {
+                LargeEntry lowHead = null;
+                LargeEntry lowTail = null;
+                LargeEntry highHead = null;
+                LargeEntry highTail = null;
+                LargeEntry entry = previous[oldBucket];
+                while (entry != null) {
+                    LargeEntry next = entry.nextInBucket;
+                    entry.nextInBucket = null;
+                    if ((spreadHash(entry.key) & previous.length) == 0) {
+                        if (lowTail == null) {
+                            lowHead = entry;
+                        } else {
+                            lowTail.nextInBucket = entry;
+                        }
+                        lowTail = entry;
+                    } else {
+                        if (highTail == null) {
+                            highHead = entry;
+                        } else {
+                            highTail.nextInBucket = entry;
+                        }
+                        highTail = entry;
+                    }
+                    entry = next;
+                }
+                expanded[oldBucket] = lowHead;
+                expanded[oldBucket + previous.length] = highHead;
             }
             table = expanded;
             resizeThreshold = (int) (expanded.length * LOAD_FACTOR);
         }
 
-        private static int bucket(Object key, int length) {
+        private static int spreadHash(Object key) {
             int hash = key.hashCode();
-            return (hash ^ (hash >>> 16)) & (length - 1);
+            return hash ^ (hash >>> 16);
+        }
+
+        private static int bucket(int hash, int length) {
+            return hash & (length - 1);
         }
     }
 
@@ -427,10 +479,9 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
         private LargeEntry nextInBucket;
         private LargeEntry nextExpiry;
 
-        private LargeEntry(Object key, long timestamp, LargeEntry nextInBucket) {
+        private LargeEntry(Object key, long timestamp) {
             this.key = key;
             this.timestamp = timestamp;
-            this.nextInBucket = nextInBucket;
         }
     }
 }
