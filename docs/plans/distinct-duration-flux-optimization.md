@@ -561,3 +561,6 @@ collision profile 中，baseline 的 `removeFromTable`、`drainExpired`、`find`
 
 结论：Core 通用优化满足语义、吞吐、尾延迟和分配门禁，可以保留；Components 的设备
 专用链路优化仍应在此通用实现之上单独评估，不向 Core 引入设备 Topic 或 UID 特化。
+
+- 本阶段实现 commit：`794fe8189800919621e96553d22d38281d3988f6`。
+- Pull Request：https://github.com/jetlinks/jetlinks-core/pull/97
