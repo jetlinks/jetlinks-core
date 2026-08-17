@@ -4,6 +4,7 @@ import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -285,6 +286,79 @@ public class DistinctDurationFluxTest {
     }
 
     @Test
+    public void shouldReleasePeakTableAtLargeBoundary() throws Exception {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 25_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(key, 25_000, ticker::get));
+        }
+        assertEquals(65_536, tableLength(store));
+
+        ticker.set(49_991);
+        assertTrue(store.add(-1, 25_000, ticker::get));
+
+        assertEquals(9, store.size());
+        assertEquals(16, tableLength(store));
+    }
+
+    @Test
+    public void shouldShrinkPeakTableAfterCardinalityDrop() throws Exception {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 25_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(key, 25_000, ticker::get));
+        }
+
+        ticker.set(49_374);
+        assertTrue(store.add(-1, 25_000, ticker::get));
+
+        assertEquals(626, store.size());
+        assertEquals(2_048, tableLength(store));
+    }
+
+    @Test
+    public void shouldDropFullyExpiredLargeStateWithoutHashingEachKey() {
+        AtomicLong ticker = new AtomicLong();
+        AtomicInteger hashCalls = new AtomicInteger();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 25_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(new CountingHashKey(key, hashCalls), 25_000, ticker::get));
+        }
+
+        hashCalls.set(0);
+        ticker.set(50_000);
+        assertTrue(store.add(new CountingHashKey(-1, hashCalls), 25_000, ticker::get));
+
+        assertEquals(1, store.size());
+        assertEquals(0, hashCalls.get());
+    }
+
+    @Test
+    public void shouldPreserveCollisionOrderAfterShrink() throws Exception {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 1_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(new CollisionKey(key), 1_000, ticker::get));
+        }
+
+        ticker.set(1_935);
+        assertTrue(store.add(new CollisionKey(1_000), 1_000, ticker::get));
+        assertEquals(65, store.size());
+        assertEquals(128, tableLength(store));
+        assertFalse(store.add(new CollisionKey(999), 1_000, ticker::get));
+        assertTrue(store.add(new CollisionKey(0), 1_000, ticker::get));
+        assertEquals(66, store.size());
+    }
+
+    @Test
     public void shouldMatchFixedWindowReferenceUnderCollisionChurn() {
         assertMatchesFixedWindowReference(CollisionKey::new);
     }
@@ -334,6 +408,15 @@ public class DistinctDurationFluxTest {
         }
     }
 
+    private static int tableLength(DistinctDurationFlux.DurationStore store) throws Exception {
+        Field stateField = DistinctDurationFlux.DurationStore.class.getDeclaredField("state");
+        stateField.setAccessible(true);
+        Object state = stateField.get(store);
+        Field tableField = state.getClass().getDeclaredField("table");
+        tableField.setAccessible(true);
+        return ((Object[]) tableField.get(state)).length;
+    }
+
     private static final class TimedValue {
         private final String name;
         private final String key;
@@ -361,6 +444,27 @@ public class DistinctDurationFluxTest {
         @Override
         public int hashCode() {
             return 1;
+        }
+    }
+
+    private static final class CountingHashKey {
+        private final int value;
+        private final AtomicInteger hashCalls;
+
+        private CountingHashKey(int value, AtomicInteger hashCalls) {
+            this.value = value;
+            this.hashCalls = hashCalls;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof CountingHashKey && ((CountingHashKey) obj).value == value;
+        }
+
+        @Override
+        public int hashCode() {
+            hashCalls.incrementAndGet();
+            return value;
         }
     }
 }

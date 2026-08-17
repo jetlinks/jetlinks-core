@@ -301,6 +301,7 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
     static final class LargeState {
 
         private static final float LOAD_FACTOR = 0.75F;
+        private static final int MIN_TABLE_CAPACITY = 16;
 
         private LargeEntry[] table;
         private int resizeThreshold;
@@ -309,7 +310,7 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
         private LargeEntry lastExpiry;
 
         private LargeState(SmallState small, Object key, long timestamp) {
-            table = new LargeEntry[16];
+            table = new LargeEntry[MIN_TABLE_CAPACITY];
             resizeThreshold = (int) (table.length * LOAD_FACTOR);
             for (int i = 0; i < small.size; i++) {
                 addKnownAbsent(small.keys[i], small.timestamps[i]);
@@ -318,17 +319,28 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
         }
 
         private boolean addIfAbsent(Object key, long timestamp) {
+            shrinkIfSparse();
             int hash = spreadHash(key);
             int bucket = bucket(hash, table.length);
             LargeEntry entry = table[bucket];
-            LargeEntry tail = null;
-            while (entry != null) {
+            if (entry == null) {
+                if (size + 1 > resizeThreshold) {
+                    resize();
+                    addKnownAbsent(key, timestamp, hash);
+                } else {
+                    linkEntry(bucket, null, new LargeEntry(key, timestamp));
+                }
+                return true;
+            }
+
+            LargeEntry tail;
+            do {
                 if (key == entry.key || key.equals(entry.key)) {
                     return false;
                 }
                 tail = entry;
                 entry = entry.nextInBucket;
-            }
+            } while (entry != null);
 
             if (size + 1 > resizeThreshold) {
                 resize();
@@ -378,6 +390,36 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
         }
 
         private void drainExpired(long now, long durationNanos) {
+            LargeEntry first = firstExpiry;
+            if (!DurationStore.isExpired(now, first.timestamp, durationNanos)) {
+                return;
+            }
+
+            drainExpiredEntries(now, durationNanos, first);
+        }
+
+        private void drainExpiredEntries(long now, long durationNanos, LargeEntry first) {
+            // DurationStore retains LargeState between calls only when at least nine entries remain.
+            LargeEntry second = first.nextExpiry;
+            if (DurationStore.isExpired(now, second.timestamp, durationNanos)) {
+                drainExpiredBatch(now, durationNanos);
+                return;
+            }
+
+            firstExpiry = second;
+            first.nextExpiry = null;
+            removeFromTable(first);
+            size--;
+        }
+
+        private void drainExpiredBatch(long now, long durationNanos) {
+            if (DurationStore.isExpired(now, lastExpiry.timestamp, durationNanos)) {
+                // Only probe the newest entry after detecting a multi-entry expiry batch. This keeps
+                // one-at-a-time steady churn on the same path while retaining O(1) full-window reset.
+                clear();
+                return;
+            }
+
             while (firstExpiry != null &&
                 DurationStore.isExpired(now, firstExpiry.timestamp, durationNanos)) {
                 LargeEntry expired = firstExpiry;
@@ -386,9 +428,42 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
                 removeFromTable(expired);
                 size--;
             }
-            if (firstExpiry == null) {
-                lastExpiry = null;
+        }
+
+        private void shrinkIfSparse() {
+            int capacity = table.length;
+            if (size > (capacity >>> 2)) {
+                return;
             }
+            int targetCapacity = capacity;
+            // Shrink below 25% load. Halving leaves retained entries between 25% and 50% full.
+            while (targetCapacity > MIN_TABLE_CAPACITY && size <= (targetCapacity >>> 2)) {
+                targetCapacity >>>= 1;
+            }
+            if (targetCapacity != capacity) {
+                rebuild(targetCapacity);
+            }
+        }
+
+        private void rebuild(int capacity) {
+            LargeEntry[] rebuilt = new LargeEntry[capacity];
+            LargeEntry[] tails = new LargeEntry[capacity];
+            LargeEntry entry = firstExpiry;
+            while (entry != null) {
+                LargeEntry nextExpiry = entry.nextExpiry;
+                entry.nextInBucket = null;
+                int bucket = bucket(spreadHash(entry.key), capacity);
+                LargeEntry tail = tails[bucket];
+                if (tail == null) {
+                    rebuilt[bucket] = entry;
+                } else {
+                    tail.nextInBucket = entry;
+                }
+                tails[bucket] = entry;
+                entry = nextExpiry;
+            }
+            table = rebuilt;
+            resizeThreshold = (int) (capacity * LOAD_FACTOR);
         }
 
         private void clear() {
