@@ -41,4 +41,25 @@ class AppendSeparatedCharSequence extends AbstractSeparatedCharSequence {
         return source.get(index);
     }
 
+    @Override
+    int appendHash(int hash) {
+        int sourceHash = source.appendHash(hash);
+        return 31 * sourceHash + append.hashCode() + separator();
+    }
+
+    @Override
+    int contentLength() {
+        return source.contentLength() + append.length() + 1;
+    }
+
+    @Override
+    int appendTo(StringBuilder builder, int segmentIndex) {
+        segmentIndex = source.appendTo(builder, segmentIndex);
+        if (segmentIndex++ > 0) {
+            builder.append(separator());
+        }
+        builder.append(append);
+        return segmentIndex;
+    }
+
 }

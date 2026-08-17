@@ -61,7 +61,13 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
     @Override
     public SeparatedCharSequence append(CharSequence csq) {
         if (!(csq instanceof SeparatedCharSequence)) {
-            csq = SeparatedString.of(separator(), csq.toString());
+            String value = csq.toString();
+            if (!value.isEmpty() && value.indexOf(separator()) < 0) {
+                // 单 segment 是 Topic 构造热路径；保留原有 segment intern 语义，但避免完整 path split。
+                csq = RecyclerUtils.intern(value);
+            } else {
+                csq = SeparatedString.of(separator(), value);
+            }
         }
         if (csq instanceof SeparatedCharSequence) {
             return new AppendSeparatedCharSequenceX(this, (SeparatedCharSequence) csq);
@@ -122,14 +128,30 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
         int h = $hash;
         if (h == 0) {
             h = this.getClass().hashCode();
-            int size = size();
-            if (size > 0) {
+            // 单层 append 保留索引遍历，便于 JIT 消除短生命周期节点；深链才使用线性遍历。
+            if (this instanceof AppendSeparatedCharSequence
+                && ((AppendSeparatedCharSequence) this).source instanceof AppendSeparatedCharSequence) {
+                h = appendHash(h);
+            } else {
+                int size = size();
+                char separator = separator();
                 for (int i = 0; i < size; i++) {
-                    h = 31 * h + get(i).hashCode() + separator();
+                    h = 31 * h + get(i).hashCode() + separator;
                 }
             }
         }
         return $hash = h;
+    }
+
+    // 深层复合序列覆盖此钩子，直接遍历 source，避免通过 get(i) 反复回溯 append 链。
+    int appendHash(int hash) {
+        int h = hash;
+        int size = size();
+        char separator = separator();
+        for (int i = 0; i < size; i++) {
+            h = 31 * h + get(i).hashCode() + separator;
+        }
+        return h;
     }
 
     @Override
@@ -190,9 +212,42 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
     }
 
     @Override
+    public boolean contentEquals(CharSequence target) {
+        if (target instanceof SeparatedCharSequence) {
+            return SeparatedCharSequence.super.contentEquals(target);
+        }
+
+        int targetLen = target.length();
+        if (targetLen != length()) {
+            return false;
+        }
+
+        int offset = 0;
+        int size = size();
+        char separator = separator();
+        for (int i = 0; i < size; i++) {
+            if (i > 0 && target.charAt(offset++) != separator) {
+                return false;
+            }
+            CharSequence segment = get(i);
+            for (int j = 0, segmentLength = segment.length(); j < segmentLength; j++) {
+                if (target.charAt(offset++) != segment.charAt(j)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
     public int length() {
+        return contentLength();
+    }
+
+    int contentLength() {
         int len = 0;
-        for (int i = 0; i < size(); i++) {
+        int size = size();
+        for (int i = 0; i < size; i++) {
             len += get(i).length();
             len++;
         }
@@ -231,17 +286,20 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
 
         return StringBuilderUtils.buildString(
             this,
-            (self, sb) -> {
-                char sp = self.separator();
-                int index = 0;
-                int size = self.size();
-                for (int i = index; i < size; i++) {
-                    if (i > index) {
-                        sb.append(sp);
-                    }
-                    sb.append(self.get(i));
-                }
-            });
+            (self, sb) -> self.appendTo(sb, 0));
+    }
+
+    int appendTo(StringBuilder builder, int segmentIndex) {
+        // 返回全局 segment 索引，使嵌套 append 无需压平也能保持分隔符位置。
+        char separator = separator();
+        int size = size();
+        for (int i = 0; i < size; i++) {
+            if (segmentIndex++ > 0) {
+                builder.append(separator);
+            }
+            builder.append(get(i));
+        }
+        return segmentIndex;
     }
 
     public AbstractSeparatedCharSequence intern() {
