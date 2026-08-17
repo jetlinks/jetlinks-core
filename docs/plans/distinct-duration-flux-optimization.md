@@ -1,6 +1,6 @@
 # DistinctDurationFlux 优化与压力测试计划
 
-状态：PR #97 已提交；生命周期补充优化和 500 万 key 极限评测已完成，尚未提交本轮变更。
+状态：PR #97 已更新；生命周期补充优化和 500 万 key 极限评测已完成并提交。
 
 ## 背景与当前结论
 
@@ -750,3 +750,6 @@ SingleShot 的 `227,131,037 B/op` 来自每次调用前预填 5,000,000 entry �
 
 - baseline：`extreme-rate-baseline-3f-t1.json`、`extreme-idle-baseline-3f-t1.json`；
 - current：`extreme-rate-current-3f-t1.json`、`extreme-idle-current-3f-t1.json`。
+
+- 本阶段实现 commit：`d19d6370e9c41934fb86dc56f3cd3a5cd67f8004`。
+- Pull Request：https://github.com/jetlinks/jetlinks-core/pull/97
