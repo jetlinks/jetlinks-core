@@ -3,7 +3,7 @@ package org.jetlinks.core.event;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.util.ReferenceCountUtil;
-import lombok.AllArgsConstructor;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.bean.FastBeanCopier;
@@ -22,7 +22,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
-@AllArgsConstructor(staticName = "of")
 @Slf4j
 public class TopicPayload implements Routable, Externalizable {
 
@@ -32,10 +31,28 @@ public class TopicPayload implements Routable, Externalizable {
 
     private Map<String, Object> headers;
 
+    // Topic may be a lazily concatenated path. Cache only its materialized view and keep
+    // the original sequence available to consumers that can operate on path segments.
+    @Getter(AccessLevel.NONE)
+    private transient volatile String topicText;
+
+    private TopicPayload(CharSequence topic,
+                         Object payload,
+                         Map<String, Object> headers) {
+        this.topic = topic;
+        this.payload = payload;
+        this.headers = headers;
+    }
+
     public TopicPayload(){}
 
     public String getTopic() {
-        return topic.toString();
+        String value = topicText;
+        if (value == null) {
+            value = topic.toString();
+            topicText = value;
+        }
+        return value;
     }
 
     public CharSequence getTopic0() {
@@ -44,6 +61,12 @@ public class TopicPayload implements Routable, Externalizable {
 
     public static TopicPayload of(CharSequence topic, Object payload) {
         return TopicPayload.of(topic, payload, null);
+    }
+
+    public static TopicPayload of(CharSequence topic,
+                                  Object payload,
+                                  Map<String, Object> headers) {
+        return new TopicPayload(topic, payload, headers);
     }
 
     @Deprecated
@@ -229,6 +252,7 @@ public class TopicPayload implements Routable, Externalizable {
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         topic = SerializeUtils.readObjectAs(in);
+        topicText = null;
         payload = SerializeUtils.readObjectAs(in);
         SerializeUtils.readKeyValue(in,this::addHeader);
     }
