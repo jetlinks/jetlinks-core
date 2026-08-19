@@ -44,7 +44,7 @@ public class DistinctDurationFluxBenchmark {
         @Param({"NON_FUSEABLE", "FUSEABLE"})
         String sourceType;
 
-        @Param({"REPEAT", "HOT_KEYS", "MIXED", "UNIQUE"})
+        @Param({"REPEAT", "SMALL_KEYS", "HOT_KEYS", "MIXED", "UNIQUE"})
         String keyPattern;
 
         @Param("1000000")
@@ -64,6 +64,8 @@ public class DistinctDurationFluxBenchmark {
             switch (keyPattern) {
                 case "REPEAT":
                     return 0;
+                case "SMALL_KEYS":
+                    return value & 7;
                 case "HOT_KEYS":
                     return value & 4095;
                 case "MIXED":

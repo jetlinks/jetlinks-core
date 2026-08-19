@@ -7,6 +7,7 @@ import reactor.core.publisher.FluxOperator;
 import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -126,78 +127,101 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
     }
 
     /**
-     * Per-subscription state. Reactive Streams serializes signals for a Subscriber, so this store
-     * deliberately uses non-concurrent collections. Duplicate hits do not renew the fixed window.
+     * Per-subscription state. Reactive Streams serializes signals for a Subscriber, so only state
+     * replacement coordinates with concurrent cancellation; state internals remain single-writer.
+     * Duplicate hits do not renew the fixed window.
      */
     static final class DurationStore {
 
         private static final int SMALL_CAPACITY = 8;
+        private static final Object TERMINATED_STATE = new Object();
 
-        private Object state;
+        private static final AtomicReferenceFieldUpdater<DurationStore, Object> STATE =
+            AtomicReferenceFieldUpdater.newUpdater(DurationStore.class, Object.class, "state");
+
+        private volatile Object state;
 
         boolean add(Object key, long durationNanos, LongSupplier ticker) {
             long now = ticker.getAsLong();
-            if (state instanceof SmallState) {
-                SmallState small = (SmallState) state;
-                small.drainExpired(now, durationNanos);
+            Object current = state;
+            if (current == TERMINATED_STATE) {
+                return false;
+            }
+            if (current instanceof SmallState) {
+                SmallState small = (SmallState) current;
+                boolean contains = small.drainExpiredAndContains(key, now, durationNanos);
                 if (small.size == 0) {
-                    state = null;
+                    return replaceState(small, new SingleState(key, now));
                 } else if (small.size == 1) {
-                    state = new SingleState(small.keys[0], small.timestamps[0]);
-                } else {
-                    if (small.contains(key)) {
+                    if (contains) {
+                        replaceState(small, new SingleState(small.keys[0], small.timestamps[0]));
                         return false;
                     }
-                    if (small.size < SMALL_CAPACITY) {
-                        small.add(key, now);
-                        return true;
-                    }
-                    state = new LargeState(small, key, now);
+                    // Keep the existing arrays when this write immediately restores two active keys.
+                    small.add(key, now);
                     return true;
                 }
-            } else if (state instanceof LargeState) {
-                LargeState large = (LargeState) state;
+                if (contains) {
+                    return false;
+                }
+                if (small.size < SMALL_CAPACITY) {
+                    small.add(key, now);
+                    return true;
+                }
+                return replaceState(small, new LargeState(small, key, now));
+            } else if (current instanceof LargeState) {
+                LargeState large = (LargeState) current;
                 large.drainExpired(now, durationNanos);
                 if (large.size == 0) {
-                    state = null;
+                    return replaceState(large, new SingleState(key, now));
                 } else if (large.size == 1) {
                     LargeEntry remaining = large.firstEntry();
-                    state = new SingleState(remaining.key, remaining.timestamp);
+                    if (key == remaining.key || key.equals(remaining.key)) {
+                        replaceState(large, new SingleState(remaining.key, remaining.timestamp));
+                        return false;
+                    }
+                    return replaceState(
+                        large,
+                        new SmallState(remaining.key, remaining.timestamp, key, now));
                 } else if (large.size < SMALL_CAPACITY) {
                     SmallState small = new SmallState(large);
-                    state = small;
                     if (small.contains(key)) {
+                        replaceState(large, small);
                         return false;
                     }
                     small.add(key, now);
-                    return true;
+                    return replaceState(large, small);
                 } else {
                     boolean added = large.addIfAbsent(key, now);
                     if (!added && large.size == SMALL_CAPACITY) {
                         // A duplicate at the boundary can safely compact to SmallState. A new key
                         // stays in LargeState and avoids rebuilding the 8/9-key boundary each time.
-                        state = new SmallState(large);
+                        replaceState(large, new SmallState(large));
                     }
                     return added;
                 }
             }
 
-            if (state == null) {
-                state = new SingleState(key, now);
-                return true;
+            if (current == null) {
+                return replaceState(null, new SingleState(key, now));
             }
-            SingleState single = (SingleState) state;
+            SingleState single = (SingleState) current;
             if (isExpired(now, single.timestamp, durationNanos)) {
                 single.key = key;
                 single.timestamp = now;
                 return true;
             }
-            if (key.equals(single.key)) {
+            if (key == single.key || key.equals(single.key)) {
                 return false;
             }
 
-            state = new SmallState(single.key, single.timestamp, key, now);
-            return true;
+            return replaceState(
+                single,
+                new SmallState(single.key, single.timestamp, key, now));
+        }
+
+        private boolean replaceState(Object expected, Object replacement) {
+            return STATE.compareAndSet(this, expected, replacement);
         }
 
         private static boolean isExpired(long now, long timestamp, long durationNanos) {
@@ -205,22 +229,20 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
         }
 
         int size() {
-            if (state instanceof SmallState) {
-                return ((SmallState) state).size;
+            Object current = state;
+            if (current instanceof SmallState) {
+                return ((SmallState) current).size;
             }
-            if (state instanceof LargeState) {
-                return ((LargeState) state).size;
+            if (current instanceof LargeState) {
+                return ((LargeState) current).size;
             }
-            return state == null ? 0 : 1;
+            return current == null || current == TERMINATED_STATE ? 0 : 1;
         }
 
         void clear() {
-            if (state instanceof SmallState) {
-                ((SmallState) state).clear();
-            } else if (state instanceof LargeState) {
-                ((LargeState) state).clear();
-            }
-            state = null;
+            // Cancellation may race with onNext. Detach the root without mutating its local state;
+            // replacement CAS operations cannot restore state after this terminal marker is visible.
+            state = TERMINATED_STATE;
         }
     }
 
@@ -258,7 +280,7 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
 
         private boolean contains(Object key) {
             for (int i = 0; i < size; i++) {
-                if (key.equals(keys[i])) {
+                if (key == keys[i] || key.equals(keys[i])) {
                     return true;
                 }
             }
@@ -271,30 +293,33 @@ public class DistinctDurationFlux<T> extends FluxOperator<T, T> {
             size++;
         }
 
-        private void drainExpired(long now, long durationNanos) {
+        private boolean drainExpiredAndContains(Object key, long now, long durationNanos) {
+            int expired = 0;
+            while (expired < size &&
+                DurationStore.isExpired(now, timestamps[expired], durationNanos)) {
+                expired++;
+            }
+            if (expired == 0) {
+                return contains(key);
+            }
+
             int writeIndex = 0;
-            for (int readIndex = 0; readIndex < size; readIndex++) {
-                if (!DurationStore.isExpired(now, timestamps[readIndex], durationNanos)) {
-                    if (writeIndex != readIndex) {
-                        keys[writeIndex] = keys[readIndex];
-                        timestamps[writeIndex] = timestamps[readIndex];
-                    }
-                    writeIndex++;
+            boolean contains = false;
+            for (int readIndex = expired; readIndex < size; readIndex++) {
+                Object retainedKey = keys[readIndex];
+                if (key == retainedKey || key.equals(retainedKey)) {
+                    contains = true;
                 }
+                keys[writeIndex] = retainedKey;
+                timestamps[writeIndex] = timestamps[readIndex];
+                writeIndex++;
             }
             for (int index = writeIndex; index < size; index++) {
                 keys[index] = null;
                 timestamps[index] = 0;
             }
             size = writeIndex;
-        }
-
-        private void clear() {
-            for (int i = 0; i < size; i++) {
-                keys[i] = null;
-                timestamps[i] = 0;
-            }
-            size = 0;
+            return contains;
         }
     }
 

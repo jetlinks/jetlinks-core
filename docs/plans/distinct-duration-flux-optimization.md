@@ -753,3 +753,76 @@ SingleShot 的 `227,131,037 B/op` 来自每次调用前预填 5,000,000 entry �
 
 - 本阶段实现 commit：`d19d6370e9c41934fb86dc56f3cd3a5cd67f8004`。
 - Pull Request：https://github.com/jetlinks/jetlinks-core/pull/97
+
+## cancel 并发清理与低基数优化
+
+复审确认 Reactor `FluxDistinct.cancel()` 会直接执行 cleanup，可能与正在运行的 `onNext`
+并发。当前 cleanup 会修改 `LargeState` 内部字段，能够在过期删除期间触发 NPE；cleanup
+后尚未进入状态判断的 `add` 也可能重新挂回 key。修复保持每订阅单写者热路径，不引入锁
+或并发容器：cleanup 通过终止哨兵摘除根状态，状态升降级使用 CAS，不能覆盖终止哨兵，
+且不再由清理线程修改正在使用的内部状态对象。
+
+同时评测 2/4/8 个活跃 key 的 fixed-window 稳态 churn，将 `SmallState` 的到期清理与判重
+合并为一次扫描。验收要求为：并发 cancel 不产生错误且不能恢复已清理状态；既有语义与
+最新 `1.3` 全量测试通过；低基数稳态吞吐不回退，LargeState 和完整操作符基准无稳定回退。
+
+### 实施与验证
+
+`DurationStore` 使用 volatile 根状态和终止哨兵协调 cleanup：cancel、complete 或 error
+只摘除根状态，不再并发清空 `SmallState` / `LargeState` 内部字段；状态升降级通过 CAS
+发布，因此 cleanup 一旦可见，正在执行的 `onNext` 不能重新挂回状态。内部数组和哈希表
+仍保持每订阅单写者模型，没有引入锁、并发 Map 或调度任务。生命周期边界已在生产代码
+增加注释；该同步过滤状态不增加 tracing，且不属于需要 MBean 管理的共享常驻资源。
+
+低基数路径同时做了两项调整：
+
+1. 2-key 窗口每次淘汰一个 key 后直接复用现有 `SmallState` 数组，不再先降级为
+   `SingleState`、再立即升级并分配新数组；
+2. `SmallState` 利用写入时间有序的不变量，只扫描连续到期前缀，并在搬移保留项时完成
+   判重，避免第二次数组扫描。
+
+修复前新增的三个确定性并发测试分别复现了 `LargeState.table` 被 cleanup 并发置空导致的
+NPE、cleanup 先于状态读取时 `add` 恢复状态，以及读取旧 `SingleState` 后用普通赋值覆盖
+cleanup 结果；修复后均通过。定向测试共 32 tests，0 failure、0 error。
+
+单线程、3 forks 的 Store 稳态 JMH（baseline -> optimized）：
+
+| 活跃 key | ns/op | 提升 | allocation |
+|---:|---:|---:|---:|
+| 2 | 42.093 -> 18.552 | 55.9% | 176 B/op -> 约 0 |
+| 4 | 30.395 -> 25.706 | 15.4% | 约 0，持平 |
+| 8 | 47.466 -> 44.037 | 7.2% | 约 0，持平 |
+
+完整 Reactor 操作符每次处理 1,000,000 items，`SMALL_KEYS` 为 8 个循环 key：
+
+| source | ops/s | 提升 |
+|---|---:|---:|
+| NON_FUSEABLE | 16.195 -> 17.900 | 10.5% |
+| FUSEABLE | 17.810 -> 19.210 | 7.9% |
+
+LargeState 回归使用 JDK 21.0.10、G1、2 GiB heap、单线程、3 forks、`10 x 2s`
+warmup 和 `3 x 2s` measurement。原 `2 x 2s` warmup 会在 measurement 中触发可重复的
+C2 阶段切换，因此不使用该组未收敛结果：
+
+| 活跃 key | hash 分布 | ns/op | 变化 |
+|---:|---|---:|---:|
+| 9 | spread | 33.228 -> 32.927 | +0.9% |
+| 9 | collision | 41.689 -> 39.371 | +5.6% |
+| 25,000 | spread | 33.396 -> 33.197 | +0.6% |
+| 25,000 | collision | 56,866.369 -> 56,443.846 | +0.7% |
+
+四组分配均保持约 32 B/op。极端同 hash 的链表桶成本仍随 key 数线性增长，但本轮没有放大
+该既有边界。JOL 确认增加 volatile 和静态 updater 后 `DurationStore` 实例仍为 16 B。
+
+最终验证：
+
+- 当前 PR 分支：`mvn -o test` 共 643 tests，0 failure、0 error、1 skipped；
+- 当前未提交实现与最新 `origin/1.3`（`2585803f`）临时合并无冲突，`mvn -o test` 共
+  648 tests，0 failure、0 error、1 skipped；
+- `git diff --check`：通过。
+
+本阶段原始结果保留在 `target/distinct-duration-benchmark/`，不提交：
+
+- `small-churn-baseline-t1.json` / `small-churn-optimized-v2-t1.json`；
+- `operator-small-baseline-t1.json` / `operator-small-optimized-t1.json`；
+- `large-steady-baseline-w10-3f-t1.json` / `large-steady-optimized-w10-3f-t1.json`。

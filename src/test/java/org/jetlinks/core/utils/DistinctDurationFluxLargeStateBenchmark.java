@@ -35,6 +35,45 @@ import java.util.function.LongSupplier;
 public class DistinctDurationFluxLargeStateBenchmark {
 
     @State(Scope.Thread)
+    public static class SmallChurnState {
+
+        @Param({"2", "4", "8"})
+        int activeKeys;
+
+        private DistinctDurationFlux.DurationStore store;
+        private TestTicker ticker;
+        private BenchmarkKey[] keys;
+        private int cursor;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            keys = new BenchmarkKey[activeKeys << 1];
+            for (int i = 0; i < keys.length; i++) {
+                keys[i] = new BenchmarkKey(i, false);
+            }
+
+            ticker = new TestTicker();
+            store = new DistinctDurationFlux.DurationStore();
+            for (int i = 0; i < activeKeys; i++) {
+                ticker.now = i;
+                if (!store.add(keys[i], activeKeys, ticker)) {
+                    throw new IllegalStateException("failed to prepare key " + i);
+                }
+            }
+            cursor = activeKeys;
+        }
+
+        boolean churn() {
+            ticker.now++;
+            BenchmarkKey key = keys[cursor++];
+            if (cursor == keys.length) {
+                cursor = 0;
+            }
+            return store.add(key, activeKeys, ticker);
+        }
+    }
+
+    @State(Scope.Thread)
     public static class ChurnState {
 
         @Param({"9", "625", "2500", "25000"})
@@ -254,6 +293,13 @@ public class DistinctDurationFluxLargeStateBenchmark {
             ticker.now = (PEAK_KEYS << 1) - 1L - remainingKeys;
             return store.add(keys[PEAK_KEYS], PEAK_KEYS, ticker);
         }
+    }
+
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.NANOSECONDS)
+    public boolean smallWindowChurn(SmallChurnState state) {
+        return state.churn();
     }
 
     @Benchmark

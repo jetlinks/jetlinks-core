@@ -1,8 +1,12 @@
 package org.jetlinks.core.utils;
 
 import org.junit.Test;
+import org.reactivestreams.Subscription;
+import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.test.StepVerifier;
+import reactor.util.context.Context;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -13,12 +17,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -368,6 +376,131 @@ public class DistinctDurationFluxTest {
         assertMatchesFixedWindowReference(value -> value);
     }
 
+    @Test
+    public void shouldNotRestoreStateAfterConcurrentCleanup() throws Exception {
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+        CountDownLatch tickerEntered = new CountDownLatch(1);
+        CountDownLatch continueTicker = new CountDownLatch(1);
+        AtomicReference<Boolean> added = new AtomicReference<>();
+
+        Thread emitter = new Thread(
+            () -> added.set(store.add(1, 10, () -> {
+                tickerEntered.countDown();
+                await(continueTicker);
+                return 0;
+            })),
+            "distinct-duration-cleanup-emitter");
+        emitter.start();
+
+        assertTrue(tickerEntered.await(5, TimeUnit.SECONDS));
+        store.clear();
+        continueTicker.countDown();
+        emitter.join(TimeUnit.SECONDS.toMillis(5));
+
+        assertFalse(emitter.isAlive());
+        assertFalse(added.get());
+        assertEquals(0, store.size());
+    }
+
+    @Test
+    public void shouldNotReplaceStaleStateAfterConcurrentCleanup() throws Exception {
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+        CountDownLatch equalsEntered = new CountDownLatch(1);
+        CountDownLatch continueEquals = new CountDownLatch(1);
+        AtomicReference<Boolean> added = new AtomicReference<>();
+        Object existing = new Object();
+        Object incoming = new Object() {
+            @Override
+            public boolean equals(Object obj) {
+                equalsEntered.countDown();
+                await(continueEquals);
+                return false;
+            }
+        };
+
+        assertTrue(store.add(existing, 10, () -> 0));
+        Thread emitter = new Thread(
+            () -> added.set(store.add(incoming, 10, () -> 0)),
+            "distinct-duration-stale-state-emitter");
+        emitter.start();
+
+        assertTrue(equalsEntered.await(5, TimeUnit.SECONDS));
+        store.clear();
+        continueEquals.countDown();
+        emitter.join(TimeUnit.SECONDS.toMillis(5));
+
+        assertFalse(emitter.isAlive());
+        assertFalse(added.get());
+        assertEquals(0, store.size());
+    }
+
+    @Test
+    public void shouldNotFailWhenCancelRacesWithLargeStateMutation() throws Exception {
+        AtomicLong ticker = new AtomicLong();
+        AtomicReference<FluxSink<BlockingHashKey>> sinkRef = new AtomicReference<>();
+        AtomicReference<Subscription> subscriptionRef = new AtomicReference<>();
+        AtomicReference<Throwable> errorRef = new AtomicReference<>();
+        CountDownLatch removalHashEntered = new CountDownLatch(1);
+        CountDownLatch continueRemoval = new CountDownLatch(1);
+
+        DistinctDurationFlux
+            .create(
+                Flux.create(sinkRef::set),
+                Function.identity(),
+                Duration.ofNanos(9),
+                ticker::get)
+            .subscribe(new CoreSubscriber<BlockingHashKey>() {
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    subscriptionRef.set(subscription);
+                    subscription.request(Long.MAX_VALUE);
+                }
+
+                @Override
+                public void onNext(BlockingHashKey value) {
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    errorRef.set(error);
+                }
+
+                @Override
+                public void onComplete() {
+                }
+
+                @Override
+                public Context currentContext() {
+                    return Context.empty();
+                }
+            });
+
+        for (int i = 0; i < 9; i++) {
+            ticker.set(i);
+            sinkRef.get().next(new BlockingHashKey(
+                i,
+                i == 0 ? removalHashEntered : null,
+                i == 0 ? continueRemoval : null));
+        }
+
+        Thread emitter = new Thread(() -> {
+            ticker.set(9);
+            sinkRef.get().next(new BlockingHashKey(9, null, null));
+        }, "distinct-duration-cancel-emitter");
+        emitter.start();
+
+        try {
+            assertTrue(removalHashEntered.await(5, TimeUnit.SECONDS));
+            subscriptionRef.get().cancel();
+        } finally {
+            continueRemoval.countDown();
+        }
+        emitter.join(TimeUnit.SECONDS.toMillis(5));
+
+        assertFalse(emitter.isAlive());
+        assertNull(errorRef.get());
+    }
+
     private static void assertMatchesFixedWindowReference(Function<Integer, Object> keyFactory) {
         final long durationNanos = 17;
         AtomicLong ticker = new AtomicLong();
@@ -405,6 +538,17 @@ public class DistinctDurationFluxTest {
             fail("expected invalid duration: " + duration);
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("duration"));
+        }
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                throw new AssertionError("timed out waiting for test signal");
+            }
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(error);
         }
     }
 
@@ -465,6 +609,35 @@ public class DistinctDurationFluxTest {
         public int hashCode() {
             hashCalls.incrementAndGet();
             return value;
+        }
+    }
+
+    private static final class BlockingHashKey {
+        private final int value;
+        private final CountDownLatch removalHashEntered;
+        private final CountDownLatch continueRemoval;
+        private final AtomicInteger hashCalls = new AtomicInteger();
+
+        private BlockingHashKey(int value,
+                                CountDownLatch removalHashEntered,
+                                CountDownLatch continueRemoval) {
+            this.value = value;
+            this.removalHashEntered = removalHashEntered;
+            this.continueRemoval = continueRemoval;
+        }
+
+        @Override
+        public int hashCode() {
+            if (removalHashEntered != null && hashCalls.incrementAndGet() == 2) {
+                removalHashEntered.countDown();
+                await(continueRemoval);
+            }
+            return value;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof BlockingHashKey && ((BlockingHashKey) obj).value == value;
         }
     }
 }
