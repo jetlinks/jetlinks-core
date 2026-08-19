@@ -1,19 +1,32 @@
 package org.jetlinks.core.utils;
 
 import org.junit.Test;
+import org.reactivestreams.Subscription;
+import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.test.StepVerifier;
+import reactor.util.context.Context;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -232,6 +245,293 @@ public class DistinctDurationFluxTest {
         assertEquals(1, store.size());
     }
 
+    @Test
+    public void shouldKeepCollisionWindowExactAcrossResizes() {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 1_000; key++) {
+            ticker.set(key);
+            CollisionKey value = new CollisionKey(key);
+            assertTrue(store.add(value, 64, ticker::get));
+            assertFalse(store.add(new CollisionKey(key), 64, ticker::get));
+            assertEquals(Math.min(key + 1, 64), store.size());
+        }
+
+        ticker.set(1_000);
+        assertFalse(store.add(new CollisionKey(999), 64, ticker::get));
+        assertTrue(store.add(new CollisionKey(900), 64, ticker::get));
+        assertEquals(64, store.size());
+    }
+
+    @Test
+    public void shouldKeepSmallLargeBoundaryWindowBounded() {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 1_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(new CollisionKey(key), 9, ticker::get));
+            assertEquals(Math.min(key + 1, 9), store.size());
+        }
+    }
+
+    @Test
+    public void shouldPreserveBoundaryDuplicateSemantics() {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 9; key++) {
+            ticker.set(key);
+            assertTrue(store.add(new CollisionKey(key), 9, ticker::get));
+        }
+
+        ticker.set(9);
+        assertFalse(store.add(new CollisionKey(8), 9, ticker::get));
+        assertEquals(8, store.size());
+        assertTrue(store.add(new CollisionKey(9), 9, ticker::get));
+        assertEquals(9, store.size());
+    }
+
+    @Test
+    public void shouldReleasePeakTableAtLargeBoundary() throws Exception {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 25_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(key, 25_000, ticker::get));
+        }
+        assertEquals(65_536, tableLength(store));
+
+        ticker.set(49_991);
+        assertTrue(store.add(-1, 25_000, ticker::get));
+
+        assertEquals(9, store.size());
+        assertEquals(16, tableLength(store));
+    }
+
+    @Test
+    public void shouldShrinkPeakTableAfterCardinalityDrop() throws Exception {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 25_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(key, 25_000, ticker::get));
+        }
+
+        ticker.set(49_374);
+        assertTrue(store.add(-1, 25_000, ticker::get));
+
+        assertEquals(626, store.size());
+        assertEquals(2_048, tableLength(store));
+    }
+
+    @Test
+    public void shouldDropFullyExpiredLargeStateWithoutHashingEachKey() {
+        AtomicLong ticker = new AtomicLong();
+        AtomicInteger hashCalls = new AtomicInteger();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 25_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(new CountingHashKey(key, hashCalls), 25_000, ticker::get));
+        }
+
+        hashCalls.set(0);
+        ticker.set(50_000);
+        assertTrue(store.add(new CountingHashKey(-1, hashCalls), 25_000, ticker::get));
+
+        assertEquals(1, store.size());
+        assertEquals(0, hashCalls.get());
+    }
+
+    @Test
+    public void shouldPreserveCollisionOrderAfterShrink() throws Exception {
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+
+        for (int key = 0; key < 1_000; key++) {
+            ticker.set(key);
+            assertTrue(store.add(new CollisionKey(key), 1_000, ticker::get));
+        }
+
+        ticker.set(1_935);
+        assertTrue(store.add(new CollisionKey(1_000), 1_000, ticker::get));
+        assertEquals(65, store.size());
+        assertEquals(128, tableLength(store));
+        assertFalse(store.add(new CollisionKey(999), 1_000, ticker::get));
+        assertTrue(store.add(new CollisionKey(0), 1_000, ticker::get));
+        assertEquals(66, store.size());
+    }
+
+    @Test
+    public void shouldMatchFixedWindowReferenceUnderCollisionChurn() {
+        assertMatchesFixedWindowReference(CollisionKey::new);
+    }
+
+    @Test
+    public void shouldMatchFixedWindowReferenceUnderSpreadChurn() {
+        assertMatchesFixedWindowReference(value -> value);
+    }
+
+    @Test
+    public void shouldNotRestoreStateAfterConcurrentCleanup() throws Exception {
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+        CountDownLatch tickerEntered = new CountDownLatch(1);
+        CountDownLatch continueTicker = new CountDownLatch(1);
+        AtomicReference<Boolean> added = new AtomicReference<>();
+
+        Thread emitter = new Thread(
+            () -> added.set(store.add(1, 10, () -> {
+                tickerEntered.countDown();
+                await(continueTicker);
+                return 0;
+            })),
+            "distinct-duration-cleanup-emitter");
+        emitter.start();
+
+        assertTrue(tickerEntered.await(5, TimeUnit.SECONDS));
+        store.clear();
+        continueTicker.countDown();
+        emitter.join(TimeUnit.SECONDS.toMillis(5));
+
+        assertFalse(emitter.isAlive());
+        assertFalse(added.get());
+        assertEquals(0, store.size());
+    }
+
+    @Test
+    public void shouldNotReplaceStaleStateAfterConcurrentCleanup() throws Exception {
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+        CountDownLatch equalsEntered = new CountDownLatch(1);
+        CountDownLatch continueEquals = new CountDownLatch(1);
+        AtomicReference<Boolean> added = new AtomicReference<>();
+        Object existing = new Object();
+        Object incoming = new Object() {
+            @Override
+            public boolean equals(Object obj) {
+                equalsEntered.countDown();
+                await(continueEquals);
+                return false;
+            }
+        };
+
+        assertTrue(store.add(existing, 10, () -> 0));
+        Thread emitter = new Thread(
+            () -> added.set(store.add(incoming, 10, () -> 0)),
+            "distinct-duration-stale-state-emitter");
+        emitter.start();
+
+        assertTrue(equalsEntered.await(5, TimeUnit.SECONDS));
+        store.clear();
+        continueEquals.countDown();
+        emitter.join(TimeUnit.SECONDS.toMillis(5));
+
+        assertFalse(emitter.isAlive());
+        assertFalse(added.get());
+        assertEquals(0, store.size());
+    }
+
+    @Test
+    public void shouldNotFailWhenCancelRacesWithLargeStateMutation() throws Exception {
+        AtomicLong ticker = new AtomicLong();
+        AtomicReference<FluxSink<BlockingHashKey>> sinkRef = new AtomicReference<>();
+        AtomicReference<Subscription> subscriptionRef = new AtomicReference<>();
+        AtomicReference<Throwable> errorRef = new AtomicReference<>();
+        CountDownLatch removalHashEntered = new CountDownLatch(1);
+        CountDownLatch continueRemoval = new CountDownLatch(1);
+
+        DistinctDurationFlux
+            .create(
+                Flux.create(sinkRef::set),
+                Function.identity(),
+                Duration.ofNanos(9),
+                ticker::get)
+            .subscribe(new CoreSubscriber<BlockingHashKey>() {
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    subscriptionRef.set(subscription);
+                    subscription.request(Long.MAX_VALUE);
+                }
+
+                @Override
+                public void onNext(BlockingHashKey value) {
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    errorRef.set(error);
+                }
+
+                @Override
+                public void onComplete() {
+                }
+
+                @Override
+                public Context currentContext() {
+                    return Context.empty();
+                }
+            });
+
+        for (int i = 0; i < 9; i++) {
+            ticker.set(i);
+            sinkRef.get().next(new BlockingHashKey(
+                i,
+                i == 0 ? removalHashEntered : null,
+                i == 0 ? continueRemoval : null));
+        }
+
+        Thread emitter = new Thread(() -> {
+            ticker.set(9);
+            sinkRef.get().next(new BlockingHashKey(9, null, null));
+        }, "distinct-duration-cancel-emitter");
+        emitter.start();
+
+        try {
+            assertTrue(removalHashEntered.await(5, TimeUnit.SECONDS));
+            subscriptionRef.get().cancel();
+        } finally {
+            continueRemoval.countDown();
+        }
+        emitter.join(TimeUnit.SECONDS.toMillis(5));
+
+        assertFalse(emitter.isAlive());
+        assertNull(errorRef.get());
+    }
+
+    private static void assertMatchesFixedWindowReference(Function<Integer, Object> keyFactory) {
+        final long durationNanos = 17;
+        AtomicLong ticker = new AtomicLong();
+        DistinctDurationFlux.DurationStore store = new DistinctDurationFlux.DurationStore();
+        Map<Integer, Long> expected = new LinkedHashMap<>();
+        Random random = new Random(0x5EEDL);
+
+        for (int operation = 0; operation < 20_000; operation++) {
+            long now = ticker.addAndGet(random.nextInt(3));
+            int key = random.nextInt(128);
+
+            Iterator<Map.Entry<Integer, Long>> iterator = expected.entrySet().iterator();
+            while (iterator.hasNext()) {
+                if (now - iterator.next().getValue() >= durationNanos) {
+                    iterator.remove();
+                }
+            }
+
+            boolean expectedAdded = !expected.containsKey(key);
+            if (expectedAdded) {
+                expected.put(key, now);
+            }
+
+            assertEquals(
+                "operation=" + operation + ", key=" + key + ", now=" + now,
+                expectedAdded,
+                store.add(keyFactory.apply(key), durationNanos, ticker::get));
+            assertEquals(expected.size(), store.size());
+        }
+    }
+
     private static void assertInvalidDuration(Duration duration) {
         try {
             DistinctDurationFlux.create(Flux.just(1), Function.identity(), duration);
@@ -239,6 +539,26 @@ public class DistinctDurationFluxTest {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("duration"));
         }
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                throw new AssertionError("timed out waiting for test signal");
+            }
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(error);
+        }
+    }
+
+    private static int tableLength(DistinctDurationFlux.DurationStore store) throws Exception {
+        Field stateField = DistinctDurationFlux.DurationStore.class.getDeclaredField("state");
+        stateField.setAccessible(true);
+        Object state = stateField.get(store);
+        Field tableField = state.getClass().getDeclaredField("table");
+        tableField.setAccessible(true);
+        return ((Object[]) tableField.get(state)).length;
     }
 
     private static final class TimedValue {
@@ -268,6 +588,56 @@ public class DistinctDurationFluxTest {
         @Override
         public int hashCode() {
             return 1;
+        }
+    }
+
+    private static final class CountingHashKey {
+        private final int value;
+        private final AtomicInteger hashCalls;
+
+        private CountingHashKey(int value, AtomicInteger hashCalls) {
+            this.value = value;
+            this.hashCalls = hashCalls;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof CountingHashKey && ((CountingHashKey) obj).value == value;
+        }
+
+        @Override
+        public int hashCode() {
+            hashCalls.incrementAndGet();
+            return value;
+        }
+    }
+
+    private static final class BlockingHashKey {
+        private final int value;
+        private final CountDownLatch removalHashEntered;
+        private final CountDownLatch continueRemoval;
+        private final AtomicInteger hashCalls = new AtomicInteger();
+
+        private BlockingHashKey(int value,
+                                CountDownLatch removalHashEntered,
+                                CountDownLatch continueRemoval) {
+            this.value = value;
+            this.removalHashEntered = removalHashEntered;
+            this.continueRemoval = continueRemoval;
+        }
+
+        @Override
+        public int hashCode() {
+            if (removalHashEntered != null && hashCalls.incrementAndGet() == 2) {
+                removalHashEntered.countDown();
+                await(continueRemoval);
+            }
+            return value;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof BlockingHashKey && ((BlockingHashKey) obj).value == value;
         }
     }
 }

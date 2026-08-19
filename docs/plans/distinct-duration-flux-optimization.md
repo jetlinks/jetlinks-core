@@ -1,6 +1,6 @@
 # DistinctDurationFlux 优化与压力测试计划
 
-状态：已完成并验证，尚未提交。
+状态：PR #97 已更新；生命周期补充优化和 500 万 key 极限评测已完成并提交。
 
 ## 背景与当前结论
 
@@ -419,3 +419,410 @@ java -Xms2g -Xmx2g -XX:+UseG1GC -XX:NativeMemoryTracking=summary \
 
 - 实现 commit：`04a5f4ca004e821b6326678a2bb0242e63f81bfb`。
 - Pull Request：https://github.com/jetlinks/jetlinks-core/pull/92
+
+## LargeState 二阶段通用性能优化
+
+设备完整链路的早期 structured JFR 显示，当前通用实现仍有可操作热点：
+`LargeState.find` 约占 9.45%，`removeFromTable` 约占 6.97%，`DurationStore.add`
+和 `LargeState.add` 合计约占 2.9%。该 profile 早于 Components 最终 D4，只用于确定
+Core 候选；本阶段必须以当前 Core HEAD 的独立 JMH/JFR 为归因基线。
+
+### 目标与边界
+
+本阶段仅优化 `DistinctDurationFlux.LargeState` 的通用链式哈希实现，不修改
+`FluxUtils.distinct`、公开构造/API、Reactor 四参数 `Flux.distinct` 边界、fixed-window、
+null、backpressure、fusion、discard 和 cleanup 语义。设备 UID 提取、String 专用开放
+寻址表、TopicPayload 缓存、EventBus 及集群逻辑不进入 Core。
+
+继续保持每订阅局部、Reactive Streams 串行的非并发状态，不新增 scheduler、线程池、
+ThreadLocal、MBean 或逐消息 tracing。该同步工具没有新的异步边界；JMH、JFR 和内存压力
+进程继续承担性能可观测性。
+
+### 推荐实现
+
+1. 将 `contains` 后再 `add` 合并为一次 `addIfAbsent`：每条 key 只计算一次 spread hash、
+   只遍历一次 bucket，未命中时直接插入；
+2. bucket 链改为首次写入顺序。全局 expiry FIFO 与每个 bucket 的头部保持相同的最老
+   entry，因此到期删除只移动 bucket head，不再为每个过期 key 重新遍历 bucket；resize
+   必须恢复 bucket 内的时间顺序，不能增加长期 tail 数组或逐 entry 前驱引用；
+3. LargeState 清理后只剩一个 entry 时，直接读取 `firstExpiry` 的 key/timestamp，避免
+   通过 hash table 再查询一次；
+4. 对 8/9 个活跃 key 的 Large/Small 转换增加滞后或等价防抖，避免到期和新写入交替时
+   反复重建数组与 Entry。具体阈值只在边界 churn 基准证明收益且不增加小状态内存后保留。
+
+不预设缓存 hash 到 `LargeEntry`：这可能扩大每个活跃 key 的对象尺寸；只有 JOL/loaded
+heap 证明没有对象尺寸增长且 JFR 仍指向 hash 计算时才评估。也不重新采用单块开放寻址数组，
+此前全唯一场景已出现 G1 humongous allocation 和约 23% 吞吐回退。
+
+### 基准与验收
+
+先在当前实现生成 baseline，再改生产代码。除既有 REPEAT/HOT_KEYS/MIXED/UNIQUE、
+Fuseable/非 Fuseable 和 1/4/8 worker 外，补充以下定向场景：
+
+1. 所有 key 使用相同 hash 的碰撞链，覆盖重复查询和持续到期删除；
+2. 活跃 key 长期维持在 8/9 附近的升降级 churn；
+3. 625、2,500、25,000 个活跃 key 的 fixed-window 稳态到期/插入，而不是只测一次性
+   1,000,000 个唯一 key；
+4. resize 前后按不同 bucket/相同 bucket 到期，验证 bucket head 与 expiry FIFO 一致；
+5. retained bytes/active key、resize allocation、GC pause 和 cancel 后回收。
+
+正式结果至少 3 fork、2 次预热、5 次 measurement，baseline/optimized 交错执行并使用
+`-prof gc`；主结果报告 ns/item、items/s、B/item、p50/p95/p99。保留门禁为：
+
+1. 所有冻结语义、碰撞、背压、fusion、discard 和 lifecycle 测试通过；
+2. 稳态到期和碰撞主场景 CPU 至少改善 5%，全唯一、高重复和短生命周期场景不得回退
+   超过 5%；
+3. p99 不得回退超过 5%，分配和 retained bytes/active key 不得增加；
+4. 若只有设备特定数据分布改善、通用矩阵未达门禁，则撤回 Core 结构变化，把优化留在
+   Components 专用实现。
+
+### 实施与复审结果
+
+本阶段已按上述边界完成，生产代码仍只修改
+`src/main/java/org/jetlinks/core/utils/DistinctDurationFlux.java`：
+
+1. `LargeState.contains(...) + add(...)` 已合并为单次 `addIfAbsent(...)`，每次写入只计算
+   一次 spread hash，并在一次 bucket 遍历中同时完成判重和 tail 定位；
+2. bucket 改为按写入时间链接，到期项通常就是 bucket head；resize 使用 low/high split，
+   保持每个新 bucket 的相对写入顺序，因此不会破坏 expiry FIFO 与 bucket head 的一致性；
+3. LargeState 只剩一个 entry 时直接读取 `firstExpiry`，不再进行二次 hash 查询；
+4. 8/9 key 边界采用防抖策略：到期后剩 8 个 key 且当前是新 key 时继续保留 LargeState，
+   避免每条数据重建状态；只有边界重复 key 才压缩回 SmallState；
+5. 判等先检查 identity，再调用 `equals`。`LargeEntry` 未增加 hash、前驱或 tail 字段，
+   每个活跃 key 的常驻对象布局不变；未新增 scheduler、线程池、ThreadLocal、MBean、
+   Trace 或响应式异步边界。
+
+复审重点均已通过确定性模型验证：bucket 写入顺序、resize low/high split、expiry head 删除、
+8/9 key 升降级，以及普通 hash/全碰撞 hash 下的 fixed-window 行为一致。
+
+### 正确性验证
+
+- 定向测试：
+  `mvn -Dtest=DistinctDurationFluxTest,FluxUtilsTest -Dsurefire.failIfNoSpecifiedTests=false test`
+  - 25 tests，0 failure，0 error；
+  - 包含全 hash collision 跨 resize/持续到期、8/9 key 长期 churn、边界重复后再升级；
+  - collision 与 spread 两种 hash 分布各执行 20,000 次确定性随机 churn，并逐次与
+    `LinkedHashMap` fixed-window 参考模型比对。
+- Core 全量：`mvn test`
+  - 637 tests，0 failure，0 error，1 skipped。
+- `git diff --check`：通过。
+
+### 正式性能对比
+
+环境：JDK 21.0.10、G1、`-Xms2g -Xmx2g`、单线程。基准提交为 `58dadb97`；正式
+collision/JFR 矩阵使用 3 forks、2 次预热、5 次测量。JFR 改为基准第四参数显式启用，
+避免默认录制干扰亚微秒延迟。
+
+AverageTime 主结果（baseline → optimized）：
+
+| 活跃 key | hash 分布 | ns/op | 改善 | B/op |
+|---:|---|---:|---:|---:|
+| 9 | spread | 158.570 → 23.787 | 85.0% | 552.35 → 32.05 |
+| 9 | collision | 165.930 → 33.045 | 80.1% | 552.36 → 32.07 |
+| 625 | collision | 2,502.507 → 1,271.489 | 49.2% | 37.32 → 34.69 |
+| 2,500 | collision | 10,648.961 → 5,161.025 | 51.5% | 54.27 → 43.04 |
+| 25,000 | collision | 124,773.660 → 56,613.584 | 54.6% | 295.15 → 152.07 |
+
+9-key 分配减少约 94.2%，来自消除 Small/Large 边界反复重建。碰撞链越长，单次判重
+与到期删除合并带来的收益越明显。
+
+普通 spread hash 另使用无 JFR、3 forks、3 次预热、7 次测量复测 AverageTime，避免
+把录制扰动当作实现差异：
+
+| 活跃 key | baseline → optimized | 改善 | B/op |
+|---:|---:|---:|---:|
+| 625 | 29.440 → 28.441 ns/op | 3.4% | 32.001 → 32.001 |
+| 2,500 | 29.826 → 28.742 ns/op | 3.6% | 32.001 → 32.001 |
+| 25,000 | 29.750 → 28.068 ns/op | 5.7% | 32.001 → 32.001 |
+
+无 JFR、5 forks 的 SampleTime 尾延迟复测：
+
+| 活跃 key | mean ns/op | p95 | p99 |
+|---:|---:|---:|---:|
+| 625 | 72.788 → 73.160（+0.5%） | 87 → 84 | 115 → 111 |
+| 2,500 | 74.615 → 74.300（-0.4%） | 89 → 85 | 116 → 113 |
+| 25,000 | 73.491 → 75.169（+2.3%） | 85 → 84 | 120 → 123（+2.5%） |
+
+普通 hash 的最大 p99 回退为 2.5%，低于 5% 门禁，B/op 不变。JFR 的 25,000-key
+collision profile 中，baseline 的 `removeFromTable`、`drainExpired`、`find` 分别约占
+33.97%、15.91%、10.72%；optimized 中 `removeFromTable/find` 不再是热点，剩余主要是
+不可避免的 collision `addIfAbsent`/`equals` 遍历。
+
+原始结果保留在以下构建目录，不提交：
+
+- baseline：
+  `target/distinct-duration-benchmark/core-large-churn-baseline-formal-t1.json`
+- optimized：
+  `target/distinct-duration-benchmark/core-large-churn-optimized-formal-t1.json`
+- 无 JFR spread AverageTime：
+  `target/distinct-duration-benchmark/core-large-churn-spread-average-*-t1.json`
+- 无 JFR spread SampleTime：
+  `target/distinct-duration-benchmark/core-large-churn-spread-latency-*-t1.json`
+
+结论：Core 通用优化满足语义、吞吐、尾延迟和分配门禁，可以保留；Components 的设备
+专用链路优化仍应在此通用实现之上单独评估，不向 Core 引入设备 Topic 或 UID 特化。
+
+- 本阶段实现 commit：`794fe8189800919621e96553d22d38281d3988f6`。
+- Pull Request：https://github.com/jetlinks/jetlinks-core/pull/97
+
+## LargeState 生命周期优化
+
+PR #97 在最新 `1.3`（已包含 #96、#98）复审时确认，稳态 churn 基准未覆盖以下
+状态变化：
+
+1. LargeState 曾扩容到高基数，TTL 内活跃 key 随后长期回落到低基数；
+2. 高基数窗口整体空闲超过 TTL，下一条消息恢复投递。
+
+当前 table 只扩容不缩容，8/9 key 防抖会继续保留历史峰值容量；整个窗口过期时仍逐
+entry 计算 hash 并从 bucket 删除。设备消息订阅按订阅持有独立 store，这两种情况会分别
+放大常驻内存和恢复首条消息的尾延迟。
+
+本阶段保持公开 API、fixed-window、null、背压、fusion、discard、cleanup 和每订阅串行
+状态不变，只补充以下内部策略：
+
+1. 当最新 entry 也已过期时直接清空 LargeState，避免全窗口逐项删除；
+2. table 严重低载且 LargeState 仍需保留时按 25% 阈值逐级缩容；缩容完成时已有 entry
+   占用 25%～50%，并设置最小容量 16，避免重新引入 8/9 key 每条重建；
+3. 缩容按 expiry FIFO 重建 bucket 顺序，继续保持到期项通常位于 bucket head；
+4. 增加 25,000 -> 8/625 key、全窗口过期和碰撞缩容的确定性测试，并为
+   `idleResume`、`cardinalityDrop` 增加独立 JMH 场景。
+
+验收要求：fixed-window 参考模型和 Core 全量测试通过；25,000 key 全过期恢复不再逐 key
+计算 hash；25,000 -> 9 key 后 table 回到最小容量；原有 9/625/2,500/25,000 key 稳态
+吞吐和分配不得出现超过 5% 的稳定回退。
+
+### 实施与最终验证
+
+生产实现继续只修改 `DistinctDurationFlux.LargeState`，没有改变 Reactor 操作符边界：
+
+1. 检测到队首过期后，仅在第二个 entry 也过期时检查队尾；队尾已过期则 O(1) 清空整个
+   table 和 expiry queue，不再逐 key 计算 hash 和删除 bucket；
+2. 部分过期后在下一次写入前检查 table 负载，低于 25% 时按 2 的幂逐级缩容；重建沿
+   expiry FIFO 遍历并按 bucket 维护 tail，保留 bucket 内写入顺序；
+3. 普通写入增加空 bucket 直接插入快路径，非空 bucket 才执行 identity/equals 判重；
+4. `drainExpired` 只保留队首到期判断，实际删除拆到 `drainExpiredEntries`。编译日志证明
+   早期 25,000-key spread 的快慢双峰来自该方法不同 C2 分支画像；拆分后 5 个 fork
+   收敛，不再出现约 17.8/24.4 ns/op 双峰。
+
+`LargeState` 的数量不变量保持成立：它只会在一次 `DurationStore.add(...)` 结束时保留
+至少 9 个 entry；清理后为 0/1/2～7 时立即降级，剩 8 个时重复 key 降级为 SmallState，
+新 key 则补回第 9 个。因此 `drainExpiredEntries` 的第二个 expiry entry 必然存在。
+
+最终稳态 JMH 为无 JFR、单线程、3 forks 配对测试（baseline -> final）：
+
+| 活跃 key | hash 分布 | ns/op | 变化 |
+|---:|---|---:|---:|
+| 9 | spread | 19.282 -> 16.450 | +14.7% |
+| 9 | collision | 33.434 -> 32.913 | +1.6% |
+| 625 | spread | 19.430 -> 17.702 | +8.9% |
+| 625 | collision | 1,291.770 -> 1,253.480 | +3.0% |
+| 2,500 | spread | 19.550 -> 19.334 | +1.1% |
+| 2,500 | collision | 5,258.862 -> 5,105.969 | +2.9% |
+| 25,000 | spread | 18.113 -> 18.775 | -3.7% |
+| 25,000 | collision | 58,320.468 -> 56,159.747 | +3.7% |
+
+25,000-key spread 另以相同无 profiler 配置执行 5 forks 配对复测：
+`19.936 +/- 1.396 -> 18.469 +/- 0.596 ns/op`，提升约 7.4%，且 final 各 fork 已收敛。
+数据链路反例没有回退：非 Fuseable 的 HOT_KEYS 为 `17.522 -> 17.694 ops/s`（+1.0%），
+UNIQUE 为 `9.369 -> 9.378 ops/s`（+0.1%）。
+
+生命周期 SampleTime JMH（baseline -> final）：
+
+| 场景 | key | ns/op | 倍数/改善 |
+|---|---:|---:|---:|
+| 全窗口过期后首条恢复 | 625 | 3,050.799 -> 53.688 | 56.8x |
+| 全窗口过期后首条恢复 | 2,500 | 12,237.195 -> 84.785 | 144.3x |
+| 全窗口过期后首条恢复 | 25,000 | 135,346.305 -> 384.958 | 351.6x |
+| 25,000 降至低基数 | 8 | 145,690.860 -> 122,970.655 | +15.6% |
+| 25,000 降至低基数 | 625 | 126,336.716 -> 122,267.688 | +3.2% |
+
+验证结果：
+
+- 定向：29 tests，0 failure，0 error；
+- 最新 `origin/1.3`（`2585803f`）叠加 PR #97 与本轮最终实现：`mvn test` 共
+  645 tests，0 failure，0 error，1 skipped；
+- `git diff --check`：通过；
+- JMH lifecycle 的 `Level.Invocation` setup 分配会被 GCProfiler 计入，因此不把该场景
+  的 B/op 解释为被测恢复/缩容操作自身分配。
+
+原始结果保留在 `target/distinct-duration-benchmark/`，不提交：
+
+- `paired-steady-baseline-3f-t1.json` / `paired-steady-final-v6-3f-t1.json`；
+- `no-duplicate-25000-baseline-5f-t1.json` / `no-duplicate-25000-optimized-v5-5f-t1.json`；
+- `no-duplicate-datapath-baseline-3f-t1.json` / `no-duplicate-datapath-optimized-v6-3f-t1.json`；
+- `lifecycle-baseline-t1.json` / `lifecycle-final-v6-3f-t1.json`。
+
+## 500 万活跃 key 极限评测计划
+
+### 目标与边界
+
+评测 fixed-window 为 10 秒、逻辑输入速率为 500,000 条/秒的持续全唯一 key 场景。该口径
+在稳态形成 5,000,000 个活跃 key，用于量化大 table 的 CPU cache、对象分配、GC 和恢复
+尾延迟影响，不通过真实 sleep 或限速器把线程调度成本混入 store 算法。
+
+本阶段先增加测试和生成 PR #97 当前实现与本轮生命周期实现的配对基准，不预设继续修改
+生产代码。测试代码不进入 Surefire 默认测试集，不增加 `mvn test` 的固定内存和时间成本。
+
+### 实施步骤
+
+1. 在 `DistinctDurationFluxLargeStateBenchmark` 增加参数化极限状态：
+   `windowSeconds=10`、`eventsPerSecond=500000`，按 2,000 ns 的逻辑事件间隔预填
+   5,000,000 个 spread-hash key；
+2. 稳态基准每次恰好推进一个事件间隔、淘汰一个最老 key 并插入一个预创建的新 key，
+   分别采集 AverageTime、SampleTime p95/p99、B/op、GC count/time；
+3. 增加 SingleShot 全窗口过期恢复基准：预填 5,000,000 key 后让最新 key 也超过 10 秒，
+   测量下一条消息恢复成本；setup 分配不解释为被测操作 B/op；
+4. benchmark runner 增加可选 heap 参数，默认仍为 2 GiB，极限场景显式使用 4 GiB，避免
+   改变既有基准复现口径；
+5. 将完全相同的 benchmark 源码应用到 PR #97 baseline 与当前实现，先 smoke，再执行
+   单线程 3-fork 配对测试；原始 JSON 继续只保留在 `target/`；
+6. 把实测 ns/event 换算为单核理论 events/s，以及 500,000 events/s 下的单核占用比例；
+   把 B/event 换算为 MB/s，结合 GCProfiler 判断是否值得进一步复用到期 entry。
+
+### 验收与决策
+
+1. setup 后 store size 必须稳定为 5,000,000，稳态每次调用都必须成功插入；
+2. 当前实现相对 PR #97 baseline 不得出现超过 5% 的稳定吞吐或 p99 回退；
+3. 算法单核能力必须高于 500,000 events/s，并报告余量，不能只报告相对百分比；
+4. 若 `gc.alloc.rate.norm` 仍约为一个 `LargeEntry`/event，报告 500,000 events/s 下的分配率；
+   只有该分配已成为 CPU/GC 主导成本时，才进入 entry 复用设计，避免先改实现再找收益；
+5. 复审继续覆盖 fixed-window、不续期、null、背压、fusion、discard、cleanup 和 LargeState
+   数量不变量；极限测试不得引入 scheduler、并发调用同一 store 或设备专用逻辑。
+
+### 实施与结果
+
+测试按计划落在 `DistinctDurationFluxLargeStateBenchmark`：
+
+1. `ExtremeRateState` 使用 10 秒窗口和 500,000 events/s 参数，按 2,000 ns 逻辑间隔
+   预填 5,000,000 key；使用 5,000,001 个预创建 spread-hash key 循环，稳态每次恰好
+   淘汰一个最老 key 并插入一个新 key；
+2. `ExtremeIdleResumeState` 在每次 SingleShot 前重建 5,000,000-key 窗口，再把逻辑时钟
+   推进 10 秒，确保最新 entry 也已过期；
+3. 两个 setup 均校验 store size 为 5,000,000；benchmark runner 增加第六个 `heapGb`
+   参数，默认 2 GiB 不变，本场景显式使用 4 GiB；
+4. PR #97 baseline 和当前实现使用相同极限测试源码、JDK 21.0.10、G1、单线程、3 forks、
+   2 x 2s warmup、5 x 2s measurement；4 GiB heap 已确认启用 compressed oops。
+
+稳态结果（baseline -> current）：
+
+| 指标 | baseline | current | 变化 |
+|---|---:|---:|---:|
+| AverageTime | 37.274 ns/event | 37.139 ns/event | +0.36% |
+| 单核理论容量 | 26.83M events/s | 26.93M events/s | +0.36% |
+| 500,000 events/s 单核占用 | 1.864% | 1.857% | -0.007pp |
+| p50 | 68 ns | 67 ns | +1.5% |
+| p95 | 86 ns | 90 ns | -4.7% |
+| p99 | 184 ns | 187 ns | -1.6% |
+| p99.9 | 10.821 us | 13.038 us | -20.5% |
+| p99.99 | 26.517 us | 25.645 us | +3.3% |
+| allocation | 32.001 B/event | 32.001 B/event | 持平 |
+
+当前实现单核容量约为目标速率的 53.9 倍；平均 CPU 成本只占单核约 1.86%。固定分配
+32 B/event 来自每次插入一个 `LargeEntry`，目标速率下约为 16.0 MB/s（15.3 MiB/s）。
+以基准满速运行时，baseline/current 在 30 秒 measurement 中分别发生 18 次 GC，GC time
+为 596/616 ms；分配与 GC 没有出现结构性变化。
+
+current 的 SampleTime 记录到一个 2.253 ms 最大值，baseline 最大值为 69.504 us，导致
+sample mean 为 `95.946 -> 100.923 ns`（-5.2%）。该样本低于百万分之二，且同一恒定稳态
+路径没有触发 resize、shrink 或批量过期；p99 只回退 1.6%，p99.99 反而改善 3.3%，现有
+证据不足以把该单点离群归因到本轮实现。保留为 JVM/OS/GC 尾延迟残余风险，不据此增加
+生产分支。
+
+全窗口过期后的首条恢复 SingleShot（baseline -> current）：
+
+| 指标 | baseline | current | 提升 |
+|---|---:|---:|---:|
+| mean | 31.128 ms | 6.483 us | 4,802x |
+| p50 | 31.308 ms | 6.391 us | 4,899x |
+| p95/p99 | 32.049 ms | 10.258 us | 3,124x |
+
+SingleShot 的 `227,131,037 B/op` 来自每次调用前预填 5,000,000 entry 的
+`Level.Invocation` setup，baseline/current 完全相同，不能解释为恢复操作分配。该数值
+可用于确认构造整个 store 累计分配约 227.1 MB；在 compressed oops 下，稳态保留结构
+估算为 5,000,000 x 32 B entry 加 8,388,608 槽 table，约 193.6 MB，不含业务 key。
+
+结论：本轮生命周期优化在 500 万活跃 key 稳态下没有吞吐、p99 或分配回退，并把全窗口
+恢复从约 31 ms 降到微秒级。`LargeEntry` 复用理论上可消除 16 MB/s 目标分配，但当前 CPU
+余量约 53.9 倍、满速 GC 时间约占 measurement 的 2%，分配尚未成为主导瓶颈；暂不增加
+可变 entry 和复用状态，避免扩大 fixed-window 正确性与对象生命周期风险。
+
+原始结果保留在 `target/distinct-duration-benchmark/`，不提交：
+
+- baseline：`extreme-rate-baseline-3f-t1.json`、`extreme-idle-baseline-3f-t1.json`；
+- current：`extreme-rate-current-3f-t1.json`、`extreme-idle-current-3f-t1.json`。
+
+- 本阶段实现 commit：`d19d6370e9c41934fb86dc56f3cd3a5cd67f8004`。
+- Pull Request：https://github.com/jetlinks/jetlinks-core/pull/97
+
+## cancel 并发清理与低基数优化
+
+复审确认 Reactor `FluxDistinct.cancel()` 会直接执行 cleanup，可能与正在运行的 `onNext`
+并发。当前 cleanup 会修改 `LargeState` 内部字段，能够在过期删除期间触发 NPE；cleanup
+后尚未进入状态判断的 `add` 也可能重新挂回 key。修复保持每订阅单写者热路径，不引入锁
+或并发容器：cleanup 通过终止哨兵摘除根状态，状态升降级使用 CAS，不能覆盖终止哨兵，
+且不再由清理线程修改正在使用的内部状态对象。
+
+同时评测 2/4/8 个活跃 key 的 fixed-window 稳态 churn，将 `SmallState` 的到期清理与判重
+合并为一次扫描。验收要求为：并发 cancel 不产生错误且不能恢复已清理状态；既有语义与
+最新 `1.3` 全量测试通过；低基数稳态吞吐不回退，LargeState 和完整操作符基准无稳定回退。
+
+### 实施与验证
+
+`DurationStore` 使用 volatile 根状态和终止哨兵协调 cleanup：cancel、complete 或 error
+只摘除根状态，不再并发清空 `SmallState` / `LargeState` 内部字段；状态升降级通过 CAS
+发布，因此 cleanup 一旦可见，正在执行的 `onNext` 不能重新挂回状态。内部数组和哈希表
+仍保持每订阅单写者模型，没有引入锁、并发 Map 或调度任务。生命周期边界已在生产代码
+增加注释；该同步过滤状态不增加 tracing，且不属于需要 MBean 管理的共享常驻资源。
+
+低基数路径同时做了两项调整：
+
+1. 2-key 窗口每次淘汰一个 key 后直接复用现有 `SmallState` 数组，不再先降级为
+   `SingleState`、再立即升级并分配新数组；
+2. `SmallState` 利用写入时间有序的不变量，只扫描连续到期前缀，并在搬移保留项时完成
+   判重，避免第二次数组扫描。
+
+修复前新增的三个确定性并发测试分别复现了 `LargeState.table` 被 cleanup 并发置空导致的
+NPE、cleanup 先于状态读取时 `add` 恢复状态，以及读取旧 `SingleState` 后用普通赋值覆盖
+cleanup 结果；修复后均通过。定向测试共 32 tests，0 failure、0 error。
+
+单线程、3 forks 的 Store 稳态 JMH（baseline -> optimized）：
+
+| 活跃 key | ns/op | 提升 | allocation |
+|---:|---:|---:|---:|
+| 2 | 42.093 -> 18.552 | 55.9% | 176 B/op -> 约 0 |
+| 4 | 30.395 -> 25.706 | 15.4% | 约 0，持平 |
+| 8 | 47.466 -> 44.037 | 7.2% | 约 0，持平 |
+
+完整 Reactor 操作符每次处理 1,000,000 items，`SMALL_KEYS` 为 8 个循环 key：
+
+| source | ops/s | 提升 |
+|---|---:|---:|
+| NON_FUSEABLE | 16.195 -> 17.900 | 10.5% |
+| FUSEABLE | 17.810 -> 19.210 | 7.9% |
+
+LargeState 回归使用 JDK 21.0.10、G1、2 GiB heap、单线程、3 forks、`10 x 2s`
+warmup 和 `3 x 2s` measurement。原 `2 x 2s` warmup 会在 measurement 中触发可重复的
+C2 阶段切换，因此不使用该组未收敛结果：
+
+| 活跃 key | hash 分布 | ns/op | 变化 |
+|---:|---|---:|---:|
+| 9 | spread | 33.228 -> 32.927 | +0.9% |
+| 9 | collision | 41.689 -> 39.371 | +5.6% |
+| 25,000 | spread | 33.396 -> 33.197 | +0.6% |
+| 25,000 | collision | 56,866.369 -> 56,443.846 | +0.7% |
+
+四组分配均保持约 32 B/op。极端同 hash 的链表桶成本仍随 key 数线性增长，但本轮没有放大
+该既有边界。JOL 确认增加 volatile 和静态 updater 后 `DurationStore` 实例仍为 16 B。
+
+最终验证：
+
+- 当前 PR 分支：`mvn -o test` 共 643 tests，0 failure、0 error、1 skipped；
+- 当前未提交实现与最新 `origin/1.3`（`2585803f`）临时合并无冲突，`mvn -o test` 共
+  648 tests，0 failure、0 error、1 skipped；
+- `git diff --check`：通过。
+
+本阶段原始结果保留在 `target/distinct-duration-benchmark/`，不提交：
+
+- `small-churn-baseline-t1.json` / `small-churn-optimized-v2-t1.json`；
+- `operator-small-baseline-t1.json` / `operator-small-optimized-t1.json`；
+- `large-steady-baseline-w10-3f-t1.json` / `large-steady-optimized-w10-3f-t1.json`。
