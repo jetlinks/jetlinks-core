@@ -3,6 +3,7 @@ package org.jetlinks.core.topic;
 import lombok.extern.slf4j.Slf4j;
 import org.jetlinks.core.lang.SeparatedCharSequence;
 import org.jetlinks.core.lang.SharedPathString;
+import org.jetlinks.core.utils.TopicUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,6 +28,13 @@ public class TopicFinderTest {
         return list;
     }
 
+    private static List<Topic<String>> collectMatched(Topic<String> root, SeparatedCharSequence searchTopic) {
+        List<Topic<String>> list = new ArrayList<>();
+        TopicFinder.find(root, searchTopic, list::add, () -> {
+        });
+        return list;
+    }
+
     /**
      * 返回匹配到的 topic 路径字符串集合，便于断言.
      */
@@ -34,6 +42,17 @@ public class TopicFinderTest {
         return collectMatched(root, searchTopic).stream()
                                                 .map(Topic::getTopic)
                                                 .collect(Collectors.toSet());
+    }
+
+    private static Set<String> matchedSubscriberPaths(Topic<String> root, CharSequence searchTopic) {
+        List<Topic<String>> matched = searchTopic instanceof SeparatedCharSequence
+            ? collectMatched(root, (SeparatedCharSequence) searchTopic)
+            : collectMatched(root, searchTopic.toString());
+        return matched
+            .stream()
+            .filter(topic -> !topic.getSubscribers().isEmpty())
+            .map(Topic::getTopic)
+            .collect(Collectors.toSet());
     }
 
     @Before
@@ -202,6 +221,79 @@ public class TopicFinderTest {
 
         Set<String> matched = matchedPaths(root, "device/001");
         Assert.assertEquals(Set.of("/device/001", "/device/*", "/device/**"), matched);
+    }
+
+    @Test
+    public void testExactSearchReferenceMatrix() {
+        List<String> patterns = List.of(
+            "/tenant/alpha/device/001/message/property/report",
+            "/tenant/*/device/*/message/property/report",
+            "/tenant/**",
+            "/**/message/property/report",
+            "/tenant/alpha/device/**",
+            "/tenant/alpha/**/property/*"
+        );
+        List<String> topics = List.of(
+            "/tenant/alpha/device/001/message/property/report",
+            "/tenant/beta/device/002/message/property/report",
+            "/tenant/alpha/device/001/message/event/alarm",
+            "/tenant/alpha/gateway/001/online",
+            "/other/alpha/device/001/message/property/report"
+        );
+        patterns.forEach(pattern -> root.append(pattern).subscribe(pattern));
+
+        for (String topic : topics) {
+            Set<String> expected = patterns
+                .stream()
+                .filter(pattern -> TopicUtils.match(pattern, topic))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+            Assert.assertEquals(topic, expected, matchedSubscriberPaths(root, topic));
+            Assert.assertEquals(topic,
+                                expected,
+                                matchedSubscriberPaths(root, SharedPathString.of(topic)));
+        }
+    }
+
+    @Test
+    public void testWildcardCacheLifecycle() {
+        Topic<String> exact = root.append("/device/001");
+        Topic<String> star = root.append("/device/*");
+        Topic<String> doubleStar = root.append("/device/**");
+        exact.subscribe("exact");
+        star.subscribe("star");
+        doubleStar.subscribe("double-star");
+
+        Assert.assertEquals(Set.of("/device/001", "/device/*", "/device/**"),
+                            matchedPaths(root, "/device/001"));
+
+        star.unsubscribe("star");
+        doubleStar.unsubscribe("double-star");
+        root.cleanup();
+
+        Assert.assertEquals(Set.of("/device/001"), matchedPaths(root, "/device/001"));
+        Assert.assertTrue(root.getTopic("/device/*").isEmpty());
+        Assert.assertTrue(root.getTopic("/device/**").isEmpty());
+
+        root.append("/device/*").subscribe("star-recreated");
+        root.append("/device/**").subscribe("double-star-recreated");
+        Assert.assertEquals(Set.of("/device/001", "/device/*", "/device/**"),
+                            matchedPaths(root, "/device/001"));
+
+        root.clean();
+        Assert.assertEquals(0, root.getTotalTopic());
+        root.append("/device/**").subscribe("double-star-after-clean");
+        Assert.assertEquals(Set.of("/device/**"), matchedPaths(root, "/device/001"));
+    }
+
+    @Test
+    public void testExactSearchDoesNotEmitSameNodeTwice() {
+        root.append("/device/001/message/property/report").subscribe("exact");
+        root.append("/device/*/message/property/report").subscribe("star");
+        root.append("/device/**").subscribe("double-star");
+
+        List<Topic<String>> matched = collectMatched(root, "/device/001/message/property/report");
+        Assert.assertEquals(new HashSet<>(matched).size(), matched.size());
     }
 
     @Test

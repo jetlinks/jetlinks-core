@@ -47,6 +47,7 @@ public final class Topic<T> implements SeparatedCharSequence {
 
     private volatile ConcurrentMap<String, Topic<T>> child;
 
+    // 通配符子节点是查找热路径索引，必须在节点加入 child 后发布，并在 cleanup/clean 时同步失效。
     private volatile Topic<T> starChild;
 
     private volatile Topic<T> doubleStarChild;
@@ -61,14 +62,14 @@ public final class Topic<T> implements SeparatedCharSequence {
         if (topic == null || topic.equals("/") || topic.isEmpty()) {
             return this;
         }
-        return getOrDefault(topic, Topic::new);
+        return getOrDefault(topic, Topic::new, true);
     }
 
     public Topic<T> append(String[] topic) {
         if (topic == null || topic.length == 0) {
             return this;
         }
-        return getOrDefault(topic, Topic::new);
+        return getOrDefault(topic, Topic::new, true);
     }
 
     private Topic(Topic<T> parent, String part) {
@@ -85,7 +86,6 @@ public final class Topic<T> implements SeparatedCharSequence {
         this.parent = parent;
         if (null != parent) {
             this.depth = parent.depth + 1;
-            parent.tryCacheWildcardChild(this);
         } else {
             this.depth = 0;
         }
@@ -103,11 +103,11 @@ public final class Topic<T> implements SeparatedCharSequence {
         return child;
     }
 
-    public Topic<T> getStarChild() {
+    Topic<T> getStarChild() {
         return starChild;
     }
 
-    public Topic<T> getDoubleStarChild() {
+    Topic<T> getDoubleStarChild() {
         return doubleStarChild;
     }
 
@@ -255,10 +255,19 @@ public final class Topic<T> implements SeparatedCharSequence {
     private void tryCacheWildcardChild(Topic<T> child) {
         String part = child.part;
         if (part.length() == 1 && part.charAt(0) == '*') {
-            starChild = child;
+            if (isCurrentChild(part, child)) {
+                starChild = child;
+            }
         } else if (part.length() == 2 && part.charAt(0) == '*' && part.charAt(1) == '*') {
-            doubleStarChild = child;
+            if (isCurrentChild(part, child)) {
+                doubleStarChild = child;
+            }
         }
+    }
+
+    private boolean isCurrentChild(String part, Topic<T> child) {
+        ConcurrentMap<String, Topic<T>> children = this.child;
+        return children != null && children.get(part) == child;
     }
 
     private void removeCachedWildcardChild(Topic<T> child) {
@@ -276,41 +285,58 @@ public final class Topic<T> implements SeparatedCharSequence {
         if (parts.length > 1) {
             Topic<T> part = new Topic<>(this, parts[1]);
             this.child().put(part.part, part);
+            tryCacheWildcardChild(part);
         }
     }
 
-    private Topic<T> getOrDefault(String[] parts, BiFunction<Topic<T>, String, Topic<T>> mapping) {
+    private Topic<T> getOrDefault(String[] parts,
+                                  BiFunction<Topic<T>, String, Topic<T>> mapping,
+                                  boolean updateWildcardCache) {
         int index = 0;
         if (parts[0].isEmpty()) {
             index = 1;
         }
         Topic<T> part = child().computeIfAbsent(parts[index], _topic -> mapping.apply(this, _topic));
+        if (updateWildcardCache && part != null) {
+            tryCacheWildcardChild(part);
+        }
         for (int i = index + 1; i < parts.length && part != null; i++) {
             Topic<T> parent = part;
             part = part.child().computeIfAbsent(parts[i], _topic -> mapping.apply(parent, _topic));
+            if (updateWildcardCache && part != null) {
+                parent.tryCacheWildcardChild(part);
+            }
         }
         return part;
     }
 
-    private Topic<T> getOrDefault(String topic, BiFunction<Topic<T>, String, Topic<T>> mapping) {
+    private Topic<T> getOrDefault(String topic,
+                                  BiFunction<Topic<T>, String, Topic<T>> mapping,
+                                  boolean updateWildcardCache) {
         if (topic.charAt(0) == '/') {
             topic = topic.substring(1);
         }
         String[] parts = TopicUtils.split(topic, true, true);
         Topic<T> part = child().computeIfAbsent(parts[0], _topic -> mapping.apply(this, _topic));
+        if (updateWildcardCache && part != null) {
+            tryCacheWildcardChild(part);
+        }
         for (int i = 1; i < parts.length && part != null; i++) {
             Topic<T> parent = part;
             part = part.child().computeIfAbsent(parts[i], _topic -> mapping.apply(parent, _topic));
+            if (updateWildcardCache && part != null) {
+                parent.tryCacheWildcardChild(part);
+            }
         }
         return part;
     }
 
     public Optional<Topic<T>> getTopic(String topic) {
-        return Optional.ofNullable(getOrDefault(topic, ((topicPart, s) -> null)));
+        return Optional.ofNullable(getOrDefault(topic, ((topicPart, s) -> null), false));
     }
 
     public Optional<Topic<T>> getTopic(String[] topic) {
-        return Optional.ofNullable(getOrDefault(topic, ((topicPart, s) -> null)));
+        return Optional.ofNullable(getOrDefault(topic, ((topicPart, s) -> null), false));
     }
 
     public Flux<Topic<T>> findTopic(String topic) {

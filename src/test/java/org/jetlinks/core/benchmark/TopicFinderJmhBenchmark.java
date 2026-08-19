@@ -10,99 +10,144 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
-import org.openjdk.jmh.infra.Blackhole;
+import reactor.function.Consumer4;
+import reactor.function.Consumer5;
 
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 针对 TopicFinder 的精确查找与 wildcard 查找微基准.
+ * TopicFinder 精确、miss 与搜索侧 wildcard 路径的微基准。
+ *
+ * 基准使用确定性样本游标，避免把随机数生成成本计入查找；EXACT_ONLY 与 MIXED
+ * 分别隔离纯精确树和包含订阅侧 * / ** 的真实混合树。
  */
-@BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.SECONDS)
-@State(Scope.Benchmark)
-@Warmup(iterations = 1, time = 3)
-@Measurement(iterations = 2, time = 5)
-@Fork(value = 0, jvmArgs = {"-Xms2g", "-Xmx2g", "-XX:+UseG1GC"})
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@Warmup(iterations = 3, time = 1)
+@Measurement(iterations = 5, time = 1)
+@Fork(value = 3, jvmArgs = {"-Xms2g", "-Xmx2g", "-XX:+UseG1GC"})
 public class TopicFinderJmhBenchmark {
 
     private static final int TENANT_COUNT = 256;
     private static final int PRODUCT_COUNT = 128;
+    private static final int SAMPLE_COUNT = 1024;
+    private static final int SAMPLE_MASK = SAMPLE_COUNT - 1;
     private static final String EXACT_SUFFIX = "/message/property/report";
-    private static final String WILDCARD_SUFFIX = "/message/*";
 
-    @State(Scope.Benchmark)
+    private static final Consumer5<TopicFinderState, Object, Object, Object, Topic<Integer>> MATCH_SINK =
+        (state, ignore1, ignore2, ignore3, topic) -> state.matches += topic.getSubscribers().size();
+
+    private static final Consumer4<TopicFinderState, Object, Object, Object> END_SINK =
+        (state, ignore1, ignore2, ignore3) -> {
+        };
+
+    @State(Scope.Thread)
     public static class TopicFinderState {
-        Topic<Integer> root = Topic.createRoot();
-        String[] exactTopicSamples = new String[1024];
-        SeparatedCharSequence[] exactSeqSamples = new SeparatedCharSequence[1024];
-        String[] wildcardTopicSamples = new String[1024];
-        SeparatedCharSequence[] wildcardSeqSamples = new SeparatedCharSequence[1024];
+
+        @Param({"EXACT_ONLY", "MIXED"})
+        String treeType;
+
+        private Topic<Integer> root;
+        private String[] exactTopicSamples;
+        private SeparatedCharSequence[] exactSeqSamples;
+        private String[] missTopicSamples;
+        private SeparatedCharSequence[] missSeqSamples;
+        private String[] wildcardTopicSamples;
+        private SeparatedCharSequence[] wildcardSeqSamples;
+        private int cursor;
+        private int matches;
 
         @Setup(Level.Trial)
         public void init() {
+            root = Topic.createRoot();
+            exactTopicSamples = new String[SAMPLE_COUNT];
+            exactSeqSamples = new SeparatedCharSequence[SAMPLE_COUNT];
+            missTopicSamples = new String[SAMPLE_COUNT];
+            missSeqSamples = new SeparatedCharSequence[SAMPLE_COUNT];
+            wildcardTopicSamples = new String[SAMPLE_COUNT];
+            wildcardSeqSamples = new SeparatedCharSequence[SAMPLE_COUNT];
+
+            boolean mixed = "MIXED".equals(treeType);
             for (int tenant = 0; tenant < TENANT_COUNT; tenant++) {
-                root.append("/tenant/" + tenant + "/device/**").subscribe(tenant);
+                if (mixed) {
+                    root.append("/tenant/" + tenant + "/device/**").subscribe(tenant);
+                }
                 for (int product = 0; product < PRODUCT_COUNT; product++) {
                     root.append("/tenant/" + tenant + "/device/" + product + EXACT_SUFFIX)
                         .subscribe(product);
-                    root.append("/tenant/" + tenant + "/device/*" + EXACT_SUFFIX)
-                        .subscribe(product);
-                    root.append("/tenant/" + tenant + "/device/" + product + WILDCARD_SUFFIX)
-                        .subscribe(product);
+                    if (mixed) {
+                        root.append("/tenant/" + tenant + "/device/*" + EXACT_SUFFIX)
+                            .subscribe(product);
+                        root.append("/tenant/" + tenant + "/device/" + product + "/message/*")
+                            .subscribe(product);
+                    }
                 }
             }
-            ThreadLocalRandom random = ThreadLocalRandom.current();
-            for (int i = 0; i < exactTopicSamples.length; i++) {
-                int tenant = random.nextInt(TENANT_COUNT);
-                int product = random.nextInt(PRODUCT_COUNT);
+
+            for (int i = 0; i < SAMPLE_COUNT; i++) {
+                int tenant = i & (TENANT_COUNT - 1);
+                int product = (i * 31) & (PRODUCT_COUNT - 1);
                 String exact = "/tenant/" + tenant + "/device/" + product + EXACT_SUFFIX;
-                String wildcard = "/tenant/" + tenant + "/device/" + product + "/message/*";
+                String miss = "/tenant/" + tenant + "/device/missing-" + i + EXACT_SUFFIX;
+                String wildcard = "/tenant/" + tenant + "/device/*" + EXACT_SUFFIX;
                 exactTopicSamples[i] = exact;
                 exactSeqSamples[i] = SharedPathString.of(exact);
+                missTopicSamples[i] = miss;
+                missSeqSamples[i] = SharedPathString.of(miss);
                 wildcardTopicSamples[i] = wildcard;
                 wildcardSeqSamples[i] = SharedPathString.of(wildcard);
             }
         }
+
+        private int nextIndex() {
+            return cursor++ & SAMPLE_MASK;
+        }
+
+        private int find(String topic) {
+            matches = 0;
+            root.findTopic(topic, this, null, null, null, MATCH_SINK, END_SINK);
+            return matches;
+        }
+
+        private int find(SeparatedCharSequence topic) {
+            matches = 0;
+            root.findTopic(topic, this, null, null, null, MATCH_SINK, END_SINK);
+            return matches;
+        }
     }
 
     @Benchmark
-    public void exactStringFind(TopicFinderState state, Blackhole blackhole) {
-        String topic = state.exactTopicSamples[ThreadLocalRandom.current().nextInt(state.exactTopicSamples.length)];
-        state.root.findTopic(topic,
-                            node -> blackhole.consume(node.getSubscribers()),
-                            () -> {
-                            });
+    public int exactStringFind(TopicFinderState state) {
+        return state.find(state.exactTopicSamples[state.nextIndex()]);
     }
 
     @Benchmark
-    public void exactSeparatedFind(TopicFinderState state, Blackhole blackhole) {
-        SeparatedCharSequence topic = state.exactSeqSamples[ThreadLocalRandom.current().nextInt(state.exactSeqSamples.length)];
-        state.root.findTopic(topic,
-                            node -> blackhole.consume(node.getSubscribers()),
-                            () -> {
-                            });
+    public int exactSeparatedFind(TopicFinderState state) {
+        return state.find(state.exactSeqSamples[state.nextIndex()]);
     }
 
     @Benchmark
-    public void wildcardStringFind(TopicFinderState state, Blackhole blackhole) {
-        String topic = state.wildcardTopicSamples[ThreadLocalRandom.current().nextInt(state.wildcardTopicSamples.length)];
-        state.root.findTopic(topic,
-                            node -> blackhole.consume(node.getSubscribers()),
-                            () -> {
-                            });
+    public int missStringFind(TopicFinderState state) {
+        return state.find(state.missTopicSamples[state.nextIndex()]);
     }
 
     @Benchmark
-    public void wildcardSeparatedFind(TopicFinderState state, Blackhole blackhole) {
-        SeparatedCharSequence topic = state.wildcardSeqSamples[ThreadLocalRandom.current().nextInt(state.wildcardSeqSamples.length)];
-        state.root.findTopic(topic,
-                            node -> blackhole.consume(node.getSubscribers()),
-                            () -> {
-                            });
+    public int missSeparatedFind(TopicFinderState state) {
+        return state.find(state.missSeqSamples[state.nextIndex()]);
+    }
+
+    @Benchmark
+    public int wildcardStringFind(TopicFinderState state) {
+        return state.find(state.wildcardTopicSamples[state.nextIndex()]);
+    }
+
+    @Benchmark
+    public int wildcardSeparatedFind(TopicFinderState state) {
+        return state.find(state.wildcardSeqSamples[state.nextIndex()]);
     }
 }
