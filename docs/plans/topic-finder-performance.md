@@ -14,6 +14,8 @@ Map 查找。
   - `src/main/java/org/jetlinks/core/topic/TopicFinder.java`
 - 测试与基准：
   - `src/test/java/org/jetlinks/core/topic/TopicFinderTest.java`
+  - `src/test/java/org/jetlinks/core/topic/TopicFinderOverloadTest.java`
+  - `src/test/java/org/jetlinks/core/topic/TopicContractTest.java`
   - `src/test/java/org/jetlinks/core/benchmark/TopicFinderJmhBenchmark.java`
   - `src/test/java/org/jetlinks/core/benchmark/TopicFinderJmhBenchmarkTest.java`
 
@@ -105,13 +107,15 @@ JOL 在相同 JVM 布局下测得：
 
 验证结果：
 
-- 定向测试：`mvn -o -Dtest=TopicFinderTest,TopicTest test`，54 项通过；
+- 定向测试：
+  `mvn -o -Dtest=TopicFinderTest,TopicFinderOverloadTest,TopicTest,TopicContractTest test`，
+  62 项通过；
 - Topic 路由与 Trace 回归：
   `mvn -o -Dtest=TopicRouteTest,TraceHolderTest,DeviceTracerTest test`，12 项通过；
-- 全量测试：`mvn -o test`，653 项，0 failure、0 error、2 skipped；其中耗时 JMH 入口按设计
+- 全量测试：`mvn -o test`，661 项，0 failure、0 error、2 skipped；其中耗时 JMH 入口按设计
   默认跳过；
-- JaCoCo（全量测试后）：`TopicFinder` 行覆盖 177/266（66.5%）、分支覆盖
-  110/188（58.5%）；`Topic` 行覆盖 188/308（61.0%）、分支覆盖 129/218（59.2%）；
+- JaCoCo（全量测试后）：`TopicFinder` 行覆盖 253/266（95.1%）、分支覆盖
+  159/188（84.6%）；`Topic` 行覆盖 292/308（94.8%）、分支覆盖 183/218（83.9%）；
 - `git diff --check` 通过；
 - 集成测试不适用：本次只修改进程内同步 Topic 树查找，不涉及数据库、中间件、集群协议或启动装配。
 
