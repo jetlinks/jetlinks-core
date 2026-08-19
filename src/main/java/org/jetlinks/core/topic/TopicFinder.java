@@ -20,8 +20,60 @@ import java.util.function.Consumer;
  */
 public class TopicFinder {
 
-    private static final Recycler<Set<Topic<?>>> SHARED_SET =
-        Recycler.create(HashSet::new, Collection::clear, 256);
+    private static final byte WILDCARD_NONE = 0;
+    private static final byte WILDCARD_SINGLE = 1;
+    private static final byte WILDCARD_DOUBLE = 2;
+
+    private static final int MAX_RETAINED_EMITTED = 4096;
+
+    private static final Recycler<ReusableTopicSet> SHARED_SET =
+        Recycler.create(ReusableTopicSet::new, ReusableTopicSet::reset, 256);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer5<Consumer, Runnable, Object, Object, Topic> SIMPLE_SINK =
+        (sink, end, nil2, nil3, topic) -> sink.accept(topic);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer4<Consumer, Runnable, Object, Object> SIMPLE_END =
+        (sink, end, nil2, nil3) -> end.run();
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer5<Object, BiConsumer, Consumer, Object, Topic> ONE_ARG_SINK =
+        (arg, sink, end, nil3, topic) -> sink.accept(arg, topic);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer4<Object, BiConsumer, Consumer, Object> ONE_ARG_END =
+        (arg, sink, end, nil3) -> end.accept(arg);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer5<Object, Object, Consumer3, BiConsumer, Topic> TWO_ARG_SINK =
+        (arg0, arg1, sink, end, topic) -> sink.accept(arg0, arg1, topic);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer4<Object, Object, Consumer3, BiConsumer> TWO_ARG_END =
+        (arg0, arg1, sink, end) -> end.accept(arg0, arg1);
+
+    static final class ReusableTopicSet {
+
+        private Set<Topic<?>> values = newIdentitySet();
+
+        @SuppressWarnings("unchecked")
+        <T> Set<Topic<T>> values() {
+            return (Set<Topic<T>>) (Set<?>) values;
+        }
+
+        void reset() {
+            if (values.size() > MAX_RETAINED_EMITTED) {
+                values = newIdentitySet();
+            } else {
+                values.clear();
+            }
+        }
+
+        private static Set<Topic<?>> newIdentitySet() {
+            return Collections.newSetFromMap(new IdentityHashMap<>());
+        }
+    }
 
     /**
      * 使用 DFS（深度优先）算法搜索匹配 topic 的节点.
@@ -32,6 +84,7 @@ public class TopicFinder {
      * @param end   搜索结束回调
      * @param <T>   订阅者类型
      */
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> void find(Topic<T> root,
                                 String topic,
                                 Consumer<Topic<T>> sink,
@@ -43,11 +96,12 @@ public class TopicFinder {
         }
 
         find(root, splitTopic(topic),
-             null, null, null, null,
-             (a, b, c, d, t) -> sink.accept(t),
-             (a, b, c, d) -> end.run());
+             sink, end, null, null,
+             (Consumer5) SIMPLE_SINK,
+             (Consumer4) SIMPLE_END);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> void find(Topic<T> root,
                                 CharSequence topic,
                                 Consumer<Topic<T>> sink,
@@ -55,7 +109,7 @@ public class TopicFinder {
         if (topic instanceof SeparatedCharSequence) {
             find(root, (SeparatedCharSequence) topic,
                  null, null, null, null,
-                 (a, b, c, d, t) -> sink.accept(t),
+                 (a, b, c, d, found) -> sink.accept(found),
                  (a, b, c, d) -> end.run());
         } else {
             find(root, topic.toString(), sink, end);
@@ -76,16 +130,10 @@ public class TopicFinder {
     }
 
     private static String[] splitTopic(String topic) {
-        String[] topics = TopicUtils.split(topic, false, false);
-        if (topic.charAt(0) != '/') {
-            String[] newTopics = new String[topics.length + 1];
-            newTopics[0] = "";
-            System.arraycopy(topics, 0, newTopics, 1, topics.length);
-            topics = newTopics;
-        }
-        return topics;
+        return TopicUtils.split(topic, false, false);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T, A, B> void find(Topic<T> root,
                                       CharSequence topic,
                                       A arg1,
@@ -93,13 +141,13 @@ public class TopicFinder {
                                       Consumer3<A, B, Topic<T>> sink,
                                       BiConsumer<A, B> end) {
         if (topic instanceof SeparatedCharSequence) {
-            find(root, (SeparatedCharSequence) topic, arg1, arg2, null, null,
-                 (a1, b, nil2, nil3, _topic) -> sink.accept(a1, b, _topic),
-                 (a1, b, nil2, nil3) -> end.accept(a1, b));
+            find(root, (SeparatedCharSequence) topic, arg1, arg2, sink, end,
+                 (Consumer5) TWO_ARG_SINK,
+                 (Consumer4) TWO_ARG_END);
         } else {
-            find(root, topic.toString(), arg1, arg2, null, null,
-                 (a1, b, nil2, nil3, _topic) -> sink.accept(a1, b, _topic),
-                 (a1, b, nil2, nil3) -> end.accept(a1, b));
+            find(root, topic.toString(), arg1, arg2, sink, end,
+                 (Consumer5) TWO_ARG_SINK,
+                 (Consumer4) TWO_ARG_END);
         }
     }
 
@@ -115,20 +163,20 @@ public class TopicFinder {
         }
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T, A> void find(Topic<T> root,
                                    CharSequence topic,
                                    A arg1,
                                    BiConsumer<A, Topic<T>> sink,
                                    Consumer<A> end) {
         if (topic instanceof SeparatedCharSequence) {
-            find(root, (SeparatedCharSequence) topic, arg1, null, null, null,
-                 (a1, nil1, nil2, nil3, _topic) -> sink.accept(a1, _topic),
-                 (a1, nil1, nil2, nil3) -> end.accept(a1));
+            find(root, (SeparatedCharSequence) topic, arg1, sink, end, null,
+                 (Consumer5) ONE_ARG_SINK,
+                 (Consumer4) ONE_ARG_END);
         } else {
-            find(root, TopicUtils.split(topic.toString(), false, false),
-                 arg1, null, null, null,
-                 (a1, nil1, nil2, nil3, _topic) -> sink.accept(a1, _topic),
-                 (a1, nil1, nil2, nil3) -> end.accept(a1));
+            find(root, topic.toString(), arg1, sink, end, null,
+                 (Consumer5) ONE_ARG_SINK,
+                 (Consumer4) ONE_ARG_END);
         }
     }
 
@@ -137,17 +185,25 @@ public class TopicFinder {
                                                         ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
-        if (searchHasDoubleWildcard(topic)) {
-            Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
+        int first = firstTopicIndex(topic);
+        byte wildcardMode = detectWildcardMode(topic);
+        // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
+        if (wildcardMode == WILDCARD_NONE) {
+            findExactInner(topic, first, root, arg0, arg1, arg2, arg3, sink);
+            end.accept(arg0, arg1, arg2, arg3);
+            return;
+        }
+        if (wildcardMode == WILDCARD_DOUBLE) {
+            Recyclable<ReusableTopicSet> recyclableSet = SHARED_SET.take(true);
             try {
-                findDFSInner(topic, 1, root, recyclableSet.get(),
+                findDFSInner(topic, first, root, recyclableSet.get().values(),
                              arg0, arg1, arg2, arg3, sink);
             } finally {
                 recyclableSet.recycle();
                 end.accept(arg0, arg1, arg2, arg3);
             }
         } else {
-            findDFSInner(topic, 1, root, null,
+            findDFSInner(topic, first, root, null,
                          arg0, arg1, arg2, arg3, sink);
             end.accept(arg0, arg1, arg2, arg3);
         }
@@ -159,35 +215,190 @@ public class TopicFinder {
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
 
-        if (searchHasDoubleWildcard(topicParts)) {
-            Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
+        int first = firstTopicIndex(topicParts);
+        byte wildcardMode = detectWildcardMode(topicParts);
+        // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
+        if (wildcardMode == WILDCARD_NONE) {
+            findExactInner(topicParts, first, root, arg0, arg1, arg2, arg3, sink);
+            end.accept(arg0, arg1, arg2, arg3);
+            return;
+        }
+        if (wildcardMode == WILDCARD_DOUBLE) {
+            Recyclable<ReusableTopicSet> recyclableSet = SHARED_SET.take(true);
             try {
-                findDFSInner(topicParts, 1, root, recyclableSet.get(),
+                findDFSInner(topicParts, first, root, recyclableSet.get().values(),
                              arg0, arg1, arg2, arg3, sink);
             } finally {
                 recyclableSet.recycle();
                 end.accept(arg0, arg1, arg2, arg3);
             }
         } else {
-            findDFSInner(topicParts, 1, root, null,
+            findDFSInner(topicParts, first, root, null,
                          arg0, arg1, arg2, arg3, sink);
             end.accept(arg0, arg1, arg2, arg3);
         }
     }
 
-    private static boolean searchHasDoubleWildcard(String[] parts) {
-        for (String p : parts) {
-            if ("**".equals(p)) return true;
-        }
-        return false;
+    private static int firstTopicIndex(String[] parts) {
+        return parts.length > 0 && parts[0].isEmpty() ? 1 : 0;
     }
 
-    private static boolean searchHasDoubleWildcard(SeparatedCharSequence parts) {
+    private static int firstTopicIndex(SeparatedCharSequence parts) {
+        if (parts.size() == 0) {
+            return 0;
+        }
+        CharSequence first = parts.get(0);
+        return first == null || first.length() == 0 ? 1 : 0;
+    }
+
+    private static byte detectWildcardMode(String[] parts) {
+        byte mode = WILDCARD_NONE;
+        for (String p : parts) {
+            if ("*".equals(p)) {
+                mode = WILDCARD_SINGLE;
+            } else if ("**".equals(p)) {
+                return WILDCARD_DOUBLE;
+            }
+        }
+        return mode;
+    }
+
+    private static byte detectWildcardMode(SeparatedCharSequence parts) {
+        byte mode = WILDCARD_NONE;
         for (int i = 0, n = parts.size(); i < n; i++) {
             CharSequence c = parts.get(i);
-            if (c != null && "**".contentEquals(c)) return true;
+            if (c == null) {
+                continue;
+            }
+            if (c.length() == 1 && c.charAt(0) == '*') {
+                mode = WILDCARD_SINGLE;
+            } else if (c.length() == 2 && c.charAt(0) == '*' && c.charAt(1) == '*') {
+                return WILDCARD_DOUBLE;
+            }
         }
-        return false;
+        return mode;
+    }
+
+    private static String topicPart(CharSequence part) {
+        return part instanceof String ? (String) part : String.valueOf(part);
+    }
+
+    private static <T, ARG0, ARG1, ARG2, ARG3> void findExactInner(
+        final String[] st,
+        final int idx,
+        final Topic<T> node,
+        final ARG0 arg0, final ARG1 arg1, final ARG2 arg2, final ARG3 arg3,
+        final Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink) {
+
+        if (idx >= st.length) {
+            sink.accept(arg0, arg1, arg2, arg3, node);
+            Topic<T> dstar = node.getDoubleStarChild();
+            if (dstar != null) {
+                findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
+            }
+            return;
+        }
+
+        String searchPart = st[idx];
+
+        if ("**".equals(node.getPart())) {
+            findExactInner(st, idx + 1, node, arg0, arg1, arg2, arg3, sink);
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch == null) {
+                return;
+            }
+            Topic<T> exact = ch.get(searchPart);
+            if (exact != null) {
+                findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
+            }
+            Topic<T> star = node.getStarChild();
+            if (star != null) {
+                findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
+            }
+            Topic<T> innerDstar = node.getDoubleStarChild();
+            if (innerDstar != null) {
+                findExactInner(st, idx, innerDstar, arg0, arg1, arg2, arg3, sink);
+            }
+            return;
+        }
+
+        Map<String, Topic<T>> children = node.getChildrenMap();
+        if (children == null) {
+            return;
+        }
+
+        Topic<T> exact = children.get(searchPart);
+        if (exact != null) {
+            findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
+        }
+        Topic<T> star = node.getStarChild();
+        if (star != null) {
+            findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
+        }
+        Topic<T> dstar = node.getDoubleStarChild();
+        if (dstar != null) {
+            findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
+        }
+    }
+
+    private static <T, ARG0, ARG1, ARG2, ARG3> void findExactInner(
+        final SeparatedCharSequence st,
+        final int idx,
+        final Topic<T> node,
+        final ARG0 arg0, final ARG1 arg1, final ARG2 arg2, final ARG3 arg3,
+        final Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink) {
+
+        final int stSize = st.size();
+
+        if (idx >= stSize) {
+            sink.accept(arg0, arg1, arg2, arg3, node);
+            Topic<T> dstar = node.getDoubleStarChild();
+            if (dstar != null) {
+                findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
+            }
+            return;
+        }
+
+        String searchPart = topicPart(st.get(idx));
+
+        if ("**".equals(node.getPart())) {
+            findExactInner(st, idx + 1, node, arg0, arg1, arg2, arg3, sink);
+            Map<String, Topic<T>> ch = node.getChildrenMap();
+            if (ch == null) {
+                return;
+            }
+            Topic<T> exact = ch.get(searchPart);
+            if (exact != null) {
+                findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
+            }
+            Topic<T> star = node.getStarChild();
+            if (star != null) {
+                findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
+            }
+            Topic<T> innerDstar = node.getDoubleStarChild();
+            if (innerDstar != null) {
+                findExactInner(st, idx, innerDstar, arg0, arg1, arg2, arg3, sink);
+            }
+            return;
+        }
+
+        Map<String, Topic<T>> children = node.getChildrenMap();
+        if (children == null) {
+            return;
+        }
+
+        Topic<T> exact = children.get(searchPart);
+        if (exact != null) {
+            findExactInner(st, idx + 1, exact, arg0, arg1, arg2, arg3, sink);
+        }
+        Topic<T> star = node.getStarChild();
+        if (star != null) {
+            findExactInner(st, idx + 1, star, arg0, arg1, arg2, arg3, sink);
+        }
+        Topic<T> dstar = node.getDoubleStarChild();
+        if (dstar != null) {
+            findExactInner(st, idx, dstar, arg0, arg1, arg2, arg3, sink);
+        }
     }
 
     private static <T, ARG0, ARG1, ARG2, ARG3> void findDFSInner(
@@ -202,12 +413,9 @@ public class TopicFinder {
             if (emitted == null || emitted.add(node)) {
                 sink.accept(arg0, arg1, arg2, arg3, node);
             }
-            Map<String, Topic<T>> ch = node.getChildrenMap();
-            if (ch != null) {
-                Topic<T> dstar = ch.get("**");
-                if (dstar != null) {
-                    findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
-                }
+            Topic<T> dstar = node.getDoubleStarChild();
+            if (dstar != null) {
+                findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
             }
             return;
         }
@@ -229,9 +437,9 @@ public class TopicFinder {
             } else {
                 Topic<T> exact = ch.get(searchPart);
                 if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
-                Topic<T> star = ch.get("*");
+                Topic<T> star = node.getStarChild();
                 if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
-                Topic<T> innerDstar = ch.get("**");
+                Topic<T> innerDstar = node.getDoubleStarChild();
                 if (innerDstar != null) findDFSInner(st, idx, innerDstar, emitted, arg0, arg1, arg2, arg3, sink);
             }
             return;
@@ -259,9 +467,9 @@ public class TopicFinder {
         } else {
             Topic<T> exact = children.get(searchPart);
             if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
-            Topic<T> star = children.get("*");
+            Topic<T> star = node.getStarChild();
             if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
-            Topic<T> dstar = children.get("**");
+            Topic<T> dstar = node.getDoubleStarChild();
             if (dstar != null) findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
         }
     }
@@ -280,12 +488,9 @@ public class TopicFinder {
             if (emitted == null || emitted.add(node)) {
                 sink.accept(arg0, arg1, arg2, arg3, node);
             }
-            Map<String, Topic<T>> ch = node.getChildrenMap();
-            if (ch != null) {
-                Topic<T> dstar = ch.get("**");
-                if (dstar != null) {
-                    findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
-                }
+            Topic<T> dstar = node.getDoubleStarChild();
+            if (dstar != null) {
+                findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
             }
             return;
         }
@@ -307,9 +512,9 @@ public class TopicFinder {
             } else {
                 Topic<T> exact = ch.get(searchPart);
                 if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
-                Topic<T> star = ch.get("*");
+                Topic<T> star = node.getStarChild();
                 if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
-                Topic<T> innerDstar = ch.get("**");
+                Topic<T> innerDstar = node.getDoubleStarChild();
                 if (innerDstar != null) findDFSInner(st, idx, innerDstar, emitted, arg0, arg1, arg2, arg3, sink);
             }
             return;
@@ -337,9 +542,9 @@ public class TopicFinder {
         } else {
             Topic<T> exact = children.get(searchPart);
             if (exact != null) findDFSInner(st, idx + 1, exact, emitted, arg0, arg1, arg2, arg3, sink);
-            Topic<T> star = children.get("*");
+            Topic<T> star = node.getStarChild();
             if (star != null) findDFSInner(st, idx + 1, star, emitted, arg0, arg1, arg2, arg3, sink);
-            Topic<T> dstar = children.get("**");
+            Topic<T> dstar = node.getDoubleStarChild();
             if (dstar != null) findDFSInner(st, idx, dstar, emitted, arg0, arg1, arg2, arg3, sink);
         }
     }
