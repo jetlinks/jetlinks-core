@@ -33,25 +33,22 @@ public final class Topic<T> implements SeparatedCharSequence {
     static final Recycler<Deque<Topic<?>>> SHARED_QUEUE =
         Recycler.create(ArrayDeque::new, Collection::clear, 256);
 
-    private int $hash;
+    private static final ConcurrentMap<?, Integer> DETACHED = new ConcurrentHashMap<>(0);
 
     @Getter
     private final Topic<T> parent;
 
     private String part;
 
-    @Setter(AccessLevel.PRIVATE)
-    private volatile SharedPathString topics;
-
     private final int depth;
 
     private volatile ConcurrentMap<String, Topic<T>> child;
 
-    // 通配符子节点是查找热路径索引，必须在节点加入 child 后发布，并在 cleanup/clean 时同步失效。
     private volatile Topic<T> starChild;
 
     private volatile Topic<T> doubleStarChild;
 
+    // DETACHED 复用订阅字段标记已移除节点，避免为每个 Topic 增加生命周期字段。
     private volatile ConcurrentMap<T, Integer> subscribers;
 
     public static <T> Topic<T> createRoot() {
@@ -62,14 +59,19 @@ public final class Topic<T> implements SeparatedCharSequence {
         if (topic == null || topic.equals("/") || topic.isEmpty()) {
             return this;
         }
-        return getOrDefault(topic, Topic::new, true);
+        return append(TopicUtils.split(topic, true, true));
     }
 
     public Topic<T> append(String[] topic) {
         if (topic == null || topic.length == 0) {
             return this;
         }
-        return getOrDefault(topic, Topic::new, true);
+        int index = topic[0].isEmpty() ? 1 : 0;
+        Topic<T> part = this;
+        for (int i = index; i < topic.length; i++) {
+            part = part.appendChild(topic[i]);
+        }
+        return part;
     }
 
     private Topic(Topic<T> parent, String part) {
@@ -111,42 +113,54 @@ public final class Topic<T> implements SeparatedCharSequence {
         return doubleStarChild;
     }
 
-    private String[] getTopicsUnsafe() {
-        return topic().unsafeSeparated();
+    @SuppressWarnings("unchecked")
+    private static <T> ConcurrentMap<T, Integer> detachedMarker() {
+        return (ConcurrentMap<T, Integer>) DETACHED;
     }
 
     public String getTopic() {
         return SharedPathString.of(asStringArray()).toString();
     }
 
-    private SharedPathString topic() {
-        if (topics == null) {
-            topics = SharedPathString.of(asStringArray()).intern();
-        }
-        return topics;
-    }
-
     @Deprecated
     public T getSubscriberOrSubscribe(Supplier<T> supplier) {
-        if (!subscribers().isEmpty()) {
-            return subscribers().keySet().iterator().next();
-        }
-        synchronized (this) {
-            if (!subscribers().isEmpty()) {
-                return subscribers().keySet().iterator().next();
+        Topic<T> current = this;
+        for (; ; ) {
+            ConcurrentMap<T, Integer> subscribers = current.subscribers;
+            if (!current.hasDetachedAncestor() && subscribers != null && !subscribers.isEmpty()) {
+                return subscribers.keySet().iterator().next();
             }
-            T sub = supplier.get();
-            subscribe(sub);
-            return sub;
+            synchronized (current) {
+                if (!current.hasDetachedAncestor()) {
+                    subscribers = current.subscribers;
+                    if (subscribers != null && !subscribers.isEmpty()) {
+                        return subscribers.keySet().iterator().next();
+                    }
+                    T sub = supplier.get();
+                    current.subscribersLocked().put(sub, 1);
+                    return sub;
+                }
+            }
+            current = current.resolveCurrent();
         }
     }
 
     public Set<T> getSubscribers() {
-        return subscribers == null ? Collections.emptySet() : subscribers().keySet();
+        Topic<T> current = hasDetachedAncestor() ? findCurrent() : this;
+        if (current == null) {
+            return Collections.emptySet();
+        }
+        ConcurrentMap<T, Integer> subscribers = current.subscribers;
+        return subscribers == null ? Collections.emptySet() : subscribers.keySet();
     }
 
     public boolean subscribed(T subscriber) {
-        return subscribers != null && subscribers().containsKey(subscriber);
+        Topic<T> current = hasDetachedAncestor() ? findCurrent() : this;
+        if (current == null) {
+            return false;
+        }
+        ConcurrentMap<T, Integer> subscribers = current.subscribers;
+        return subscribers != null && subscribers.containsKey(subscriber);
     }
 
     @SafeVarargs
@@ -158,16 +172,37 @@ public final class Topic<T> implements SeparatedCharSequence {
 
 
     public void subscribe0(T subscriber) {
-        this.subscribers()
-            .compute(subscriber, (ignore, i) -> i == null ? 1 : i + 1);
+        Topic<T> current = this;
+        for (; ; ) {
+            synchronized (current) {
+                if (!current.hasDetachedAncestor()) {
+                    current
+                        .subscribersLocked()
+                        .compute(subscriber, (ignore, i) -> i == null ? 1 : i + 1);
+                    return;
+                }
+            }
+            current = current.resolveCurrent();
+        }
     }
 
     public void subscribe0(T subscriber, boolean replace) {
-        if (replace) {
-            this.subscribers().put(subscriber, 1);
-            return;
+        Topic<T> current = this;
+        for (; ; ) {
+            synchronized (current) {
+                if (!current.hasDetachedAncestor()) {
+                    if (replace) {
+                        current.subscribersLocked().put(subscriber, 1);
+                        return;
+                    }
+                    current
+                        .subscribersLocked()
+                        .compute(subscriber, (ignore, i) -> i == null ? 1 : i + 1);
+                    return;
+                }
+            }
+            current = current.resolveCurrent();
         }
-        subscribe0(subscriber);
     }
 
     @SafeVarargs
@@ -182,15 +217,41 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     public boolean unsubscribe0(T subscriber, boolean all) {
-        if (all) {
-            return this.subscribers().remove(subscriber) != null;
+        Topic<T> current = this;
+        while (current != null) {
+            synchronized (current) {
+                if (!current.hasDetachedAncestor()) {
+                    if (all) {
+                        ConcurrentMap<T, Integer> subscribers = current.subscribers;
+                        return subscribers != null && subscribers.remove(subscriber) != null;
+                    }
+                    return current.unsubscribeLocked(subscriber);
+                }
+            }
+            current = current.findCurrent();
         }
-        return unsubscribe0(subscriber);
+        return !all;
     }
 
     public boolean unsubscribe0(T subscriber) {
-        return this
-            .subscribers()
+        Topic<T> current = this;
+        while (current != null) {
+            synchronized (current) {
+                if (!current.hasDetachedAncestor()) {
+                    return current.unsubscribeLocked(subscriber);
+                }
+            }
+            current = current.findCurrent();
+        }
+        return true;
+    }
+
+    private boolean unsubscribeLocked(T subscriber) {
+        ConcurrentMap<T, Integer> subscribers = this.subscribers;
+        if (subscribers == null) {
+            return true;
+        }
+        return subscribers
             .compute(
                 subscriber,
                 (k, v) -> {
@@ -203,24 +264,36 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     public void unsubscribe(Predicate<T> predicate) {
-        ConcurrentMap<T, Integer> subscribers = this.subscribers;
+        Topic<T> current = hasDetachedAncestor() ? findCurrent() : this;
+        if (current == null) {
+            return;
+        }
+        ConcurrentMap<T, Integer> subscribers = current.subscribers;
         if (subscribers == null) {
             return;
         }
 
         for (T t : subscribers.keySet()) {
             if (predicate.test(t)) {
-                unsubscribe0(t);
+                current.unsubscribe0(t);
             }
         }
 
     }
 
     public void unsubscribeAll() {
-        if (subscribers == null) {
-            return;
+        Topic<T> current = this;
+        while (current != null) {
+            synchronized (current) {
+                if (!current.hasDetachedAncestor()) {
+                    if (current.subscribers != null) {
+                        current.subscribers.clear();
+                    }
+                    return;
+                }
+            }
+            current = current.findCurrent();
         }
-        subscribers.clear();
     }
 
     public Collection<Topic<T>> getChildren() {
@@ -230,52 +303,86 @@ public final class Topic<T> implements SeparatedCharSequence {
         return child.values();
     }
 
-    private Map<String, Topic<T>> child() {
-        if (child == null) {
-            synchronized (this) {
-                if (child == null) {
-                    child = new ConcurrentHashMap<>(1);
-                }
-            }
+    private ConcurrentMap<String, Topic<T>> childLocked() {
+        ConcurrentMap<String, Topic<T>> children = child;
+        if (children == null) {
+            child = children = new ConcurrentHashMap<>(1);
         }
-        return child;
+        return children;
     }
 
-    private ConcurrentMap<T, Integer> subscribers() {
+    private ConcurrentMap<T, Integer> subscribersLocked() {
+        ConcurrentMap<T, Integer> subscribers = this.subscribers;
         if (subscribers == null) {
-            synchronized (this) {
-                if (subscribers == null) {
-                    subscribers = new ConcurrentHashMap<>(1);
-                }
-            }
+            this.subscribers = subscribers = new ConcurrentHashMap<>(1);
         }
         return subscribers;
     }
 
-    private void tryCacheWildcardChild(Topic<T> child) {
+    private Topic<T> appendChild(String part) {
+        Topic<T> current = this;
+        for (; ; ) {
+            synchronized (current) {
+                if (!current.hasDetachedAncestor()) {
+                    Topic<T> parent = current;
+                    Topic<T> child = current
+                        .childLocked()
+                        .computeIfAbsent(part, key -> new Topic<>(parent, key));
+                    current.updateWildcardChild(child, false);
+                    return child;
+                }
+            }
+            current = current.resolveCurrent();
+        }
+    }
+
+    private boolean hasDetachedAncestor() {
+        Topic<T> current = this;
+        while (current != null) {
+            if (current.subscribers == DETACHED) {
+                return true;
+            }
+            current = current.parent;
+        }
+        return false;
+    }
+
+    private Topic<T> resolveCurrent() {
+        Topic<T> root = this;
+        while (root.parent != null) {
+            root = root.parent;
+        }
+        return root.append(asStringArray());
+    }
+
+    private Topic<T> findCurrent() {
+        Topic<T> root = this;
+        while (root.parent != null) {
+            root = root.parent;
+        }
+        return root.getTopic(asStringArray()).orElse(null);
+    }
+
+    private void updateWildcardChild(Topic<T> child, boolean remove) {
         String part = child.part;
-        if (part.length() == 1 && part.charAt(0) == '*') {
-            if (isCurrentChild(part, child)) {
+        boolean star = part.length() == 1 && part.charAt(0) == '*';
+        boolean doubleStar = part.length() == 2 && part.charAt(0) == '*' && part.charAt(1) == '*';
+        if (star) {
+            if (remove) {
+                if (starChild == child) {
+                    starChild = null;
+                }
+            } else {
                 starChild = child;
             }
-        } else if (part.length() == 2 && part.charAt(0) == '*' && part.charAt(1) == '*') {
-            if (isCurrentChild(part, child)) {
+        } else if (doubleStar) {
+            if (remove) {
+                if (doubleStarChild == child) {
+                    doubleStarChild = null;
+                }
+            } else {
                 doubleStarChild = child;
             }
-        }
-    }
-
-    private boolean isCurrentChild(String part, Topic<T> child) {
-        ConcurrentMap<String, Topic<T>> children = this.child;
-        return children != null && children.get(part) == child;
-    }
-
-    private void removeCachedWildcardChild(Topic<T> child) {
-        if (starChild == child) {
-            starChild = null;
-        }
-        if (doubleStarChild == child) {
-            doubleStarChild = null;
         }
     }
 
@@ -284,59 +391,32 @@ public final class Topic<T> implements SeparatedCharSequence {
         setPart(parts[0]);
         if (parts.length > 1) {
             Topic<T> part = new Topic<>(this, parts[1]);
-            this.child().put(part.part, part);
-            tryCacheWildcardChild(part);
+            this.childLocked().put(part.part, part);
+            updateWildcardChild(part, false);
         }
-    }
-
-    private Topic<T> getOrDefault(String[] parts,
-                                  BiFunction<Topic<T>, String, Topic<T>> mapping,
-                                  boolean updateWildcardCache) {
-        int index = 0;
-        if (parts[0].isEmpty()) {
-            index = 1;
-        }
-        Topic<T> part = child().computeIfAbsent(parts[index], _topic -> mapping.apply(this, _topic));
-        if (updateWildcardCache && part != null) {
-            tryCacheWildcardChild(part);
-        }
-        for (int i = index + 1; i < parts.length && part != null; i++) {
-            Topic<T> parent = part;
-            part = part.child().computeIfAbsent(parts[i], _topic -> mapping.apply(parent, _topic));
-            if (updateWildcardCache && part != null) {
-                parent.tryCacheWildcardChild(part);
-            }
-        }
-        return part;
-    }
-
-    private Topic<T> getOrDefault(String topic,
-                                  BiFunction<Topic<T>, String, Topic<T>> mapping,
-                                  boolean updateWildcardCache) {
-        if (topic.charAt(0) == '/') {
-            topic = topic.substring(1);
-        }
-        String[] parts = TopicUtils.split(topic, true, true);
-        Topic<T> part = child().computeIfAbsent(parts[0], _topic -> mapping.apply(this, _topic));
-        if (updateWildcardCache && part != null) {
-            tryCacheWildcardChild(part);
-        }
-        for (int i = 1; i < parts.length && part != null; i++) {
-            Topic<T> parent = part;
-            part = part.child().computeIfAbsent(parts[i], _topic -> mapping.apply(parent, _topic));
-            if (updateWildcardCache && part != null) {
-                parent.tryCacheWildcardChild(part);
-            }
-        }
-        return part;
     }
 
     public Optional<Topic<T>> getTopic(String topic) {
-        return Optional.ofNullable(getOrDefault(topic, ((topicPart, s) -> null), false));
+        return getTopic(TopicUtils.split(topic, true, true));
     }
 
     public Optional<Topic<T>> getTopic(String[] topic) {
-        return Optional.ofNullable(getOrDefault(topic, ((topicPart, s) -> null), false));
+        if (topic == null || topic.length == 0) {
+            return Optional.of(this);
+        }
+        int index = topic[0].isEmpty() ? 1 : 0;
+        Topic<T> current = this;
+        for (int i = index; i < topic.length; i++) {
+            ConcurrentMap<String, Topic<T>> children = current.child;
+            if (children == null) {
+                return Optional.empty();
+            }
+            current = children.get(topic[i]);
+            if (current == null) {
+                return Optional.empty();
+            }
+        }
+        return Optional.of(current);
     }
 
     public Flux<Topic<T>> findTopic(String topic) {
@@ -529,41 +609,57 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     public boolean cleanup(BiConsumer<Boolean, Topic<T>> handler) {
-        //清理订阅者
-        if (subscribers != null && subscribers.isEmpty()) {
-            synchronized (this) {
-                if (subscribers.isEmpty()) {
-                    subscribers = null;
-                }
-            }
-        }
-        //清理子节点
-        if (child != null) {
-            for (Map.Entry<String, Topic<T>> children : child.entrySet()) {
-                Topic<T> topic = children.getValue();
+        ConcurrentMap<String, Topic<T>> children = child;
+        if (children != null) {
+            for (Map.Entry<String, Topic<T>> entry : children.entrySet()) {
+                Topic<T> topic = entry.getValue();
                 boolean cleaned = topic.cleanup(handler);
                 if (cleaned) {
-                    if (child.remove(children.getKey(), topic)) {
-                        removeCachedWildcardChild(topic);
-                    }
+                    cleaned = removeChildIfEmpty(entry.getKey(), topic);
                 }
                 if (handler != null) {
                     handler.accept(cleaned, topic);
                 }
             }
+        }
 
-            if (child != null && child.isEmpty()) {
-                synchronized (this) {
-                    if (child.isEmpty()) {
-                        child = null;
-                        starChild = null;
-                        doubleStarChild = null;
-                    }
+        synchronized (this) {
+            ConcurrentMap<T, Integer> subscribers = this.subscribers;
+            if (subscribers != null && subscribers != DETACHED && subscribers.isEmpty()) {
+                this.subscribers = null;
+            }
+            children = child;
+            if (children != null && children.isEmpty()) {
+                child = null;
+                starChild = null;
+                doubleStarChild = null;
+            }
+            return (this.subscribers == null || this.subscribers == DETACHED) && child == null;
+        }
+    }
+
+    private boolean removeChildIfEmpty(String key, Topic<T> topic) {
+        synchronized (this) {
+            ConcurrentMap<String, Topic<T>> children = child;
+            if (children == null || children.get(key) != topic) {
+                return false;
+            }
+            synchronized (topic) {
+                if (!CollectionUtils.isEmpty(topic.subscribers) ||
+                    !CollectionUtils.isEmpty(topic.child)) {
+                    return false;
+                }
+                if (children.remove(key, topic)) {
+                    topic.subscribers = detachedMarker();
+                    topic.child = null;
+                    topic.starChild = null;
+                    topic.doubleStarChild = null;
+                    updateWildcardChild(topic, true);
+                    return true;
                 }
             }
         }
-        return CollectionUtils.isEmpty(subscribers) &&
-            CollectionUtils.isEmpty(child);
+        return false;
     }
 
     public boolean cleanup() {
@@ -571,12 +667,42 @@ public final class Topic<T> implements SeparatedCharSequence {
     }
 
     public void clean() {
-        unsubscribeAll();
-        if (child != null) {
-            child.values().forEach(Topic::clean);
-            child().clear();
+        Collection<Topic<T>> detached = detachChildren(false);
+        for (Topic<T> topic : detached) {
+            topic.cleanDetached();
+        }
+    }
+
+    private void cleanDetached() {
+        Collection<Topic<T>> detached = detachChildren(true);
+        for (Topic<T> topic : detached) {
+            topic.cleanDetached();
+        }
+    }
+
+    private Collection<Topic<T>> detachChildren(boolean detached) {
+        synchronized (this) {
+            boolean detachSelf = detached || hasDetachedAncestor();
+            ConcurrentMap<String, Topic<T>> children = child;
+            Collection<Topic<T>> snapshot;
+            if (children == null || children.isEmpty()) {
+                snapshot = Collections.emptyList();
+            } else {
+                snapshot = new ArrayList<>(children.values());
+                // 先发布直属子节点的 detached 状态，再断开 child Map，订阅可据此重建到当前树。
+                for (Topic<T> topic : snapshot) {
+                    synchronized (topic) {
+                        topic.subscribers = detachedMarker();
+                        topic.starChild = null;
+                        topic.doubleStarChild = null;
+                    }
+                }
+            }
+            subscribers = detachSelf ? detachedMarker() : null;
+            child = null;
             starChild = null;
             doubleStarChild = null;
+            return snapshot;
         }
     }
 
@@ -610,23 +736,18 @@ public final class Topic<T> implements SeparatedCharSequence {
     @Override
     public Topic<T> internInner() {
         this.part = RecyclerUtils.intern(this.part);
-        SharedPathString topics = this.topics;
-        if (topics != null) {
-            topics.internInner();
-        }
         return this;
     }
 
     @Override
     public int hashCode() {
-        if ($hash == 0) {
-            Topic<T> t = this;
-            while (t != null) {
-                $hash = 31 * $hash + t.part.hashCode();
-                t = t.parent;
-            }
+        int hash = 0;
+        Topic<T> topic = this;
+        while (topic != null) {
+            hash = 31 * hash + topic.part.hashCode();
+            topic = topic.parent;
         }
-        return $hash;
+        return hash;
     }
 
     @Override

@@ -297,6 +297,25 @@ public class TopicFinderTest {
     }
 
     @Test
+    public void testLargeDeduplicationSetDoesNotRemainRetained() {
+        TopicFinder.ReusableTopicSet reusable = new TopicFinder.ReusableTopicSet();
+        Set<Topic<String>> large = reusable.values();
+        for (int i = 0; i < 5_000; i++) {
+            large.add(Topic.createRoot());
+        }
+
+        reusable.reset();
+        Set<Topic<String>> compact = reusable.values();
+        Assert.assertNotSame(large, compact);
+        Assert.assertTrue(compact.isEmpty());
+
+        compact.add(root);
+        reusable.reset();
+        Assert.assertSame(compact, reusable.<String>values());
+        Assert.assertTrue(compact.isEmpty());
+    }
+
+    @Test
     public void testMixedStarAndDoubleStarInTree() {
         root.append("a").append("*").append("c").subscribe("s1");
         root.append("a").append("**").subscribe("s2");

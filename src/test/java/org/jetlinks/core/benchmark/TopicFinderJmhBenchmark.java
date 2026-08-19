@@ -19,6 +19,7 @@ import reactor.function.Consumer4;
 import reactor.function.Consumer5;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * TopicFinder 精确、miss 与搜索侧 wildcard 路径的微基准。
@@ -47,7 +48,7 @@ public class TopicFinderJmhBenchmark {
         };
 
     @State(Scope.Thread)
-    public static class TopicFinderState {
+    public static class TopicFinderState implements Consumer<Topic<Integer>>, Runnable {
 
         @Param({"EXACT_ONLY", "MIXED"})
         String treeType;
@@ -119,6 +120,21 @@ public class TopicFinderJmhBenchmark {
             root.findTopic(topic, this, null, null, null, MATCH_SINK, END_SINK);
             return matches;
         }
+
+        private int findUsingAdapter(CharSequence topic) {
+            matches = 0;
+            root.findTopic(topic, this, this);
+            return matches;
+        }
+
+        @Override
+        public void accept(Topic<Integer> topic) {
+            matches += topic.getSubscribers().size();
+        }
+
+        @Override
+        public void run() {
+        }
     }
 
     @Benchmark
@@ -129,6 +145,16 @@ public class TopicFinderJmhBenchmark {
     @Benchmark
     public int exactSeparatedFind(TopicFinderState state) {
         return state.find(state.exactSeqSamples[state.nextIndex()]);
+    }
+
+    @Benchmark
+    public int exactStringAdapterFind(TopicFinderState state) {
+        return state.findUsingAdapter(state.exactTopicSamples[state.nextIndex()]);
+    }
+
+    @Benchmark
+    public int exactSeparatedAdapterFind(TopicFinderState state) {
+        return state.findUsingAdapter(state.exactSeqSamples[state.nextIndex()]);
     }
 
     @Benchmark

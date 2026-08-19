@@ -29,16 +29,34 @@ public class TopicFinderOverloadTest {
 
     @Test
     public void testCharSequenceOverloads() {
-        SeparatedCharSequence separated =
-            SharedPathString.of("/device/001/message/property/report");
-        CharSequence plain = new StringBuilder("/device/001/message/property/report");
+        for (String path : List.of("/device/001/message/property/report",
+                                   "device/001/message/property/report")) {
+            SeparatedCharSequence separated = SharedPathString.of(path);
+            CharSequence plain = new StringBuilder(path);
 
-        assertTwoArgumentOverload(separated);
-        assertTwoArgumentOverload(plain);
-        assertOneArgumentOverload(separated);
-        assertOneArgumentOverload(plain);
-        assertFourArgumentOverload(separated);
-        assertFourArgumentOverload(plain);
+            assertZeroArgumentOverload(separated);
+            assertZeroArgumentOverload(plain);
+            assertTwoArgumentOverload(separated);
+            assertTwoArgumentOverload(plain);
+            assertOneArgumentOverload(separated);
+            assertOneArgumentOverload(plain);
+            assertFourArgumentOverload(separated);
+            assertFourArgumentOverload(plain);
+        }
+    }
+
+    @Test
+    public void testArrayOverloadWithAndWithoutLeadingSeparator() {
+        for (String[] parts : List.of(
+            new String[]{"", "device", "001", "message", "property", "report"},
+            new String[]{"device", "001", "message", "property", "report"})) {
+            List<Topic<String>> matched = new ArrayList<>();
+            TopicFinder.find(root, parts, null, null, null, null,
+                             (a, b, c, d, found) -> matched.add(found),
+                             (a, b, c, d) -> {
+                             });
+            Assert.assertTrue(paths(matched).contains("/device/001/message/property/report"));
+        }
     }
 
     @Test
@@ -154,6 +172,14 @@ public class TopicFinderOverloadTest {
                              matched.add(found);
                          },
                          (a, b) -> ended.incrementAndGet());
+        Assert.assertEquals(1, ended.get());
+        Assert.assertTrue(paths(matched).contains("/device/001/message/property/report"));
+    }
+
+    private void assertZeroArgumentOverload(CharSequence topic) {
+        List<Topic<String>> matched = new ArrayList<>();
+        AtomicInteger ended = new AtomicInteger();
+        TopicFinder.find(root, topic, matched::add, ended::incrementAndGet);
         Assert.assertEquals(1, ended.get());
         Assert.assertTrue(paths(matched).contains("/device/001/message/property/report"));
     }

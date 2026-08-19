@@ -24,8 +24,56 @@ public class TopicFinder {
     private static final byte WILDCARD_SINGLE = 1;
     private static final byte WILDCARD_DOUBLE = 2;
 
-    private static final Recycler<Set<Topic<?>>> SHARED_SET =
-        Recycler.create(HashSet::new, Collection::clear, 256);
+    private static final int MAX_RETAINED_EMITTED = 4096;
+
+    private static final Recycler<ReusableTopicSet> SHARED_SET =
+        Recycler.create(ReusableTopicSet::new, ReusableTopicSet::reset, 256);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer5<Consumer, Runnable, Object, Object, Topic> SIMPLE_SINK =
+        (sink, end, nil2, nil3, topic) -> sink.accept(topic);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer4<Consumer, Runnable, Object, Object> SIMPLE_END =
+        (sink, end, nil2, nil3) -> end.run();
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer5<Object, BiConsumer, Consumer, Object, Topic> ONE_ARG_SINK =
+        (arg, sink, end, nil3, topic) -> sink.accept(arg, topic);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer4<Object, BiConsumer, Consumer, Object> ONE_ARG_END =
+        (arg, sink, end, nil3) -> end.accept(arg);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer5<Object, Object, Consumer3, BiConsumer, Topic> TWO_ARG_SINK =
+        (arg0, arg1, sink, end, topic) -> sink.accept(arg0, arg1, topic);
+
+    @SuppressWarnings("rawtypes")
+    private static final Consumer4<Object, Object, Consumer3, BiConsumer> TWO_ARG_END =
+        (arg0, arg1, sink, end) -> end.accept(arg0, arg1);
+
+    static final class ReusableTopicSet {
+
+        private Set<Topic<?>> values = newIdentitySet();
+
+        @SuppressWarnings("unchecked")
+        <T> Set<Topic<T>> values() {
+            return (Set<Topic<T>>) (Set<?>) values;
+        }
+
+        void reset() {
+            if (values.size() > MAX_RETAINED_EMITTED) {
+                values = newIdentitySet();
+            } else {
+                values.clear();
+            }
+        }
+
+        private static Set<Topic<?>> newIdentitySet() {
+            return Collections.newSetFromMap(new IdentityHashMap<>());
+        }
+    }
 
     /**
      * 使用 DFS（深度优先）算法搜索匹配 topic 的节点.
@@ -36,6 +84,7 @@ public class TopicFinder {
      * @param end   搜索结束回调
      * @param <T>   订阅者类型
      */
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> void find(Topic<T> root,
                                 String topic,
                                 Consumer<Topic<T>> sink,
@@ -47,11 +96,12 @@ public class TopicFinder {
         }
 
         find(root, splitTopic(topic),
-             null, null, null, null,
-             (a, b, c, d, t) -> sink.accept(t),
-             (a, b, c, d) -> end.run());
+             sink, end, null, null,
+             (Consumer5) SIMPLE_SINK,
+             (Consumer4) SIMPLE_END);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> void find(Topic<T> root,
                                 CharSequence topic,
                                 Consumer<Topic<T>> sink,
@@ -59,7 +109,7 @@ public class TopicFinder {
         if (topic instanceof SeparatedCharSequence) {
             find(root, (SeparatedCharSequence) topic,
                  null, null, null, null,
-                 (a, b, c, d, t) -> sink.accept(t),
+                 (a, b, c, d, found) -> sink.accept(found),
                  (a, b, c, d) -> end.run());
         } else {
             find(root, topic.toString(), sink, end);
@@ -80,16 +130,10 @@ public class TopicFinder {
     }
 
     private static String[] splitTopic(String topic) {
-        String[] topics = TopicUtils.split(topic, false, false);
-        if (topic.charAt(0) != '/') {
-            String[] newTopics = new String[topics.length + 1];
-            newTopics[0] = "";
-            System.arraycopy(topics, 0, newTopics, 1, topics.length);
-            topics = newTopics;
-        }
-        return topics;
+        return TopicUtils.split(topic, false, false);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T, A, B> void find(Topic<T> root,
                                       CharSequence topic,
                                       A arg1,
@@ -97,13 +141,13 @@ public class TopicFinder {
                                       Consumer3<A, B, Topic<T>> sink,
                                       BiConsumer<A, B> end) {
         if (topic instanceof SeparatedCharSequence) {
-            find(root, (SeparatedCharSequence) topic, arg1, arg2, null, null,
-                 (a1, b, nil2, nil3, _topic) -> sink.accept(a1, b, _topic),
-                 (a1, b, nil2, nil3) -> end.accept(a1, b));
+            find(root, (SeparatedCharSequence) topic, arg1, arg2, sink, end,
+                 (Consumer5) TWO_ARG_SINK,
+                 (Consumer4) TWO_ARG_END);
         } else {
-            find(root, topic.toString(), arg1, arg2, null, null,
-                 (a1, b, nil2, nil3, _topic) -> sink.accept(a1, b, _topic),
-                 (a1, b, nil2, nil3) -> end.accept(a1, b));
+            find(root, topic.toString(), arg1, arg2, sink, end,
+                 (Consumer5) TWO_ARG_SINK,
+                 (Consumer4) TWO_ARG_END);
         }
     }
 
@@ -119,20 +163,20 @@ public class TopicFinder {
         }
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T, A> void find(Topic<T> root,
                                    CharSequence topic,
                                    A arg1,
                                    BiConsumer<A, Topic<T>> sink,
                                    Consumer<A> end) {
         if (topic instanceof SeparatedCharSequence) {
-            find(root, (SeparatedCharSequence) topic, arg1, null, null, null,
-                 (a1, nil1, nil2, nil3, _topic) -> sink.accept(a1, _topic),
-                 (a1, nil1, nil2, nil3) -> end.accept(a1));
+            find(root, (SeparatedCharSequence) topic, arg1, sink, end, null,
+                 (Consumer5) ONE_ARG_SINK,
+                 (Consumer4) ONE_ARG_END);
         } else {
-            find(root, TopicUtils.split(topic.toString(), false, false),
-                 arg1, null, null, null,
-                 (a1, nil1, nil2, nil3, _topic) -> sink.accept(a1, _topic),
-                 (a1, nil1, nil2, nil3) -> end.accept(a1));
+            find(root, topic.toString(), arg1, sink, end, null,
+                 (Consumer5) ONE_ARG_SINK,
+                 (Consumer4) ONE_ARG_END);
         }
     }
 
@@ -141,24 +185,25 @@ public class TopicFinder {
                                                         ARG0 arg0, ARG1 arg1, ARG2 arg2, ARG3 arg3,
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
+        int first = firstTopicIndex(topic);
         byte wildcardMode = detectWildcardMode(topic);
         // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
         if (wildcardMode == WILDCARD_NONE) {
-            findExactInner(topic, 1, root, arg0, arg1, arg2, arg3, sink);
+            findExactInner(topic, first, root, arg0, arg1, arg2, arg3, sink);
             end.accept(arg0, arg1, arg2, arg3);
             return;
         }
         if (wildcardMode == WILDCARD_DOUBLE) {
-            Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
+            Recyclable<ReusableTopicSet> recyclableSet = SHARED_SET.take(true);
             try {
-                findDFSInner(topic, 1, root, recyclableSet.get(),
+                findDFSInner(topic, first, root, recyclableSet.get().values(),
                              arg0, arg1, arg2, arg3, sink);
             } finally {
                 recyclableSet.recycle();
                 end.accept(arg0, arg1, arg2, arg3);
             }
         } else {
-            findDFSInner(topic, 1, root, null,
+            findDFSInner(topic, first, root, null,
                          arg0, arg1, arg2, arg3, sink);
             end.accept(arg0, arg1, arg2, arg3);
         }
@@ -170,27 +215,40 @@ public class TopicFinder {
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
 
+        int first = firstTopicIndex(topicParts);
         byte wildcardMode = detectWildcardMode(topicParts);
         // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
         if (wildcardMode == WILDCARD_NONE) {
-            findExactInner(topicParts, 1, root, arg0, arg1, arg2, arg3, sink);
+            findExactInner(topicParts, first, root, arg0, arg1, arg2, arg3, sink);
             end.accept(arg0, arg1, arg2, arg3);
             return;
         }
         if (wildcardMode == WILDCARD_DOUBLE) {
-            Recyclable<Set<Topic<T>>> recyclableSet = (Recyclable) SHARED_SET.take(true);
+            Recyclable<ReusableTopicSet> recyclableSet = SHARED_SET.take(true);
             try {
-                findDFSInner(topicParts, 1, root, recyclableSet.get(),
+                findDFSInner(topicParts, first, root, recyclableSet.get().values(),
                              arg0, arg1, arg2, arg3, sink);
             } finally {
                 recyclableSet.recycle();
                 end.accept(arg0, arg1, arg2, arg3);
             }
         } else {
-            findDFSInner(topicParts, 1, root, null,
+            findDFSInner(topicParts, first, root, null,
                          arg0, arg1, arg2, arg3, sink);
             end.accept(arg0, arg1, arg2, arg3);
         }
+    }
+
+    private static int firstTopicIndex(String[] parts) {
+        return parts.length > 0 && parts[0].isEmpty() ? 1 : 0;
+    }
+
+    private static int firstTopicIndex(SeparatedCharSequence parts) {
+        if (parts.size() == 0) {
+            return 0;
+        }
+        CharSequence first = parts.get(0);
+        return first == null || first.length() == 0 ? 1 : 0;
     }
 
     private static byte detectWildcardMode(String[] parts) {

@@ -150,6 +150,19 @@ public class TopicContractTest {
         Assert.assertTrue(root.getChildren().isEmpty());
     }
 
+    @Test
+    public void testLookupMissDoesNotCreateChildrenMap() {
+        Topic<String> root = Topic.createRoot();
+        Assert.assertNull(root.getChildrenMap());
+        Assert.assertTrue(root.getTopic("/missing/device").isEmpty());
+        Assert.assertNull(root.getChildrenMap());
+
+        Topic<String> device = root.append("/device");
+        Assert.assertNull(device.getChildrenMap());
+        Assert.assertTrue(root.getTopic("/device/missing").isEmpty());
+        Assert.assertNull(device.getChildrenMap());
+    }
+
     private static void assertThrows(Class<? extends Throwable> type, Runnable action) {
         try {
             action.run();
