@@ -92,6 +92,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Setter
     private ThingRpcSupportChain rpcChain;
 
+    @Setter
+    private DeviceModuleThingProvider moduleThingProvider;
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
@@ -198,6 +200,22 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public String getDeviceId() {
         return id;
+    }
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    @Override
+    public Mono<org.jetlinks.core.things.Thing> getModuleThing(String moduleCode) {
+        DeviceModuleThingProvider provider = moduleThingProvider;
+        if (provider == null) {
+            return DeviceOperator.super.getModuleThing(moduleCode);
+        }
+        return provider
+            .getModuleThing(this, moduleCode)
+            .switchIfEmpty(DeviceOperator.super.getModuleThing(moduleCode));
     }
 
     @Override

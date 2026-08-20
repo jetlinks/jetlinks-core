@@ -39,6 +39,21 @@ public interface DeviceOperator extends Thing {
     String getDeviceId();
 
     /**
+     * 获取设备下指定模块对应的物操作对象.
+     * <p>
+     * 模块是设备内部的逻辑单元,不代表独立子设备。默认实现返回不支持,由具备模块能力的设备运行时覆盖。
+     *
+     * @param moduleCode 模块编码
+     * @return 模块物操作对象
+     * @see org.jetlinks.core.message.module.ThingModuleMessage
+     * @see org.jetlinks.core.message.module.DeviceModuleMessage
+     * @since 2.3.0
+     */
+    default Mono<Thing> getModuleThing(String moduleCode) {
+        return Mono.error(new UnsupportedOperationException("unsupported device module"));
+    }
+
+    /**
      * @return 当前设备连接所在服务器ID，如果设备未上线 {@link DeviceState#online}，则返回<code>null</code>
      */
     Mono<String> getConnectionServerId();
