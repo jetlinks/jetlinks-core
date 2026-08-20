@@ -119,7 +119,11 @@ public class TraceHolder {
         enabledSpanName
             .findTopic(name,
                        enabled,
-                       (e, topic) -> e.set(true),
+                       (e, topic) -> {
+                           if (!topic.getSubscribers().isEmpty()) {
+                               e.set(true);
+                           }
+                       },
                        (e) -> {
                        });
         if (enabled.get() == null) {
@@ -127,7 +131,11 @@ public class TraceHolder {
             disabledSpanName
                 .findTopic(name,
                            enabled,
-                           (e, topic) -> e.set(false),
+                           (e, topic) -> {
+                               if (!topic.getSubscribers().isEmpty()) {
+                                   e.set(false);
+                               }
+                           },
                            (e) -> {
                            });
         }
