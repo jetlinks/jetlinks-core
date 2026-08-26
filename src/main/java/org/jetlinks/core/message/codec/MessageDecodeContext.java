@@ -46,6 +46,7 @@ public interface MessageDecodeContext extends MessageCodecContext {
      *          .then(Mono.empty())
      *
      * }
+     * </pre>
      * @param message 设备消息
      * @see Mono#onErrorResume(Function)
      * @see Mono#doOnError(Consumer)
