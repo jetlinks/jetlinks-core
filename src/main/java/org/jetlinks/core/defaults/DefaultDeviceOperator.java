@@ -34,6 +34,7 @@ import org.jetlinks.core.things.ThingRpcSupportChain;
 import org.jetlinks.core.utils.IdUtils;
 import org.jetlinks.core.utils.Reactors;
 import org.springframework.util.StringUtils;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.*;
@@ -92,6 +93,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Setter
     private ThingRpcSupportChain rpcChain;
 
+    @Setter
+    private DeviceModuleThingProvider moduleThingProvider;
 
     public DefaultDeviceOperator(String id,
                                  ProtocolSupports supports,
@@ -198,6 +201,33 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     @Override
     public String getDeviceId() {
         return id;
+    }
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    @Override
+    public Flux<DeviceModule> getModuleThings(String code) {
+        DeviceModuleThingProvider provider = moduleThingProvider;
+        if (provider == null) {
+            return DeviceOperator.super.getModuleThings(code);
+        }
+        return provider
+            .getModuleThings(this, code)
+            .switchIfEmpty(DeviceOperator.super.getModuleThings(code));
+    }
+
+    @Override
+    public Mono<DeviceModule> getModuleThing(String code, String instanceCode) {
+        DeviceModuleThingProvider provider = moduleThingProvider;
+        if (provider == null) {
+            return DeviceOperator.super.getModuleThing(code, instanceCode);
+        }
+        return provider
+            .getModuleThing(this, code, instanceCode)
+            .switchIfEmpty(DeviceOperator.super.getModuleThing(code, instanceCode));
     }
 
     @Override

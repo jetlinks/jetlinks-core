@@ -8,6 +8,7 @@ public class DefaultThingModuleMessage extends CommonThingMessage<DefaultThingMo
     implements ThingModuleMessage {
 
     private String module;
+    private String moduleInstance;
     private Message message;
 
     @Override
@@ -23,6 +24,17 @@ public class DefaultThingModuleMessage extends CommonThingMessage<DefaultThingMo
     @Override
     public DefaultThingModuleMessage module(String module) {
         this.module = module;
+        return this;
+    }
+
+    @Override
+    public String getModuleInstance() {
+        return moduleInstance;
+    }
+
+    @Override
+    public DefaultThingModuleMessage moduleInstance(String instanceCode) {
+        this.moduleInstance = instanceCode;
         return this;
     }
 

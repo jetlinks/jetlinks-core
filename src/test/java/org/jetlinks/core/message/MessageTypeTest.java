@@ -5,6 +5,8 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.SneakyThrows;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.property.ReadPropertyMessage;
+import org.jetlinks.core.message.module.DeviceModuleMessage;
+import org.jetlinks.core.message.module.ThingModuleMessage;
 import org.jetlinks.core.message.property.ReportPropertyMessage;
 import org.junit.Test;
 
@@ -113,6 +115,35 @@ public class MessageTypeTest {
         System.out.println(msg);
         assertEquals(msg.getDeviceId(), child.getDeviceId());
         assertEquals(msg.getChildDeviceMessage().toJson(), child.getChildDeviceMessage().toJson());
+    }
+
+
+    @Test
+    @SneakyThrows
+    public void testModuleMessageExternalizableKeepsModuleInstance() {
+        DeviceModuleMessage source = new DeviceModuleMessage();
+        source.deviceId("device-1");
+        source.messageId("module-msg");
+        source.module("network");
+        source.moduleInstance("eth0");
+        source.message(new ReportPropertyMessage()
+                           .deviceId("device-1")
+                           .messageId("inner-msg")
+                           .success(Collections.singletonMap("ip", "127.0.0.1")));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ObjectOutputStream output = new ObjectOutputStream(out);
+        MessageType.writeExternal(source, output);
+        output.close();
+
+        ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(out.toByteArray()));
+        ThingModuleMessage message = (ThingModuleMessage) MessageType.readExternal(input);
+        assertEquals("device-1", message.getThingId());
+        assertEquals("network", message.getModule());
+        assertEquals("eth0", message.getModuleInstance());
+        assertEquals("eth0", message.getModuleInstanceOrDefault());
+        assertTrue(message.getMessage() instanceof ReportPropertyMessage);
+        assertEquals("inner-msg", message.getMessage().getMessageId());
     }
 
     @Test

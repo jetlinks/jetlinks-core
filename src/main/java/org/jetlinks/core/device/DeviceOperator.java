@@ -14,10 +14,12 @@ import org.jetlinks.core.principal.Principal;
 import org.jetlinks.core.server.session.DeviceSession;
 import org.jetlinks.core.things.Thing;
 import org.jetlinks.core.things.ThingType;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +39,36 @@ public interface DeviceOperator extends Thing {
      * @return 设备ID
      */
     String getDeviceId();
+
+    /**
+     * 获取设备下指定模块定义对应的模块实例物操作对象.
+     * <p>
+     * 模块是设备内部的逻辑单元,不代表独立子设备。一个模块定义可在同一设备下存在多个实例,
+     * 因此按模块编码查询返回 {@link Flux}. 默认实现返回不支持,由具备模块能力的设备运行时覆盖。
+     *
+     * @param code 模块定义编码,对应物模型 {@code modules[id]}
+     * @return 模块实例物操作对象
+     * @see org.jetlinks.core.message.module.ThingModuleMessage
+     * @see org.jetlinks.core.message.module.DeviceModuleMessage
+     * @since 2.3.0
+     */
+    default Flux<DeviceModule> getModuleThings(String code) {
+        return Flux.error(new UnsupportedOperationException("unsupported device module"));
+    }
+
+    /**
+     * 获取设备下指定模块实例物操作对象.
+     *
+     * @param code         模块定义编码,对应物模型 {@code modules[id]}
+     * @param instanceCode 模块实例编码
+     * @return 模块实例物操作对象
+     * @since 2.3.0
+     */
+    default Mono<DeviceModule> getModuleThing(String code, String instanceCode) {
+        return getModuleThings(code)
+            .filter(module -> Objects.equals(module.getInstanceCode(), instanceCode))
+            .singleOrEmpty();
+    }
 
     /**
      * @return 当前设备连接所在服务器ID，如果设备未上线 {@link DeviceState#online}，则返回<code>null</code>

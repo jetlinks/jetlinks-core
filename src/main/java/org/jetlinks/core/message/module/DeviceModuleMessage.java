@@ -20,6 +20,7 @@ public class DeviceModuleMessage extends CommonDeviceMessage<DeviceModuleMessage
 
 
     private String module;
+    private String moduleInstance;
     private Message message;
 
     @Override
@@ -35,6 +36,17 @@ public class DeviceModuleMessage extends CommonDeviceMessage<DeviceModuleMessage
     @Override
     public DeviceModuleMessage module(String module) {
         this.module = module;
+        return this;
+    }
+
+    @Override
+    public String getModuleInstance() {
+        return moduleInstance;
+    }
+
+    @Override
+    public DeviceModuleMessage moduleInstance(String instanceCode) {
+        this.moduleInstance = instanceCode;
         return this;
     }
 
