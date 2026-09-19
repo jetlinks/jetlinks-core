@@ -4,6 +4,7 @@ import org.jetlinks.core.config.ConfigKey;
 import reactor.core.publisher.Sinks;
 
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Queue;
 
@@ -49,6 +50,46 @@ public interface FileQueue<T> extends Queue<T> {
      * @return 被删除的元素
      */
     T removeLast();
+
+    /**
+     * FIFO: poll at most {@code size} items into {@code container}. Returns how many were added.
+     * Caller owns/reuses {@code container}. {@code size <= 0} → 0.
+     */
+    default int poll(int size, Collection<? super T> container) {
+        if (size <= 0) {
+            return 0;
+        }
+        int n = 0;
+        while (n < size) {
+            T t = poll();
+            if (t == null) {
+                break;
+            }
+            container.add(t);
+            n++;
+        }
+        return n;
+    }
+
+    /**
+     * LIFO equivalent using {@link #removeLast()}.
+     * Caller owns/reuses {@code container}. {@code size <= 0} → 0.
+     */
+    default int pollLast(int size, Collection<? super T> container) {
+        if (size <= 0) {
+            return 0;
+        }
+        int n = 0;
+        while (n < size) {
+            T t = removeLast();
+            if (t == null) {
+                break;
+            }
+            container.add(t);
+            n++;
+        }
+        return n;
+    }
 
     /**
      * 队列构造器

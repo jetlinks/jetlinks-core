@@ -28,7 +28,7 @@ public class FileQueueProxy<T> implements FileQueue<T> {
 
     @Override
     public T removeLast() {
-        return target.removeFirst();
+        return target.removeLast();
     }
 
     @Override
@@ -112,6 +112,16 @@ public class FileQueueProxy<T> implements FileQueue<T> {
     @Override
     public T poll() {
         return target.poll();
+    }
+
+    @Override
+    public int poll(int size, Collection<? super T> container) {
+        return target.poll(size, container);
+    }
+
+    @Override
+    public int pollLast(int size, Collection<? super T> container) {
+        return target.pollLast(size, container);
     }
 
     @Override
