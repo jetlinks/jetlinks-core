@@ -1,6 +1,8 @@
 package org.jetlinks.core.defaults;
 
 import org.junit.Test;
+import org.reactivestreams.Subscription;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
@@ -36,6 +38,39 @@ public class MonoVersionedMetadataTest {
 
         StepVerifier.create(metadata).expectNext("cached").verifyComplete();
         assertEquals(0, loads.get());
+    }
+
+    @Test
+    public void cachedValueCancellationSkipsOnComplete() {
+        AtomicInteger completions = new AtomicInteger();
+        AtomicReference<String> value = new AtomicReference<>();
+        Mono<String> metadata = MonoVersionedMetadata.create(
+            Mono.just(1L),
+            () -> "cached",
+            (version, cached) -> version == 1L,
+            version -> Mono.just("loaded"),
+            Mono::empty);
+
+        metadata.subscribe(new BaseSubscriber<String>() {
+            @Override
+            protected void hookOnSubscribe(Subscription subscription) {
+                request(1);
+            }
+
+            @Override
+            protected void hookOnNext(String cached) {
+                value.set(cached);
+                cancel();
+            }
+
+            @Override
+            protected void hookOnComplete() {
+                completions.incrementAndGet();
+            }
+        });
+
+        assertEquals("cached", value.get());
+        assertEquals(0, completions.get());
     }
 
     @Test

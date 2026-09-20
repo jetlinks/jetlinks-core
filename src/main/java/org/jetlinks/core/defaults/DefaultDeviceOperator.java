@@ -37,8 +37,6 @@ import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import static org.jetlinks.core.device.DeviceConfigKey.*;
 
@@ -53,12 +51,8 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     static final List<String> productIdAndVersionKey = Arrays.asList(productId.getKey(), productVersion.getKey());
 
-    private static final AtomicReferenceFieldUpdater<DefaultDeviceOperator, DeviceMetadata> METADATA_UPDATER =
-        AtomicReferenceFieldUpdater.newUpdater(DefaultDeviceOperator.class, DeviceMetadata.class, "metadataCache");
-    private static final AtomicLongFieldUpdater<DefaultDeviceOperator> METADATA_TIME_UPDATER =
-        AtomicLongFieldUpdater.newUpdater(DefaultDeviceOperator.class, "lastMetadataTime");
-
     private static final DeviceMetadata NON_METADATA = new SimpleDeviceMetadata();
+    private static final MetadataState EMPTY_METADATA_STATE = new MetadataState(-1, null);
 
     private static final boolean FORCE_CHECK_STATE_PARENT = Boolean
         .getBoolean("jetlinks.device.force-check-state-from-parent");
@@ -82,9 +76,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     private final Mono<DeviceProductOperator> parent;
 
-    private volatile long lastMetadataTime = -1;
-
-    private volatile DeviceMetadata metadataCache;
+    private volatile MetadataState metadataState = EMPTY_METADATA_STATE;
 
     @Setter
     private DevicePrincipalManager principalManager;
@@ -156,20 +148,18 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
             new MonoVersionedMetadata.Loader<Long, DeviceMetadata>() {
                 @Override
                 public Long convertVersion(Object value) {
-                    return Objects.requireNonNull(
-                        ((Value) value).as(Long.class),
-                        "The mapper returned a null value"
-                    );
+                    return ((Value) value).as(Long.class);
                 }
 
                 @Override
                 public DeviceMetadata getCached() {
-                    return metadataCache;
+                    return metadataState.metadata;
                 }
 
                 @Override
                 public boolean isValid(Long time, DeviceMetadata cached) {
-                    return time.equals(lastMetadataTime);
+                    MetadataState state = metadataState;
+                    return cached == state.metadata && time.equals(state.time);
                 }
 
                 @Override
@@ -188,8 +178,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 .getMetadataCodec()
                 .decode(tp2.getT1())
                 .doOnNext(metadata -> {
-                    METADATA_UPDATER.set(this, metadata);
-                    METADATA_TIME_UPDATER.set(this, metadataTime);
+                    metadataState = new MetadataState(metadataTime, metadata);
                 }));
     }
 
@@ -549,8 +538,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<Void> resetMetadata() {
-        METADATA_UPDATER.set(this, null);
-        METADATA_TIME_UPDATER.set(this, -1);
+        metadataState = EMPTY_METADATA_STATE;
         return removeConfigs(metadata, lastMetadataTimeKey)
             .then(this.getProtocol()
                       .flatMap(support -> support.onDeviceMetadataChanged(this))
@@ -579,8 +567,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
             return StorageConfigurable.super
                 .setConfigs(configs)
                 .doOnNext(suc -> {
-                    METADATA_UPDATER.set(this, null);
-                    METADATA_TIME_UPDATER.set(this, metadataTime);
+                    metadataState = new MetadataState(metadataTime, null);
                 })
                 .then(this.getProtocol()
                           .flatMap(support -> support.onDeviceMetadataChanged(this))
@@ -656,5 +643,15 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
             .filter(DeviceMessage.class::isInstance)
             .map(DeviceMessage.class::cast)
             .orElseThrow(() -> new UnsupportedOperationException("unsupported message type " + message.getMessageType()));
+    }
+
+    private static final class MetadataState {
+        private final long time;
+        private final DeviceMetadata metadata;
+
+        private MetadataState(long time, DeviceMetadata metadata) {
+            this.time = time;
+            this.metadata = metadata;
+        }
     }
 }

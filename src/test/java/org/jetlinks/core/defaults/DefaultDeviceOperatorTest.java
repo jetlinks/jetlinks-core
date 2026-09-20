@@ -7,10 +7,15 @@ import org.jetlinks.core.message.*;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.interceptor.DeviceMessageSenderInterceptor;
 import org.jetlinks.core.message.property.ReadPropertyMessageReply;
+import org.jetlinks.core.metadata.DeviceMetadata;
+import org.jetlinks.core.metadata.DeviceMetadataCodec;
+import org.jetlinks.core.metadata.SimpleDeviceMetadata;
+import org.jetlinks.core.metadata.SimplePropertyMetadata;
 import org.jetlinks.core.utils.IdUtils;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
@@ -251,5 +256,47 @@ public class DefaultDeviceOperatorTest {
                 .expectNext(true)
                 .verifyComplete();
 
+    }
+
+    @Test
+    public void testMetadataFallsBackWhenMetadataTimeCannotConvert() {
+        TestDeviceRegistry registry = new TestDeviceRegistry(new TestProtocolSupport() {
+            @Override
+            public DeviceMetadataCodec getMetadataCodec() {
+                return new DeviceMetadataCodec() {
+                    @Override
+                    public Mono<DeviceMetadata> decode(String source) {
+                        SimpleDeviceMetadata metadata = new SimpleDeviceMetadata();
+                        metadata.addProperty(SimplePropertyMetadata.of(source, source, null));
+                        return Mono.just(metadata);
+                    }
+
+                    @Override
+                    public Mono<String> encode(DeviceMetadata metadata) {
+                        return Mono.empty();
+                    }
+                };
+            }
+        }, new StandaloneDeviceMessageBroker());
+
+        registry.register(ProductInfo.builder()
+                                     .id("prod")
+                                     .protocol("test")
+                                     .metadata("product")
+                                     .build())
+                .then(registry.register(DeviceInfo.builder()
+                                                  .id("device")
+                                                  .productId("prod")
+                                                  .protocol("test")
+                                                  .metadata("device")
+                                                  .build()))
+                .flatMap(operator -> operator.setConfig("lst_metadata_time", "invalid").thenReturn(operator))
+                .flatMap(DeviceOperator::getMetadata)
+                .as(StepVerifier::create)
+                .assertNext(metadata -> {
+                    org.junit.Assert.assertEquals(1, metadata.getProperties().size());
+                    org.junit.Assert.assertEquals("product", metadata.getProperties().get(0).getId());
+                })
+                .verifyComplete();
     }
 }

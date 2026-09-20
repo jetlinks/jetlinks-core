@@ -259,10 +259,15 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
                     Operators.onDiscard(cached, actual.currentContext());
                     return;
                 }
-                stage = DONE;
                 subscription = null;
             }
             actual.onNext(cached);
+            synchronized (this) {
+                if (cancelled || stage != VERSION) {
+                    return;
+                }
+                stage = DONE;
+            }
             actual.onComplete();
         }
 
