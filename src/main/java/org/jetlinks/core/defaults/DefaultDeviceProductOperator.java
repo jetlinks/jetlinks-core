@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.ProtocolSupports;
+import org.jetlinks.core.Value;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigStorage;
 import org.jetlinks.core.config.ConfigStorageManager;
@@ -32,11 +33,9 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
 
     private final Supplier<Flux<DeviceOperator>> devicesSupplier;
 
-    private long lstMetadataChangeTime;
+    private volatile long lstMetadataChangeTime;
 
     private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time");
-
-    private final Mono<DeviceMetadata> inLocalMetadata;
 
     private final Mono<DeviceMetadata> metadataMono;
 
@@ -63,7 +62,6 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
         this.id = id;
         this.storageMono = storageMono;
         this.devicesSupplier = supplier;
-        this.inLocalMetadata = Mono.fromSupplier(() -> metadata);
         this.protocolSupportMono = this
                 .getConfig(DeviceConfigKey.protocol)
                 .flatMap(supports::getProtocol);
@@ -87,15 +85,35 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
                             this.metadata = decode;
                             this.lstMetadataChangeTime = tp3.getT3();
                         }));
-        this.metadataMono = this
-                .getConfig(lastMetadataTimeKey)
-                .flatMap(time -> {
-                    if (time.equals(lstMetadataChangeTime)) {
-                        return inLocalMetadata;
-                    }
-                    return Mono.empty();
-                })
-                .switchIfEmpty(loadMetadata);
+        this.metadataMono = MonoVersionedMetadata.create(
+            this.getConfig(lastMetadataTimeKey.getKey()),
+            new MonoVersionedMetadata.Loader<Long, DeviceMetadata>() {
+                @Override
+                public Long convertVersion(Object value) {
+                    return ((Value) value).as(Long.class);
+                }
+
+                @Override
+                public DeviceMetadata getCached() {
+                    return metadata;
+                }
+
+                @Override
+                public boolean isValid(Long time, DeviceMetadata cached) {
+                    return time.equals(lstMetadataChangeTime);
+                }
+
+                @Override
+                public Mono<DeviceMetadata> load(Long time) {
+                    return loadMetadata;
+                }
+
+                @Override
+                public Mono<DeviceMetadata> loadEmpty() {
+                    return loadMetadata;
+                }
+            }
+        );
     }
 
     @Override

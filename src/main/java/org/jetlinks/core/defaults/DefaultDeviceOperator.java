@@ -123,14 +123,13 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         this.handler = handler;
         this.messageSender = new DefaultDeviceMessageSender(handler, this, registry, interceptor);
         this.storageMono = storageManager.getStorage("device:" + id);
-        this.parent = getReactiveStorage()
-            .flatMap(store -> store.getConfigs(productIdAndVersionKey))
-            .flatMap(productIdAndVersion -> {
-                //支持指定产品版本
-                String _productId = productIdAndVersion.getString(productId.getKey(), (String) null);
-                String _version = productIdAndVersion.getString(productVersion.getKey(), (String) null);
-                return registry.getProduct(_productId, _version);
-            });
+        this.parent = MonoDeviceProduct.create(
+            getReactiveStorage(),
+            registry,
+            productIdAndVersionKey,
+            productId.getKey(),
+            productVersion.getKey()
+        );
         //支持设备自定义协议
         this.protocolSupportMono = this
             .getSelfConfig(protocol)
@@ -152,27 +151,46 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     }
 
     private Mono<DeviceMetadata> selfMetadata() {
-        return this
-            //获取最后更新物模型的时间
-            .getSelfConfig(lastMetadataTimeKey)
-            .flatMap(i -> {
-                //如果有时间,则表示设备有独立的物模型.
-                //如果时间一致,则直接返回物模型缓存.
-                if (i.equals(lastMetadataTime) && metadataCache != null) {
-                    return Mono.just(metadataCache);
+        return MonoVersionedMetadata.create(
+            getSelfConfig(lastMetadataTimeKey.getKey()),
+            new MonoVersionedMetadata.Loader<Long, DeviceMetadata>() {
+                @Override
+                public Long convertVersion(Object value) {
+                    return Objects.requireNonNull(
+                        ((Value) value).as(Long.class),
+                        "The mapper returned a null value"
+                    );
                 }
-                METADATA_TIME_UPDATER.set(this, i);
-                //加载真实的物模型
-                return Mono
-                    .zip(getSelfConfig(metadata),
-                         protocolSupportMono)
-                    .flatMap(tp2 -> tp2
-                        .getT2()
-                        .getMetadataCodec()
-                        .decode(tp2.getT1())
-                        .doOnNext(metadata -> METADATA_UPDATER.set(this, metadata)));
 
-            });
+                @Override
+                public DeviceMetadata getCached() {
+                    return metadataCache;
+                }
+
+                @Override
+                public boolean isValid(Long time, DeviceMetadata cached) {
+                    return time.equals(lastMetadataTime);
+                }
+
+                @Override
+                public Mono<DeviceMetadata> load(Long time) {
+                    return loadSelfMetadata(time);
+                }
+            }
+        );
+    }
+
+    private Mono<DeviceMetadata> loadSelfMetadata(Long metadataTime) {
+        return Mono
+            .zip(getSelfConfig(metadata), protocolSupportMono)
+            .flatMap(tp2 -> tp2
+                .getT2()
+                .getMetadataCodec()
+                .decode(tp2.getT1())
+                .doOnNext(metadata -> {
+                    METADATA_UPDATER.set(this, metadata);
+                    METADATA_TIME_UPDATER.set(this, metadataTime);
+                }));
     }
 
 
@@ -555,12 +573,14 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     public Mono<Boolean> setConfigs(Map<String, Object> conf) {
         Map<String, Object> configs = new HashMap<>(conf);
         if (conf.containsKey(metadata.getKey())) {
-            configs.put(lastMetadataTimeKey.getKey(), lastMetadataTime = System.currentTimeMillis());
+            long metadataTime = System.currentTimeMillis();
+            configs.put(lastMetadataTimeKey.getKey(), metadataTime);
 
             return StorageConfigurable.super
                 .setConfigs(configs)
                 .doOnNext(suc -> {
-                    this.metadataCache = null;
+                    METADATA_UPDATER.set(this, null);
+                    METADATA_TIME_UPDATER.set(this, metadataTime);
                 })
                 .then(this.getProtocol()
                           .flatMap(support -> support.onDeviceMetadataChanged(this))
