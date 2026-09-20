@@ -138,7 +138,7 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
                                                            String productVersionKey) {
         String productId = values.getString(productIdKey, (String) null);
         String version = values.getString(productVersionKey, (String) null);
-        return registry.getProduct(productId, version);
+        return productId == null ? Mono.empty() : registry.getProduct(productId, version);
     }
 
     @Override
