@@ -80,6 +80,7 @@ public class MonoDeviceProductTest {
         StepVerifier.create(create(Mono.empty(), registry)).verifyComplete();
         StepVerifier.create(create(Mono.just(storage(Mono::empty)), registry)).verifyComplete();
         StepVerifier.create(create(Mono.just(storage(() -> Mono.just(Values.of(Map.of(PRODUCT_VERSION, "v1"))))), registry)).verifyComplete();
+        StepVerifier.create(create(Mono.just(storage(() -> Mono.just(Values.of(Map.of(PRODUCT_ID, "   ", PRODUCT_VERSION, "v1"))))), registry)).verifyComplete();
         StepVerifier.create(create(Mono.just(storage(() -> Mono.just(values("v1")))), registry)).verifyComplete();
         assertEquals(1, productReads.get());
     }

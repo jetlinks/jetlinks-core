@@ -88,6 +88,19 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
             return (V) value;
         }
 
+        default Object currentSnapshot() {
+            return getCached();
+        }
+
+        @SuppressWarnings("unchecked")
+        default T getCached(Object snapshot) {
+            return (T) snapshot;
+        }
+
+        default boolean isValid(V version, Object snapshot) {
+            return isValid(version, getCached(snapshot));
+        }
+
         T getCached();
 
         boolean isValid(V version, T cached);
@@ -112,6 +125,7 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
         private boolean requested;
         private boolean cancelled;
         private boolean versionReceived;
+        private boolean loaderValueReceived;
         private int stage = VERSION;
 
         private MetadataSubscription(CoreSubscriber<? super T> actual,
@@ -150,16 +164,18 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
             }
             V version;
             T cached;
+            Object snapshot;
             try {
                 version = loader.convertVersion(sourceValue);
                 if (version == null) {
                     switchTo(Objects.requireNonNull(loader.loadEmpty(), "The empty loader returned a null Publisher"));
                     return;
                 }
-                cached = loader.getCached();
+                snapshot = loader.currentSnapshot();
+                cached = loader.getCached(snapshot);
                 if (cached != null
-                    && loader.isValid(version, cached)
-                    && cached == loader.getCached()) {
+                    && loader.isValid(version, snapshot)
+                    && snapshot == loader.currentSnapshot()) {
                     completeCached(cached);
                     return;
                 }
@@ -171,10 +187,11 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
 
         private void loaderNext(T metadata) {
             synchronized (this) {
-                if (cancelled || stage != LOADER) {
+                if (cancelled || stage != LOADER || loaderValueReceived) {
                     Operators.onDiscard(metadata, actual.currentContext());
                     return;
                 }
+                loaderValueReceived = true;
             }
             actual.onNext(metadata);
         }
@@ -244,6 +261,7 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
                     return;
                 }
                 stage = LOADER;
+                loaderValueReceived = false;
                 subscription = null;
             }
             try {

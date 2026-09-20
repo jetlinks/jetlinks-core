@@ -152,8 +152,23 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 }
 
                 @Override
+                public Object currentSnapshot() {
+                    return metadataState;
+                }
+
+                @Override
+                public DeviceMetadata getCached(Object snapshot) {
+                    return ((MetadataState) snapshot).metadata;
+                }
+
+                @Override
                 public DeviceMetadata getCached() {
                     return metadataState.metadata;
+                }
+
+                @Override
+                public boolean isValid(Long time, Object snapshot) {
+                    return time.equals(((MetadataState) snapshot).time);
                 }
 
                 @Override

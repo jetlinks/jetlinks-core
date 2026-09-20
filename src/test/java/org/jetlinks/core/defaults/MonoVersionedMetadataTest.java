@@ -74,6 +74,74 @@ public class MonoVersionedMetadataTest {
     }
 
     @Test
+    public void snapshotValidationUsesCapturedState() {
+        AtomicReference<Snapshot> state = new AtomicReference<>(new Snapshot(1L, "old"));
+        CountDownLatch validationStarted = new CountDownLatch(1);
+        CountDownLatch stateUpdated = new CountDownLatch(1);
+        Mono<String> metadata = MonoVersionedMetadata.create(
+            Mono.just(2L),
+            new MonoVersionedMetadata.Loader<Long, String>() {
+                @Override
+                public Object currentSnapshot() {
+                    return state.get();
+                }
+
+                @Override
+                public String getCached(Object snapshot) {
+                    return ((Snapshot) snapshot).value;
+                }
+
+                @Override
+                public String getCached() {
+                    return state.get().value;
+                }
+
+                @Override
+                public boolean isValid(Long version, Object snapshot) {
+                    validationStarted.countDown();
+                    await(stateUpdated);
+                    return version.equals(((Snapshot) snapshot).version);
+                }
+
+                @Override
+                public boolean isValid(Long version, String cached) {
+                    validationStarted.countDown();
+                    await(stateUpdated);
+                    return version.equals(state.get().version);
+                }
+
+                @Override
+                public Mono<String> load(Long version) {
+                    return Mono.just("loaded-" + version);
+                }
+            }
+        );
+
+        StepVerifier.create(metadata.subscribeOn(Schedulers.boundedElastic()))
+                    .then(() -> {
+                        await(validationStarted);
+                        state.set(new Snapshot(2L, "old"));
+                        stateUpdated.countDown();
+                    })
+                    .expectNext("loaded-2")
+                    .verifyComplete();
+    }
+
+    @Test
+    public void loaderDropsAdditionalValues() {
+        Mono<String> metadata = MonoVersionedMetadata.create(
+            Mono.just(2L),
+            () -> null,
+            (version, cached) -> false,
+            version -> Mono.fromDirect(Flux.just("first", "second")),
+            Mono::empty);
+
+        StepVerifier.create(metadata)
+                    .expectNext("first")
+                    .verifyComplete();
+    }
+
+    @Test
     public void versionMismatchUsesAsyncLoaderWithoutPrematureCompletion() {
         Sinks.One<String> loader = Sinks.one();
         AtomicInteger loads = new AtomicInteger();
@@ -363,6 +431,16 @@ public class MonoVersionedMetadataTest {
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw new AssertionError(error);
+        }
+    }
+
+    private static final class Snapshot {
+        private final Long version;
+        private final String value;
+
+        private Snapshot(Long version, String value) {
+            this.version = version;
+            this.value = value;
         }
     }
 }

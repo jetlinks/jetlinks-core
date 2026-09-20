@@ -22,18 +22,17 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public class DefaultDeviceProductOperator implements DeviceProductOperator, StorageConfigurable {
+    private static final MetadataState EMPTY_METADATA_STATE = new MetadataState(-1, null);
 
     @Getter
     private final String id;
 
-    private volatile DeviceMetadata metadata;
+    private volatile MetadataState metadataState = EMPTY_METADATA_STATE;
 
     @Getter(AccessLevel.PROTECTED)
     private final Mono<ConfigStorage> storageMono;
 
     private final Supplier<Flux<DeviceOperator>> devicesSupplier;
-
-    private volatile long lstMetadataChangeTime;
 
     private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time");
 
@@ -82,8 +81,7 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
                         .getT1()
                         .decode(tp3.getT2())
                         .doOnNext(decode -> {
-                            this.metadata = decode;
-                            this.lstMetadataChangeTime = tp3.getT3();
+                            this.metadataState = new MetadataState(tp3.getT3(), decode);
                         }));
         this.metadataMono = MonoVersionedMetadata.create(
             this.getConfig(lastMetadataTimeKey.getKey()),
@@ -94,13 +92,29 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
                 }
 
                 @Override
+                public Object currentSnapshot() {
+                    return metadataState;
+                }
+
+                @Override
+                public DeviceMetadata getCached(Object snapshot) {
+                    return ((MetadataState) snapshot).metadata;
+                }
+
+                @Override
                 public DeviceMetadata getCached() {
-                    return metadata;
+                    return metadataState.metadata;
+                }
+
+                @Override
+                public boolean isValid(Long time, Object snapshot) {
+                    return time.equals(((MetadataState) snapshot).time);
                 }
 
                 @Override
                 public boolean isValid(Long time, DeviceMetadata cached) {
-                    return time.equals(lstMetadataChangeTime);
+                    MetadataState state = metadataState;
+                    return cached == state.metadata && time.equals(state.time);
                 }
 
                 @Override
@@ -140,7 +154,7 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
             return StorageConfigurable.super
                     .setConfigs(conf)
                     .doOnNext(s -> {
-                        metadata = null;
+                        metadataState = new MetadataState((Long) conf.get(lastMetadataTimeKey.getKey()), null);
                     })
                     .then(this.getProtocol()
                               .flatMap(support -> support.onProductMetadataChanged(this))
@@ -170,5 +184,15 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
     @Override
     public Flux<DeviceOperator> getDevices() {
         return devicesSupplier == null ? Flux.empty() : devicesSupplier.get();
+    }
+
+    private static final class MetadataState {
+        private final long time;
+        private final DeviceMetadata metadata;
+
+        private MetadataState(long time, DeviceMetadata metadata) {
+            this.time = time;
+            this.metadata = metadata;
+        }
     }
 }
