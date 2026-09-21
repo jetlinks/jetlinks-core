@@ -107,7 +107,7 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
                 }
 
                 @Override
-                public boolean isValid(Long time, Object snapshot) {
+                public boolean isSnapshotValid(Long time, Object snapshot) {
                     return time.equals(((MetadataState) snapshot).time);
                 }
 

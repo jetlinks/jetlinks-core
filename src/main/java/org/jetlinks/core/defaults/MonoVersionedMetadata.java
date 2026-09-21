@@ -97,7 +97,7 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
             return (T) snapshot;
         }
 
-        default boolean isValid(V version, Object snapshot) {
+        default boolean isSnapshotValid(V version, Object snapshot) {
             return isValid(version, getCached(snapshot));
         }
 
@@ -174,7 +174,7 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
                 snapshot = loader.currentSnapshot();
                 cached = loader.getCached(snapshot);
                 if (cached != null
-                    && loader.isValid(version, snapshot)
+                    && loader.isSnapshotValid(version, snapshot)
                     && snapshot == loader.currentSnapshot()) {
                     completeCached(cached);
                     return;

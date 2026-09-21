@@ -97,7 +97,7 @@ public class MonoVersionedMetadataTest {
                 }
 
                 @Override
-                public boolean isValid(Long version, Object snapshot) {
+                public boolean isSnapshotValid(Long version, Object snapshot) {
                     validationStarted.countDown();
                     await(stateUpdated);
                     return version.equals(((Snapshot) snapshot).version);

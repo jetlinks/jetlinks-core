@@ -167,7 +167,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
                 }
 
                 @Override
-                public boolean isValid(Long time, Object snapshot) {
+                public boolean isSnapshotValid(Long time, Object snapshot) {
                     return time.equals(((MetadataState) snapshot).time);
                 }
 
