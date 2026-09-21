@@ -1,6 +1,7 @@
 package org.jetlinks.core.device;
 
 
+import com.google.common.collect.Sets;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.Value;
 import org.jetlinks.core.Values;
@@ -18,7 +19,8 @@ import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.Set;
 
 /**
  * 设备操作接口,用于发送指令到设备{@link DeviceOperator#messageSender()}以及获取配置等相关信息
@@ -166,7 +168,33 @@ public interface DeviceOperator extends Thing {
      * @see DeviceConfigKey
      */
     default Mono<Values> getSelfConfigs(ConfigKey<?>... keys) {
-        return getSelfConfigs(Arrays.stream(keys).map(ConfigKey::getKey).collect(Collectors.toSet()));
+        if (keys.length == 0) {
+            return getSelfConfigs(Collections.emptySet());
+        }
+        if (keys.length == 1) {
+            return getSelfConfigs(Collections.singleton(keys[0].getKey()));
+        }
+        if (keys.length == 2) {
+            String first = keys[0].getKey();
+            String second = keys[1].getKey();
+            if (first != null && second != null && !first.equals(second)) {
+                return getSelfConfigs(Set.of(first, second));
+            }
+        }
+        if (keys.length == 3) {
+            String first = keys[0].getKey();
+            String second = keys[1].getKey();
+            String third = keys[2].getKey();
+            if (first != null && second != null && third != null
+                && !first.equals(second) && !first.equals(third) && !second.equals(third)) {
+                return getSelfConfigs(Set.of(first, second, third));
+            }
+        }
+        Collection<String> names = Sets.newHashSetWithExpectedSize(keys.length);
+        for (ConfigKey<?> key : keys) {
+            names.add(key.getKey());
+        }
+        return getSelfConfigs(names);
     }
 
     /**

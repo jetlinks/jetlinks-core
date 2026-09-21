@@ -72,6 +72,37 @@ public class MonoConfigReadTest {
     }
 
     @Test
+    public void typedScalarReadConvertsInsideConfigOperator() {
+        ConfigKey<Integer> key = ConfigKey.of("key", "key", Integer.class);
+        AtomicReference<String> current = new AtomicReference<>("1");
+        StorageConfigurable owner = configurable(
+            Mono.just(storage(ignore -> Mono.just(Value.simple(current.get())))),
+            Mono::empty
+        );
+
+        Mono<Integer> query = owner.getConfig(key, false);
+        assertTrue(query instanceof MonoConfigRead);
+        StepVerifier.create(query).expectNext(1).verifyComplete();
+        current.set("2");
+        StepVerifier.create(query).expectNext(2).verifyComplete();
+    }
+
+    @Test
+    public void typedScalarReadConvertsInsideParentOperator() {
+        ConfigKey<Integer> key = ConfigKey.of("key", "key", Integer.class);
+        StorageConfigurable parent = configurable(
+            Mono.just(storage(ignore -> Mono.just(Value.simple("3")))),
+            Mono::empty
+        );
+        StorageConfigurable owner = configurable(
+            Mono.just(storage(ignore -> Mono.empty())),
+            () -> Mono.just(parent)
+        );
+
+        StepVerifier.create(owner.getConfig(key)).expectNext(3).verifyComplete();
+    }
+
+    @Test
     public void emptyStoragePreservesParentFallback() {
         StorageConfigurable parent = configurable(Mono.just(storage(key -> Mono.just(Value.simple("parent")))), Mono::empty);
         StorageConfigurable owner = configurable(Mono.empty(), () -> Mono.just(parent));

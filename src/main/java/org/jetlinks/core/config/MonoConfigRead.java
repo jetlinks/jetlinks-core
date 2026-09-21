@@ -1,5 +1,6 @@
 package org.jetlinks.core.config;
 
+import org.jetlinks.core.Configurable;
 import org.jetlinks.core.Value;
 import reactor.core.CoreSubscriber;
 import reactor.core.Scannable;
@@ -16,20 +17,20 @@ import java.util.concurrent.Callable;
  *
  * @see StorageConfigurable#getConfig(String, boolean)
  */
-final class MonoConfigRead extends Mono<Value> implements Scannable {
+final class MonoConfigRead<T> extends Mono<T> implements Scannable {
 
     private final Mono<ConfigStorage> source;
     private final StorageConfigurable owner;
-    private final String key;
+    private final Object key;
     private final boolean fallbackParent;
 
     private MonoConfigRead(Mono<ConfigStorage> source,
                            StorageConfigurable owner,
-                           String key,
+                           Object key,
                            boolean fallbackParent) {
         this.source = Objects.requireNonNull(source, "source");
         this.owner = owner;
-        this.key = key;
+        this.key = Objects.requireNonNull(key, "key");
         this.fallbackParent = fallbackParent;
     }
 
@@ -37,11 +38,18 @@ final class MonoConfigRead extends Mono<Value> implements Scannable {
                               StorageConfigurable owner,
                               String key,
                               boolean fallbackParent) {
-        return onAssembly(new MonoConfigRead(source, owner, key, fallbackParent));
+        return onAssembly(new MonoConfigRead<Value>(source, owner, key, fallbackParent));
+    }
+
+    static <V> Mono<V> create(Mono<ConfigStorage> source,
+                              StorageConfigurable owner,
+                              ConfigKey<V> key,
+                              boolean fallbackParent) {
+        return onAssembly(new MonoConfigRead<>(source, owner, key, fallbackParent));
     }
 
     @Override
-    public void subscribe(@Nonnull CoreSubscriber<? super Value> actual) {
+    public void subscribe(@Nonnull CoreSubscriber<? super T> actual) {
         if (!(source instanceof Callable)) {
             subscribeResult(source.flatMap(this::readConfig), actual);
             return;
@@ -77,30 +85,79 @@ final class MonoConfigRead extends Mono<Value> implements Scannable {
         if (!(result instanceof Callable)) {
             subscribeResult(result, actual);
         } else if (value != null) {
-            actual.onSubscribe(Operators.scalarSubscription(actual, value));
+            emitValue(actual, value);
         } else {
             completeEmpty(actual);
         }
     }
 
     private Mono<Value> readConfig(ConfigStorage storage) {
-        return storage.getConfig(key);
+        return storage.getConfig(keyName());
     }
 
-    private Mono<Value> readParentConfig() {
-        return owner.getParent().flatMap(parent -> parent.getConfig(key));
+    private Mono<T> readParentConfig() {
+        return owner.getParent().flatMap(this::readParentConfig);
     }
 
-    private void subscribeResult(Mono<Value> result, CoreSubscriber<? super Value> actual) {
-        if (fallbackParent) {
-            result = result.switchIfEmpty(Mono.defer(this::readParentConfig));
+    @SuppressWarnings("unchecked")
+    private Mono<? extends T> readParentConfig(Configurable parent) {
+        return key instanceof ConfigKey
+            ? parent.getConfig((ConfigKey<T>) key)
+            : (Mono<? extends T>) parent.getConfig((String) key);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void subscribeResult(Mono<Value> result, CoreSubscriber<? super T> actual) {
+        Mono<T> source;
+        if (key instanceof ConfigKey) {
+            source = result.mapNotNull(this::convertValue);
+        } else {
+            source = (Mono<T>) result;
         }
-        result.subscribe(actual);
+        if (fallbackParent) {
+            source = source.switchIfEmpty(Mono.defer(this::readParentConfig));
+        }
+        source.subscribe(actual);
     }
 
-    private void completeEmpty(CoreSubscriber<? super Value> actual) {
+    private void emitValue(CoreSubscriber<? super T> actual, Value value) {
+        T result;
+        try {
+            result = convertValue(value);
+        } catch (Throwable error) {
+            Operators.error(actual, Operators.onOperatorError(null, error, value, actual.currentContext()));
+            return;
+        }
+        if (result == null) {
+            Operators.complete(actual);
+        } else {
+            actual.onSubscribe(Operators.scalarSubscription(actual, result));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private T convertValue(Value value) {
+        return !(key instanceof ConfigKey)
+            ? (T) value
+            : value.as(((ConfigKey<T>) key).getValueType());
+    }
+
+    private String keyName() {
+        return key instanceof ConfigKey
+            ? ((ConfigKey<?>) key).getKey()
+            : (String) key;
+    }
+
+    private void completeEmpty(CoreSubscriber<? super T> actual) {
         if (fallbackParent) {
-            Mono.defer(this::readParentConfig).subscribe(actual);
+            Mono<T> parent;
+            try {
+                parent = Objects.requireNonNull(readParentConfig(), "The mapper returned a null Publisher");
+            } catch (Throwable error) {
+                Operators.error(actual, Operators.onOperatorError(error, actual.currentContext()));
+                return;
+            }
+            parent.subscribe(actual);
         } else {
             Operators.complete(actual);
         }

@@ -61,10 +61,32 @@ public interface Configurable {
 
     default <V> Mono<V> getConfig(ConfigKey<V> key) {
         return getConfig(key.getKey())
-                .mapNotNull(v->v.as(key.getValueType()));
+            .mapNotNull(v -> v.as(key.getValueType()));
     }
 
     default Mono<Values> getConfigs(ConfigKey<?>... key) {
+        if (key.length == 0) {
+            return getConfigs(java.util.Collections.emptySet());
+        }
+        if (key.length == 1) {
+            return getConfigs(java.util.Collections.singleton(key[0].getKey()));
+        }
+        if (key.length == 2) {
+            String first = key[0].getKey();
+            String second = key[1].getKey();
+            if (first != null && second != null && !first.equals(second)) {
+                return getConfigs(Set.of(first, second));
+            }
+        }
+        if (key.length == 3) {
+            String first = key[0].getKey();
+            String second = key[1].getKey();
+            String third = key[2].getKey();
+            if (first != null && second != null && third != null
+                && !first.equals(second) && !first.equals(third) && !second.equals(third)) {
+                return getConfigs(Set.of(first, second, third));
+            }
+        }
         Set<String> keys = Sets.newHashSetWithExpectedSize(key.length);
         for (ConfigKey<?> configKey : key) {
             keys.add(configKey.getKey());
@@ -78,6 +100,12 @@ public interface Configurable {
      * @return 所有配置结果集合
      */
     default Mono<Values> getConfigs(String... keys) {
+        if (keys.length == 0) {
+            return getConfigs(java.util.Collections.emptySet());
+        }
+        if (keys.length == 1) {
+            return getConfigs(java.util.Collections.singleton(keys[0]));
+        }
         return getConfigs(Sets.newHashSet(keys));
     }
 

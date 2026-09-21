@@ -46,10 +46,16 @@ public interface StorageConfigurable extends Configurable {
         return MonoConfigRead.create(getReactiveStorage(), this, key, fallbackParent);
     }
 
+    @Override
+    default <V> Mono<V> getConfig(ConfigKey<V> key) {
+        return getConfig(key, true);
+    }
+
+    default <V> Mono<V> getConfig(ConfigKey<V> key, boolean fallbackParent) {
+        return MonoConfigRead.create(getReactiveStorage(), this, key, fallbackParent);
+    }
+
     default Mono<Values> getConfigs(Collection<String> keys, boolean fallbackParent) {
-        if (!fallbackParent) {
-            return getReactiveStorage().flatMap(storage -> storage.getConfigs(keys));
-        }
         return MonoConfigsRead.create(getReactiveStorage(), this, keys, fallbackParent);
     }
 

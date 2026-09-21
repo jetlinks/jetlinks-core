@@ -20,6 +20,7 @@ import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class DefaultDeviceOperatorTest {
 
@@ -256,6 +257,47 @@ public class DefaultDeviceOperatorTest {
                 .expectNext(true)
                 .verifyComplete();
 
+    }
+
+    @Test
+    public void testProductMetadataLoaderReloadsAfterUpdate() {
+        AtomicInteger decodes = new AtomicInteger();
+        TestDeviceRegistry registry = new TestDeviceRegistry(new TestProtocolSupport() {
+            @Override
+            public DeviceMetadataCodec getMetadataCodec() {
+                return new DeviceMetadataCodec() {
+                    @Override
+                    public Mono<DeviceMetadata> decode(String source) {
+                        return Mono.fromSupplier(() -> {
+                            decodes.incrementAndGet();
+                            SimpleDeviceMetadata metadata = new SimpleDeviceMetadata();
+                            metadata.addProperty(SimplePropertyMetadata.of(source, source, null));
+                            return metadata;
+                        });
+                    }
+
+                    @Override
+                    public Mono<String> encode(DeviceMetadata metadata) {
+                        return Mono.empty();
+                    }
+                };
+            }
+        }, new StandaloneDeviceMessageBroker());
+
+        registry.register(ProductInfo.builder()
+                                     .id("prod")
+                                     .protocol("test")
+                                     .metadata("first")
+                                     .build())
+                .flatMap(product -> product.getMetadata()
+                                           .flatMap(first -> product.getMetadata()
+                                                                    .doOnNext(second -> org.junit.Assert.assertSame(first, second))
+                                                                    .then(product.updateMetadata("second"))
+                                                                    .then(product.getMetadata())))
+                .as(StepVerifier::create)
+                .assertNext(metadata -> org.junit.Assert.assertEquals("second", metadata.getProperties().get(0).getId()))
+                .verifyComplete();
+        org.junit.Assert.assertEquals(2, decodes.get());
     }
 
     @Test

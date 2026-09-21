@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public class DefaultDeviceProductOperator implements DeviceProductOperator, StorageConfigurable {
+public class DefaultDeviceProductOperator implements DeviceProductOperator, StorageConfigurable, MonoVersionedMetadata.Loader<Long, DeviceMetadata> {
     private static final MetadataState EMPTY_METADATA_STATE = new MetadataState(-1, null);
 
     @Getter
@@ -37,6 +37,8 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
     private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time");
 
     private final Mono<DeviceMetadata> metadataMono;
+
+    private final Mono<DeviceMetadata> loadMetadata;
 
     private final Mono<ProtocolSupport> protocolSupportMono;
 
@@ -61,11 +63,14 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
         this.id = id;
         this.storageMono = storageMono;
         this.devicesSupplier = supplier;
-        this.protocolSupportMono = this
-                .getConfig(DeviceConfigKey.protocol)
-                .flatMap(supports::getProtocol);
+        this.protocolSupportMono = MonoProtocolSupport.create(
+            storageMono,
+            supports,
+            DeviceConfigKey.protocol.getKey(),
+            null
+        );
 
-        Mono<DeviceMetadata> loadMetadata = Mono
+        this.loadMetadata = Mono
                 .zip(
                         this.getProtocol().map(ProtocolSupport::getMetadataCodec),
                         this.getConfig(DeviceConfigKey.metadata),
@@ -85,49 +90,49 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
                         }));
         this.metadataMono = MonoVersionedMetadata.create(
             this.getConfig(lastMetadataTimeKey.getKey()),
-            new MonoVersionedMetadata.Loader<Long, DeviceMetadata>() {
-                @Override
-                public Long convertVersion(Object value) {
-                    return ((Value) value).as(Long.class);
-                }
-
-                @Override
-                public Object currentSnapshot() {
-                    return metadataState;
-                }
-
-                @Override
-                public DeviceMetadata getCached(Object snapshot) {
-                    return ((MetadataState) snapshot).metadata;
-                }
-
-                @Override
-                public DeviceMetadata getCached() {
-                    return metadataState.metadata;
-                }
-
-                @Override
-                public boolean isSnapshotValid(Long time, Object snapshot) {
-                    return time.equals(((MetadataState) snapshot).time);
-                }
-
-                @Override
-                public boolean isValid(Long time, DeviceMetadata cached) {
-                    MetadataState state = metadataState;
-                    return cached == state.metadata && time.equals(state.time);
-                }
-
-                @Override
-                public Mono<DeviceMetadata> load(Long time) {
-                    return loadMetadata;
-                }
-
-                @Override
-                public Mono<DeviceMetadata> loadEmpty() {
-                    return loadMetadata;
-                }
-            }
+            this
         );
+    }
+
+    @Override
+    public Long convertVersion(Object value) {
+        return ((Value) value).as(Long.class);
+    }
+
+    @Override
+    public Object currentSnapshot() {
+        return metadataState;
+    }
+
+    @Override
+    public DeviceMetadata getCached(Object snapshot) {
+        return ((MetadataState) snapshot).metadata;
+    }
+
+    @Override
+    public DeviceMetadata getCached() {
+        return metadataState.metadata;
+    }
+
+    @Override
+    public boolean isSnapshotValid(Long time, Object snapshot) {
+        return time.equals(((MetadataState) snapshot).time);
+    }
+
+    @Override
+    public boolean isValid(Long time, DeviceMetadata cached) {
+        MetadataState state = metadataState;
+        return cached == state.metadata && time.equals(state.time);
+    }
+
+    @Override
+    public Mono<DeviceMetadata> load(Long time) {
+        return loadMetadata;
+    }
+
+    @Override
+    public Mono<DeviceMetadata> loadEmpty() {
+        return loadMetadata;
     }
 
     @Override

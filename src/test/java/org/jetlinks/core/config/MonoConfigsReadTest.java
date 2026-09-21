@@ -92,7 +92,9 @@ public class MonoConfigsReadTest {
 
         StorageConfigurable noFallback = configurable(
             Mono.just(storage(keys -> Mono.just(Values.of(Collections.emptyMap())))), parentSupplier);
-        StepVerifier.create(noFallback.getConfigs(KEYS, false))
+        Mono<Values> query = noFallback.getConfigs(KEYS, false);
+        assertTrue(query instanceof MonoConfigsRead);
+        StepVerifier.create(query)
                     .assertNext(Values::isEmpty)
                     .verifyComplete();
 
@@ -205,6 +207,25 @@ public class MonoConfigsReadTest {
             Hooks.resetOnEachOperator("configs-read-test");
             Hooks.resetOnOperatorError("configs-read-test");
         }
+    }
+
+    @Test
+    public void typedDuplicateKeysRemainDeduplicated() {
+        AtomicInteger reads = new AtomicInteger();
+        StorageConfigurable owner = configurable(Mono.just(storage(keys -> {
+            assertEquals(Collections.singleton("own"), new HashSet<>(keys));
+            reads.incrementAndGet();
+            return Mono.just(values("own", "value"));
+        })), Mono::empty);
+        ConfigKey<String> key = ConfigKey.of("own", "own", String.class);
+
+        StepVerifier.create(owner.getConfigs(key, key))
+                    .assertNext(values -> assertEquals("value", values.getString("own", (String) null)))
+                    .verifyComplete();
+        StepVerifier.create(owner.getConfigs(key, key, key))
+                    .assertNext(values -> assertEquals("value", values.getString("own", (String) null)))
+                    .verifyComplete();
+        assertEquals(2, reads.get());
     }
 
     private static ConfigStorage storage(Function<Collection<String>, Mono<Values>> reader) {

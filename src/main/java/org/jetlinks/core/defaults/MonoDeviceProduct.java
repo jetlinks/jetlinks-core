@@ -141,6 +141,44 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
         return productId == null || productId.trim().isEmpty() ? Mono.empty() : registry.getProduct(productId, version);
     }
 
+    Mono<DeviceProductOperator> lookup(Context context) {
+        ConfigStorage storage;
+        try {
+            storage = ConfigStorage.class.cast(((Callable<?>) source).call());
+        } catch (Throwable error) {
+            return Mono.error(Operators.onOperatorError(error, context));
+        }
+        if (storage == null) {
+            return Mono.empty();
+        }
+
+        Mono<Values> valuesSource;
+        try {
+            valuesSource = Objects.requireNonNull(storage.getConfigs(keys), "The mapper returned a null Publisher");
+        } catch (Throwable error) {
+            return Mono.error(Operators.onOperatorError(null, error, storage, context));
+        }
+        if (!(valuesSource instanceof Callable)) {
+            return valuesSource.flatMap(this::readProduct);
+        }
+
+        Values values;
+        try {
+            values = Values.class.cast(((Callable<?>) valuesSource).call());
+        } catch (Throwable error) {
+            return Mono.error(Operators.onOperatorError(null, error, storage, context));
+        }
+        if (values == null) {
+            return Mono.empty();
+        }
+
+        try {
+            return Objects.requireNonNull(readProduct(values), "The mapper returned a null Publisher");
+        } catch (Throwable error) {
+            return Mono.error(Operators.onOperatorError(null, error, values, context));
+        }
+    }
+
     @Override
     public Object scanUnsafe(@Nonnull Attr attribute) {
         if (attribute == Attr.PARENT) {

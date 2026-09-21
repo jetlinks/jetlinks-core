@@ -41,7 +41,7 @@ import java.util.*;
 import static org.jetlinks.core.device.DeviceConfigKey.*;
 
 @Slf4j
-public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurable {
+public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurable, MonoVersionedMetadata.Loader<Long, DeviceMetadata> {
     public static final DeviceStateChecker DEFAULT_STATE_CHECKER = device -> checkState0(((DefaultDeviceOperator) device));
 
     private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time", "最后物模型更新时间", Long.class);
@@ -123,10 +123,12 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
             productVersion.getKey()
         );
         //支持设备自定义协议
-        this.protocolSupportMono = this
-            .getSelfConfig(protocol)
-            .flatMap(supports::getProtocol)
-            .switchIfEmpty(this.parent.flatMap(DeviceProductOperator::getProtocol));
+        this.protocolSupportMono = MonoProtocolSupport.create(
+            getReactiveStorage(),
+            supports,
+            protocol.getKey(),
+            parent
+        );
 
         this.stateChecker = deviceStateChecker;
 
@@ -145,44 +147,44 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private Mono<DeviceMetadata> selfMetadata() {
         return MonoVersionedMetadata.create(
             getSelfConfig(lastMetadataTimeKey.getKey()),
-            new MonoVersionedMetadata.Loader<Long, DeviceMetadata>() {
-                @Override
-                public Long convertVersion(Object value) {
-                    return ((Value) value).as(Long.class);
-                }
-
-                @Override
-                public Object currentSnapshot() {
-                    return metadataState;
-                }
-
-                @Override
-                public DeviceMetadata getCached(Object snapshot) {
-                    return ((MetadataState) snapshot).metadata;
-                }
-
-                @Override
-                public DeviceMetadata getCached() {
-                    return metadataState.metadata;
-                }
-
-                @Override
-                public boolean isSnapshotValid(Long time, Object snapshot) {
-                    return time.equals(((MetadataState) snapshot).time);
-                }
-
-                @Override
-                public boolean isValid(Long time, DeviceMetadata cached) {
-                    MetadataState state = metadataState;
-                    return cached == state.metadata && time.equals(state.time);
-                }
-
-                @Override
-                public Mono<DeviceMetadata> load(Long time) {
-                    return loadSelfMetadata(time);
-                }
-            }
+            this
         );
+    }
+
+    @Override
+    public Long convertVersion(Object value) {
+        return ((Value) value).as(Long.class);
+    }
+
+    @Override
+    public Object currentSnapshot() {
+        return metadataState;
+    }
+
+    @Override
+    public DeviceMetadata getCached(Object snapshot) {
+        return ((MetadataState) snapshot).metadata;
+    }
+
+    @Override
+    public DeviceMetadata getCached() {
+        return metadataState.metadata;
+    }
+
+    @Override
+    public boolean isSnapshotValid(Long time, Object snapshot) {
+        return time.equals(((MetadataState) snapshot).time);
+    }
+
+    @Override
+    public boolean isValid(Long time, DeviceMetadata cached) {
+        MetadataState state = metadataState;
+        return cached == state.metadata && time.equals(state.time);
+    }
+
+    @Override
+    public Mono<DeviceMetadata> load(Long time) {
+        return loadSelfMetadata(time);
     }
 
     private Mono<DeviceMetadata> loadSelfMetadata(Long metadataTime) {
@@ -492,6 +494,11 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
     @Override
     public Mono<Value> getSelfConfig(String key) {
+        return getConfig(key, false);
+    }
+
+    @Override
+    public <V> Mono<V> getSelfConfig(ConfigKey<V> key) {
         return getConfig(key, false);
     }
 
