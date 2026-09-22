@@ -2,6 +2,7 @@ package org.jetlinks.core.defaults;
 
 import org.junit.Test;
 import org.reactivestreams.Subscription;
+import reactor.core.CoreSubscriber;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -14,6 +15,9 @@ import reactor.util.context.Context;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -242,6 +246,41 @@ public class MonoVersionedMetadataTest {
     }
 
     @Test
+    public void conversionFailureUsesEmptyLoader() {
+        Mono<String> metadata = MonoVersionedMetadata.create(
+            Mono.just("invalid"),
+            new MonoVersionedMetadata.Loader<Long, String>() {
+                @Override
+                public Long convertVersion(Object value) {
+                    throw new NumberFormatException((String) value);
+                }
+
+                @Override
+                public String getCached() {
+                    return "cached";
+                }
+
+                @Override
+                public boolean isValid(Long version, String cached) {
+                    return true;
+                }
+
+                @Override
+                public Mono<String> load(Long version) {
+                    return Mono.just("version");
+                }
+
+                @Override
+                public Mono<String> loadEmpty() {
+                    return Mono.just("empty");
+                }
+            }
+        );
+
+        StepVerifier.create(metadata).expectNext("empty").verifyComplete();
+    }
+
+    @Test
     public void cacheValidationDoesNotMixSnapshots() {
         AtomicReference<String> cached = new AtomicReference<>("old");
         AtomicLong cachedVersion = new AtomicLong(1L);
@@ -412,6 +451,150 @@ public class MonoVersionedMetadataTest {
                     .assertNext(values -> assertEquals(512, new HashSet<>(values).size()))
                     .verifyComplete();
         assertEquals(512, loads.get());
+    }
+
+    @Test
+    public void requestAndVersionOnSubscribeRaceRequestsSourceOnce() throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            for (int iteration = 0; iteration < 256; iteration++) {
+                CountDownLatch sourceReady = new CountDownLatch(1);
+                CountDownLatch race = new CountDownLatch(1);
+                AtomicInteger requests = new AtomicInteger();
+                AtomicInteger values = new AtomicInteger();
+                AtomicInteger completions = new AtomicInteger();
+                AtomicReference<Subscription> downstream = new AtomicReference<>();
+                Mono<Long> version = new Mono<Long>() {
+                    @Override
+                    public void subscribe(CoreSubscriber<? super Long> actual) {
+                        sourceReady.countDown();
+                        await(race);
+                        actual.onSubscribe(new Subscription() {
+                            @Override
+                            public void request(long count) {
+                                if (requests.incrementAndGet() == 1) {
+                                    actual.onNext(2L);
+                                    actual.onComplete();
+                                }
+                            }
+
+                            @Override
+                            public void cancel() {
+                            }
+                        });
+                    }
+                };
+                Mono<String> metadata = MonoVersionedMetadata.create(
+                    version,
+                    () -> null,
+                    (value, cached) -> false,
+                    value -> Mono.just("loaded"),
+                    Mono::empty
+                );
+                Future<?> subscribing = executor.submit(() -> metadata.subscribe(new BaseSubscriber<String>() {
+                    @Override
+                    protected void hookOnSubscribe(Subscription subscription) {
+                        downstream.set(subscription);
+                    }
+
+                    @Override
+                    protected void hookOnNext(String value) {
+                        values.incrementAndGet();
+                    }
+
+                    @Override
+                    protected void hookOnComplete() {
+                        completions.incrementAndGet();
+                    }
+                }));
+
+                await(sourceReady);
+                Future<?> requesting = executor.submit(() -> {
+                    await(race);
+                    downstream.get().request(1);
+                });
+                race.countDown();
+                subscribing.get(5, TimeUnit.SECONDS);
+                requesting.get(5, TimeUnit.SECONDS);
+
+                assertEquals(1, requests.get());
+                assertEquals(1, values.get());
+                assertEquals(1, completions.get());
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void cancelAndLoaderOnSubscribeRaceCancelsActiveSourceOnce() throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            for (int iteration = 0; iteration < 256; iteration++) {
+                CountDownLatch loaderReady = new CountDownLatch(1);
+                CountDownLatch race = new CountDownLatch(1);
+                AtomicInteger cancellations = new AtomicInteger();
+                AtomicInteger values = new AtomicInteger();
+                AtomicInteger completions = new AtomicInteger();
+                AtomicReference<Subscription> downstream = new AtomicReference<>();
+                Mono<String> loader = new Mono<String>() {
+                    @Override
+                    public void subscribe(CoreSubscriber<? super String> actual) {
+                        loaderReady.countDown();
+                        await(race);
+                        actual.onSubscribe(new Subscription() {
+                            @Override
+                            public void request(long count) {
+                            }
+
+                            @Override
+                            public void cancel() {
+                                cancellations.incrementAndGet();
+                            }
+                        });
+                    }
+                };
+                Mono<String> metadata = MonoVersionedMetadata.create(
+                    Mono.just(2L),
+                    () -> null,
+                    (version, cached) -> false,
+                    version -> loader,
+                    Mono::empty
+                );
+                metadata.subscribe(new BaseSubscriber<String>() {
+                    @Override
+                    protected void hookOnSubscribe(Subscription subscription) {
+                        downstream.set(subscription);
+                    }
+
+                    @Override
+                    protected void hookOnNext(String value) {
+                        values.incrementAndGet();
+                    }
+
+                    @Override
+                    protected void hookOnComplete() {
+                        completions.incrementAndGet();
+                    }
+                });
+
+                Future<?> requesting = executor.submit(() -> downstream.get().request(1));
+                await(loaderReady);
+                Future<?> cancelling = executor.submit(() -> {
+                    await(race);
+                    downstream.get().cancel();
+                });
+                race.countDown();
+                requesting.get(5, TimeUnit.SECONDS);
+                cancelling.get(5, TimeUnit.SECONDS);
+
+                assertEquals(1, cancellations.get());
+                assertEquals(0, values.get());
+                assertEquals(0, completions.get());
+            }
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private static void assertFailure(java.util.function.Supplier<String> cachedSupplier,

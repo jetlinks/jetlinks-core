@@ -9,6 +9,8 @@ import reactor.util.context.Context;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -115,18 +117,36 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
     private static final class MetadataSubscription<V, T> implements Subscription, Scannable {
 
         private static final int VERSION = 0;
-        private static final int LOADER = 1;
-        private static final int DONE = 2;
+        private static final int SWITCHING = 1;
+        private static final int LOADER = 2;
+        private static final int CACHED = 3;
+        private static final int DONE = 4;
+        private static final int STAGE_MASK = 0b111;
+
+        private static final int REQUESTED = 1 << 3;
+        private static final int CANCELLED = 1 << 4;
+        private static final int VERSION_SIGNAL_RECEIVED = 1 << 5;
+        private static final int LOADER_VALUE_RECEIVED = 1 << 6;
+        private static final int VERSION_DEMAND_SENT = 1 << 7;
+        private static final int LOADER_DEMAND_SENT = 1 << 8;
+
+        @SuppressWarnings("rawtypes")
+        private static final AtomicIntegerFieldUpdater<MetadataSubscription> STATE =
+            AtomicIntegerFieldUpdater.newUpdater(MetadataSubscription.class, "state");
+
+        @SuppressWarnings("rawtypes")
+        private static final AtomicReferenceFieldUpdater<MetadataSubscription, Subscription> SUBSCRIPTION =
+            AtomicReferenceFieldUpdater.newUpdater(
+                MetadataSubscription.class,
+                Subscription.class,
+                "subscription"
+            );
 
         private final CoreSubscriber<? super T> actual;
         private final Loader<V, T> loader;
 
-        private Subscription subscription;
-        private boolean requested;
-        private boolean cancelled;
-        private boolean versionReceived;
-        private boolean loaderValueReceived;
-        private int stage = VERSION;
+        private volatile Subscription subscription;
+        private volatile int state = VERSION;
 
         private MetadataSubscription(CoreSubscriber<? super T> actual,
                                      Loader<V, T> loader) {
@@ -135,38 +155,47 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
         }
 
         private void setSubscription(Subscription next, int expectedStage) {
-            boolean request;
-            synchronized (this) {
-                if (cancelled || stage != expectedStage) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState) || stage(currentState) != expectedStage) {
                     next.cancel();
                     return;
                 }
-                if (subscription != null) {
+                Subscription current = subscription;
+                if (current != null) {
                     next.cancel();
                     Operators.reportSubscriptionSet();
                     return;
                 }
-                subscription = next;
-                request = requested;
-            }
-            if (request) {
-                next.request(Long.MAX_VALUE);
+                if (!SUBSCRIPTION.compareAndSet(this, null, next)) {
+                    continue;
+                }
+                currentState = state;
+                if (isCancelled(currentState) || stage(currentState) != expectedStage) {
+                    if (SUBSCRIPTION.compareAndSet(this, next, null)) {
+                        next.cancel();
+                    }
+                    return;
+                }
+                requestActive(next, expectedStage);
+                return;
             }
         }
 
         private void versionNext(Object sourceValue) {
-            synchronized (this) {
-                if (cancelled || stage != VERSION || versionReceived) {
-                    Operators.onNextDropped(sourceValue, actual.currentContext());
-                    return;
-                }
-                versionReceived = true;
+            if (!markOnce(VERSION, VERSION_SIGNAL_RECEIVED)) {
+                Operators.onNextDropped(sourceValue, actual.currentContext());
+                return;
             }
             V version;
             T cached;
             Object snapshot;
             try {
-                version = loader.convertVersion(sourceValue);
+                try {
+                    version = loader.convertVersion(sourceValue);
+                } catch (IllegalArgumentException | ClassCastException ignore) {
+                    version = null;
+                }
                 if (version == null) {
                     switchTo(Objects.requireNonNull(loader.loadEmpty(), "The empty loader returned a null Publisher"));
                     return;
@@ -186,12 +215,9 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
         }
 
         private void loaderNext(T metadata) {
-            synchronized (this) {
-                if (cancelled || stage != LOADER || loaderValueReceived) {
-                    Operators.onDiscard(metadata, actual.currentContext());
-                    return;
-                }
-                loaderValueReceived = true;
+            if (!markOnce(LOADER, LOADER_VALUE_RECEIVED)) {
+                Operators.onDiscard(metadata, actual.currentContext());
+                return;
             }
             actual.onNext(metadata);
         }
@@ -205,10 +231,8 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
         }
 
         private void versionComplete() {
-            synchronized (this) {
-                if (cancelled || stage != VERSION || versionReceived) {
-                    return;
-                }
+            if (!markOnce(VERSION, VERSION_SIGNAL_RECEIVED)) {
+                return;
             }
             try {
                 switchTo(Objects.requireNonNull(loader.loadEmpty(), "The empty loader returned a null Publisher"));
@@ -226,43 +250,50 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
             if (!Operators.validate(count)) {
                 return;
             }
-            Subscription current;
-            synchronized (this) {
-                if (requested || cancelled || stage == DONE) {
+            for (; ; ) {
+                int currentState = state;
+                if ((currentState & REQUESTED) != 0
+                    || isCancelled(currentState)
+                    || stage(currentState) == DONE) {
                     return;
                 }
-                requested = true;
-                current = subscription;
-            }
-            if (current != null) {
-                current.request(Long.MAX_VALUE);
+                if (!STATE.compareAndSet(this, currentState, currentState | REQUESTED)) {
+                    continue;
+                }
+                Subscription current = subscription;
+                int currentStage = stage(state);
+                if (current != null && (currentStage == VERSION || currentStage == LOADER)) {
+                    requestActive(current, currentStage);
+                }
+                return;
             }
         }
 
         @Override
         public void cancel() {
-            Subscription current;
-            synchronized (this) {
-                if (cancelled || stage == DONE) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState) || stage(currentState) == DONE) {
                     return;
                 }
-                cancelled = true;
-                current = subscription;
-                subscription = null;
-            }
-            if (current != null) {
-                current.cancel();
+                if (!STATE.compareAndSet(this, currentState, currentState | CANCELLED)) {
+                    continue;
+                }
+                Subscription current = SUBSCRIPTION.getAndSet(this, null);
+                if (current != null) {
+                    current.cancel();
+                }
+                return;
             }
         }
 
         private void switchTo(Mono<T> next) {
-            synchronized (this) {
-                if (cancelled || stage != VERSION) {
-                    return;
-                }
-                stage = LOADER;
-                loaderValueReceived = false;
-                subscription = null;
+            if (!transitionStage(VERSION, SWITCHING)) {
+                return;
+            }
+            SUBSCRIPTION.set(this, null);
+            if (!transitionStage(SWITCHING, LOADER)) {
+                return;
             }
             try {
                 next.subscribe(new LoaderSubscriber<>(this));
@@ -272,49 +303,90 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
         }
 
         private void completeCached(T cached) {
-            synchronized (this) {
-                if (cancelled || stage != VERSION) {
-                    Operators.onDiscard(cached, actual.currentContext());
-                    return;
-                }
-                subscription = null;
+            if (!transitionStage(VERSION, CACHED)) {
+                Operators.onDiscard(cached, actual.currentContext());
+                return;
             }
+            SUBSCRIPTION.set(this, null);
             actual.onNext(cached);
-            synchronized (this) {
-                if (cancelled || stage != VERSION) {
-                    return;
-                }
-                stage = DONE;
+            if (transitionStage(CACHED, DONE)) {
+                actual.onComplete();
             }
-            actual.onComplete();
         }
 
         private void complete(int expectedStage) {
-            synchronized (this) {
-                if (cancelled || stage != expectedStage) {
-                    return;
-                }
-                stage = DONE;
-                subscription = null;
+            if (!transitionStage(expectedStage, DONE)) {
+                return;
             }
+            SUBSCRIPTION.set(this, null);
             actual.onComplete();
         }
 
         private void fail(Throwable error, int expectedStage) {
-            Subscription current;
-            synchronized (this) {
-                if (cancelled || stage != expectedStage) {
-                    Operators.onErrorDropped(error, actual.currentContext());
-                    return;
-                }
-                stage = DONE;
-                current = subscription;
-                subscription = null;
+            if (!transitionStage(expectedStage, DONE)) {
+                Operators.onErrorDropped(error, actual.currentContext());
+                return;
             }
+            Subscription current = SUBSCRIPTION.getAndSet(this, null);
             if (current != null) {
                 current.cancel();
             }
             actual.onError(error);
+        }
+
+        private boolean markOnce(int expectedStage, int flag) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState)
+                    || stage(currentState) != expectedStage
+                    || (currentState & flag) != 0) {
+                    return false;
+                }
+                if (STATE.compareAndSet(this, currentState, currentState | flag)) {
+                    return true;
+                }
+            }
+        }
+
+        private boolean transitionStage(int expectedStage, int nextStage) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState) || stage(currentState) != expectedStage) {
+                    return false;
+                }
+                int nextState = (currentState & ~STAGE_MASK) | nextStage;
+                if (STATE.compareAndSet(this, currentState, nextState)) {
+                    return true;
+                }
+            }
+        }
+
+        private void requestActive(Subscription current, int expectedStage) {
+            int demandFlag = expectedStage == VERSION
+                ? VERSION_DEMAND_SENT
+                : LOADER_DEMAND_SENT;
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState)
+                    || stage(currentState) != expectedStage
+                    || (currentState & REQUESTED) == 0
+                    || (currentState & demandFlag) != 0
+                    || subscription != current) {
+                    return;
+                }
+                if (STATE.compareAndSet(this, currentState, currentState | demandFlag)) {
+                    current.request(Long.MAX_VALUE);
+                    return;
+                }
+            }
+        }
+
+        private static int stage(int state) {
+            return state & STAGE_MASK;
+        }
+
+        private static boolean isCancelled(int state) {
+            return (state & CANCELLED) != 0;
         }
 
         @Override
@@ -326,10 +398,10 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
                 return subscription;
             }
             if (attribute == Attr.CANCELLED) {
-                return cancelled;
+                return isCancelled(state);
             }
             if (attribute == Attr.TERMINATED) {
-                return stage == DONE;
+                return stage(state) == DONE;
             }
             if (attribute == Attr.RUN_STYLE) {
                 return Attr.RunStyle.SYNC;
