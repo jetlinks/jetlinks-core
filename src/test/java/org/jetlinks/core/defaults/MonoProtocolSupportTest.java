@@ -9,7 +9,10 @@ import org.jetlinks.core.config.InMemoryConfigStorage;
 import org.jetlinks.core.device.DeviceProductOperator;
 import org.jetlinks.core.device.DeviceRegistry;
 import org.junit.Test;
+import org.reactivestreams.Subscription;
+import reactor.core.CoreSubscriber;
 import reactor.core.Fuseable;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
@@ -271,6 +274,114 @@ public class MonoProtocolSupportTest {
                     .thenCancel()
                     .verify(TIMEOUT);
         assertEquals(1, cancelled.get());
+    }
+
+    @Test
+    public void cancellationFromOnNextSuppressesCompletion() {
+        ProtocolSupport expected = protocol("test");
+        AtomicReference<ProtocolSupport> received = new AtomicReference<>();
+        AtomicInteger completes = new AtomicInteger();
+
+        MonoProtocolSupport.create(
+                Mono.just(storage(() -> Mono.just(Value.simple("test")))),
+                supports(id -> Mono.just(expected)),
+                "protocol",
+                null)
+            .subscribe(new BaseSubscriber<ProtocolSupport>() {
+                @Override
+                protected void hookOnSubscribe(Subscription subscription) {
+                    request(1);
+                }
+
+                @Override
+                protected void hookOnNext(ProtocolSupport value) {
+                    received.set(value);
+                    cancel();
+                }
+
+                @Override
+                protected void hookOnComplete() {
+                    completes.incrementAndGet();
+                }
+            });
+
+        assertSame(expected, received.get());
+        assertEquals(0, completes.get());
+    }
+
+    @Test
+    public void lateOnSubscribeAfterCancellationIsCancelled() {
+        AtomicReference<CoreSubscriber<? super ConfigStorage>> delayed = new AtomicReference<>();
+        AtomicInteger cancelled = new AtomicInteger();
+        Mono<ConfigStorage> delayedStorage = new Mono<ConfigStorage>() {
+            @Override
+            public void subscribe(CoreSubscriber<? super ConfigStorage> actual) {
+                delayed.set(actual);
+            }
+        };
+
+        StepVerifier.create(MonoProtocolSupport.create(
+                        delayedStorage,
+                        supports(id -> Mono.empty()),
+                        "protocol",
+                        null), 0)
+                    .thenRequest(1)
+                    .thenCancel()
+                    .verify(TIMEOUT);
+
+        assertNotNull(delayed.get());
+        delayed.get().onSubscribe(new Subscription() {
+            @Override
+            public void request(long count) {
+            }
+
+            @Override
+            public void cancel() {
+                cancelled.incrementAndGet();
+            }
+        });
+        assertEquals(1, cancelled.get());
+    }
+
+    @Test
+    public void staleStageErrorDoesNotTerminateCurrentStage() {
+        AtomicReference<CoreSubscriber<? super Value>> configSubscriber = new AtomicReference<>();
+        AtomicReference<Throwable> dropped = new AtomicReference<>();
+        IllegalStateException stale = new IllegalStateException("stale");
+        ProtocolSupport expected = protocol("test");
+        Sinks.One<ProtocolSupport> support = Sinks.one();
+        Mono<Value> configSource = new Mono<Value>() {
+            @Override
+            public void subscribe(CoreSubscriber<? super Value> actual) {
+                configSubscriber.set(actual);
+                actual.onSubscribe(new Subscription() {
+                    @Override
+                    public void request(long count) {
+                    }
+
+                    @Override
+                    public void cancel() {
+                    }
+                });
+            }
+        };
+
+        Hooks.onErrorDropped(dropped::set);
+        try {
+            StepVerifier.create(MonoProtocolSupport.create(
+                            Mono.just(storage(() -> configSource)),
+                            supports(id -> support.asMono()),
+                            "protocol",
+                            null))
+                        .then(() -> configSubscriber.get().onNext(Value.simple("test")))
+                        .then(() -> configSubscriber.get().onError(stale))
+                        .then(() -> support.emitValue(expected, Sinks.EmitFailureHandler.FAIL_FAST))
+                        .expectNext(expected)
+                        .verifyComplete();
+            assertSame(stale, dropped.get());
+        } finally {
+            Hooks.resetOnErrorDropped();
+        }
     }
 
     @Test

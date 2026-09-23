@@ -16,7 +16,7 @@ public class TestDeviceRegistry implements DeviceRegistry {
 
     private CompositeDeviceMessageSenderInterceptor interceptor = new CompositeDeviceMessageSenderInterceptor();
 
-    private ConfigStorageManager manager = new TestConfigStorageManager();
+    private final ConfigStorageManager manager;
 
     private Map<String, DeviceOperator> operatorMap = new ConcurrentHashMap<>();
 
@@ -27,8 +27,15 @@ public class TestDeviceRegistry implements DeviceRegistry {
     private DeviceOperationBroker handler;
 
     public TestDeviceRegistry(ProtocolSupports supports, DeviceOperationBroker handler) {
+        this(supports, handler, new TestConfigStorageManager());
+    }
+
+    public TestDeviceRegistry(ProtocolSupports supports,
+                              DeviceOperationBroker handler,
+                              ConfigStorageManager manager) {
         this.supports = supports;
         this.handler = handler;
+        this.manager = manager;
     }
 
     @Override

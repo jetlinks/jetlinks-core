@@ -13,11 +13,15 @@ import reactor.test.StepVerifier;
 import reactor.util.context.Context;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -226,6 +230,53 @@ public class MonoConfigsReadTest {
                     .assertNext(values -> assertEquals("value", values.getString("own", (String) null)))
                     .verifyComplete();
         assertEquals(2, reads.get());
+    }
+
+    @Test
+    public void stringAndTypedSmallKeyOverloadsKeepCompatibleSetSemantics() {
+        List<Set<String>> requested = new ArrayList<>();
+        StorageConfigurable owner = configurable(Mono.just(storage(keys -> {
+            requested.add(new HashSet<>(keys));
+            Map<String, Object> values = new HashMap<>();
+            for (String key : keys) {
+                values.put(key, "value");
+            }
+            return Mono.just(Values.of(values));
+        })), Mono::empty);
+        ConfigKey<String> first = ConfigKey.of("first", "first", String.class);
+        ConfigKey<String> second = ConfigKey.of("second", "second", String.class);
+        ConfigKey<String> third = ConfigKey.of("third", "third", String.class);
+        ConfigKey<String> nullKey = ConfigKey.of(null, "null", String.class);
+
+        assertNotNull(owner.getConfigs(new String[0]).block(TIMEOUT));
+        assertNotNull(owner.getConfigs(new ConfigKey<?>[0]).block(TIMEOUT));
+        assertNotNull(owner.getConfigs("first").block(TIMEOUT));
+        assertNotNull(owner.getConfigs(first).block(TIMEOUT));
+        assertNotNull(owner.getConfigs("first", "second").block(TIMEOUT));
+        assertNotNull(owner.getConfigs(first, second).block(TIMEOUT));
+        assertNotNull(owner.getConfigs("first", "second", "third").block(TIMEOUT));
+        assertNotNull(owner.getConfigs(first, second, third).block(TIMEOUT));
+        assertNotNull(owner.getConfigs("first", "first").block(TIMEOUT));
+        assertNotNull(owner.getConfigs(first, first).block(TIMEOUT));
+        assertNotNull(owner.getConfigs("first", "first", "first").block(TIMEOUT));
+        assertNotNull(owner.getConfigs(first, first, first).block(TIMEOUT));
+        assertNotNull(owner.getConfigs(null, "first").block(TIMEOUT));
+        assertNotNull(owner.getConfigs(nullKey, first).block(TIMEOUT));
+
+        assertEquals(Collections.emptySet(), requested.get(0));
+        assertEquals(requested.get(0), requested.get(1));
+        assertEquals(Collections.singleton("first"), requested.get(2));
+        assertEquals(requested.get(2), requested.get(3));
+        assertEquals(Set.of("first", "second"), requested.get(4));
+        assertEquals(requested.get(4), requested.get(5));
+        assertEquals(Set.of("first", "second", "third"), requested.get(6));
+        assertEquals(requested.get(6), requested.get(7));
+        assertEquals(Collections.singleton("first"), requested.get(8));
+        assertEquals(requested.get(8), requested.get(9));
+        assertEquals(Collections.singleton("first"), requested.get(10));
+        assertEquals(requested.get(10), requested.get(11));
+        assertEquals(new HashSet<>(Arrays.asList(null, "first")), requested.get(12));
+        assertEquals(requested.get(12), requested.get(13));
     }
 
     private static ConfigStorage storage(Function<Collection<String>, Mono<Values>> reader) {

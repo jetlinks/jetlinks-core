@@ -134,7 +134,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
 
         this.metadataMono = Mono
             .zip(productMetadata(),
-                 selfMetadata().defaultIfEmpty(NON_METADATA),
+                 selfMetadata(),
                  (product, self) -> {
                      if (self == NON_METADATA) {
                          return product;
@@ -148,7 +148,7 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
         return MonoVersionedMetadata.create(
             getSelfConfig(lastMetadataTimeKey.getKey()),
             this
-        );
+        ).defaultIfEmpty(NON_METADATA);
     }
 
     @Override

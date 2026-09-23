@@ -106,6 +106,22 @@ public interface Configurable {
         if (keys.length == 1) {
             return getConfigs(java.util.Collections.singleton(keys[0]));
         }
+        if (keys.length == 2) {
+            String first = keys[0];
+            String second = keys[1];
+            if (first != null && second != null && !first.equals(second)) {
+                return getConfigs(Set.of(first, second));
+            }
+        }
+        if (keys.length == 3) {
+            String first = keys[0];
+            String second = keys[1];
+            String third = keys[2];
+            if (first != null && second != null && third != null
+                && !first.equals(second) && !first.equals(third) && !second.equals(third)) {
+                return getConfigs(Set.of(first, second, third));
+            }
+        }
         return getConfigs(Sets.newHashSet(keys));
     }
 

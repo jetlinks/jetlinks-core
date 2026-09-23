@@ -301,6 +301,92 @@ public class DefaultDeviceOperatorTest {
     }
 
     @Test
+    public void testMetadataReloadsAcrossOperatorsSharingStorage() throws Exception {
+        AtomicInteger decodes = new AtomicInteger();
+        TestProtocolSupport support = new TestProtocolSupport() {
+            @Override
+            public DeviceMetadataCodec getMetadataCodec() {
+                return new DeviceMetadataCodec() {
+                    @Override
+                    public Mono<DeviceMetadata> decode(String source) {
+                        return Mono.fromSupplier(() -> {
+                            decodes.incrementAndGet();
+                            SimpleDeviceMetadata metadata = new SimpleDeviceMetadata();
+                            metadata.addProperty(SimplePropertyMetadata.of(source, source, null));
+                            return metadata;
+                        });
+                    }
+
+                    @Override
+                    public Mono<String> encode(DeviceMetadata metadata) {
+                        return Mono.empty();
+                    }
+                };
+            }
+        };
+        TestConfigStorageManager manager = new TestConfigStorageManager();
+        TestDeviceRegistry first = new TestDeviceRegistry(
+            support,
+            new StandaloneDeviceMessageBroker(),
+            manager
+        );
+        TestDeviceRegistry second = new TestDeviceRegistry(
+            support,
+            new StandaloneDeviceMessageBroker(),
+            manager
+        );
+        ProductInfo product = ProductInfo.builder()
+                                         .id("prod")
+                                         .protocol("test")
+                                         .metadata("product-before")
+                                         .build();
+        DeviceInfo device = DeviceInfo.builder()
+                                      .id("device")
+                                      .productId("prod")
+                                      .protocol("test")
+                                      .metadata("device-before")
+                                      .build();
+
+        first.register(product)
+             .then(first.register(device))
+             .then(second.register(product))
+             .then(second.register(device))
+             .then(second.getDevice("device"))
+             .flatMap(DeviceOperator::getMetadata)
+             .as(StepVerifier::create)
+             .assertNext(metadata -> org.junit.Assert.assertEquals(
+                 new java.util.HashSet<>(java.util.Arrays.asList("product-before", "device-before")),
+                 metadata.getProperties()
+                         .stream()
+                         .map(SimplePropertyMetadata.class::cast)
+                         .map(SimplePropertyMetadata::getId)
+                         .collect(java.util.stream.Collectors.toSet())
+             ))
+             .verifyComplete();
+
+        Thread.sleep(2);
+
+        first.getProduct("prod")
+             .flatMap(operator -> operator.updateMetadata("product-after"))
+             .then(first.getDevice("device"))
+             .flatMap(operator -> operator.updateMetadata("device-after"))
+             .then(second.getDevice("device"))
+             .flatMap(DeviceOperator::getMetadata)
+             .as(StepVerifier::create)
+             .assertNext(metadata -> org.junit.Assert.assertEquals(
+                 new java.util.HashSet<>(java.util.Arrays.asList("product-after", "device-after")),
+                 metadata.getProperties()
+                         .stream()
+                         .map(SimplePropertyMetadata.class::cast)
+                         .map(SimplePropertyMetadata::getId)
+                         .collect(java.util.stream.Collectors.toSet())
+             ))
+             .verifyComplete();
+
+        org.junit.Assert.assertEquals(4, decodes.get());
+    }
+
+    @Test
     public void testMetadataFallsBackWhenMetadataTimeCannotConvert() {
         TestDeviceRegistry registry = new TestDeviceRegistry(new TestProtocolSupport() {
             @Override

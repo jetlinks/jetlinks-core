@@ -15,6 +15,8 @@ import reactor.util.context.Context;
 import javax.annotation.Nonnull;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * 在同步配置热路径中直接解析协议，设备自身未配置或协议源为空时再读取产品协议。
@@ -22,11 +24,17 @@ import java.util.concurrent.Callable;
  */
 final class MonoProtocolSupport extends Mono<ProtocolSupport> implements Scannable {
 
-    private static final int STAGE_STORAGE = 1;
-    private static final int STAGE_CONFIG = 2;
-    private static final int STAGE_SUPPORT = 3;
-    private static final int STAGE_PRODUCT = 4;
-    private static final int STAGE_PRODUCT_SUPPORT = 5;
+    private static final int STAGE_READY = 0;
+    private static final int STAGE_RESOLVING = 1;
+    private static final int STAGE_STORAGE = 2;
+    private static final int STAGE_CONFIG = 3;
+    private static final int STAGE_SUPPORT = 4;
+    private static final int STAGE_PRODUCT = 5;
+    private static final int STAGE_PRODUCT_SUPPORT = 6;
+    private static final int STAGE_EMITTING = 7;
+    private static final int STAGE_DONE = 8;
+    private static final int STAGE_MASK = 0b1111;
+    private static final int CANCELLED = 1 << 4;
 
     private final Mono<ConfigStorage> source;
     private final ProtocolSupports supports;
@@ -186,7 +194,14 @@ final class MonoProtocolSupport extends Mono<ProtocolSupport> implements Scannab
     }
 
     private void subscribeStage(Mono<?> stageSource, int stage, ProtocolSubscription subscription) {
-        stageSource.subscribe(new StageSubscriber(subscription, stage));
+        if (!subscription.beginStage(stage)) {
+            return;
+        }
+        try {
+            stageSource.subscribe(new StageSubscriber(subscription, stage));
+        } catch (Throwable error) {
+            subscription.fail(Operators.onOperatorError(error, subscription.currentContext()), stage);
+        }
     }
 
     private void stageValue(int stage, Object value, ProtocolSubscription subscription) {
@@ -228,13 +243,23 @@ final class MonoProtocolSupport extends Mono<ProtocolSupport> implements Scannab
 
     private static final class ProtocolSubscription implements Subscription, Scannable {
 
+        @SuppressWarnings("rawtypes")
+        private static final AtomicIntegerFieldUpdater<ProtocolSubscription> STATE =
+            AtomicIntegerFieldUpdater.newUpdater(ProtocolSubscription.class, "state");
+
+        @SuppressWarnings("rawtypes")
+        private static final AtomicReferenceFieldUpdater<ProtocolSubscription, Subscription> SUBSCRIPTION =
+            AtomicReferenceFieldUpdater.newUpdater(
+                ProtocolSubscription.class,
+                Subscription.class,
+                "subscription"
+            );
+
         private final CoreSubscriber<? super ProtocolSupport> actual;
         private final MonoProtocolSupport owner;
 
-        private Subscription subscription;
-        private boolean started;
-        private boolean cancelled;
-        private boolean done;
+        private volatile Subscription subscription;
+        private volatile int state = STAGE_READY;
 
         private ProtocolSubscription(CoreSubscriber<? super ProtocolSupport> actual,
                                      MonoProtocolSupport owner) {
@@ -247,86 +272,140 @@ final class MonoProtocolSupport extends Mono<ProtocolSupport> implements Scannab
             if (!Operators.validate(count)) {
                 return;
             }
-            synchronized (this) {
-                if (started || cancelled || done) {
-                    return;
-                }
-                started = true;
+            if (transitionStage(STAGE_READY, STAGE_RESOLVING)) {
+                owner.resolve(this);
             }
-            owner.resolve(this);
         }
 
         @Override
         public void cancel() {
-            Subscription current;
-            synchronized (this) {
-                if (cancelled || done) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState) || stage(currentState) == STAGE_DONE) {
                     return;
                 }
-                cancelled = true;
-                current = subscription;
-                subscription = null;
-            }
-            if (current != null) {
-                current.cancel();
+                if (!STATE.compareAndSet(this, currentState, currentState | CANCELLED)) {
+                    continue;
+                }
+                Subscription current = SUBSCRIPTION.getAndSet(this, null);
+                if (current != null) {
+                    current.cancel();
+                }
+                return;
             }
         }
 
-        private void setSubscription(Subscription next) {
-            synchronized (this) {
-                if (cancelled || done) {
+        private void setSubscription(Subscription next, int expectedStage) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState) || stage(currentState) != expectedStage) {
                     next.cancel();
                     return;
                 }
-                subscription = next;
+                Subscription current = subscription;
+                if (current != null) {
+                    next.cancel();
+                    Operators.reportSubscriptionSet();
+                    return;
+                }
+                if (!SUBSCRIPTION.compareAndSet(this, null, next)) {
+                    continue;
+                }
+                currentState = state;
+                if (isCancelled(currentState) || stage(currentState) != expectedStage) {
+                    if (SUBSCRIPTION.compareAndSet(this, next, null)) {
+                        next.cancel();
+                    }
+                    return;
+                }
+                next.request(Long.MAX_VALUE);
+                return;
             }
-            next.request(Long.MAX_VALUE);
         }
 
         private void complete(ProtocolSupport support) {
-            synchronized (this) {
-                if (cancelled || done) {
-                    Operators.onDiscard(support, currentContext());
-                    return;
-                }
+            if (!transitionStage(STAGE_RESOLVING, STAGE_EMITTING)) {
+                Operators.onDiscard(support, currentContext());
+                return;
             }
             actual.onNext(support);
-            synchronized (this) {
-                if (cancelled || done) {
-                    return;
-                }
-                done = true;
-                subscription = null;
+            if (transitionStage(STAGE_EMITTING, STAGE_DONE)) {
+                SUBSCRIPTION.set(this, null);
+                actual.onComplete();
             }
-            actual.onComplete();
         }
 
         private void complete() {
-            synchronized (this) {
-                if (cancelled || done) {
-                    return;
-                }
-                done = true;
-                subscription = null;
+            if (transitionStage(STAGE_RESOLVING, STAGE_DONE)) {
+                SUBSCRIPTION.set(this, null);
+                actual.onComplete();
             }
-            actual.onComplete();
         }
 
         private void fail(Throwable error) {
-            Subscription current;
-            synchronized (this) {
-                if (cancelled || done) {
-                    Operators.onErrorDropped(error, currentContext());
-                    return;
-                }
-                done = true;
-                current = subscription;
-                subscription = null;
+            fail(error, STAGE_RESOLVING);
+        }
+
+        private void fail(Throwable error, int expectedStage) {
+            if (!transitionStage(expectedStage, STAGE_DONE)) {
+                Operators.onErrorDropped(error, currentContext());
+                return;
             }
+            Subscription current = SUBSCRIPTION.getAndSet(this, null);
             if (current != null) {
                 current.cancel();
             }
             actual.onError(error);
+        }
+
+        private boolean beginStage(int nextStage) {
+            return transitionStage(STAGE_RESOLVING, nextStage);
+        }
+
+        private void stageNext(int expectedStage, Object value) {
+            if (!transitionStage(expectedStage, STAGE_RESOLVING)) {
+                Operators.onNextDropped(value, currentContext());
+                return;
+            }
+            SUBSCRIPTION.set(this, null);
+            try {
+                owner.stageValue(expectedStage, value, this);
+            } catch (Throwable error) {
+                fail(Operators.onOperatorError(null, error, value, currentContext()), STAGE_RESOLVING);
+            }
+        }
+
+        private void stageComplete(int expectedStage) {
+            if (!transitionStage(expectedStage, STAGE_RESOLVING)) {
+                return;
+            }
+            SUBSCRIPTION.set(this, null);
+            try {
+                owner.stageEmpty(expectedStage, this);
+            } catch (Throwable error) {
+                fail(Operators.onOperatorError(error, currentContext()), STAGE_RESOLVING);
+            }
+        }
+
+        private boolean transitionStage(int expectedStage, int nextStage) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState) || stage(currentState) != expectedStage) {
+                    return false;
+                }
+                int nextState = (currentState & ~STAGE_MASK) | nextStage;
+                if (STATE.compareAndSet(this, currentState, nextState)) {
+                    return true;
+                }
+            }
+        }
+
+        private static int stage(int state) {
+            return state & STAGE_MASK;
+        }
+
+        private static boolean isCancelled(int state) {
+            return (state & CANCELLED) != 0;
         }
 
         private Context currentContext() {
@@ -338,11 +417,14 @@ final class MonoProtocolSupport extends Mono<ProtocolSupport> implements Scannab
             if (attribute == Attr.ACTUAL) {
                 return actual;
             }
+            if (attribute == Attr.PARENT) {
+                return subscription;
+            }
             if (attribute == Attr.CANCELLED) {
-                return cancelled;
+                return isCancelled(state);
             }
             if (attribute == Attr.TERMINATED) {
-                return done;
+                return stage(state) == STAGE_DONE;
             }
             return null;
         }
@@ -353,8 +435,6 @@ final class MonoProtocolSupport extends Mono<ProtocolSupport> implements Scannab
         private final ProtocolSubscription parent;
         private final int stage;
 
-        private boolean valueReceived;
-
         private StageSubscriber(ProtocolSubscription parent, int stage) {
             this.parent = parent;
             this.stage = stage;
@@ -362,29 +442,22 @@ final class MonoProtocolSupport extends Mono<ProtocolSupport> implements Scannab
 
         @Override
         public void onSubscribe(@Nonnull Subscription subscription) {
-            parent.setSubscription(subscription);
+            parent.setSubscription(subscription, stage);
         }
 
         @Override
         public void onNext(Object value) {
-            if (valueReceived) {
-                Operators.onNextDropped(value, currentContext());
-                return;
-            }
-            valueReceived = true;
-            parent.owner.stageValue(stage, value, parent);
+            parent.stageNext(stage, value);
         }
 
         @Override
         public void onError(Throwable error) {
-            parent.fail(error);
+            parent.fail(error, stage);
         }
 
         @Override
         public void onComplete() {
-            if (!valueReceived) {
-                parent.owner.stageEmpty(stage, parent);
-            }
+            parent.stageComplete(stage);
         }
 
         @Override

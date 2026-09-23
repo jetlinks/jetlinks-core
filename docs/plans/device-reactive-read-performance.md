@@ -242,3 +242,59 @@ QPS 受 JVM 编译和环境负载影响，各轮存在波动；可复核的主�
 core 编译、`MonoDeviceProductTest`、`MonoProtocolSupportTest`、`MonoVersionedMetadataTest`
 及产品元数据回归用例共 33 项通过，包含缺产品、同步异常、异步 Context/取消和 Reactor
 调试 Hook；`git diff --check` 通过。本阶段未重跑完整测试集，前文的既有失败仍需独立处理。
+
+## 最新评审整改计划
+
+目标：回应 PR #99 最新评审，确认设备与产品物模型变更的一致性，消除产品及协议读取订阅器
+中的 `synchronized`，并对齐 `getConfigs(String...)` 与 `getConfigs(ConfigKey<?>...)` 的多键
+读取行为；保持现有 API、配置缓存、产品回退和元数据版本语义不变。
+
+影响范围：`DefaultDeviceOperator`、`MonoDeviceProduct`、`MonoProtocolSupport`、`Configurable`
+及对应测试。不修改 supports/components，不调整缓存策略，不创建通用复杂操作符框架，也不把
+设备物模型空值哨兵下沉到通用 Loader 契约。
+
+实施步骤：先补充元数据变更、多实例共享存储、多阶段取消及多键兼容测试；再分别以单个原子
+状态机改造产品和协议订阅器，保证 demand、cancel、Context、error、discard/drop 及迟到信号
+行为；最后为字符串双键、三键读取增加与 ConfigKey 版本一致的非空唯一键快路径，重复键或
+null 继续回退现有 HashSet 语义。
+
+风险：原子状态转换必须避免 cancel/onSubscribe、onNext/onComplete 竞态；协议多阶段切换后旧
+Subscription 的迟到信号不得终止新阶段；下游在 `onNext` 中取消时不得继续 `onComplete`；
+多键优化不能把原有 null/重复键兼容行为改为 `Set.of` 异常。
+
+验证：阶段完成后统一运行定向单元测试、core 编译和 `git diff --check`；再用同环境 JMH 对比
+当前 `synchronized` 基线与原子状态机的单线程、多线程吞吐及分配。若无稳定收益或引入更复杂
+语义，则撤回对应无锁实现，仅保留测试和行为一致性修复。
+
+### 最新评审整改结果
+
+`MonoDeviceProduct` 和 `MonoProtocolSupport` 已使用单个原子状态字段发布阶段、取消和终止状态，
+活动 `Subscription` 通过原子引用替换；未拆成多个互相独立的原子布尔值。产品读取保持一次活动
+订阅，协议读取为每个阶段绑定明确 stage，旧阶段迟到的 `onSubscribe` 会取消、迟到的 `onError`
+会 drop，不会终止新阶段。下游在 `onNext` 中取消时不再发送 `onComplete`，Context、错误映射、
+discard/drop 和 demand 语义保持不变；两个订阅器均已移除 `synchronized`。
+
+`DefaultDeviceOperator#selfMetadata()` 现在直接输出 `NON_METADATA` 哨兵，组合逻辑不再在调用点补空；
+Loader 的通用 empty 契约未改变。新增两个 Operator 实例共享同一 `ConfigStorageManager` 的回归用例，
+产品和设备物模型分别更新后，另一实例均按版本重新解码，避免只验证单实例本地状态。
+
+`Configurable#getConfigs(String...)` 已与 `ConfigKey<?>...` 版本对齐：双键、三键仅在键非空且互异
+时使用 `Set.of`；0/1 键、重复键和 null 键继续保持原有去重及兼容行为。测试覆盖 0/1/2/3、
+双/三重复和 null 输入。
+
+JDK 17.0.18、G1、512 MiB 堆；基线为 `0e11acc`，修改前后使用同一
+`MonoDeviceReadBenchmark`，每项 2 个 fork、每 fork 预热 2×1 秒、测量 3×1 秒并启用 GC profiler：
+
+| 标量读取场景 | 1 线程基线 M QPS | 1 线程当前 M QPS | 变化 | 8 线程基线 M QPS | 8 线程当前 M QPS | 变化 | B/op |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 产品读取 | 29.55 | 33.78 | +14.3% | 179.86 | 179.52 | -0.2% | 232.02 → 232.02 |
+| 设备直接协议 | 54.68 | 68.39 | +25.1% | 367.81 | 450.23 | +22.4% | 104.01 → 104.01 |
+| 产品协议回退 | 28.05 | 32.12 | +14.5% | 166.64 | 182.80 | +9.7% | 248.02 → 248.02 |
+
+产品读取八线程结果在误差范围内持平，说明此场景主要受分配和共享执行资源限制，不声称多线程
+提升；直接协议和产品回退在单、八线程均有稳定收益。此次无锁化不减少对象分配，收益来自移除
+同一订阅生命周期内的监视器进入/退出和多阶段锁操作。
+
+验证结果：`MonoDeviceProductTest` 9 项、`MonoProtocolSupportTest` 13 项、
+`MonoConfigsReadTest` 9 项、`DefaultDeviceOperatorTest` 12 项定向通过；core 全量 738 项测试通过，
+0 failure、0 error、2 skipped；主代码和测试代码编译、`git diff --check` 均通过。

@@ -15,6 +15,8 @@ import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * 在同步配置热路径中直接解析设备产品，异步来源继续使用原 Reactor 链。
@@ -84,9 +86,13 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
             return;
         }
         if (!(valuesSource instanceof Callable)) {
-            valuesSource
-                .flatMap(this::readProduct)
-                .subscribe(new ProductSubscriber(subscription));
+            try {
+                valuesSource
+                    .flatMap(this::readProduct)
+                    .subscribe(new ProductSubscriber(subscription));
+            } catch (Throwable error) {
+                subscription.fail(Operators.onOperatorError(error, subscription.currentContext()));
+            }
             return;
         }
 
@@ -110,7 +116,11 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
             return;
         }
         if (!(productSource instanceof Callable)) {
-            productSource.subscribe(new ProductSubscriber(subscription));
+            try {
+                productSource.subscribe(new ProductSubscriber(subscription));
+            } catch (Throwable error) {
+                subscription.fail(Operators.onOperatorError(error, subscription.currentContext()));
+            }
             return;
         }
 
@@ -192,13 +202,32 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
 
     private static final class ProductSubscription implements Subscription, Scannable {
 
+        private static final int READY = 0;
+        private static final int ACTIVE = 1;
+        private static final int EMITTING = 2;
+        private static final int DONE = 3;
+        private static final int STAGE_MASK = 0b11;
+
+        private static final int CANCELLED = 1 << 2;
+        private static final int VALUE_RECEIVED = 1 << 3;
+
+        @SuppressWarnings("rawtypes")
+        private static final AtomicIntegerFieldUpdater<ProductSubscription> STATE =
+            AtomicIntegerFieldUpdater.newUpdater(ProductSubscription.class, "state");
+
+        @SuppressWarnings("rawtypes")
+        private static final AtomicReferenceFieldUpdater<ProductSubscription, Subscription> SUBSCRIPTION =
+            AtomicReferenceFieldUpdater.newUpdater(
+                ProductSubscription.class,
+                Subscription.class,
+                "subscription"
+            );
+
         private final CoreSubscriber<? super DeviceProductOperator> actual;
         private final MonoDeviceProduct owner;
 
-        private Subscription subscription;
-        private boolean started;
-        private boolean cancelled;
-        private boolean done;
+        private volatile Subscription subscription;
+        private volatile int state = READY;
 
         private ProductSubscription(CoreSubscriber<? super DeviceProductOperator> actual,
                                     MonoDeviceProduct owner) {
@@ -211,101 +240,129 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
             if (!Operators.validate(count)) {
                 return;
             }
-            synchronized (this) {
-                if (started || cancelled || done) {
-                    return;
-                }
-                started = true;
+            if (transitionStage(READY, ACTIVE)) {
+                owner.resolve(this);
             }
-            owner.resolve(this);
         }
 
         @Override
         public void cancel() {
-            Subscription current;
-            synchronized (this) {
-                if (cancelled || done) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState) || stage(currentState) == DONE) {
                     return;
                 }
-                cancelled = true;
-                current = subscription;
-                subscription = null;
-            }
-            if (current != null) {
-                current.cancel();
+                if (!STATE.compareAndSet(this, currentState, currentState | CANCELLED)) {
+                    continue;
+                }
+                Subscription current = SUBSCRIPTION.getAndSet(this, null);
+                if (current != null) {
+                    current.cancel();
+                }
+                return;
             }
         }
 
         private void setSubscription(Subscription next) {
-            synchronized (this) {
-                if (cancelled || done) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState) || stage(currentState) != ACTIVE) {
                     next.cancel();
                     return;
                 }
-                if (subscription != null) {
+                Subscription current = subscription;
+                if (current != null) {
                     next.cancel();
                     Operators.reportSubscriptionSet();
                     return;
                 }
-                subscription = next;
+                if (!SUBSCRIPTION.compareAndSet(this, null, next)) {
+                    continue;
+                }
+                currentState = state;
+                if (isCancelled(currentState) || stage(currentState) != ACTIVE) {
+                    if (SUBSCRIPTION.compareAndSet(this, next, null)) {
+                        next.cancel();
+                    }
+                    return;
+                }
+                next.request(Long.MAX_VALUE);
+                return;
             }
-            next.request(Long.MAX_VALUE);
         }
 
         private void next(DeviceProductOperator product) {
-            synchronized (this) {
-                if (cancelled || done) {
-                    Operators.onDiscard(product, currentContext());
-                    return;
-                }
+            if (!markValue()) {
+                Operators.onDiscard(product, currentContext());
+                return;
             }
             actual.onNext(product);
         }
 
         private void complete(DeviceProductOperator product) {
-            synchronized (this) {
-                if (cancelled || done) {
-                    Operators.onDiscard(product, currentContext());
-                    return;
-                }
+            if (!transitionStage(ACTIVE, EMITTING)) {
+                Operators.onDiscard(product, currentContext());
+                return;
             }
             actual.onNext(product);
-            synchronized (this) {
-                if (cancelled || done) {
-                    return;
-                }
-                done = true;
-                subscription = null;
+            if (transitionStage(EMITTING, DONE)) {
+                SUBSCRIPTION.set(this, null);
+                actual.onComplete();
             }
-            actual.onComplete();
         }
 
         private void complete() {
-            synchronized (this) {
-                if (cancelled || done) {
-                    return;
-                }
-                done = true;
-                subscription = null;
+            if (transitionStage(ACTIVE, DONE)) {
+                SUBSCRIPTION.set(this, null);
+                actual.onComplete();
             }
-            actual.onComplete();
         }
 
         private void fail(Throwable error) {
-            Subscription current;
-            synchronized (this) {
-                if (cancelled || done) {
-                    Operators.onErrorDropped(error, currentContext());
-                    return;
-                }
-                done = true;
-                current = subscription;
-                subscription = null;
+            if (!transitionStage(ACTIVE, DONE)) {
+                Operators.onErrorDropped(error, currentContext());
+                return;
             }
+            Subscription current = SUBSCRIPTION.getAndSet(this, null);
             if (current != null) {
                 current.cancel();
             }
             actual.onError(error);
+        }
+
+        private boolean markValue() {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState)
+                    || stage(currentState) != ACTIVE
+                    || (currentState & VALUE_RECEIVED) != 0) {
+                    return false;
+                }
+                if (STATE.compareAndSet(this, currentState, currentState | VALUE_RECEIVED)) {
+                    return true;
+                }
+            }
+        }
+
+        private boolean transitionStage(int expectedStage, int nextStage) {
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState) || stage(currentState) != expectedStage) {
+                    return false;
+                }
+                int nextState = (currentState & ~STAGE_MASK) | nextStage;
+                if (STATE.compareAndSet(this, currentState, nextState)) {
+                    return true;
+                }
+            }
+        }
+
+        private static int stage(int state) {
+            return state & STAGE_MASK;
+        }
+
+        private static boolean isCancelled(int state) {
+            return (state & CANCELLED) != 0;
         }
 
         private Context currentContext() {
@@ -321,10 +378,10 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
                 return subscription;
             }
             if (attribute == Attr.CANCELLED) {
-                return cancelled;
+                return isCancelled(state);
             }
             if (attribute == Attr.TERMINATED) {
-                return done;
+                return stage(state) == DONE;
             }
             if (attribute == Attr.RUN_STYLE) {
                 return Attr.RunStyle.SYNC;
