@@ -298,3 +298,50 @@ JDK 17.0.18、G1、512 MiB 堆；基线为 `0e11acc`，修改前后使用同一
 验证结果：`MonoDeviceProductTest` 9 项、`MonoProtocolSupportTest` 13 项、
 `MonoConfigsReadTest` 9 项、`DefaultDeviceOperatorTest` 12 项定向通过；core 全量 738 项测试通过，
 0 failure、0 error、2 skipped；主代码和测试代码编译、`git diff --check` 均通过。
+
+## Review 5289344700 修复计划
+
+目标：由 `MonoVersionedMetadata` 直接接收设备无独立物模型时的 `NON_METADATA` 静态 fallback，
+移除 `DefaultDeviceOperator#selfMetadata()` 外层 `defaultIfEmpty`，同时保持当前“版本为空”和
+“版本存在但加载结果为空”都回退到产品物模型的行为。
+
+范围：只修改 `MonoVersionedMetadata`、`DefaultDeviceOperator`、对应单元测试和微基准；保留
+`Loader#loadEmpty()` 供产品物模型执行动态初始化，不改变缓存、版本判断、解码或组合逻辑。
+
+实现：新增带非空 fallback 的内部构造入口。版本源为空或版本转换为空时直接输出 fallback；
+版本加载 Publisher 未输出值即完成时也由同一订阅状态机输出 fallback。正常缓存命中、动态
+`loadEmpty()`、错误、取消、Context、discard/drop 和 demand 语义保持不变。
+
+验证：覆盖空版本不调用动态 empty loader、版本加载为空、下游在 fallback `onNext` 中取消，
+以及设备无独立物模型时仅返回产品物模型；统一运行定向测试、core 编译、`git diff --check`
+和 fallback 新旧链路 JMH 对比。
+
+### Review 5289344700 修复结果
+
+`MonoVersionedMetadata` 新增可选非空 fallback。设备版本源为空、版本转换为空，或版本存在但
+加载 Publisher 未输出值即完成时，均由现有订阅状态机直接输出 `NON_METADATA`；产品物模型
+未传 fallback，仍通过 `Loader#loadEmpty()` 执行原动态初始化流程。`DefaultDeviceOperator`
+移除了外层 `defaultIfEmpty`，因此每个设备少常驻一个 Reactor 包装对象，每次无独立物模型读取
+也少一层订阅器；本次未单独测量 retained heap，不对具体常驻字节数作推断。
+
+JDK 17.0.18、Reactor 3.7.8、JMH 1.35、G1，同一候选代码内对照
+`MonoVersionedMetadata + defaultIfEmpty` 与内置 fallback；每项 2～3 fork、每 fork 预热
+3×1 秒、测量 5×1 秒并启用 GC profiler：
+
+| 无版本 fallback 场景 | 外层 `defaultIfEmpty` | 内置 fallback | 变化 |
+|---|---:|---:|---:|
+| 1 线程平均耗时 | 33.840 ns/op | 20.111 ns/op | -40.6% |
+| 1 线程分配 | 144.006 B/op | 104.004 B/op | -27.8% |
+| 8 线程吞吐 | 204.995 M ops/s | 335.079 M ops/s | +63.5% |
+| 8 线程分配 | 152.002 B/op | 104.002 B/op | -31.6% |
+
+该结果只覆盖无独立物模型时的操作符空分支，不代表完整 `getMetadata()` 同比提升；真实链路仍
+包含产品物模型读取和组合。原始结果位于 `/private/tmp/core-pr99-fallback-{t1,t8}.json` 与
+`/private/tmp/core-pr99-fallback-thrpt-t8.json`。
+
+测试覆盖空版本绕过动态 loader、版本加载为空、fallback `onNext` 内取消，以及设备只返回产品
+物模型；定向 34 项和 core 全量 742 项均通过，0 failure、0 error、2 skipped，主/测试代码编译
+及 `git diff --check` 通过。
+
+实现提交：`26b81fe8c3c8805dee09688874015add63812208`；评审入口：
+`https://github.com/jetlinks/jetlinks-core/pull/99#pullrequestreview-5289344700`。
