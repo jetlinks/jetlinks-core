@@ -427,4 +427,44 @@ public class DefaultDeviceOperatorTest {
                 })
                 .verifyComplete();
     }
+
+    @Test
+    public void testMetadataFallsBackWhenDeviceMetadataAbsent() {
+        TestDeviceRegistry registry = new TestDeviceRegistry(new TestProtocolSupport() {
+            @Override
+            public DeviceMetadataCodec getMetadataCodec() {
+                return new DeviceMetadataCodec() {
+                    @Override
+                    public Mono<DeviceMetadata> decode(String source) {
+                        SimpleDeviceMetadata metadata = new SimpleDeviceMetadata();
+                        metadata.addProperty(SimplePropertyMetadata.of(source, source, null));
+                        return Mono.just(metadata);
+                    }
+
+                    @Override
+                    public Mono<String> encode(DeviceMetadata metadata) {
+                        return Mono.empty();
+                    }
+                };
+            }
+        }, new StandaloneDeviceMessageBroker());
+
+        registry.register(ProductInfo.builder()
+                                     .id("prod")
+                                     .protocol("test")
+                                     .metadata("product")
+                                     .build())
+                .then(registry.register(DeviceInfo.builder()
+                                                  .id("device")
+                                                  .productId("prod")
+                                                  .protocol("test")
+                                                  .build()))
+                .flatMap(DeviceOperator::getMetadata)
+                .as(StepVerifier::create)
+                .assertNext(metadata -> {
+                    org.junit.Assert.assertEquals(1, metadata.getProperties().size());
+                    org.junit.Assert.assertEquals("product", metadata.getProperties().get(0).getId());
+                })
+                .verifyComplete();
+    }
 }

@@ -21,18 +21,33 @@ import java.util.function.Supplier;
  */
 final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
 
+    private static final Object NO_FALLBACK = new Object();
+
     private final Mono<?> versionSource;
     private final Loader<V, T> loader;
+    private final Object fallbackValue;
 
     private MonoVersionedMetadata(Mono<?> versionSource,
-                                  Loader<V, T> loader) {
+                                  Loader<V, T> loader,
+                                  Object fallbackValue) {
         this.versionSource = Objects.requireNonNull(versionSource, "versionSource");
         this.loader = Objects.requireNonNull(loader, "loader");
+        this.fallbackValue = fallbackValue;
     }
 
     static <V, T> Mono<T> create(Mono<?> versionSource,
                                  Loader<V, T> loader) {
-        return onAssembly(new MonoVersionedMetadata<>(versionSource, loader));
+        return onAssembly(new MonoVersionedMetadata<>(versionSource, loader, NO_FALLBACK));
+    }
+
+    static <V, T> Mono<T> create(Mono<?> versionSource,
+                                 Loader<V, T> loader,
+                                 T fallbackValue) {
+        return onAssembly(new MonoVersionedMetadata<>(
+            versionSource,
+            loader,
+            Objects.requireNonNull(fallbackValue, "fallbackValue")
+        ));
     }
 
     static <V, T> Mono<T> create(Mono<V> versionSource,
@@ -66,7 +81,7 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
     @Override
     @SuppressWarnings("unchecked")
     public void subscribe(@Nonnull CoreSubscriber<? super T> actual) {
-        MetadataSubscription<V, T> subscription = new MetadataSubscription<>(actual, loader);
+        MetadataSubscription<V, T> subscription = new MetadataSubscription<>(actual, loader, fallbackValue);
         actual.onSubscribe(subscription);
         try {
             ((Mono<Object>) versionSource).subscribe(new VersionSubscriber<>(subscription));
@@ -119,7 +134,7 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
         private static final int VERSION = 0;
         private static final int SWITCHING = 1;
         private static final int LOADER = 2;
-        private static final int CACHED = 3;
+        private static final int VALUE = 3;
         private static final int DONE = 4;
         private static final int STAGE_MASK = 0b111;
 
@@ -144,14 +159,17 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
 
         private final CoreSubscriber<? super T> actual;
         private final Loader<V, T> loader;
+        private final Object fallbackValue;
 
         private volatile Subscription subscription;
         private volatile int state = VERSION;
 
         private MetadataSubscription(CoreSubscriber<? super T> actual,
-                                     Loader<V, T> loader) {
+                                     Loader<V, T> loader,
+                                     Object fallbackValue) {
             this.actual = actual;
             this.loader = loader;
+            this.fallbackValue = fallbackValue;
         }
 
         private void setSubscription(Subscription next, int expectedStage) {
@@ -197,7 +215,7 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
                     version = null;
                 }
                 if (version == null) {
-                    switchTo(Objects.requireNonNull(loader.loadEmpty(), "The empty loader returned a null Publisher"));
+                    handleEmptyVersion();
                     return;
                 }
                 snapshot = loader.currentSnapshot();
@@ -205,7 +223,7 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
                 if (cached != null
                     && loader.isSnapshotValid(version, snapshot)
                     && snapshot == loader.currentSnapshot()) {
-                    completeCached(cached);
+                    completeValue(VERSION, cached);
                     return;
                 }
                 switchTo(Objects.requireNonNull(loader.load(version), "The loader returned a null Publisher"));
@@ -235,14 +253,16 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
                 return;
             }
             try {
-                switchTo(Objects.requireNonNull(loader.loadEmpty(), "The empty loader returned a null Publisher"));
+                handleEmptyVersion();
             } catch (Throwable error) {
                 fail(Operators.onOperatorError(subscription, error, actual.currentContext()), VERSION);
             }
         }
 
         private void loaderComplete() {
-            complete(LOADER);
+            if (!completeFallbackIfEmpty()) {
+                complete(LOADER);
+            }
         }
 
         @Override
@@ -302,16 +322,60 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
             }
         }
 
-        private void completeCached(T cached) {
-            if (!transitionStage(VERSION, CACHED)) {
-                Operators.onDiscard(cached, actual.currentContext());
+        private void handleEmptyVersion() {
+            if (hasFallback()) {
+                completeValue(VERSION, fallback());
+                return;
+            }
+            switchTo(Objects.requireNonNull(loader.loadEmpty(), "The empty loader returned a null Publisher"));
+        }
+
+        private boolean completeFallbackIfEmpty() {
+            if (!hasFallback()) {
+                return false;
+            }
+            for (; ; ) {
+                int currentState = state;
+                if ((currentState & LOADER_VALUE_RECEIVED) != 0) {
+                    return false;
+                }
+                if (isCancelled(currentState) || stage(currentState) != LOADER) {
+                    Operators.onDiscard(fallbackValue, actual.currentContext());
+                    return true;
+                }
+                int nextState = (currentState & ~STAGE_MASK) | VALUE;
+                if (!STATE.compareAndSet(this, currentState, nextState)) {
+                    continue;
+                }
+                SUBSCRIPTION.set(this, null);
+                emitValue(fallback());
+                return true;
+            }
+        }
+
+        private void completeValue(int expectedStage, T value) {
+            if (!transitionStage(expectedStage, VALUE)) {
+                Operators.onDiscard(value, actual.currentContext());
                 return;
             }
             SUBSCRIPTION.set(this, null);
-            actual.onNext(cached);
-            if (transitionStage(CACHED, DONE)) {
+            emitValue(value);
+        }
+
+        private void emitValue(T value) {
+            actual.onNext(value);
+            if (transitionStage(VALUE, DONE)) {
                 actual.onComplete();
             }
+        }
+
+        private boolean hasFallback() {
+            return fallbackValue != NO_FALLBACK;
+        }
+
+        @SuppressWarnings("unchecked")
+        private T fallback() {
+            return (T) fallbackValue;
         }
 
         private void complete(int expectedStage) {

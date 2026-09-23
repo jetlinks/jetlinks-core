@@ -181,6 +181,113 @@ public class MonoVersionedMetadataTest {
     }
 
     @Test
+    public void fallbackValueBypassesEmptyLoader() {
+        AtomicInteger emptyLoads = new AtomicInteger();
+        Mono<String> metadata = MonoVersionedMetadata.create(
+            Mono.empty(),
+            new MonoVersionedMetadata.Loader<Long, String>() {
+                @Override
+                public String getCached() {
+                    return null;
+                }
+
+                @Override
+                public boolean isValid(Long version, String cached) {
+                    return false;
+                }
+
+                @Override
+                public Mono<String> load(Long version) {
+                    return Mono.just("loaded");
+                }
+
+                @Override
+                public Mono<String> loadEmpty() {
+                    emptyLoads.incrementAndGet();
+                    return Mono.just("empty-loader");
+                }
+            },
+            "fallback"
+        );
+
+        StepVerifier.create(metadata).expectNext("fallback").verifyComplete();
+        assertEquals(0, emptyLoads.get());
+    }
+
+    @Test
+    public void fallbackValueHandlesEmptyVersionLoad() {
+        Mono<String> metadata = MonoVersionedMetadata.create(
+            Mono.just(2L),
+            new MonoVersionedMetadata.Loader<Long, String>() {
+                @Override
+                public String getCached() {
+                    return null;
+                }
+
+                @Override
+                public boolean isValid(Long version, String cached) {
+                    return false;
+                }
+
+                @Override
+                public Mono<String> load(Long version) {
+                    return Mono.empty();
+                }
+            },
+            "fallback"
+        );
+
+        StepVerifier.create(metadata).expectNext("fallback").verifyComplete();
+    }
+
+    @Test
+    public void fallbackValueCancellationSkipsOnComplete() {
+        AtomicInteger completions = new AtomicInteger();
+        AtomicReference<String> value = new AtomicReference<>();
+        Mono<String> metadata = MonoVersionedMetadata.create(
+            Mono.empty(),
+            new MonoVersionedMetadata.Loader<Long, String>() {
+                @Override
+                public String getCached() {
+                    return null;
+                }
+
+                @Override
+                public boolean isValid(Long version, String cached) {
+                    return false;
+                }
+
+                @Override
+                public Mono<String> load(Long version) {
+                    return Mono.empty();
+                }
+            },
+            "fallback"
+        );
+
+        metadata.subscribe(new BaseSubscriber<String>() {
+            @Override
+            protected void hookOnSubscribe(Subscription subscription) {
+                request(1);
+            }
+
+            @Override
+            protected void hookOnNext(String fallback) {
+                value.set(fallback);
+                cancel();
+            }
+
+            @Override
+            protected void hookOnComplete() {
+                completions.incrementAndGet();
+            }
+        });
+
+        assertEquals("fallback", value.get());
+        assertEquals(0, completions.get());
+    }
+
+    @Test
     public void rawVersionIsConvertedInsideOperator() {
         Mono<String> metadata = MonoVersionedMetadata.create(
             Mono.just("2"),

@@ -147,8 +147,9 @@ public class DefaultDeviceOperator implements DeviceOperator, StorageConfigurabl
     private Mono<DeviceMetadata> selfMetadata() {
         return MonoVersionedMetadata.create(
             getSelfConfig(lastMetadataTimeKey.getKey()),
-            this
-        ).defaultIfEmpty(NON_METADATA);
+            this,
+            NON_METADATA
+        );
     }
 
     @Override

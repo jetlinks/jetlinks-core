@@ -20,6 +20,8 @@ public class MonoVersionedMetadataBenchmark {
     private Mono<String> cacheHit;
     private Mono<String> versionLoad;
     private Mono<String> emptyLoad;
+    private Mono<String> emptyDefaultIfEmpty;
+    private Mono<String> emptyFallback;
 
     @Setup
     public void setup() {
@@ -45,6 +47,26 @@ public class MonoVersionedMetadataBenchmark {
             version -> Mono.just("loaded"),
             () -> Mono.just("empty")
         );
+        MonoVersionedMetadata.Loader<Long, String> emptyLoader = new MonoVersionedMetadata.Loader<>() {
+            @Override
+            public String getCached() {
+                return null;
+            }
+
+            @Override
+            public boolean isValid(Long version, String cached) {
+                return false;
+            }
+
+            @Override
+            public Mono<String> load(Long version) {
+                return Mono.empty();
+            }
+        };
+        emptyDefaultIfEmpty = MonoVersionedMetadata
+            .create(Mono.empty(), emptyLoader)
+            .defaultIfEmpty("empty");
+        emptyFallback = MonoVersionedMetadata.create(Mono.empty(), emptyLoader, "empty");
     }
 
     @Benchmark
@@ -65,5 +87,15 @@ public class MonoVersionedMetadataBenchmark {
     @Benchmark
     public String emptyLoad() {
         return emptyLoad.block();
+    }
+
+    @Benchmark
+    public String emptyDefaultIfEmpty() {
+        return emptyDefaultIfEmpty.block();
+    }
+
+    @Benchmark
+    public String emptyFallback() {
+        return emptyFallback.block();
     }
 }
