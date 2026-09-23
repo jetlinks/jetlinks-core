@@ -209,7 +209,7 @@ public class BlockingDeviceOperator implements DeviceOperator {
 
     @Override
     public <V> Mono<V> getSelfConfig(ConfigKey<V> key) {
-        return DeviceOperator.super.getSelfConfig(key);
+        return target.getSelfConfig(key);
     }
 
     /**
@@ -226,7 +226,7 @@ public class BlockingDeviceOperator implements DeviceOperator {
 
     @Override
     public Mono<Values> getSelfConfigs(ConfigKey<?>... keys) {
-        return DeviceOperator.super.getSelfConfigs(keys);
+        return target.getSelfConfigs(keys);
     }
 
     @Override

@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import org.jetlinks.core.ProtocolSupport;
 import org.jetlinks.core.ProtocolSupports;
+import org.jetlinks.core.Value;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.config.ConfigStorage;
 import org.jetlinks.core.config.ConfigStorageManager;
@@ -20,25 +21,24 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public class DefaultDeviceProductOperator implements DeviceProductOperator, StorageConfigurable {
+public class DefaultDeviceProductOperator implements DeviceProductOperator, StorageConfigurable, MonoVersionedMetadata.Loader<Long, DeviceMetadata> {
+    private static final MetadataState EMPTY_METADATA_STATE = new MetadataState(-1, null);
 
     @Getter
     private final String id;
 
-    private volatile DeviceMetadata metadata;
+    private volatile MetadataState metadataState = EMPTY_METADATA_STATE;
 
     @Getter(AccessLevel.PROTECTED)
     private final Mono<ConfigStorage> storageMono;
 
     private final Supplier<Flux<DeviceOperator>> devicesSupplier;
 
-    private long lstMetadataChangeTime;
-
     private static final ConfigKey<Long> lastMetadataTimeKey = ConfigKey.of("lst_metadata_time");
 
-    private final Mono<DeviceMetadata> inLocalMetadata;
-
     private final Mono<DeviceMetadata> metadataMono;
+
+    private final Mono<DeviceMetadata> loadMetadata;
 
     private final Mono<ProtocolSupport> protocolSupportMono;
 
@@ -63,12 +63,14 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
         this.id = id;
         this.storageMono = storageMono;
         this.devicesSupplier = supplier;
-        this.inLocalMetadata = Mono.fromSupplier(() -> metadata);
-        this.protocolSupportMono = this
-                .getConfig(DeviceConfigKey.protocol)
-                .flatMap(supports::getProtocol);
+        this.protocolSupportMono = MonoProtocolSupport.create(
+            storageMono,
+            supports,
+            DeviceConfigKey.protocol.getKey(),
+            null
+        );
 
-        Mono<DeviceMetadata> loadMetadata = Mono
+        this.loadMetadata = Mono
                 .zip(
                         this.getProtocol().map(ProtocolSupport::getMetadataCodec),
                         this.getConfig(DeviceConfigKey.metadata),
@@ -84,18 +86,53 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
                         .getT1()
                         .decode(tp3.getT2())
                         .doOnNext(decode -> {
-                            this.metadata = decode;
-                            this.lstMetadataChangeTime = tp3.getT3();
+                            this.metadataState = new MetadataState(tp3.getT3(), decode);
                         }));
-        this.metadataMono = this
-                .getConfig(lastMetadataTimeKey)
-                .flatMap(time -> {
-                    if (time.equals(lstMetadataChangeTime)) {
-                        return inLocalMetadata;
-                    }
-                    return Mono.empty();
-                })
-                .switchIfEmpty(loadMetadata);
+        this.metadataMono = MonoVersionedMetadata.create(
+            this.getConfig(lastMetadataTimeKey.getKey()),
+            this
+        );
+    }
+
+    @Override
+    public Long convertVersion(Object value) {
+        return ((Value) value).as(Long.class);
+    }
+
+    @Override
+    public Object currentSnapshot() {
+        return metadataState;
+    }
+
+    @Override
+    public DeviceMetadata getCached(Object snapshot) {
+        return ((MetadataState) snapshot).metadata;
+    }
+
+    @Override
+    public DeviceMetadata getCached() {
+        return metadataState.metadata;
+    }
+
+    @Override
+    public boolean isSnapshotValid(Long time, Object snapshot) {
+        return time.equals(((MetadataState) snapshot).time);
+    }
+
+    @Override
+    public boolean isValid(Long time, DeviceMetadata cached) {
+        MetadataState state = metadataState;
+        return cached == state.metadata && time.equals(state.time);
+    }
+
+    @Override
+    public Mono<DeviceMetadata> load(Long time) {
+        return loadMetadata;
+    }
+
+    @Override
+    public Mono<DeviceMetadata> loadEmpty() {
+        return loadMetadata;
     }
 
     @Override
@@ -122,7 +159,7 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
             return StorageConfigurable.super
                     .setConfigs(conf)
                     .doOnNext(s -> {
-                        metadata = null;
+                        metadataState = new MetadataState((Long) conf.get(lastMetadataTimeKey.getKey()), null);
                     })
                     .then(this.getProtocol()
                               .flatMap(support -> support.onProductMetadataChanged(this))
@@ -152,5 +189,15 @@ public class DefaultDeviceProductOperator implements DeviceProductOperator, Stor
     @Override
     public Flux<DeviceOperator> getDevices() {
         return devicesSupplier == null ? Flux.empty() : devicesSupplier.get();
+    }
+
+    private static final class MetadataState {
+        private final long time;
+        private final DeviceMetadata metadata;
+
+        private MetadataState(long time, DeviceMetadata metadata) {
+            this.time = time;
+            this.metadata = metadata;
+        }
     }
 }

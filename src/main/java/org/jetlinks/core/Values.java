@@ -3,7 +3,9 @@ package org.jetlinks.core;
 import org.jetlinks.core.config.ConfigKey;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -94,5 +96,40 @@ public interface Values {
 
     static Values of(Map<String, ?> values) {
         return SimpleValues.of((Map) values);
+    }
+
+    static Values of(String firstKey, Object firstValue, String secondKey, Object secondValue) {
+        if (firstKey == null || secondKey == null || firstKey.equals(secondKey)) {
+            Map<String, Object> values = new HashMap<>(2);
+            if (firstValue != null) {
+                values.put(firstKey, firstValue);
+            }
+            if (secondValue != null) {
+                values.put(secondKey, secondValue);
+            }
+            return of(values);
+        }
+        return new Values2(firstKey, firstValue, secondKey, secondValue);
+    }
+
+    static Values of(String firstKey, Object firstValue, String secondKey, Object secondValue,
+                     String thirdKey, Object thirdValue) {
+        if (firstKey == null || secondKey == null || thirdKey == null
+            || Objects.equals(firstKey, secondKey)
+            || Objects.equals(firstKey, thirdKey)
+            || Objects.equals(secondKey, thirdKey)) {
+            Map<String, Object> values = new HashMap<>(3);
+            if (firstValue != null) {
+                values.put(firstKey, firstValue);
+            }
+            if (secondValue != null) {
+                values.put(secondKey, secondValue);
+            }
+            if (thirdValue != null) {
+                values.put(thirdKey, thirdValue);
+            }
+            return of(values);
+        }
+        return new Values3(firstKey, firstValue, secondKey, secondValue, thirdKey, thirdValue);
     }
 }

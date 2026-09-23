@@ -24,30 +24,26 @@ public class DeviceThingsRegistrySupport implements ThingsRegistrySupport {
     @Override
     public Mono<Thing> getThing(@Nonnull String thingType, @Nonnull String thingId) {
         checkThingType(thingType);
-        return registry
-                .getDevice(thingId)
-                .cast(Thing.class);
+        return Mono.from(registry.getDevice(thingId));
     }
 
     @Override
     public Mono<ThingTemplate> getTemplate(@Nonnull String thingType, @Nonnull String templateId) {
-        return registry
-                .getProduct(templateId)
-                .cast(ThingTemplate.class);
+        return Mono.from(registry.getProduct(templateId));
     }
 
     @Override
     public Mono<Thing> register(@Nonnull String thingType, @Nonnull ThingInfo info) {
         checkThingType(thingType);
 
-        return registry
-                .register(DeviceInfo.builder()
-                                    .id(info.getId())
-                                    .productId(info.getTemplateId())
-                                    .metadata(info.getMetadata())
-                                    .configuration(info.getConfiguration())
-                                    .build())
-                .cast(Thing.class);
+        return Mono.from(
+            registry.register(DeviceInfo.builder()
+                                        .id(info.getId())
+                                        .productId(info.getTemplateId())
+                                        .metadata(info.getMetadata())
+                                        .configuration(info.getConfiguration())
+                                        .build())
+        );
     }
 
     @Override
@@ -59,13 +55,13 @@ public class DeviceThingsRegistrySupport implements ThingsRegistrySupport {
     @Override
     public Mono<ThingTemplate> register(@Nonnull String thingType, @Nonnull ThingTemplateInfo templateInfo) {
         checkThingType(thingType);
-        return registry
-                .register(ProductInfo.builder()
-                                     .id(templateInfo.getId())
-                                     .metadata(templateInfo.getMetadata())
-                                     .configuration(templateInfo.getConfiguration())
-                                     .build())
-                .cast(ThingTemplate.class);
+        return Mono.from(
+            registry.register(ProductInfo.builder()
+                                         .id(templateInfo.getId())
+                                         .metadata(templateInfo.getMetadata())
+                                         .configuration(templateInfo.getConfiguration())
+                                         .build())
+        );
     }
 
     @Override
