@@ -103,7 +103,8 @@ JFR 结果：
   `"invalid"` 转换 `Long` 抛出 `NumberFormatException`，与本次配置和协议优化无关。
 - `git diff --check`：通过。
 
-Commit：pending。Pull Request：pending。
+核心配置与协议优化提交：`a3b6d601`。Pull Request：
+[jetlinks-core#99](https://github.com/jetlinks/jetlinks-core/pull/99)。
 
 ## 双键与三键读取计划
 
