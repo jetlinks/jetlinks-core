@@ -384,4 +384,5 @@ Publisher 的人为自引用增加全局循环检测。只有生产可达分支�
 - `MonoProtocolSupport` 已在每个阶段首值到达后切换到下一阶段，迟到值、完成和错误不会终止当前阶段；产品缓存保存 Operator 而非相互委托的 Mono，本轮未发现与设备缓存相同的递归结构。
 - 新增 `DefaultDeviceOperator` 三个构造入口以及 `DefaultDeviceProductOperator` 废弃、manager、直接 Storage Mono 三种构造入口的兼容测试，均继续走相同的产品、协议和物模型读取链路。
 - 定向测试：`MonoDeviceProductTest`、`MonoProtocolSupportTest`、`MonoVersionedMetadataTest`、`DeviceOperatorCompatibilityConstructorTest`、`DefaultDeviceOperatorTest` 共 62 项通过，0 failure、0 error。
-- 全量验证：`mvn test` 共 748 项，0 failure、0 error、2 skipped；`git diff --check` 通过。提交与 Pull Request：`pending`。
+- 全量验证：`mvn test` 共 748 项，0 failure、0 error、2 skipped；`git diff --check` 通过。
+- 交付：实现提交 `63b1b3f74faecae4482c91448d755f2d3d4bd420`，Pull Request：https://github.com/jetlinks/jetlinks-core/pull/100
