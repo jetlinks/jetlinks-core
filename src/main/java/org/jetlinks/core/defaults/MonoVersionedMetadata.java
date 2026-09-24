@@ -233,11 +233,26 @@ final class MonoVersionedMetadata<V, T> extends Mono<T> implements Scannable {
         }
 
         private void loaderNext(T metadata) {
-            if (!markOnce(LOADER, LOADER_VALUE_RECEIVED)) {
-                Operators.onDiscard(metadata, actual.currentContext());
+            for (; ; ) {
+                int currentState = state;
+                if (isCancelled(currentState)
+                    || stage(currentState) != LOADER
+                    || (currentState & LOADER_VALUE_RECEIVED) != 0) {
+                    Operators.onDiscard(metadata, actual.currentContext());
+                    return;
+                }
+                int nextState = ((currentState | LOADER_VALUE_RECEIVED) & ~STAGE_MASK) | VALUE;
+                if (!STATE.compareAndSet(this, currentState, nextState)) {
+                    continue;
+                }
+                // loader 的首值就是最终物模型，取消上游以免非终止来源造成订阅泄漏。
+                Subscription current = SUBSCRIPTION.getAndSet(this, null);
+                if (current != null) {
+                    current.cancel();
+                }
+                emitValue(metadata);
                 return;
             }
-            actual.onNext(metadata);
         }
 
         private void versionError(Throwable error) {

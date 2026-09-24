@@ -385,6 +385,48 @@ public class MonoProtocolSupportTest {
     }
 
     @Test
+    public void staleStageValueAndCompletionDoNotTerminateCurrentStage() {
+        AtomicReference<CoreSubscriber<? super Value>> configSubscriber = new AtomicReference<>();
+        AtomicReference<Object> dropped = new AtomicReference<>();
+        ProtocolSupport expected = protocol("test");
+        Value stale = Value.simple("stale");
+        Sinks.One<ProtocolSupport> support = Sinks.one();
+        Mono<Value> configSource = new Mono<Value>() {
+            @Override
+            public void subscribe(CoreSubscriber<? super Value> actual) {
+                configSubscriber.set(actual);
+                actual.onSubscribe(new Subscription() {
+                    @Override
+                    public void request(long count) {
+                    }
+
+                    @Override
+                    public void cancel() {
+                    }
+                });
+            }
+        };
+
+        Hooks.onNextDropped(dropped::set);
+        try {
+            StepVerifier.create(MonoProtocolSupport.create(
+                            Mono.just(storage(() -> configSource)),
+                            supports(id -> support.asMono()),
+                            "protocol",
+                            null))
+                        .then(() -> configSubscriber.get().onNext(Value.simple("test")))
+                        .then(() -> configSubscriber.get().onNext(stale))
+                        .then(() -> configSubscriber.get().onComplete())
+                        .then(() -> support.emitValue(expected, Sinks.EmitFailureHandler.FAIL_FAST))
+                        .expectNext(expected)
+                        .verifyComplete();
+            assertSame(stale, dropped.get());
+        } finally {
+            Hooks.resetOnNextDropped();
+        }
+    }
+
+    @Test
     public void failuresDoNotFallBackToProduct() {
         IllegalStateException failure = new IllegalStateException("failure");
         AtomicInteger productReads = new AtomicInteger();

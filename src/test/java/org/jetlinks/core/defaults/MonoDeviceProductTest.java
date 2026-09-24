@@ -89,6 +89,41 @@ public class MonoDeviceProductTest {
     }
 
     @Test
+    public void productValueCompletesWithoutWaitingForSourceTerminal() {
+        DeviceProductOperator expected = product("v1");
+        AtomicInteger cancellations = new AtomicInteger();
+        Mono<DeviceProductOperator> productSource = new Mono<DeviceProductOperator>() {
+            @Override
+            public void subscribe(CoreSubscriber<? super DeviceProductOperator> actual) {
+                actual.onSubscribe(new Subscription() {
+                    private boolean emitted;
+
+                    @Override
+                    public void request(long count) {
+                        if (!emitted) {
+                            emitted = true;
+                            actual.onNext(expected);
+                        }
+                    }
+
+                    @Override
+                    public void cancel() {
+                        cancellations.incrementAndGet();
+                    }
+                });
+            }
+        };
+
+        StepVerifier.create(create(
+                        Mono.just(storage(() -> Mono.just(values("v1")))),
+                        registry((id, version) -> productSource)))
+                    .expectNext(expected)
+                    .expectComplete()
+                    .verify(TIMEOUT);
+        assertEquals(1, cancellations.get());
+    }
+
+    @Test
     public void asynchronousStagesPreserveContext() {
         DeviceProductOperator expected = product("v1");
         Mono<ConfigStorage> source = Mono.deferContextual(context -> {

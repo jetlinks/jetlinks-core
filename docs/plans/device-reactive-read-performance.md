@@ -345,3 +345,43 @@ JDK 17.0.18、Reactor 3.7.8、JMH 1.35、G1，同一候选代码内对照
 
 实现提交：`26b81fe8c3c8805dee09688874015add63812208`；评审入口：
 `https://github.com/jetlinks/jetlinks-core/pull/99#pullrequestreview-5289344700`。
+
+## 设备响应式 Mono 相似缺陷审查计划
+
+目标：在 `MonoValidatedDeviceOperator` 递归订阅缺陷修复后，检查产品定位、协议回退和设备/产品
+物模型读取是否存在同类缓存互相委托、同步重入、阶段切换或迟到信号导致的栈溢出、重复终止、
+取消丢失及永久 pending 风险。
+
+影响范围与 owning module：`jetlinks-core` 的 `MonoDeviceProduct`、`MonoProtocolSupport`、
+`MonoVersionedMetadata`、`DefaultDeviceOperator`、`DefaultDeviceProductOperator` 及对应测试；同时复核
+`jetlinks-supports` 的 `MonoValidatedDeviceOperator` 缓存缺失竞争分支和 `ClusterDeviceRegistry` 产品
+缓存路径。产品缓存保存 Operator 值而不是可相互委托的 Mono，当前静态检查未发现与设备缓存相同
+的 A/B 递归结构。
+
+不做：不修改缓存策略、版本规则、协议/物模型回退语义或高频读取实现；不为任意外部自定义
+Publisher 的人为自引用增加全局循环检测。只有生产可达分支能够稳定复现缺陷时才修改实现。
+
+实施步骤：
+
+1. 逐个核对三个自定义 Mono 的 demand、cancel、Context、同步/异步源、空值、错误、重复/迟到信号
+   和阶段切换不变量，确认不存在递归追逐共享缓存值。
+2. 为 supports 增加缓存首次读取为空、`putIfAbsent` 竞争返回其他实例、委托实例在 demand 前失效、
+   空校验和普通缓存 Publisher 的回归场景。
+3. 为 core 增加产品、协议和版本物模型的同步/异步异常、迟到 `onSubscribe`、重复/迟到信号、
+   loader/fallback 空结果及并发订阅边界测试；覆盖 `DefaultDeviceOperator` 的兼容重载构造方法和
+   `DefaultDeviceProductOperator` 的废弃/管理器/直接 Storage Mono 构造方法，使用受控 Publisher，
+   不使用 sleep。
+4. 若测试暴露真实缺陷，在 owning operator 内做最小状态机修复；否则只补行为契约测试和审查结论。
+
+风险与验证：保持 Reactor demand、取消、Context、错误映射、discard/drop 和 assembly hook 语义；
+分阶段统一运行 core 的三个自定义 Mono 与设备 Operator 测试、supports 的设备缓存与 Registry 测试，
+最后执行模块编译和 `git diff --check`。不在每次测试编辑后重复全量构建。
+
+### 审查结论与验证结果
+
+- `MonoDeviceProduct` 的异步产品来源如果发出首值后不发送终止信号，下游会永久等待；现改为首值直接完成并取消活动上游，重复或迟到信号仍按原状态机丢弃。
+- `MonoVersionedMetadata` 的 loader 存在相同问题；现将 `LOADER -> VALUE` 与首值标记合并为一次 CAS，清理并取消活动订阅后再发送值，保留下游在 `onNext` 中取消时不再收到 `onComplete` 的语义。
+- `MonoProtocolSupport` 已在每个阶段首值到达后切换到下一阶段，迟到值、完成和错误不会终止当前阶段；产品缓存保存 Operator 而非相互委托的 Mono，本轮未发现与设备缓存相同的递归结构。
+- 新增 `DefaultDeviceOperator` 三个构造入口以及 `DefaultDeviceProductOperator` 废弃、manager、直接 Storage Mono 三种构造入口的兼容测试，均继续走相同的产品、协议和物模型读取链路。
+- 定向测试：`MonoDeviceProductTest`、`MonoProtocolSupportTest`、`MonoVersionedMetadataTest`、`DeviceOperatorCompatibilityConstructorTest`、`DefaultDeviceOperatorTest` 共 62 项通过，0 failure、0 error。
+- 全量验证：`mvn test` 共 748 项，0 failure、0 error、2 skipped；`git diff --check` 通过。提交与 Pull Request：`pending`。
