@@ -209,7 +209,6 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
         private static final int STAGE_MASK = 0b11;
 
         private static final int CANCELLED = 1 << 2;
-        private static final int VALUE_RECEIVED = 1 << 3;
 
         @SuppressWarnings("rawtypes")
         private static final AtomicIntegerFieldUpdater<ProductSubscription> STATE =
@@ -291,22 +290,18 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
             }
         }
 
-        private void next(DeviceProductOperator product) {
-            if (!markValue()) {
-                Operators.onDiscard(product, currentContext());
-                return;
-            }
-            actual.onNext(product);
-        }
-
         private void complete(DeviceProductOperator product) {
             if (!transitionStage(ACTIVE, EMITTING)) {
                 Operators.onDiscard(product, currentContext());
                 return;
             }
+            // 首值已足以完成 Mono，主动取消上游，避免缺失终止信号的来源继续持有订阅者。
+            Subscription current = SUBSCRIPTION.getAndSet(this, null);
+            if (current != null) {
+                current.cancel();
+            }
             actual.onNext(product);
             if (transitionStage(EMITTING, DONE)) {
-                SUBSCRIPTION.set(this, null);
                 actual.onComplete();
             }
         }
@@ -328,20 +323,6 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
                 current.cancel();
             }
             actual.onError(error);
-        }
-
-        private boolean markValue() {
-            for (; ; ) {
-                int currentState = state;
-                if (isCancelled(currentState)
-                    || stage(currentState) != ACTIVE
-                    || (currentState & VALUE_RECEIVED) != 0) {
-                    return false;
-                }
-                if (STATE.compareAndSet(this, currentState, currentState | VALUE_RECEIVED)) {
-                    return true;
-                }
-            }
         }
 
         private boolean transitionStage(int expectedStage, int nextStage) {
@@ -405,7 +386,7 @@ final class MonoDeviceProduct extends Mono<DeviceProductOperator> implements Sca
 
         @Override
         public void onNext(DeviceProductOperator product) {
-            subscription.next(product);
+            subscription.complete(product);
         }
 
         @Override

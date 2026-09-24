@@ -146,6 +146,77 @@ public class MonoVersionedMetadataTest {
     }
 
     @Test
+    public void loaderValueCompletesWithoutWaitingForSourceTerminal() {
+        AtomicInteger cancellations = new AtomicInteger();
+        Mono<String> loader = new Mono<String>() {
+            @Override
+            public void subscribe(CoreSubscriber<? super String> actual) {
+                actual.onSubscribe(new Subscription() {
+                    private boolean emitted;
+
+                    @Override
+                    public void request(long count) {
+                        if (!emitted) {
+                            emitted = true;
+                            actual.onNext("loaded");
+                        }
+                    }
+
+                    @Override
+                    public void cancel() {
+                        cancellations.incrementAndGet();
+                    }
+                });
+            }
+        };
+        Mono<String> metadata = MonoVersionedMetadata.create(
+            Mono.just(2L),
+            () -> null,
+            (version, cached) -> false,
+            version -> loader,
+            Mono::empty);
+
+        StepVerifier.create(metadata)
+                    .expectNext("loaded")
+                    .expectComplete()
+                    .verify(TIMEOUT);
+        assertEquals(1, cancellations.get());
+    }
+
+    @Test
+    public void loaderValueCancellationSkipsOnComplete() {
+        AtomicReference<String> value = new AtomicReference<>();
+        AtomicInteger completions = new AtomicInteger();
+        Mono<String> metadata = MonoVersionedMetadata.create(
+            Mono.just(2L),
+            () -> null,
+            (version, cached) -> false,
+            version -> Mono.just("loaded"),
+            Mono::empty);
+
+        metadata.subscribe(new BaseSubscriber<String>() {
+            @Override
+            protected void hookOnSubscribe(Subscription subscription) {
+                request(1);
+            }
+
+            @Override
+            protected void hookOnNext(String loaded) {
+                value.set(loaded);
+                cancel();
+            }
+
+            @Override
+            protected void hookOnComplete() {
+                completions.incrementAndGet();
+            }
+        });
+
+        assertEquals("loaded", value.get());
+        assertEquals(0, completions.get());
+    }
+
+    @Test
     public void versionMismatchUsesAsyncLoaderWithoutPrematureCompletion() {
         Sinks.One<String> loader = Sinks.one();
         AtomicInteger loads = new AtomicInteger();
