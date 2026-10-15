@@ -1,5 +1,6 @@
 package org.jetlinks.core.things;
 
+import jakarta.annotation.Nonnull;
 import org.jetlinks.core.lang.SeparatedCharSequence;
 import org.jetlinks.core.lang.SharedPathString;
 
@@ -18,10 +19,10 @@ public interface TopicSupport {
      * @param thingId 物ID
      * @return topic前缀
      */
-    String getTopicPrefix(String templateId,String thingId);
+    String getTopicPrefix(String templateId,@Nonnull String thingId);
 
 
-    default SeparatedCharSequence getTopicPrefix0(String templateId, String thingId) {
+    default SeparatedCharSequence getTopicPrefix0(String templateId, @Nonnull String thingId) {
         return SharedPathString.of(getTopicPrefix(templateId,thingId));
     }
 

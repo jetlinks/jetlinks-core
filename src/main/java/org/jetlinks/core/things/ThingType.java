@@ -1,6 +1,9 @@
 package org.jetlinks.core.things;
 
+import jakarta.annotation.Nonnull;
 import org.jetlinks.core.lang.SharedPathString;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -36,14 +39,16 @@ public interface ThingType extends TopicSupport {
     }
 
     @Override
-    default String getTopicPrefix(String templateId, String thingId) {
-        StringJoiner joiner = new StringJoiner("/", "/", "");
-        joiner.add(getId()).add(templateId).add(thingId);
-        return joiner.toString();
+    default String getTopicPrefix(String templateId, @Nonnull String thingId) {
+        return getTopicPrefix0(templateId, thingId).toString();
     }
 
     @Override
-    default SharedPathString getTopicPrefix0(String templateId, String thingId) {
+    default SharedPathString getTopicPrefix0(String templateId, @Nonnull String thingId) {
+        Assert.hasText(thingId, "thingId can not be empty");
+        if (!StringUtils.hasText(templateId)) {
+            return SharedPathString.of(new String[]{"", getId(), thingId});
+        }
         return SharedPathString.of(new String[]{"", getId(), templateId, thingId});
     }
 
