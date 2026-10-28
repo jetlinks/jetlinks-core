@@ -3,6 +3,7 @@ package org.jetlinks.core.command;
 import com.google.common.collect.Lists;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.utils.MetadataUtils;
@@ -21,6 +22,9 @@ import java.util.*;
  * 1、在命令类上注解{@link Schema}.
  * <p>
  * 2、在命令参数`getter`方法上注解{@link Schema}.
+ * <p>
+ * 字段说明的国际化资源键为声明类全名加字段名；显式 title 使用相同键加 {@code .title}。
+ * 未配置对应语言资源时保留注解文本，继承字段沿用其声明类的资源。
  *
  * <pre>{@code
  *
@@ -217,8 +221,11 @@ public class CommandMetadataResolver {
 
         SimplePropertyMetadata prop = new SimplePropertyMetadata();
         prop.setId(name);
-        prop.setDescription(schema.description());
-        prop.setName(StringUtils.hasText(schema.title()) ? schema.title() : prop.getDescription());
+        String messageKey = method.getDeclaringClass().getName() + "." + name;
+        prop.setDescription(LocaleUtils.resolveMessage(messageKey, schema.description()));
+        prop.setName(StringUtils.hasText(schema.title())
+                         ? LocaleUtils.resolveMessage(messageKey + ".title", schema.title())
+                         : prop.getDescription());
         prop.setValueType(MetadataUtils.parseType(ResolvableType.forMethodReturnType(method, clazz)));
         prop.setExpands(MetadataUtils.parseExpands(method));
         prop.expand("hidden", schema.hidden());

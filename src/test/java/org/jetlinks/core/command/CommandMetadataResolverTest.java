@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.web.bean.FastBeanCopier;
+import org.hswebframework.web.i18n.LocaleUtils;
+import org.hswebframework.web.i18n.MessageSourceInitializer;
 import org.jetlinks.core.annotation.Expands;
 import org.jetlinks.core.annotation.command.Unbounded;
 import org.jetlinks.core.annotation.ui.Selector;
@@ -15,7 +17,9 @@ import org.jetlinks.core.metadata.PropertyMetadata;
 import org.jetlinks.core.metadata.types.ArrayType;
 import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.metadata.types.StringType;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.springframework.context.support.StaticMessageSource;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.Order;
 import reactor.core.publisher.Mono;
@@ -26,12 +30,130 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.Assert.*;
 
 public class CommandMetadataResolverTest {
+
+    @BeforeClass
+    public static void messages() {
+        StaticMessageSource source = new StaticMessageSource();
+        source.addMessage(LocalizedEntity.class.getName() + ".name", Locale.ENGLISH, "Device name description");
+        source.addMessage(LocalizedEntity.class.getName() + ".name.title", Locale.ENGLISH, "Device name");
+        source.addMessage(LocalizedEntity.class.getName() + ".id", Locale.ENGLISH, "Device ID");
+        source.addMessage(LocalizedEntity.class.getName() + ".titleOnly.title", Locale.ENGLISH, "Title only");
+        source.addMessage(LocalizedBaseEntity.class.getName() + ".inherited", Locale.ENGLISH, "Inherited field");
+        source.addMessage(LocalizedChildEntity.class.getName() + ".value", Locale.ENGLISH, "Nested value");
+        source.addMessage(LocalizedCommand.class.getName() + ".target", Locale.ENGLISH, "Target description");
+        source.addMessage(LocalizedCommand.class.getName() + ".target.title", Locale.ENGLISH, "Target");
+        MessageSourceInitializer.init(source);
+    }
+
+    @Test
+    public void testEntityFieldMessagesPreserveInheritanceAndGetterSchema() {
+        LocaleUtils.doWith(Locale.ENGLISH, ignored -> {
+            ObjectType type = (ObjectType) CommandMetadataResolver.resolveOutput(ResolvableType.forClass(LocalizedEntity.class));
+            PropertyMetadata name = type.getProperty("name").orElseThrow();
+            assertEquals("Device name", name.getName());
+            assertEquals("Device name description", name.getDescription());
+            assertTrue(name.getValueType() instanceof StringType);
+            assertEquals("Device ID", type.getProperty("id").orElseThrow().getDescription());
+            assertEquals("Inherited field", type.getProperty("inherited").orElseThrow().getDescription());
+            PropertyMetadata titleOnly = type.getProperty("titleOnly").orElseThrow();
+            assertEquals("Title only", titleOnly.getName());
+            assertNull(titleOnly.getDescription());
+            ObjectType nested = (ObjectType) type.getProperty("nested").orElseThrow().getValueType();
+            assertEquals("Nested value", nested.getProperty("value").orElseThrow().getDescription());
+            assertFalse(type.getProperty("hidden").isPresent());
+            assertFalse(type.getProperty("unannotated").isPresent());
+            assertEquals(type.getProperties().size(), CommandMetadataResolver.resolveInputs(ResolvableType.forClass(LocalizedEntity.class)).size());
+        });
+    }
+
+    @Test
+    public void testMissingFieldMessagesKeepOriginalSchemaText() {
+        for (Locale locale : List.of(Locale.CHINESE, Locale.FRENCH)) {
+            LocaleUtils.doWith(locale, ignored -> {
+                ObjectType type = (ObjectType) CommandMetadataResolver.resolveOutput(ResolvableType.forClass(LocalizedEntity.class));
+                PropertyMetadata name = type.getProperty("name").orElseThrow();
+                assertEquals("默认标题", name.getName());
+                assertEquals("默认说明", name.getDescription());
+                assertEquals("设备ID", type.getProperty("id").orElseThrow().getDescription());
+                assertEquals("继承字段", type.getProperty("inherited").orElseThrow().getDescription());
+                PropertyMetadata titleOnly = type.getProperty("titleOnly").orElseThrow();
+                assertEquals("仅标题", titleOnly.getName());
+                assertNull(titleOnly.getDescription());
+            });
+        }
+    }
+
+    @Test
+    public void testCommandGetterMessagesUseSchemaNameAndDeclaringClass() {
+        for (Class<?> commandType : List.of(LocalizedCommand.class, LocalizedChildCommand.class)) {
+            for (Locale locale : List.of(Locale.ENGLISH, Locale.CHINESE, Locale.ENGLISH)) {
+                LocaleUtils.doWith(locale, ignored -> {
+                    List<PropertyMetadata> inputs = CommandMetadataResolver.resolveInputs(ResolvableType.forClass(commandType));
+                    assertEquals(1, inputs.size());
+                    PropertyMetadata input = inputs.get(0);
+                    assertEquals("target", input.getId());
+                    assertEquals(locale.equals(Locale.ENGLISH) ? "Target" : "目标", input.getName());
+                    assertEquals(locale.equals(Locale.ENGLISH) ? "Target description" : "目标说明", input.getDescription());
+                    assertTrue(input.getValueType() instanceof StringType);
+                });
+            }
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class LocalizedBaseEntity {
+        private String id;
+
+        @Schema(description = "继承字段")
+        private String inherited;
+    }
+
+    @Getter
+    @Setter
+    public static class LocalizedEntity extends LocalizedBaseEntity {
+        @Schema(title = "默认标题", description = "默认说明")
+        private String name;
+
+        @Schema(title = "仅标题")
+        private String titleOnly;
+
+        @Schema(description = "嵌套对象")
+        private LocalizedChildEntity nested;
+
+        @Schema(hidden = true)
+        private String hidden;
+
+        private String unannotated;
+
+        @Override
+        @Schema(description = "设备ID")
+        public String getId() {
+            return super.getId();
+        }
+    }
+
+    public static class LocalizedChildEntity {
+        @Schema(description = "嵌套值")
+        private String value;
+    }
+
+    public static class LocalizedCommand extends AbstractCommand<Mono<String>, LocalizedCommand> {
+        @Schema(name = "target", title = "目标", description = "目标说明")
+        public String getValue() {
+            return getOrNull("target", String.class);
+        }
+    }
+
+    public static class LocalizedChildCommand extends LocalizedCommand {
+    }
 
 
     @Test

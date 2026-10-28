@@ -11,6 +11,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.hswebframework.ezorm.core.CastUtil;
 import org.hswebframework.web.dict.EnumDict;
+import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.Expands;
 import org.jetlinks.core.metadata.*;
@@ -503,13 +504,18 @@ public class MetadataUtils {
             parseExpands(field, true, expands);
 
             if (null != schema) {
+                // 继承字段使用声明类的资源；getter 上的 Schema 覆盖字段定义。
+                Class<?> declaringType = method != null && AnnotationUtils.findAnnotation(method, Schema.class) != null
+                    ? method.getDeclaringClass()
+                    : field.getDeclaringClass();
+                String messageKey = declaringType.getName() + "." + id;
                 if (StringUtils.hasText(schema.description())) {
-                    metadata.setDescription(schema.description());
-                    metadata.setName(schema.description());
+                    metadata.setDescription(LocaleUtils.resolveMessage(messageKey, schema.description()));
+                    metadata.setName(metadata.getDescription());
                 }
 
                 if (StringUtils.hasText(schema.title())) {
-                    metadata.setName(schema.title());
+                    metadata.setName(LocaleUtils.resolveMessage(messageKey + ".title", schema.title()));
                 }
             }
             metadata.setExpands(expands);
