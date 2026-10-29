@@ -1,6 +1,7 @@
 package org.jetlinks.core.codec.internal;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.util.ByteProcessor;
 import org.hswebframework.web.exception.BusinessException;
 import org.jetlinks.core.codec.Codec;
 
@@ -21,6 +22,9 @@ import java.nio.charset.StandardCharsets;
  */
 public class AsciiCodec implements Codec<String> {
 
+    // byte 为有符号值，正文只允许 1..127，遇到 NUL 或非法字节时停止。
+    private static final ByteProcessor FIND_ASCII_TEXT_END = value -> value > 0;
+
     @Override
     public Class<String> forType() {
         return String.class;
@@ -40,21 +44,18 @@ public class AsciiCodec implements Codec<String> {
     public String decode(@Nonnull ByteBuf payload) {
         int readerIndex = payload.readerIndex();
         int readableBytes = payload.readableBytes();
-        // NUL 是字符串结束符，后续字节属于填充，不应进入解析值或存储链路。
-        int textLength = payload.bytesBefore((byte) 0);
-        if (textLength < 0) {
-            textLength = readableBytes;
+        int endIndex = payload.forEachByte(readerIndex, readableBytes, FIND_ASCII_TEXT_END);
+        int textLength = readableBytes;
+        if (endIndex >= 0) {
+            // NUL 后的字节按填充处理；正文校验失败时不推进读索引。
+            if (payload.getByte(endIndex) != 0) {
+                throw new BusinessException.NoStackTrace("error.codec.ascii.invalid_character", 400);
+            }
+            textLength = endIndex - readerIndex;
         }
-        try {
-            String value = StandardCharsets.US_ASCII
-                .newDecoder()
-                .decode(payload.nioBuffer(readerIndex, textLength))
-                .toString();
-            payload.skipBytes(readableBytes);
-            return value;
-        } catch (CharacterCodingException e) {
-            throw new BusinessException.NoStackTrace("error.codec.ascii.invalid_character", 400);
-        }
+        String value = payload.toString(readerIndex, textLength, StandardCharsets.US_ASCII);
+        payload.skipBytes(readableBytes);
+        return value;
     }
 
     @Override
