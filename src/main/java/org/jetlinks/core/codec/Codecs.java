@@ -14,6 +14,7 @@ import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
 
 import javax.annotation.Nonnull;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -31,6 +32,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class Codecs {
 
     public interface Internal {
+        Codec<String> HEX = new HexCodec();
+        Codec<String> ASCII = new AsciiCodec();
         Codec<Boolean> BOOL = new Bool();
         Codec<Boolean[]> BOOL_ARRAY = new ArrayCodec<>(BOOL);
         Codec<Byte> INT8 = new Int8();
@@ -41,6 +44,8 @@ public final class Codecs {
         Codec<Number[]> UnsignedInt16_ARRAY = new ArrayCodec<>(UnsignedInt16);
         Codec<Number> UnsignedInt32 = new UnsignedInt32();
         Codec<Number[]> UnsignedInt32_ARRAY = new ArrayCodec<>(UnsignedInt32);
+        Codec<BigInteger> UnsignedInt64 = new UnsignedInt64();
+        Codec<BigInteger[]> UnsignedInt64_ARRAY = new ArrayCodec<>(UnsignedInt64);
         Codec<Integer> INT32 = new Int32();
         Codec<Integer[]> INT32_ARRAY = new ArrayCodec<>(INT32);
         Codec<Long> INT64 = new Int64();
@@ -149,11 +154,14 @@ public final class Codecs {
     static {
         register(
             // 基础类型
+            Internal.HEX,
+            Internal.ASCII,
             Internal.BOOL,
             Internal.INT8,
             Internal.INT16,
             Internal.UnsignedInt16,
             Internal.UnsignedInt32,
+            Internal.UnsignedInt64,
             Internal.INT32,
             Internal.INT64,
             Internal.Ieee754Float32,
@@ -183,6 +191,7 @@ public final class Codecs {
             Internal.INT16_ARRAY,
             Internal.UnsignedInt16_ARRAY,
             Internal.UnsignedInt32_ARRAY,
+            Internal.UnsignedInt64_ARRAY,
             Internal.INT32_ARRAY,
             Internal.INT64_ARRAY,
             Internal.Ieee754Float32_ARRAY,
