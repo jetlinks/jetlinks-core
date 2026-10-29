@@ -141,8 +141,8 @@ public class MonitorObservationTest {
         Mono<Alarm> result = Mono
             .zip(metric.asMono(), detection.asMono())
             .map(pair -> new AlarmInput(pair.getT1(), pair.getT2()))
-            .flatMap(input -> observeMono(records, evaluate, input, MonitorObservationTest::evaluate))
-            .contextWrite(CAPTURE_CONTEXT.put(SUBJECT, "cold-room"));
+            .flatMap(input -> observeMono(evaluate, input, MonitorObservationTest::evaluate))
+            .contextWrite(CAPTURE_CONTEXT.put(Recorder.class, records).put(SUBJECT, "cold-room"));
 
         StepVerifier.create(result)
                     .then(() -> assertEquals(Sinks.EmitResult.OK,
@@ -163,11 +163,11 @@ public class MonitorObservationTest {
         Window freezer = new Window("freezer", List.of(new Sample("probe-c:1", -21, true)));
         // 输入是明确的两项批次；collectList 不作用于持续设备流。
         Mono<List<Metric>> batch = Flux.just(COLD_ROOM, freezer)
-            .flatMap(window -> observeMono(records, CALCULATE, window, MonitorObservationTest::calculate)
+            .flatMap(window -> observeMono(CALCULATE, window, MonitorObservationTest::calculate)
                 .subscribeOn(Schedulers.parallel())
                 .contextWrite(context -> context.put(SUBJECT, window.id())), 2)
             .collectList()
-            .contextWrite(CAPTURE_CONTEXT);
+            .contextWrite(CAPTURE_CONTEXT.put(Recorder.class, records));
 
         StepVerifier.create(batch)
                     .assertNext(values -> assertEquals(Set.of(-15.0, -21.0),
@@ -185,9 +185,9 @@ public class MonitorObservationTest {
         var records = new RecordingTestSupport.TestRecorder();
         var attempts = new AtomicInteger();
         RuntimeException offline = new IllegalStateException("temporarily offline");
-        Mono<Metric> result = observeMono(records, CALCULATE, COLD_ROOM, window ->
+        Mono<Metric> result = observeMono(CALCULATE, COLD_ROOM, window ->
             attempts.incrementAndGet() == 1 ? Mono.error(offline) : calculate(window))
-            .contextWrite(CAPTURE_CONTEXT);
+            .contextWrite(CAPTURE_CONTEXT.put(Recorder.class, records));
 
         StepVerifier.create(result.retry(1)).expectNextCount(1).verifyComplete();
         assertEquals(2, attempts.get());
@@ -254,18 +254,18 @@ public class MonitorObservationTest {
         var notifySpec = ObservationSpec.<Alarm, Void>of("alarm.notify")
             .onInput((input, metadata) -> metadata.attribute(INPUTS, List.of(input.reference())));
 
-        Mono<Void> flow = observeMono(records, CALCULATE, COLD_ROOM, MonitorObservationTest::calculate)
+        Mono<Void> flow = observeMono(CALCULATE, COLD_ROOM, MonitorObservationTest::calculate)
             .zipWith(Mono.just(new Detection("ai:frame-1", 0.2)), AlarmInput::new)
-            .flatMap(input -> observeMono(records, alarmSpec, input, MonitorObservationTest::evaluate))
+            .flatMap(input -> observeMono(alarmSpec, input, MonitorObservationTest::evaluate))
             .filter(Alarm::triggered)
             .flatMap(alarm -> Mono.when(
-                observeMono(records, controlSpec, alarm, ignored -> Mono.fromSupplier(() -> {
+                observeMono(controlSpec, alarm, ignored -> Mono.fromSupplier(() -> {
                     deviceCommands.incrementAndGet();
                     return "control:compressor-ack@1";
                 })),
-                observeMono(records, notifySpec, alarm, ignored -> Mono.error(notificationFailure))
+                observeMono(notifySpec, alarm, ignored -> Mono.error(notificationFailure))
             ))
-            .contextWrite(CAPTURE_CONTEXT.put(SUBJECT, "cold-room"));
+            .contextWrite(CAPTURE_CONTEXT.put(Recorder.class, records).put(SUBJECT, "cold-room"));
 
         StepVerifier.create(flow).expectErrorMatches(error -> error == notificationFailure).verify();
 
@@ -305,18 +305,18 @@ public class MonitorObservationTest {
         var producerRecords = new RecordingTestSupport.TestRecorder();
         var consumerRecords = new RecordingTestSupport.TestRecorder();
         var reads = new AtomicInteger();
-        Mono<Metric> cached = observeMono(producerRecords, CALCULATE, COLD_ROOM, window -> {
+        Mono<Metric> cached = observeMono(CALCULATE, COLD_ROOM, window -> {
             reads.incrementAndGet();
             return calculate(window);
         })
-            .contextWrite(CAPTURE_CONTEXT.put(SUBJECT, "cold-room"))
+            .contextWrite(CAPTURE_CONTEXT.put(Recorder.class, producerRecords).put(SUBJECT, "cold-room"))
             .cache();
         ObservationSpec<Metric, Metric> use = ObservationSpec.<Metric, Metric>of("metric.use")
             .onInput((metric, metadata) -> metadata.attribute(INPUTS, List.of(metric.reference())));
 
         for (String subject : List.of("operator-a", "operator-b")) {
-            StepVerifier.create(cached.flatMap(metric -> observeMono(consumerRecords, use, metric, Mono::just))
-                                      .contextWrite(CAPTURE_CONTEXT.put(SUBJECT, subject)))
+            StepVerifier.create(cached.flatMap(metric -> observeMono(use, metric, Mono::just))
+                                      .contextWrite(CAPTURE_CONTEXT.put(Recorder.class, consumerRecords).put(SUBJECT, subject)))
                         .expectNextCount(1).verifyComplete();
         }
         assertEquals(1, reads.get());
@@ -489,6 +489,120 @@ public class MonitorObservationTest {
         lazy.recorder().record(existing);
         assertEquals(3, records.records.size());
         assertSame(existing, records.records.get(2));
+    }
+
+    @Test
+    public void shouldRunBusinessLazilyWithoutObservationBindings() {
+        var unrelated = new RecordingTestSupport.TestRecorder();
+        var calls = new AtomicInteger();
+        var extracts = new AtomicInteger();
+        var spec = CALCULATE
+            .onInput((input, metadata) -> extracts.incrementAndGet())
+            .onOutput((output, metadata) -> extracts.incrementAndGet());
+        Mono<Metric> result = observeMono(spec, COLD_ROOM, window -> {
+            calls.incrementAndGet();
+            return calculate(window);
+        }).contextWrite(Context.of(Monitor.class, monitor(unrelated)));
+
+        assertEquals(0, calls.get());
+        StepVerifier.create(result).expectNext(new Metric("metric:cold-room@1", -15)).verifyComplete();
+        StepVerifier.create(result).expectNextCount(1).verifyComplete();
+        assertEquals(2, calls.get());
+        assertEquals(0, extracts.get());
+        assertEquals(0, unrelated.factories.get());
+    }
+
+    @Test
+    public void shouldDiscoverContextRecorderWithoutEnablingDetailedCapture() {
+        var records = new RecordingTestSupport.TestRecorder();
+        var extracts = new AtomicInteger();
+        var spec = CALCULATE
+            .onInput((input, metadata) -> extracts.incrementAndGet())
+            .onOutput((output, metadata) -> extracts.incrementAndGet());
+
+        StepVerifier.create(observeMono(spec, COLD_ROOM, MonitorObservationTest::calculate)
+            .contextWrite(Context.of(Recorder.class, records, SUBJECT, "cold-room")))
+            .expectNextCount(1).verifyComplete();
+
+        assertEquals(0, extracts.get());
+        assertEquals(1, records.starts.get());
+        assertEquals("cold-room", records.records.get(0).subject);
+        assertEquals(ObservationKeys.NOT_REQUESTED,
+                     records.records.get(0).getTags().get(ObservationKeys.METADATA_STATUS.getKey()));
+        assertNull(records.records.get(0).getAttributes());
+    }
+
+    @Test
+    public void shouldAllowProviderToContributeTheOnlyRecorder() {
+        var records = new RecordingTestSupport.TestRecorder();
+        var selections = new AtomicInteger();
+        RecorderProvider provider = (action, context) -> {
+            selections.incrementAndGet();
+            return RecorderSelection.capture(records, "policy@5");
+        };
+
+        StepVerifier.create(observeMono(CALCULATE, COLD_ROOM, MonitorObservationTest::calculate)
+            .contextWrite(Context.of(RecorderProvider.class, provider)))
+            .expectNextCount(1).verifyComplete();
+
+        assertEquals(1, selections.get());
+        assertEquals(1, records.starts.get());
+        assertEquals(List.of("probe-a:1@1", "probe-b:1@1"),
+                     records.records.get(0).getAttributes().get(INPUTS.getKey()));
+    }
+
+    @Test
+    public void shouldPreferExplicitRecorderToContextRecorder() {
+        var explicit = new RecordingTestSupport.TestRecorder();
+        var inherited = new RecordingTestSupport.TestRecorder();
+        StepVerifier.create(observeMono(explicit, CALCULATE, COLD_ROOM, MonitorObservationTest::calculate)
+            .contextWrite(CAPTURE_CONTEXT.put(Recorder.class, inherited)))
+            .expectNextCount(1).verifyComplete();
+
+        assertEquals(0, inherited.factories.get());
+        assertEquals(1, explicit.starts.get());
+        assertEquals("metric:cold-room@1", explicit.records.get(0).getAttributes().get(OUTPUT.getKey()));
+    }
+
+    @Test
+    public void shouldPreserveErrorEmptyAndCancellationWithoutObservation() {
+        RuntimeException failure = new IllegalStateException("control rejected");
+        StepVerifier.create(observeMono("control", () -> Mono.error(failure)))
+                    .expectErrorMatches(error -> error == failure).verify();
+        StepVerifier.create(observeMono("supplier", () -> { throw failure; }))
+                    .expectErrorMatches(error -> error == failure).verify();
+        StepVerifier.create(observeMono("empty", Mono::empty)).verifyComplete();
+        var cancellations = new AtomicInteger();
+        StepVerifier.create(observeMono("pending", () -> Mono.never().doOnCancel(cancellations::incrementAndGet)))
+                    .expectSubscription().thenCancel().verify();
+        assertEquals(1, cancellations.get());
+    }
+
+    @Test
+    public void shouldKeepContextRecordersSeparateWhenSharingAnObservedMono() {
+        var first = new RecordingTestSupport.TestRecorder();
+        var second = new RecordingTestSupport.TestRecorder();
+        Mono<Metric> shared = observeMono(CALCULATE, COLD_ROOM, MonitorObservationTest::calculate);
+        StepVerifier.create(Flux.just(first, second)
+            .flatMap(recorder -> shared.subscribeOn(Schedulers.parallel())
+                .contextWrite(CAPTURE_CONTEXT.put(Recorder.class, recorder)
+                    .put(SUBJECT, recorder == first ? "operator-a" : "operator-b")), 2))
+            .expectNextCount(2).verifyComplete();
+
+        assertEquals(1, first.starts.get());
+        assertEquals(1, second.starts.get());
+        assertEquals("operator-a", first.records.get(0).subject);
+        assertEquals("operator-b", second.records.get(0).subject);
+        assertNotEquals(first.records.get(0).getId(), second.records.get(0).getId());
+    }
+
+    @Test
+    public void shouldIsolateInvalidContextRecorder() {
+        var calls = new AtomicInteger();
+        StepVerifier.create(observeMono("refresh", () -> Mono.fromSupplier(calls::incrementAndGet))
+            .contextWrite(Context.of(Recorder.class, "invalid binding")))
+            .expectNext(1).verifyComplete();
+        assertEquals(1, calls.get());
     }
 
     private static Mono<Metric> calculate(Window window) {
