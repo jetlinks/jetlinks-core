@@ -11,6 +11,10 @@ public final class ObservationKeys {
 
     public static final Key<String> POLICY_VERSION = Key.stringKey("observation.policyVersion");
     public static final Key<String> METADATA_STATUS = Key.stringKey("observation.metadataStatus");
+    public static final Key<String> EXECUTION_ID = Key.stringKey("observation.executionId");
+    public static final Key<String> PARENT_EXECUTION_ID = Key.stringKey("observation.parentExecutionId");
+    public static final Key<String> SOURCE_TYPE = Key.stringKey("observation.sourceType");
+    public static final Key<String> SOURCE_ID = Key.stringKey("observation.sourceId");
 
     public static final String NOT_REQUESTED = "notRequested";
     public static final String CAPTURED = "captured";

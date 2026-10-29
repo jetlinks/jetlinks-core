@@ -31,6 +31,20 @@ public interface Recorder {
     }
 
     /**
+     * 为本次选中的接收端继承组合父操作。只有原接收端实例匹配时才调用其原生 child，
+     * 新接收端创建根操作；不会重新加入本次未选择的接收端或修改原生记录 ID。
+     *
+     * @param recorder 本次选中的接收端
+     * @param parent   由 combine 创建的本地父操作；普通 action 没有接收端身份映射时不猜测归属
+     * @return 按调用创建未启动子操作的记录器
+     * @since 1.3.3
+     * @see #combine(Recorder...)
+     */
+    static Recorder withParent(Recorder recorder, ActionRecorder<?> parent) {
+        return CompositeRecorder.withParent(recorder, parent);
+    }
+
+    /**
      * 直接记录已有的操作结果.
      *
      * @param record 已有的操作记录

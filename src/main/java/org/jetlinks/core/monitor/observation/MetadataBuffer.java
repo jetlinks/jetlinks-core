@@ -59,6 +59,10 @@ final class MetadataBuffer implements RecordMetadata {
     static final class Budget {
         private int writes;
         private int elements;
+
+        boolean exhausted() {
+            return writes >= LIMIT || elements >= LIMIT;
+        }
     }
 
     static final class LimitExceeded extends IllegalArgumentException {

@@ -23,9 +23,24 @@ final class CompositeRecorder implements Recorder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CompositeRecorder.class);
     private final List<Recorder> recorders;
+    private final CompositeAction<?> parent;
 
     private CompositeRecorder(List<Recorder> recorders) {
+        this(recorders, null);
+    }
+
+    private CompositeRecorder(List<Recorder> recorders, CompositeAction<?> parent) {
         this.recorders = List.copyOf(recorders);
+        this.parent = parent;
+    }
+
+    static Recorder withParent(Recorder recorder, ActionRecorder<?> parent) {
+        Objects.requireNonNull(parent, "parent");
+        Recorder selected = create(Objects.requireNonNull(recorder, "recorder"));
+        if (selected instanceof CompositeRecorder composite && parent instanceof CompositeAction<?> action) {
+            return new CompositeRecorder(composite.recorders, action);
+        }
+        return selected;
     }
 
     static Recorder create(Recorder... sources) {
@@ -42,7 +57,7 @@ final class CompositeRecorder implements Recorder {
         if (recorder == Recorder.noop() || seen.put(recorder, Boolean.TRUE) != null) {
             return;
         }
-        if (recorder instanceof CompositeRecorder composite) {
+        if (recorder instanceof CompositeRecorder composite && composite.parent == null) {
             for (Recorder source : composite.recorders) {
                 flatten(source, result, seen);
             }
@@ -56,9 +71,11 @@ final class CompositeRecorder implements Recorder {
         List<Target<E>> targets = new ArrayList<>(recorders.size());
         for (Recorder recorder : recorders) {
             try {
-                ActionRecorder<E> action = Objects.requireNonNull(recorder.action(name), "action");
+                Target<?> ancestor = parent == null ? null : parent.target(recorder);
+                ActionRecorder<E> action = Objects.requireNonNull(
+                    ancestor == null ? recorder.action(name) : ancestor.child(name), "action");
                 if (action != ActionRecorder.<E>noop()) {
-                    targets.add(new Target<>(action));
+                    targets.add(new Target<>(recorder, action));
                 }
             } catch (Throwable error) {
                 report(error);
@@ -88,10 +105,12 @@ final class CompositeRecorder implements Recorder {
     }
 
     private static final class Target<E> {
+        private final Recorder owner;
         private final ActionRecorder<E> action;
         private volatile boolean failed;
 
-        private Target(ActionRecorder<E> action) {
+        private Target(Recorder owner, ActionRecorder<E> action) {
+            this.owner = owner;
             this.action = action;
         }
 
@@ -126,6 +145,15 @@ final class CompositeRecorder implements Recorder {
 
         private CompositeAction(List<Target<E>> targets) {
             this.targets = List.copyOf(targets);
+        }
+
+        private Target<?> target(Recorder recorder) {
+            for (Target<E> target : targets) {
+                if (target.owner == recorder) {
+                    return target;
+                }
+            }
+            return null;
         }
 
         private CompositeAction<E> each(Consumer<ActionRecorder<E>> callback) {
@@ -224,7 +252,7 @@ final class CompositeRecorder implements Recorder {
             for (Target<E> target : targets) {
                 ActionRecorder<T> child = target.child(name);
                 if (child != ActionRecorder.<T>noop()) {
-                    children.add(new Target<>(child));
+                    children.add(new Target<>(target.owner, child));
                 }
             }
             return children.isEmpty() ? ActionRecorder.noop() : new CompositeAction<>(children);
