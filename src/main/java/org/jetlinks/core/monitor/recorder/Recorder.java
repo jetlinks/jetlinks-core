@@ -19,6 +19,18 @@ public interface Recorder {
     }
 
     /**
+     * 组合接收端并隔离非 fatal 回调异常；保留原生 action 类型与父子关系。
+     * 去除已知 noop 与重复实例。应用组合 action 只订阅业务一次，不对普通记录进行通用回放。
+     *
+     * @param recorders 原记录器，不能包含 null
+     * @return 每次 action 调用创建独立生命周期的安全组合
+     * @since 1.3.3
+     */
+    static Recorder combine(Recorder... recorders) {
+        return CompositeRecorder.create(recorders);
+    }
+
+    /**
      * 直接记录已有的操作结果.
      *
      * @param record 已有的操作记录

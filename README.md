@@ -20,6 +20,10 @@
 
 实现入口为 `src/main/java/org/jetlinks/core/config/MonoConfigRead.java`、`MonoConfigsRead.java`、`src/main/java/org/jetlinks/core/defaults/MonoDeviceProduct.java`、`MonoVersionedMetadata.java` 及原 API 调用点。不缓存配置值、Storage、产品或物模型结果，不改变缓存失效、回源和父级继承规则；自定义操作符只保存查询参数和单一策略对象，不保存跨订阅结果。版本化物模型读取会二次确认缓存对象身份，本地更新按缓存对象后版本的顺序发布，避免并发读取混用新旧快照；正常版本切换保留上游 `ON_COMPLETE`，下游取消仍传播到当前活动源。
 
+## 执行观测
+
+Monitor 执行观测的 API、SPI、兼容边界与验证入口见 [执行观测说明](docs/monitor-observation.md)。
+
 # License
 Apache-2.0
 
