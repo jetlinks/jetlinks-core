@@ -3,9 +3,11 @@ package org.jetlinks.core.things;
 import com.alibaba.fastjson.JSONObject;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.metadata.*;
+import org.jetlinks.core.things.relation.Relation;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -32,6 +34,26 @@ public interface ThingMetadata extends Metadata, Jsonable {
      * @return 标签定义
      */
     List<PropertyMetadata> getTags();
+
+    /**
+     * 可选关系目录，键为另一端对象类型。仅包含声明，不加载目标模型或关系实例。
+     * 缺省为空；旧来源不能据此被认为已支持任意关系读取。
+     *
+     * @return 非空关系目录
+     * @since 1.3.3
+     */
+    default Map<String, List<Relation>> getRelations() {
+        return Collections.emptyMap();
+    }
+
+    /**
+     * @param type 另一端对象类型
+     * @return 适用关系定义，反向投影仍表示原规范关系
+     * @since 1.3.3
+     */
+    default List<Relation> getRelations(String type) {
+        return getRelations().getOrDefault(type, Collections.emptyList());
+    }
 
     /**
      * 预留功能,模块的物模型信息.
@@ -117,6 +139,16 @@ public interface ThingMetadata extends Metadata, Jsonable {
         json.put("events", getEvents().stream().map(Jsonable::toJson).collect(Collectors.toList()));
         json.put("tags", getTags().stream().map(Jsonable::toJson).collect(Collectors.toList()));
         json.put("expands", getExpands());
+        // 空目录保持旧模型形状；关系只编码定义，不递归展开相关类型。
+        if (!getRelations().isEmpty()) {
+            JSONObject relations = new JSONObject(true);
+            getRelations().forEach((type, values) -> relations.put(type,
+                values.stream().map(Relation::toJson).collect(Collectors.toList())));
+            json.put("relations", relations);
+        }
+        if (!getModules().isEmpty()) {
+            json.put("modules", getModules().stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        }
         return json;
     }
 }

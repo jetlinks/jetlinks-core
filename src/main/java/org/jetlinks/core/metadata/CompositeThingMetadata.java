@@ -3,11 +3,14 @@ package org.jetlinks.core.metadata;
 import com.google.common.collect.Collections2;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
+import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.things.ThingMetadata;
+import org.jetlinks.core.things.relation.Relation;
 import org.jetlinks.core.utils.CompositeList;
-import org.jetlinks.core.utils.CompositeMap;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +26,36 @@ public class CompositeThingMetadata implements ThingMetadata {
 
     public ThingMetadata right() {
         return right;
+    }
+
+    @Override
+    public List<ThingMetadata> getModules() {
+        Map<String, ThingMetadata> modules = new LinkedHashMap<>();
+        left.getModules().forEach(module -> modules.put(module.getId(), module));
+        right.getModules().forEach(module -> modules.putIfAbsent(module.getId(), module));
+        return Collections.unmodifiableList(new ArrayList<>(modules.values()));
+    }
+
+    @Override
+    public Map<String, List<Relation>> getRelations() {
+        Map<String, List<Relation>> result = new LinkedHashMap<>();
+        left.getRelations().forEach((type, relations) -> result.put(type, new ArrayList<>(relations)));
+        right.getRelations().forEach((type, relations) -> {
+            List<Relation> merged = result.computeIfAbsent(type, ignore -> new ArrayList<>());
+            for (Relation relation : relations) {
+                Relation previous = merged.stream()
+                    .filter(value -> value.getId().equals(relation.getId()) && value.isReverse() == relation.isReverse())
+                    .findFirst().orElse(null);
+                if (previous == null) {
+                    merged.add(relation);
+                } else if (!previous.toJson().equals(relation.toJson())) {
+                    // 同一规范关系不能通过模型叠加静默改变含义。
+                    throw new I18nSupportException.NoStackTrace("error.conflicting_relation_definition", type, relation.getId());
+                }
+            }
+        });
+        result.replaceAll((type, values) -> Collections.unmodifiableList(values));
+        return Collections.unmodifiableMap(result);
     }
 
     @Override
@@ -125,7 +158,10 @@ public class CompositeThingMetadata implements ThingMetadata {
         if (right.getExpands() == null) {
             return left.getExpands();
         }
-        return new CompositeMap<>(left.getExpands(), right.getExpands());
+        // 与属性/功能的组合规则一致：主模型优先，不能让无关扩展的数量改变语义。
+        Map<String, Object> expands = new LinkedHashMap<>(right.getExpands());
+        expands.putAll(left.getExpands());
+        return Collections.unmodifiableMap(expands);
     }
 
     @Override
