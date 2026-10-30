@@ -3,11 +3,13 @@ package org.jetlinks.core.metadata;
 import com.google.common.collect.Collections2;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
+import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.things.ThingMetadata;
 import org.jetlinks.core.utils.CompositeList;
-import org.jetlinks.core.utils.CompositeMap;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +25,44 @@ public class CompositeThingMetadata implements ThingMetadata {
 
     public ThingMetadata right() {
         return right;
+    }
+
+    @Override
+    public List<ThingMetadata> getModules() {
+        List<ThingMetadata> first = left.getModules();
+        List<ThingMetadata> second = left == right ? first : right.getModules();
+        if (first.isEmpty()) {
+            return Collections.unmodifiableList(second);
+        }
+        if (second.isEmpty() || first == second) {
+            return Collections.unmodifiableList(first);
+        }
+        Map<String, ThingMetadata> modules = new LinkedHashMap<>();
+        first.forEach(module -> modules.put(module.getId(), module));
+        second.forEach(module -> modules.putIfAbsent(module.getId(), module));
+        return Collections.unmodifiableList(new ArrayList<>(modules.values()));
+    }
+
+    @Override
+    public List<RelationMetadata> getRelationMetadata() {
+        // 模型可变，按读取合并；使用键索引避免逐项扫描和 JSON 编码比较。
+        Map<List<Object>, RelationMetadata> result = new LinkedHashMap<>();
+        mergeRelations(result, left.getRelationMetadata());
+        if (left != right) {
+            mergeRelations(result, right.getRelationMetadata());
+        }
+        return Collections.unmodifiableList(new ArrayList<>(result.values()));
+    }
+
+    private void mergeRelations(Map<List<Object>, RelationMetadata> result, List<RelationMetadata> relations) {
+        for (RelationMetadata relation : relations) {
+            List<Object> key = java.util.Arrays.asList(relation.getTargetType(), relation.getId(), relation.isReverse());
+            RelationMetadata previous = result.putIfAbsent(key, relation);
+            if (previous != null && !previous.equals(relation)) {
+                throw new I18nSupportException.NoStackTrace("error.conflicting_relation_definition",
+                    relation.getTargetType(), relation.getId());
+            }
+        }
     }
 
     @Override
@@ -125,7 +165,10 @@ public class CompositeThingMetadata implements ThingMetadata {
         if (right.getExpands() == null) {
             return left.getExpands();
         }
-        return new CompositeMap<>(left.getExpands(), right.getExpands());
+        // 与属性/功能的组合规则一致：主模型优先，不能让无关扩展的数量改变语义。
+        Map<String, Object> expands = new LinkedHashMap<>(right.getExpands());
+        expands.putAll(left.getExpands());
+        return Collections.unmodifiableMap(expands);
     }
 
     @Override

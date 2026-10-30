@@ -25,4 +25,5 @@ public interface Relation {
     default Map<String, Object> getExpands() {
         return Collections.emptyMap();
     }
+
 }

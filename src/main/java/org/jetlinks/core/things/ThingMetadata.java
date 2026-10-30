@@ -2,7 +2,13 @@ package org.jetlinks.core.things;
 
 import com.alibaba.fastjson.JSONObject;
 import org.jetlinks.core.config.ConfigKey;
-import org.jetlinks.core.metadata.*;
+import org.jetlinks.core.metadata.EventMetadata;
+import org.jetlinks.core.metadata.FunctionMetadata;
+import org.jetlinks.core.metadata.Jsonable;
+import org.jetlinks.core.metadata.MergeOption;
+import org.jetlinks.core.metadata.Metadata;
+import org.jetlinks.core.metadata.PropertyMetadata;
+import org.jetlinks.core.metadata.RelationMetadata;
 
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +38,28 @@ public interface ThingMetadata extends Metadata, Jsonable {
      * @return 标签定义
      */
     List<PropertyMetadata> getTags();
+
+    /**
+     * 可选关系元数据。仅包含声明，不加载目标模型或关系实例。
+     * 缺省为空；旧来源不能据此被认为已支持任意关系读取。
+     *
+     * @return 非空关系目录
+     * @since 1.3.3
+     */
+    default List<RelationMetadata> getRelationMetadata() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * @param type 另一端对象类型
+     * @return 适用关系定义，反向投影仍表示原规范关系
+     * @since 1.3.3
+     */
+    default List<RelationMetadata> getRelationMetadata(String type) {
+        return getRelationMetadata().stream()
+            .filter(relation -> Objects.equals(type, relation.getTargetType()))
+            .collect(Collectors.toList());
+    }
 
     /**
      * 预留功能,模块的物模型信息.
@@ -117,6 +145,15 @@ public interface ThingMetadata extends Metadata, Jsonable {
         json.put("events", getEvents().stream().map(Jsonable::toJson).collect(Collectors.toList()));
         json.put("tags", getTags().stream().map(Jsonable::toJson).collect(Collectors.toList()));
         json.put("expands", getExpands());
+        // 空目录保持旧模型形状；关系只编码定义，不递归展开相关类型。
+        List<RelationMetadata> relations = getRelationMetadata();
+        if (!relations.isEmpty()) {
+            json.put("relations", relations.stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        }
+        List<ThingMetadata> modules = getModules();
+        if (!modules.isEmpty()) {
+            json.put("modules", modules.stream().map(Jsonable::toJson).collect(Collectors.toList()));
+        }
         return json;
     }
 }

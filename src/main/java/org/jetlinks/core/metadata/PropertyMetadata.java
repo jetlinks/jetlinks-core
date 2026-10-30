@@ -21,7 +21,7 @@ public interface PropertyMetadata extends Metadata, Jsonable {
     }
 
     @Override
-    default <T> Metadata expand(ConfigKey<T> key, T value) {
+    default <T> PropertyMetadata expand(ConfigKey<T> key, T value) {
         Metadata.super.expand(key, value);
         return this;
     }

@@ -17,6 +17,8 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -47,6 +49,11 @@ public class ObservationsBenchmark {
     @Param({"0", "8"})
     public int contextEntries;
 
+    @Param({"false", "true"})
+    public boolean defaultProviderDisabled;
+
+    private Disposable registration;
+
     private Context context;
     private Context disabled;
     private Context original;
@@ -55,6 +62,9 @@ public class ObservationsBenchmark {
 
     @Setup
     public void setup() {
+        if (defaultProviderDisabled) {
+            registration = Observations.registerDefaultProvider(RecorderProvider.disabled());
+        }
         context = Context.empty();
         for (int i = 0; i < contextEntries; i++) {
             context = context.put("existing." + i, i);
@@ -80,6 +90,13 @@ public class ObservationsBenchmark {
         original = context.put(Recorder.class, recorder);
         detailed = original.put(RecorderProvider.class,
             (RecorderProvider) (action, ctx) -> RecorderSelection.capture(Recorder.noop(), "policy@1"));
+    }
+
+    @TearDown
+    public void tearDown() {
+        if (registration != null) {
+            registration.dispose();
+        }
     }
 
     @Benchmark
