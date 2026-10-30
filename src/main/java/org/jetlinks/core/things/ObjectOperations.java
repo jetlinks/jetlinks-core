@@ -2,6 +2,7 @@ package org.jetlinks.core.things;
 
 import org.jetlinks.core.Wrapper;
 import org.jetlinks.core.command.CommandSupport;
+import org.jetlinks.core.command.UnsupportedCommandSupport;
 import org.jetlinks.core.things.relation.PropertyOperation;
 import org.jetlinks.core.things.relation.RelationOperation;
 import reactor.core.publisher.Mono;
@@ -51,6 +52,6 @@ public interface ObjectOperations extends Wrapper {
      * @return 原命令能力，不执行 I/O，不增加自动重试
      */
     default CommandSupport commands() {
-        return UnsupportedObjectCommands.INSTANCE;
+        return UnsupportedCommandSupport.INSTANCE;
     }
 }

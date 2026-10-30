@@ -52,10 +52,9 @@ public class ObjectOperationsTest {
             public List<Relation> getRelations(String target) { return Collections.emptyList(); }
             public List<ObjectType> getRelatedTypes() { return Collections.emptyList(); }
         };
-        assertTrue(type instanceof ThingMetadata);
-        assertNotNull(type.getPropertyOrNull("id"));
-        assertTrue(type.getFunctions().isEmpty());
-        assertNull(type.getFunctionOrNull("control"));
-        assertFalse(type.toJson().containsKey("relations"));
+        assertFalse(type instanceof ThingMetadata);
+        assertEquals("id", type.getProperties().get(0).getId());
+        assertTrue(type.getRelations().isEmpty());
+        assertFalse(type.hasRelation("user", "owner"));
     }
 }

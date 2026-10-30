@@ -35,7 +35,7 @@ jetlinks-core/.../org/jetlinks/core/
 │       ├── RelationObject.java     修改：继承 ObjectOperations
 │       ├── PropertyOperation.java  复用
 │       ├── RelationOperation.java  复用
-│       ├── ObjectType.java         优化：继承 ThingMetadata，补旧实现兼容默认值
+│       ├── ObjectType.java         保留 Metadata 分类及已发布关系 SPI
 │       └── Relation.java           复用
 └── command/CommandSupport.java     复用，不扩大接口
 
@@ -123,8 +123,8 @@ public interface ThingMetadata extends Metadata, Jsonable {
 }
 ```
 
-- ObjectType 改为继承 ThingMetadata，保留原关系方法和 getRelatedTypes。它是已有的对象类型视图，不再通过新增接口组合。对旧实现新增的功能/事件/标签目录及按 ID 查找提供兼容默认值：没有声明的目录为空，属性查找使用原属性目录；不能要求所有旧 Provider 一次性实现完整模型。
-- 继承方向是 `ObjectType extends ThingMetadata`，不是让所有 ThingMetadata 继承 ObjectType。原设备/产品模型不自动成为关系中心的对象类型，也不要求实现 getRelatedTypes；关系目标仅引用 type，不递归加载其完整模型。
+- ObjectType 保留 Metadata 分类、属性及原关系方法，不继承 ThingMetadata。完整模型通过 RelationObjectProvider.getMetadata() 独立取得，实例适用模型通过 ObjectOperations.getMetadata() 取得。旧 Provider 默认适配原分类、属性和关系，未声明功能/事件保持为空。
+- 复用 ThingMetadata 描述完整模型，与 ObjectType 的关系管理职责通过适配分离。原设备/产品模型不自动成为关系中心的对象类型，也不要求实现 getRelatedTypes；关系目标仅引用 type，不递归加载其完整模型。
 - ThingMetadata.getId() 保留原模型身份，可以是产品/模板 ID；ObjectOperations 的 getType/getId 仍为对象类型/实例身份。类型发现返回的 ObjectType.getId() 仍等于 Provider.getTypeId()，不能将设备产品模型改名为 device 或用产品 ID 替代对象类型。
 - 属性、功能、事件、标签和模块继续复用 ThingMetadata，集合在新适配视图中非 null，按 ID 查找遵循原契约。完整模型的语义通过 MetadataSemantics 读取；实例适用模型按次形成只读快照，不修改原共享物模型。
 - 类型模型给出稳定结构，实例模型解析产品/模板后补齐真实结构；适配层按权威定义补齐适用关系。不能任取一台设备补齐类型目录，也不自动把当前实例的关系写回共享产品模型。
@@ -132,7 +132,7 @@ public interface ThingMetadata extends Metadata, Jsonable {
 
 仅增加默认方法不能完成关系能力：原 SimpleDeviceMetadata、CompositeThingMetadata、CompositeObjectType、物模型 Codec 和集群投影都要验证关系及语义不丢失。旧模型缺省仍为空；语义含义变化、同 ID 冲突和版本策略必须显式校验，不能只把未知字段传过去就宣称来源支持。扩展后的模型 JSON 应同时保留原 properties/functions/events/tags/expands 及可选 relations，不复制一层对象模型。
 
-语义注解可以先独立验收；可选关系目录、ObjectType 继承及模型传输作为后一组兼容迁移验证。统一模型是方向，继承本身不证明旧来源已经获得完整能力；旧接口的编码形状按版本保留，不能无条件给全部物模型响应追加新字段。
+语义注解和可选关系目录通过统一物模型表达；ObjectType 旧接口与独立模型获取分别验证。旧来源的默认适配不证明其已经获得新能力；旧接口的编码形状保持，不能无条件给全部物模型响应追加新字段。
 
 ## 3. 语义词汇与元数据
 
@@ -243,7 +243,7 @@ default ObjectOperations operations(String id) {
 
 LegacyRelationObjectOperations 是内部兼容适配器。新 Provider 覆盖 operations(id)，同步返回捕获身份和原业务依赖的轻量句柄，不执行 I/O；返回 type/id 必须与 Provider 和参数一致，由管理器检查。Provider 不提供 commandBindings、服务路由表或参数表达式。
 
-- getType() 继续返回 Mono<ObjectType>；增强后的 ObjectType 已是 ThingMetadata，原入口即可发现通用类型模型，无需另增模型 Provider 方法。类型模型不依赖虚构实例。
+- getType() 继续返回 Mono<ObjectType>，用于分类、原权限和关系管理；getMetadata() 返回 Mono<ThingMetadata>，用于独立模型发现，不依赖虚构实例。远端分别传输旧类型声明和完整物模型，不把完整模型写回 SimpleObjectType。
 - 旧 properties/metadata/集合查询及固定关系入口保留；新来源的旧属性入口可转发到自己的 operations(id).properties()。
 - 默认适配器只调用旧入口，不能把全部旧入口默认反向转发到 operations，避免递归。
 - 旧模型只适配已提供结构，功能/事件为空、语义未知，不根据类型名补造能力。ObjectType 与 Provider.metadata() 可能不同，适配明确字段来源，不静默覆盖冲突。
@@ -424,7 +424,7 @@ public Optional<ThingId> getReference();
 
 getMetadata 从 Map 的保留键读取类型化视图；不存在返回 Optional.empty，格式错误明确失败，未知词保留。withMetadata 将已知字段写成规范 Map/List/字符串等可传输值，存入同一 `$metadata` 条目；不是只给 HashMap 子类新增一个不能保证进入序列化的 Java 成员。related 身份也编码为 type/id，线上不要求反序列化新增 Java DTO 或枚举类；不缓存一个可能与 Map 脱节的元信息副本。
 
-类型化读取只解释已知字段，不将原 Map 读出后自动重写；未知扩展键透传保留，避免旧节点转发时抹掉新信息。ThingMetadata 描述可复用的模型，ObjectDataMetadata 只描述当前数据行的类型引用及已知关系，二者不互相替代。后者是 `$metadata` 的类型化值，不是另一套完整物模型。
+类型化读取只解释已知字段，不将原 Map 读出后自动重写；未知扩展键透传保留，避免旧节点转发时抹掉新信息。ThingMetadata 描述可复用的模型，ObjectDataMetadata 只描述当前数据行的类型引用及已知关系，二者不互相替代。后者是 `$metadata` 的类型化值，不是另一套完整物模型。结果装饰显式接收来源对象类型与适用模型，`$metadata.type` 不使用可能为产品/模板 ID 的 ThingMetadata.getId()。
 
 getReference 仅依据已声明 type 与来源稳定 id 返回身份快照，无元信息或无 ID 时为空，不通过 targetId 等业务字段猜身份；每次返回 ThingId 副本。实施时让身份读取与同一数据快照一致，并验证现有 getId 的缓存不会在 Map 修改后遗留旧身份。
 
@@ -605,7 +605,7 @@ N1 失败、N2 重试成功保留独立尝试 ID，不按告警去重，不凭�
 | 模型及语义 | 统一到 ThingMetadata 及既有字段/功能/关系模型的 expands；core 只增加 ObjectOperations 和通用语义词汇/工具，不另建并行模型、万能数据操作目录或功能注册中心 |
 | 行数据协议 | ObjectDataMetadata/ObjectLink 留在 relation-component，复用原 Map 和 PagerResult；它们不是完整模型、边事实或结果证据，不为查询回显再包一层结果 |
 | 关系实例、时间和证据 | 原关联记录继续由来源管理，RelationFact/EvidenceReference 留在 ontology。来源接入不能因去掉业务对 ontology 的依赖而删掉原证据、历史能力 |
-| 模型迁移及兼容 | 语义扩展、可选关系目录和 ObjectType 继承分步验收；保留单向适配和原 Provider 路由，不为消除一个接口连带改造全部物模型持久化格式 |
+| 模型迁移及兼容 | 语义扩展、可选关系目录和独立模型获取分步验收；保留单向适配和原 Provider 路由，不为消除一个接口连带改造全部物模型持久化格式 |
 | 业务执行及推理 | 时序、指标、规则、通知、任务、订阅复用原能力；对象门面不承诺跨源事务、自动幂等、通用图查询或本体推理，不新增空的扩展接口占位 |
 
 ### 7.3 从本体概念复核
@@ -688,7 +688,7 @@ N1 失败、N2 重试成功保留独立尝试 ID，不按告警去重，不凭�
 
 认证、Trace、Monitor 引用沿原白名单传播，异步父子、聚合输入和重试依据仍由原记录/采集保存；本门面不重复包裹已观测执行，也不将业务发生记录等同于 Monitor span。
 
-ThingMetadata 默认 toJson 已补 relations/modules。SimpleObjectType 保留旧 Externalizable 字段顺序，固定原制品 UID；新增功能/事件/标签/模块仅作本地目录。完整模型与实例命令走独立 `relation-object-operations-v1` RPC，缺少该服务时保持旧属性/关系能力，新能力明确不支持，不将 at 降级到旧请求。
+ThingMetadata 默认 toJson 已补 relations/modules。SimpleObjectType 保留旧 Externalizable 字段顺序和原制品 UID，不承载功能/事件/标签/模块；这些目录属于独立 ThingMetadata。完整模型与实例命令走独立 `relation-object-operations-v1` RPC，缺少该服务时保持旧属性/关系能力，新能力明确不支持，不将 at 降级到旧请求。
 
 轻量入口无 I/O，属性读取不触发全部目录发现，元数据按需解析；不跨用户缓存授权。无常驻队列、订阅、后台扫描或独立 MBean，观测沿用原机制。性能验证关注旧路径及一次订阅的实际远程调用次数。
 
@@ -707,7 +707,7 @@ ThingMetadata 默认 toJson 已补 relations/modules。SimpleObjectType 保留�
 
 | 阶段 | Owning module | 交付 |
 | --- | --- | --- |
-| 1 | jetlinks-core | ObjectOperations、metadata 包语义词汇/工具、RelationObject 兼容默认值；再集中验证通用 ThingMetadata 可选关系目录、ObjectType 继承和旧模型兼容。公共方法注释写清调用、空/错误、并发及副作用，@since 使用真实版本 |
+| 1 | jetlinks-core | ObjectOperations、metadata 包语义词汇/工具、RelationObject 兼容默认值；再集中验证通用 ThingMetadata 可选关系目录、独立模型获取和旧类型兼容。公共方法注释写清调用、空/错误、并发及副作用，@since 使用真实版本 |
 | 2 | relation-component，必要时 common-component 原传输边界 | ObjectDataMetadata/ObjectLink 行协议值、ObjectData 元字段/访问器、独立查询请求、原分页、Provider 单向兼容、模型发现；落实 7.4 的路由、权限、分页、能力声明，模型与数据 Codec、集群协商及 at 不降级 |
 | 3 | 原告警/通知来源与 ontology 现有扩展 | 通用来源能力放回原业务，业务移除 ontology 依赖；本体保留业务模板、证据及完成条件，收敛关系语义词汇 |
 | 4 | 原业务集成边界 | 上报→场景→聚合告警→通知失败/重试→处置→效果核验；缺失输入/历史依据保持未知 |

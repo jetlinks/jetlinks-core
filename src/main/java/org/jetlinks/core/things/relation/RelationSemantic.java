@@ -8,5 +8,14 @@ package org.jetlinks.core.things.relation;
  * @see org.jetlinks.core.metadata.MetadataSemantics
  */
 public enum RelationSemantic {
-    structural, about, used, generated, triggered
+    /** 稳定结构或归属，例如空间包含设备；不表示执行先后。 */
+    structural,
+    /** 某条记录描述的主体，例如告警发生关于设备。 */
+    about,
+    /** 一次活动实际使用的输入或资源，由活动指向被使用对象。 */
+    used,
+    /** 一次活动实际产生的结果，由活动指向结果对象。 */
+    generated,
+    /** 一次事件或活动触发的后续活动，不仅表示时间相邻。 */
+    triggered
 }

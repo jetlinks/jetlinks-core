@@ -8,5 +8,8 @@ package org.jetlinks.core.metadata;
  * @see org.jetlinks.core.metadata.MetadataSemantics
  */
 public enum FunctionKind {
-    query, action
+    /** 只读取数据或状态，不代表调用方已经获准读取。 */
+    query,
+    /** 请求业务执行或状态变化，受理不代表效果已完成。 */
+    action
 }
