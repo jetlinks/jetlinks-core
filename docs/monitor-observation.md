@@ -45,6 +45,8 @@ return execute(message)
 
 ## 契约与实现入口
 
+来源可在 spec 提取回调中使用 `ObservationData` 声明 `ThingId` 引用：`subject` 为主要对象、`used` 为实际输入、`generated` 为产出、`definition` 为实际旧版定义、`record` 为原尝试记录。工具复制可变引用并复用累计预算；`inputsComplete` 只声明本阶段输入，不证明全链路覆盖或落库。入口用 `withSubject` 在策略选择前绑定可信主体，主体不授予权限、不进入集群头。未选定的数据不能声明为 used，大量样本使用原不可变清单引用。
+
 Mono/Flux 共用按订阅创建的父作用域，嵌套调用使用同一接收端原生 child，动态附加接收端不因继承重复记录；未被本次策略选择的附加接收端不记录。每次有效观测生成轻量 ObservationReference，原生记录 ID/parentId 保持，执行引用用保留标签关联。跨进程只传引用，接收端使用本地 Recorder/provider；trace 独立传播。Flux 保留背压、多值、部分输出后错误及取消，输出提取失败或预算耗尽后停止后续输出提取。无接收端路径不生成引用或作用域，不新增 span、队列或常驻状态。
 
 `ObservationSource(type,id)` 由可信来源入口显式绑定到 Context，表示单次业务发生；不从普通 id、trace 或归因主体推断，不表示多输入依赖。工具把已有来源加入保留标签，core 不创建业务来源。此来源可在关闭采集时用于业务必要的来源持久化；不会因此启用 action、详细提取或观测 I/O。持续流须通过原消息头逐条传递引用，不能依靠生产者的 contextWrite 将 Context 附着到每个 onNext。
