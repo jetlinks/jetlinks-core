@@ -4,6 +4,8 @@
 
 ## 接入方式
 
+评审收敛范围：提供单个进程默认 RecorderProvider 的生命周期注册入口，优先级为订阅 Context（包括显式 disabled）、进程默认、disabled。每次订阅仍独立选择，不全局保存身份、主体、来源或活动 Recorder；关闭注册只清除自己，不恢复已替换的旧实例。平台通过 Bean 生命周期装配，业务入口继续负责可信上下文。验证非 HTTP/异步订阅、覆盖/禁用、替换/关闭、父子不双记与禁用路径开销，不增加队列或注册框架。
+
 普通操作只包装一次：
 
 ```java
@@ -21,7 +23,7 @@ static final ObservationSpec<SelectedWindow, MetricResult> CALCULATE =
 return Observations.observeMono(CALCULATE, window, calculator::calculate);
 ```
 
-平台在已有响应式入口安装原 Recorder 和可选的稳定 RecorderProvider，业务方法无需传入它们。按订阅读取 Recorder.class，缺省为 noop；provider 读取可信 Context 和本地策略快照，未绑定时为 disabled。不查找 Monitor、全局对象或远程配置，不使用 ThreadLocal。框架已持有原 recorder 时仍可显式传入，优先于 Context：`Observations.observeMono(recorder, CALCULATE, window, calculator::calculate)`。
+平台在原入口安装 Recorder 和可信上下文；容器通过 `Observations.registerDefaultProvider(provider)` 注册一个进程默认工厂，业务方法无需传入它们。provider 按 `Context 显式值 → 进程默认 → disabled` 选择，Context 中显式 disabled 可关闭默认采集。原 Recorder 仍只取本次订阅 Context，缺省为 noop；不查找 Monitor 或远程配置，不使用 ThreadLocal。框架已持有原 recorder 时仍可显式传入，优先于 Context：`Observations.observeMono(recorder, CALCULATE, window, calculator::calculate)`。
 
 ```java
 return execute(message)
@@ -32,7 +34,7 @@ return execute(message)
 
 | 订阅上下文 | 行为 |
 | --- | --- |
-| 无 recorder/provider | 仅执行原业务，不调用策略、创建 action 或提取元数据 |
+| 无 recorder 和有效 provider | 仅执行原业务，不调用策略、创建 action 或提取元数据 |
 | 仅 recorder | 保留原记录，跳过详细提取 |
 | 仅 provider | 可贡献附加接收端；没有有效接收端则仅执行业务 |
 | recorder 与 provider | 保留原记录，按策略决定详细提取及附加接收端 |
@@ -47,7 +49,7 @@ return execute(message)
 
 来源可在 spec 提取回调中使用 `ObservationData` 声明 `ThingId` 引用：`subject` 为主要对象、`used` 为实际输入、`generated` 为产出、`definition` 为实际旧版定义、`record` 为原尝试记录。工具复制可变引用并复用累计预算；`inputsComplete` 只声明本阶段输入，不证明全链路覆盖或落库。入口用 `withSubject` 在策略选择前绑定可信主体，主体不授予权限、不进入集群头。未选定的数据不能声明为 used，大量样本使用原不可变清单引用。
 
-Mono/Flux 共用按订阅创建的父作用域，嵌套调用使用同一接收端原生 child，动态附加接收端不因继承重复记录；未被本次策略选择的附加接收端不记录。每次有效观测生成轻量 ObservationReference，原生记录 ID/parentId 保持，执行引用用保留标签关联。跨进程只传引用，接收端使用本地 Recorder/provider；trace 独立传播。Flux 保留背压、多值、部分输出后错误及取消，输出提取失败或预算耗尽后停止后续输出提取。无接收端路径不生成引用或作用域，不新增 span、队列或常驻状态。
+Mono/Flux 共用按订阅创建的父作用域，嵌套调用使用同一接收端原生 child，动态附加接收端不因继承重复记录；未被本次策略选择的附加接收端不记录。每次有效观测生成轻量 ObservationReference，原生记录 ID/parentId 保持，执行引用用保留标签关联。跨进程只传引用，接收端使用本地 Recorder/provider；trace 独立传播。Flux 保留背压、多值、部分输出后错误及取消，输出提取失败或预算耗尽后停止后续输出提取。无接收端路径不生成引用或作用域，不新增 span 或队列。进程只持有一个默认工厂注册槽，不持有活动 action、身份、主体或来源。
 
 `ObservationSource(type,id)` 由可信来源入口显式绑定到 Context，表示单次业务发生；不从普通 id、trace 或归因主体推断，不表示多输入依赖。工具把已有来源加入保留标签，core 不创建业务来源。此来源可在关闭采集时用于业务必要的来源持久化；不会因此启用 action、详细提取或观测 I/O。持续流须通过原消息头逐条传递引用，不能依靠生产者的 contextWrite 将 Context 附着到每个 onNext。
 
@@ -66,7 +68,7 @@ Mono/Flux 共用按订阅创建的父作用域，嵌套调用使用同一接收�
 
 ## 禁用路径与性能
 
-上下文入口只增加一个 deferContextual 边界。没有 recorder/provider 时只做本地查找并直接调用业务，不分配每次选择、组合器、action、Capture 或 MetadataBuffer，也不再嵌套 defer。Mono 包装和捕获 lambda 仍有组装开销，不承诺零成本。
+上下文入口只增加一个 deferContextual 边界。没有 recorder 和有效 provider 时只做 Context 查找及默认槽的一次原子读取，随后直接调用业务，不分配每次选择、组合器、action、Capture 或 MetadataBuffer，也不再嵌套 defer。Mono 包装和捕获 lambda 仍有组装开销，不承诺零成本。
 
 仅原记录器开启时不创建详细提取状态；已知 disabled 选择复用常量。动态 provider 每次订阅仍须读取本地有效快照；选择了详细采集后才按需分配提取预算与输出回调。原记录器非 noop 时保留安全组合的故障隔离，不以牺牲业务信号安全省略包装。
 
@@ -91,6 +93,19 @@ java -cp '<测试 classpath>' org.openjdk.jmh.Main 'org.jetlinks.core.benchmark.
 ```
 
 ## 验证
+
+2026-10-30 默认工厂注册收敛：`DefaultObservationProviderTest`、`ObservationDataTest` 及下方原观测/追踪组共 72 项通过，0 失败/错误/跳过，install 成功。新增场景覆盖非 HTTP 并行独立订阅、每次订阅身份隔离、Context 覆盖与显式禁用、同工厂重复注册/旧句柄释放、订阅时读取新注册、关闭清理和原生父子不双记。默认槽只增加一次原子读取，关闭路径不创建 action、执行引用或提取状态。
+
+同机重新执行 JMH/GCProfiler（上方相同双进程参数），静态 spec 路径如下。默认槽为空与默认 disabled 的分配相同，均比 Mono.defer 多约 24 B；耗时存在测量波动，不用它推断生产吞吐或尾延迟。新参数 `defaultProviderDisabled=false/true` 对比两种关闭状态，原报告为 `/private/tmp/components-review-observations-jmh.json`。
+
+| 路径 | 0 个已有键，ns/op、B/op | 8 个已有键，ns/op、B/op |
+| --- | --- | --- |
+| Mono.defer，默认槽为空 | 14.87、120.02 | 95.78、624.10 |
+| 静态 spec，默认槽为空 | 17.12、144.02 | 85.61、648.10 |
+| Mono.defer，默认 disabled | 15.97、120.02 | 94.42、624.10 |
+| 静态 spec，默认 disabled | 16.94、144.02 | 97.46、648.10 |
+
+详细日志为 `/private/tmp/components-review-core-20261030.log`。新增测试命令在下方原命令的 `-Dtest` 列表前补 `DefaultObservationProviderTest,ObservationDataTest`。
 
 2026-10-29 Flux、父作用域和来源引用补充后重新编译及 install 成功，以下 62 项测试全部通过，0 失败、0 错误、0 跳过。Monitor 不新增观察/provider 方法。
 
