@@ -1,6 +1,6 @@
 # Monitor 执行观测
 
-在 `monitor.observation` 包提供业务一次包装、按订阅选择和有限元数据采集，版本为 `1.3.3-SNAPSHOT`。`Monitor` 保持原四类能力接口；平台动态配置、来源持久化和跨服务引用传递由原所属模块接入。
+在 `monitor.observation` 包提供业务一次包装、按订阅选择和有限元数据采集，版本为 `1.3.3-SNAPSHOT`。`Monitor` 保持原四类能力接口；平台动态配置、来源持久化和跨服务载体适配由原所属模块接入。通用白名单导入导出由 core 的 ObservationContext 提供，仅传 executionId/sourceType/sourceId，不传活 Recorder 或权限。策略版本是可选发布标识（可为版本号或摘要），继续使用字符串，不作为传输协议版本。
 
 ## 接入方式
 

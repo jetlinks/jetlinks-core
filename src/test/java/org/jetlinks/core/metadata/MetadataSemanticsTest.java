@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.metadata.types.DateTimeType;
-import org.jetlinks.core.things.relation.Relation;
 import org.jetlinks.core.things.relation.RelationSemantic;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
@@ -25,7 +24,8 @@ public class MetadataSemanticsTest {
         model.setId("alarmOccurrence");
         model.expand("semanticTypes", Arrays.asList("event", "result", "urn:example:future"));
         SimplePropertyMetadata time = SimplePropertyMetadata.of("alarmTime", "发生时间", DateTimeType.GLOBAL);
-        time.expand(MetadataSemantics.PROPERTY_ROLE, "occurredAt");
+        assertSame(DateTimeType.GLOBAL,
+            time.expand(MetadataSemantics.PROPERTY_ROLE, "occurredAt").getValueType());
         model.addProperty(time);
 
         assertEquals(2, MetadataSemantics.semanticTypes(model).size());
@@ -52,16 +52,16 @@ public class MetadataSemanticsTest {
 
     @Test
     public void should_roundtrip_relation_semantics_without_loading_related_types() {
-        Relation relation = Relation.parse(JSON.parseObject("{\"id\":\"target\",\"reverse\":false,"
-            + "\"expands\":{\"semantic\":\"about\",\"future\":{\"v\":1}}}"));
+        RelationMetadata relation = relation("about");
+        relation.expand("future", Map.of("v", 1));
         SimpleDeviceMetadata model = new SimpleDeviceMetadata();
         model.setId("alarm-schema-v2");
-        model.setRelations(Collections.singletonMap("device", Collections.singletonList(relation)));
+        model.setRelationMetadata(Collections.singletonList(relation));
         SimpleDeviceMetadata decoded = new SimpleDeviceMetadata();
         decoded.fromJson(JSON.parseObject(model.toJson().toJSONString()));
 
         assertEquals("alarm-schema-v2", decoded.getId());
-        Relation actual = decoded.getRelations("device").get(0);
+        RelationMetadata actual = decoded.getRelationMetadata("device").get(0);
         assertEquals(RelationSemantic.about, MetadataSemantics.relationSemantic(actual).orElseThrow());
         assertEquals(relation.toJson(), actual.toJson());
         assertTrue(actual.getExpands().get("future") instanceof Map);
@@ -70,14 +70,32 @@ public class MetadataSemanticsTest {
     @Test
     public void should_reject_conflicting_relations_in_combined_models() {
         SimpleDeviceMetadata first = new SimpleDeviceMetadata();
-        first.setRelations(Collections.singletonMap("device", Collections.singletonList(
-            Relation.parse(JSON.parseObject("{\"id\":\"target\",\"expands\":{\"semantic\":\"about\"}}")))));
+        first.setRelationMetadata(Collections.singletonList(relation("about")));
         SimpleDeviceMetadata second = new SimpleDeviceMetadata();
-        second.setRelations(Collections.singletonMap("device", Collections.singletonList(
-            Relation.parse(JSON.parseObject("{\"id\":\"target\",\"expands\":{\"semantic\":\"used\"}}")))));
-        StepVerifier.create(Mono.fromRunnable(() -> new CompositeThingMetadata(first, second).getRelations()))
+        second.setRelationMetadata(Collections.singletonList(relation("used")));
+        StepVerifier.create(Mono.fromRunnable(() -> new CompositeThingMetadata(first, second).getRelationMetadata()))
             .expectError(I18nSupportException.class).verify();
-        assertEquals(1, new CompositeThingMetadata(first, first).getRelations("device").size());
+        assertEquals(1, new CompositeThingMetadata(first, first).getRelationMetadata("device").size());
+    }
+
+    private static RelationMetadata relation(String semantic) {
+        RelationMetadata relation = new RelationMetadata();
+        relation.setId("target");
+        relation.setTargetType("device");
+        relation.expand(MetadataSemantics.RELATION_SEMANTIC, semantic);
+        return relation;
+    }
+
+    @Test
+    public void should_read_mutable_model_changes_without_a_stale_cache() {
+        SimpleDeviceMetadata first = new SimpleDeviceMetadata();
+        SimpleDeviceMetadata second = new SimpleDeviceMetadata();
+        CompositeThingMetadata combined = new CompositeThingMetadata(first, second);
+        assertTrue(combined.getRelationMetadata().isEmpty());
+        second.setRelationMetadata(List.of(relation("about")));
+        assertEquals("device", combined.getRelationMetadata().get(0).getTargetType());
+        second.setRelationMetadata(List.of(relation("used")));
+        assertEquals("used", combined.getRelationMetadata().get(0).getExpands().get("semantic"));
     }
 
     @Test

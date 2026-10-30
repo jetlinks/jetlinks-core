@@ -1,10 +1,10 @@
 package org.jetlinks.core.metadata;
 
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONArray;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.things.ThingMetadata;
-import org.jetlinks.core.things.relation.Relation;
 import reactor.function.Function3;
 
 import java.util.ArrayList;
@@ -40,7 +40,7 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
 
     @Getter
     @Setter
-    private Map<String, List<Relation>> relations = Collections.emptyMap();
+    private List<RelationMetadata> relationMetadata = Collections.emptyList();
 
     public void addProperty(PropertyMetadata metadata) {
         this.properties.put(metadata.getId(), metadata);
@@ -125,18 +125,16 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
         this.name = json.getString("name");
         this.description = json.getString("description");
         this.expands = json.getJSONObject("expands");
-        JSONObject definitions = json.getJSONObject("relations");
-        Map<String, List<Relation>> parsed = new LinkedHashMap<>();
+        JSONArray definitions = json.getJSONArray("relations");
+        List<RelationMetadata> parsed = new ArrayList<>();
         if (definitions != null) {
-            definitions.forEach((type, ignored) -> {
-                List<Relation> values = new ArrayList<>();
-                for (int i = 0; i < definitions.getJSONArray(type).size(); i++) {
-                    values.add(Relation.parse(definitions.getJSONArray(type).getJSONObject(i)));
-                }
-                parsed.put(type, values);
-            });
+            for (int i = 0; i < definitions.size(); i++) {
+                RelationMetadata relation = new RelationMetadata();
+                relation.fromJson(definitions.getJSONObject(i));
+                parsed.add(relation);
+            }
         }
-        this.relations = parsed;
+        this.relationMetadata = parsed;
 
     }
 
@@ -165,7 +163,7 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
         deviceMetadata.setName(metadata.getName());
         deviceMetadata.setDescription(metadata.getDescription());
         deviceMetadata.setExpands(metadata.getExpands());
-        deviceMetadata.setRelations(new CompositeThingMetadata(this, metadata).getRelations());
+        deviceMetadata.setRelationMetadata(new CompositeThingMetadata(this, metadata).getRelationMetadata());
 
 
         if (MergeOption.has(MergeOption.overwriteProperty, options)) {

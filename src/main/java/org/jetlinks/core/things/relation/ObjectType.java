@@ -3,12 +3,14 @@ package org.jetlinks.core.things.relation;
 import org.jetlinks.core.metadata.EventMetadata;
 import org.jetlinks.core.metadata.FunctionMetadata;
 import org.jetlinks.core.metadata.PropertyMetadata;
+import org.jetlinks.core.metadata.RelationMetadata;
 import org.jetlinks.core.things.ThingMetadata;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ArrayList;
 
 /**
  * 对象类型，用于定义一个对象的分类,如: 设备,用户
@@ -97,6 +99,19 @@ public interface ObjectType extends ThingMetadata {
      */
     default Map<String, List<Relation>> getRelations() {
         return Collections.emptyMap();
+    }
+
+    /**
+     * 复用已发布的关系 SPI 生成模型目录；保留原 Map 接口供关系管理运行时使用。
+     * @return 含目标类型的关系描述
+     * @since 1.3.3
+     */
+    @Override
+    default List<RelationMetadata> getRelationMetadata() {
+        List<RelationMetadata> result = new ArrayList<>();
+        getRelations().forEach((type, relations) -> relations.forEach(relation ->
+            result.add(new RelationMetadata(type, relation))));
+        return result;
     }
 
     /**

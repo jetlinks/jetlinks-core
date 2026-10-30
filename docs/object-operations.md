@@ -106,17 +106,19 @@ commands() 不返回 Mono；异步解析服务在内部使用既有 AsyncProxyCo
 
 语义键及类型化读取集中在 core.metadata.MetadataSemantics；不向 Metadata 基础接口堆叠各类语义 getter，也不再维护一份语义状态。
 
-关系定义作为通用模型的可选目录。下面列出新增默认方法，ThingMetadata 原有方法保持；复用已有 Relation，不另建关系模型类：
+关系定义作为通用模型的可选目录，由独立 RelationMetadata 描述目标类型、关系标识、方向、名称及语义。使用 getRelationMetadata 避免与已发布 ObjectType.getRelations() 的 Map 接口冲突，原关系 SPI 不承担 JSON 解析：
 
 ```java
 public interface ThingMetadata extends Metadata, Jsonable {
 
-    default Map<String, List<Relation>> getRelations() {
-        return Collections.emptyMap();
+    default List<RelationMetadata> getRelationMetadata() {
+        return Collections.emptyList();
     }
 
-    default List<Relation> getRelations(String type) {
-        return getRelations().getOrDefault(type, Collections.emptyList());
+    default List<RelationMetadata> getRelationMetadata(String type) {
+        return getRelationMetadata().stream()
+            .filter(relation -> Objects.equals(type, relation.getTargetType()))
+            .collect(Collectors.toList());
     }
 }
 ```
@@ -478,16 +480,14 @@ Manager 和 Provider 的新查询重载均返回 `Mono<PagerResult<ObjectData>>`
     { "id": "alarmTime", "valueType": { "type": "date" },
       "expands": { "semanticRole": "occurredAt" } }
   ],
-  "relations": {
-    "device": [
-      { "id": "target", "reverse": false,
-        "expands": { "semantic": "about" } }
-    ]
-  }
+  "relations": [
+    { "targetType": "device", "id": "target", "reverse": false,
+      "expands": { "semantic": "about" } }
+  ]
 }
 ```
 
-ThingMetadata.toJson 支持可选 relations/modules。jetlinks-supports 的默认设备/通用 Codec 统一保留根身份、关系、嵌套模块和扩展；relation 的 RPC 直接使用默认 Codec，不再维护重复解析器。SimpleDeviceMetadata 原有的部分 fromJson 不作为完整 Codec。代码声明复用 expand：
+ThingMetadata.toJson 支持可选 relations/modules，每个目录单次读取。组合模型按目标类型/关系 ID/方向索引合并，比较描述值，不做 JSON 比较；原模型可变，不永久缓存。空目录不改变已发布旧模型形状；本组 PR 中尚未发布的 Map 目录改为含 targetType 的列表。jetlinks-supports 的默认设备/通用 Codec 统一保留根身份、关系、嵌套模块和扩展；relation 的 RPC 直接使用默认 Codec，不再维护重复解析器。SimpleDeviceMetadata 原有的部分 fromJson 不作为完整 Codec。代码声明复用 expand：
 
 ```java
 alarmTime.expand(MetadataSemantics.PROPERTY_ROLE,

@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.things.ThingMetadata;
-import org.jetlinks.core.things.relation.Relation;
 import org.jetlinks.core.utils.CompositeList;
 
 import java.util.ArrayList;
@@ -30,32 +29,40 @@ public class CompositeThingMetadata implements ThingMetadata {
 
     @Override
     public List<ThingMetadata> getModules() {
+        List<ThingMetadata> first = left.getModules();
+        List<ThingMetadata> second = left == right ? first : right.getModules();
+        if (first.isEmpty()) {
+            return Collections.unmodifiableList(second);
+        }
+        if (second.isEmpty() || first == second) {
+            return Collections.unmodifiableList(first);
+        }
         Map<String, ThingMetadata> modules = new LinkedHashMap<>();
-        left.getModules().forEach(module -> modules.put(module.getId(), module));
-        right.getModules().forEach(module -> modules.putIfAbsent(module.getId(), module));
+        first.forEach(module -> modules.put(module.getId(), module));
+        second.forEach(module -> modules.putIfAbsent(module.getId(), module));
         return Collections.unmodifiableList(new ArrayList<>(modules.values()));
     }
 
     @Override
-    public Map<String, List<Relation>> getRelations() {
-        Map<String, List<Relation>> result = new LinkedHashMap<>();
-        left.getRelations().forEach((type, relations) -> result.put(type, new ArrayList<>(relations)));
-        right.getRelations().forEach((type, relations) -> {
-            List<Relation> merged = result.computeIfAbsent(type, ignore -> new ArrayList<>());
-            for (Relation relation : relations) {
-                Relation previous = merged.stream()
-                    .filter(value -> value.getId().equals(relation.getId()) && value.isReverse() == relation.isReverse())
-                    .findFirst().orElse(null);
-                if (previous == null) {
-                    merged.add(relation);
-                } else if (!previous.toJson().equals(relation.toJson())) {
-                    // 同一规范关系不能通过模型叠加静默改变含义。
-                    throw new I18nSupportException.NoStackTrace("error.conflicting_relation_definition", type, relation.getId());
-                }
+    public List<RelationMetadata> getRelationMetadata() {
+        // 模型可变，按读取合并；使用键索引避免逐项扫描和 JSON 编码比较。
+        Map<List<Object>, RelationMetadata> result = new LinkedHashMap<>();
+        mergeRelations(result, left.getRelationMetadata());
+        if (left != right) {
+            mergeRelations(result, right.getRelationMetadata());
+        }
+        return Collections.unmodifiableList(new ArrayList<>(result.values()));
+    }
+
+    private void mergeRelations(Map<List<Object>, RelationMetadata> result, List<RelationMetadata> relations) {
+        for (RelationMetadata relation : relations) {
+            List<Object> key = java.util.Arrays.asList(relation.getTargetType(), relation.getId(), relation.isReverse());
+            RelationMetadata previous = result.putIfAbsent(key, relation);
+            if (previous != null && !previous.equals(relation)) {
+                throw new I18nSupportException.NoStackTrace("error.conflicting_relation_definition",
+                    relation.getTargetType(), relation.getId());
             }
-        });
-        result.replaceAll((type, values) -> Collections.unmodifiableList(values));
-        return Collections.unmodifiableMap(result);
+        }
     }
 
     @Override
