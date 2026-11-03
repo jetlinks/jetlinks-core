@@ -9,6 +9,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -79,16 +80,15 @@ public interface Metadata extends Serializable {
      * @return 拓展配置值
      */
     default Optional<Object> getExpand(String key) {
-        return Optional
-            .ofNullable(getExpands())
-            .map(map -> map.get(key));
+        Map<String, Object> expands = getExpands();
+        return Optional.ofNullable(expands == null ? null : expands.get(key));
     }
 
     default <T> Optional<T> getExpand(ConfigKey<T> key) {
-        return Optional
-            .ofNullable(getExpands())
-            .map(map -> map.get(key.getKey()))
-            .map(key::convertValue);
+        Map<String, Object> expands = getExpands();
+        Objects.requireNonNull(key);
+        Object value = expands == null ? null : expands.get(key.getKey());
+        return value == null ? Optional.empty() : Optional.ofNullable(key.convertValue(value));
     }
 
 
