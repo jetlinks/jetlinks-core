@@ -9,6 +9,7 @@ import org.jetlinks.core.Key;
  */
 public final class ObservationKeys {
 
+    /** 可选采集策略发布标识，可为版本号或摘要；不是传输协议格式版本。 */
     public static final Key<String> POLICY_VERSION = Key.stringKey("observation.policyVersion");
     public static final Key<String> METADATA_STATUS = Key.stringKey("observation.metadataStatus");
     public static final Key<String> EXECUTION_ID = Key.stringKey("observation.executionId");

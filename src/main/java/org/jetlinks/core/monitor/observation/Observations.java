@@ -1,24 +1,26 @@
 package org.jetlinks.core.monitor.observation;
 
+import org.hswebframework.web.id.IDGenerator;
 import org.jetlinks.core.monitor.recorder.ActionRecorder;
 import org.jetlinks.core.monitor.recorder.Recorder;
-import org.hswebframework.web.id.IDGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
 import reactor.core.Exceptions;
-import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.context.ContextView;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * 基于 Recorder 的无状态执行观测工具，不改变 Monitor 的能力接口。
- * 每次订阅从 Context 读取可选的 recorder/provider，显式 recorder 优先。
+ * 基于 Recorder 的执行观测工具，不改变 Monitor 的能力接口。
+ * 每次订阅从 Context 读取可选的 recorder/provider，显式 recorder 优先；provider 可回退到进程默认。
  * 没有观测绑定时只执行原业务；仅有原记录器时保留记录并跳过详细提取。
  * 不额外订阅、重试、创建 span 或管理后台队列，不提供业务提交或持久化保证。
  *
@@ -30,7 +32,26 @@ public final class Observations {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Observations.class);
 
+    private static final AtomicReference<ProviderRegistration> DEFAULT_PROVIDER = new AtomicReference<>();
+
     private Observations() {
+    }
+
+    /**
+     * 注册进程默认的接收端选择工厂，供 HTTP、消息、定时任务等入口共同使用。
+     * Context 中的 provider（包括 disabled）优先，每次订阅仍独立调用 select。
+     * 后注册替换前注册；关闭句柄只清理自己的注册，不恢复旧工厂，也不中断在途观测。
+     * 装配方负责随容器关闭释放句柄，工厂必须线程安全且不能缓存调用方身份或活动 action。
+     *
+     * @param provider 本地非阻塞工厂，不可为 null，不参与集群传输
+     * @return 本次注册的释放句柄；被替换后视为已释放
+     * @since 1.3.3
+     * @see RecorderProvider#select(String, ContextView)
+     */
+    public static Disposable registerDefaultProvider(RecorderProvider provider) {
+        ProviderRegistration registration = new ProviderRegistration(Objects.requireNonNull(provider, "provider"));
+        DEFAULT_PROVIDER.set(registration);
+        return registration;
     }
 
     /**
@@ -264,7 +285,11 @@ public final class Observations {
 
     private static Selection select(String action, ContextView context) {
         try {
-            RecorderProvider provider = context.getOrDefault(RecorderProvider.class, RecorderProvider.disabled());
+            RecorderProvider provider = context.getOrDefault(RecorderProvider.class, null);
+            if (provider == null) {
+                ProviderRegistration registration = DEFAULT_PROVIDER.get();
+                provider = registration == null ? RecorderProvider.disabled() : registration.provider;
+            }
             if (provider == RecorderProvider.disabled()) {
                 return Selection.DISABLED;
             }
@@ -279,6 +304,25 @@ public final class Observations {
     private static void report(String phase, Throwable error) {
         Exceptions.throwIfFatal(error);
         LOGGER.warn("Monitor observation failed during {}", phase, error);
+    }
+
+    private static final class ProviderRegistration implements Disposable {
+        private final RecorderProvider provider;
+
+        private ProviderRegistration(RecorderProvider provider) {
+            this.provider = provider;
+        }
+
+        @Override
+        public void dispose() {
+            // 比较注册身份而非 provider，旧句柄不能清掉同一工厂的新注册。
+            DEFAULT_PROVIDER.compareAndSet(this, null);
+        }
+
+        @Override
+        public boolean isDisposed() {
+            return DEFAULT_PROVIDER.get() != this;
+        }
     }
 
     private record Selection(RecorderSelection value, boolean failed) {
