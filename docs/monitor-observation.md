@@ -53,6 +53,10 @@ Mono/Flux 共用按订阅创建的父作用域，嵌套调用使用同一接收�
 
 `ObservationSource(type,id)` 由可信来源入口显式绑定到 Context，表示单次业务发生；不从普通 id、trace 或归因主体推断，不表示多输入依赖。工具把已有来源加入保留标签，core 不创建业务来源。此来源可在关闭采集时用于业务必要的来源持久化；不会因此启用 action、详细提取或观测 I/O。持续流须通过原消息头逐条传递引用，不能依靠生产者的 contextWrite 将 Context 附着到每个 onNext。
 
+持久记录可实现 `ObservationOrigin` 暴露原业务发生的类型与 ID，便于通用消费端识别来源；接口不授予访问权，也不推断投递成功或业务恢复。策略版本 `ObservationKeys.POLICY_VERSION` 保留字符串，支持发布标识与内容哈希，不能按数字序号压缩或排序。
+
+结果字段可通过 `@GraphSubject` 声明所描述对象的身份，通过 `@Presentation(primary = true)` 声明主要展示字段；组合注解沿用 `MetadataUtils` 的标准扩展解析，不绑定设备类型或前端渲染组件。
+
 验收覆盖：嵌套与并行兄弟、组合接收端父子和动态选择、Flux 背压/空流/错误/取消/重试、跨上下文恢复后新建本地执行、提取预算及关闭路径。平台原生工厂、RPC/RSocket/消息/持久任务引用与来源保存由 common-component/原业务模块完成适配，不由 core 持有权限或业务对象。
 
 - `Monitor.java`：保持原有接口；`ProxyMonitor.java` 补齐原 recorder 的 action/record 延迟代理，不感知 provider 或执行观测。
