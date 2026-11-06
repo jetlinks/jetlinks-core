@@ -82,6 +82,8 @@ core 提供通用的 `InMemoryRecorder`，用于从现有固定埋点提取一�
 
 验证边界为字段过滤与惰性提取、Key合并与父子关系、不可变快照、容量/异常/取消/释放、并行写入与订阅隔离，以及与原 Recorder/Observations 的组合。使用已有 JMH/GCProfiler 比较每次分配和耗时；不以墙钟断言替代正确性测试，也不把内存基准当作存储吞吐保证。
 
+实现提交为 `6d8eba46`，69项定向回归通过；基准结果、复现参数及业务接入边界见 [Core PR #107](https://github.com/jetlinks/jetlinks-core/pull/107)。
+
 ```java
 // 工厂作为配置复用；collector 每次订阅创建，原接收端继续保留。
 Supplier<InMemoryRecorder> factory = InMemoryRecorder.factory(
