@@ -519,11 +519,21 @@ public class MetadataUtils {
         /** Semantic declarations cannot depend on reflection or annotation iteration order. */
         private static void putExpand(Map<String, Object> target, String key, Object value) {
             Object previous = target.get(key);
-            if (previous != null && semanticKey(key) && !Objects.deepEquals(previous, value)) {
+            if (previous != null && semanticKey(key)
+                && !Objects.deepEquals(semanticValue(key, previous), semanticValue(key, value))) {
                 throw new I18nSupportException.NoStackTrace(
                     "error.conflicting_metadata_semantics", key);
             }
             target.putIfAbsent(key, value);
+        }
+
+        private static Object semanticValue(String key, Object value) {
+            // JSON collections and annotation arrays express the same open set of semantic terms.
+            if ("semanticTypes".equals(key)) {
+                if (value instanceof String[] terms) return new HashSet<>(Arrays.asList(terms));
+                if (value instanceof Collection<?> terms) return new HashSet<>(terms);
+            }
+            return value;
         }
 
         private static boolean semanticKey(String key) {

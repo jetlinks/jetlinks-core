@@ -15,6 +15,8 @@ import org.springframework.core.ResolvableType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -53,6 +55,29 @@ public class PresentationAnnotationsTest {
     public void should_reject_conflicts_without_using_annotation_order() {
         assertInvalid(ConflictingRole.class);
         assertInvalid(ConflictingRoleReversed.class);
+    }
+
+    @Test
+    public void should_merge_equivalent_semantic_sets_across_json_arrays_and_collections() {
+        var original = new String[]{"observation", "domain:reading", "result"};
+        Map<String, Object> expands = new HashMap<>(Map.of("semanticTypes", original));
+        MetadataUtils.mergeExpands(expands, Map.of("semanticTypes", List.of("result", "observation", "domain:reading", "result")));
+        var json = com.alibaba.fastjson.JSON.parseObject(com.alibaba.fastjson.JSON.toJSONString(expands));
+        MetadataUtils.mergeExpands(expands, json);
+        assertSame(original, expands.get("semanticTypes"));
+        assertArrayEquals(new String[]{"observation", "domain:reading", "result"}, original);
+    }
+
+    @Test
+    public void should_still_reject_different_semantic_sets_and_scalar_roles() {
+        for (String key : List.of("semanticTypes", "semanticRole", "functionKind")) {
+            Map<String, Object> expands = new HashMap<>(Map.of(key,
+                "semanticTypes".equals(key) ? List.of("domain:first") : "first"));
+            Object different = "semanticTypes".equals(key) ? new String[]{"domain:second"} : "second";
+            reactor.test.StepVerifier.create(reactor.core.publisher.Mono.fromRunnable(
+                () -> MetadataUtils.mergeExpands(expands, Map.of(key, different))))
+                .expectError(org.hswebframework.web.exception.I18nSupportException.class).verify();
+        }
     }
 
     @Test

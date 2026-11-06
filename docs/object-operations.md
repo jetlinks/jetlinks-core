@@ -110,6 +110,8 @@ Java 声明复用 `MetadataUtils` 的组合注解解析：`@SemanticRole` 声明
 
 `@Presentation(primary=true, observedAt="sampleTime")` 将主值绑定到实际采样时间字段，允许多主值；不使用查询时间代替采样时间。`observedAt` 支持最多 8 段的对象路径，目标必须是 date/long。可选空值通过 `@Attr(ignoreEmpty=true)` 省略，false/0 保留；不增加旧字段的空默认键。`MetadataSemantics.validateOutput` 拒绝多主体、无效时间路径和已知语义冲突；相同声明可合并。原物模型 JSON/codec/RPC 继续承载这些元数据，不建立平行扫描器或传输模型。
 
+语义合并按实际含义比较：semanticTypes 的注解数组、JSON 集合、顺序与重复词项不构成冲突，未知合法词仍保留；不同角色和 query/action 声明继续拒绝。命令类、显式引用命令类与处理方法经同一合并规则，普通方法选项仍保持原优先级。采样时间路径相对字段所属对象，嵌套对象与多个主值分别解析；规范化图谱事实保留真实时间，缺失或非法源值保持未知，视图可显式选择其他已声明时间字段。
+
 关系定义作为通用模型的可选目录，由独立 RelationMetadata 描述目标类型、关系标识、方向、名称及语义。使用 getRelationMetadata 避免与已发布 ObjectType.getRelations() 的 Map 接口冲突，原关系 SPI 不承担 JSON 解析：
 
 ```java
