@@ -95,6 +95,40 @@ public class PresentationAnnotationsTest {
         MetadataSemantics.validateOutput(output);
     }
 
+    @Test
+    public void should_merge_split_presentation_declarations_on_getter_and_field() {
+        var output = (org.jetlinks.core.metadata.types.ObjectType) MetadataUtils.parseType(ResolvableType.forClass(SplitPresentation.class));
+        assertEquals(Map.of("primary", true, "observedAt", "sampledAt"),
+                     output.getProperty("value").orElseThrow().getExpands().get("presentation"));
+    }
+
+    @Test
+    public void should_reject_presentation_conflicts_across_getter_and_field_and_map_merge() {
+        assertInvalid(ConflictingPresentation.class);
+        Map<String, Object> original = Map.of("primary", true, "observedAt", "sampledAt");
+        Map<String, Object> target = new HashMap<>(Map.of("presentation", original));
+        reactor.test.StepVerifier.create(reactor.core.publisher.Mono.fromRunnable(
+            () -> MetadataUtils.mergeExpands(target, Map.of("presentation", Map.of("observedAt", "otherTime")))))
+            .expectError(org.hswebframework.web.exception.I18nSupportException.class).verify();
+        assertSame(original, target.get("presentation"));
+    }
+
+    public static class SplitPresentation {
+        @Schema @Expands(key = "presentation", value = @Attr(key = "observedAt", value = "sampledAt"))
+        private double value;
+        @Schema private long sampledAt;
+        @Presentation(primary = true)
+        public double getValue() { return value; }
+        public void setValue(double value) { this.value = value; }
+    }
+
+    public static class ConflictingPresentation {
+        @Schema @Presentation(primary = false) private double value;
+        @Presentation(primary = true)
+        public double getValue() { return value; }
+        public void setValue(double value) { this.value = value; }
+    }
+
     public static class Summary {
         @GraphSubject
         @Schema(title = "对象 ID")

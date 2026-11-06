@@ -14,7 +14,9 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiPredicate;
 
 /**
  * 通用物模型的语义扩展键及只读视图，不解析业务路径或执行 I/O。
@@ -36,6 +38,23 @@ public final class MetadataSemantics {
 
     public static final ConfigKey<String> RELATION_SEMANTIC =
         ConfigKey.of("semantic", "semantic", String.class);
+
+    /** 语义定义的合并规则；通用解析与命令适配共用，不把词汇判断写入解析器。 */
+    public static final ExpandsMerge EXPANDS_MERGE = ExpandsMerge.object(Map.of(
+        SEMANTIC_TYPES.getKey(), same(SEMANTIC_TYPES.getKey(), ExpandsMerge::unorderedEquals),
+        PROPERTY_ROLE.getKey(), same(PROPERTY_ROLE.getKey(), Objects::deepEquals),
+        FUNCTION_KIND.getKey(), same(FUNCTION_KIND.getKey(), Objects::deepEquals),
+        "graphSubject", same("graphSubject", Objects::deepEquals),
+        "presentation", ExpandsMerge.object(Map.of(
+            "primary", same("presentation.primary", Objects::deepEquals),
+            "observedAt", same("presentation.observedAt", Objects::deepEquals)
+        ))
+    ));
+
+    private static ExpandsMerge same(String key, BiPredicate<Object, Object> equality) {
+        return ExpandsMerge.requireEqual(equality, () -> new I18nSupportException.NoStackTrace(
+            "error.conflicting_metadata_semantics", key));
+    }
 
     private MetadataSemantics() {
     }

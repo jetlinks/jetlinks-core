@@ -188,9 +188,7 @@ public class MetadataUtils {
      * @return 属性元数据
      */
     public static Map<String, Object> parseExpands(Annotation... annotations) {
-        Map<String, Object> expands = new HashMap<>();
-        MetadataParser.parseExpands(annotations, true, expands);
-        return expands;
+        return parseExpands(MetadataSemantics.EXPANDS_MERGE, annotations);
     }
 
     /**
@@ -200,14 +198,49 @@ public class MetadataUtils {
      * @return 属性元数据
      */
     public static Map<String, Object> parseExpands(AnnotatedElement element) {
+        return parseExpands(element, MetadataSemantics.EXPANDS_MERGE);
+    }
+
+    /**
+     * 按定义方提供的规则解析扩展，不注册全局规则或改变元数据结构。
+     *
+     * @param rules 合并规则
+     * @param annotations 注解对象
+     * @return 扩展信息
+     */
+    public static Map<String, Object> parseExpands(ExpandsMerge rules, Annotation... annotations) {
         Map<String, Object> expands = new HashMap<>();
-        MetadataParser.parseExpands(element, true, expands);
+        MetadataParser.parseExpands(annotations, true, expands, rules);
         return expands;
     }
 
-    /** 合并原元数据扩展；已知语义冲突明确拒绝，其余扩展保持原先声明优先。 */
+    /**
+     * 按定义方提供的规则解析元素上的扩展。
+     *
+     * @param element 来源元素
+     * @param rules 合并规则
+     * @return 扩展信息
+     */
+    public static Map<String, Object> parseExpands(AnnotatedElement element, ExpandsMerge rules) {
+        return parseExpands(rules, element.getAnnotations());
+    }
+
+    /** 合并原元数据扩展；定义层声明冲突及对象规则，其余扩展保持原先声明优先。 */
     public static void mergeExpands(Map<String, Object> target, Map<String, Object> additions) {
-        additions.forEach((key, value) -> MetadataParser.putExpand(target, key, value));
+        mergeExpands(target, additions, MetadataSemantics.EXPANDS_MERGE);
+    }
+
+    /**
+     * 按显式规则合并扩展；不修改补充来源或建立新的传输字段。
+     *
+     * @param target 目标扩展
+     * @param additions 补充扩展
+     * @param rules 定义方提供的合并规则
+     */
+    public static void mergeExpands(Map<String, Object> target,
+                                    Map<String, Object> additions,
+                                    ExpandsMerge rules) {
+        rules.merge(target, additions);
     }
 
 
@@ -399,7 +432,8 @@ public class MetadataUtils {
         }
 
         static void parseAttr(AnnotatedElement element,
-                              Map<String, Object> container) {
+                              Map<String, Object> container,
+                              ExpandsMerge rules) {
 
             Set<Attr> attrs = AnnotatedElementUtils
                 .findMergedRepeatableAnnotations(
@@ -407,14 +441,15 @@ public class MetadataUtils {
                     Attr.class
                 );
 
-            resolveAttrs(attrs, (key, value) -> putExpand(container, key, value));
+            resolveAttrs(attrs, (key, value) -> rules.put(container, key, value, ExpandsMerge.KEEP_FIRST));
 
 
         }
 
         static void parseExpands(Annotation[] annotation,
                                  boolean includeName,
-                                 Map<String, Object> container) {
+                                 Map<String, Object> container,
+                                 ExpandsMerge rules) {
             for (Annotation ann : annotation) {
 
                 Set<Expands> expandsSet = new LinkedHashSet<>();
@@ -441,16 +476,12 @@ public class MetadataUtils {
                 if (CollectionUtils.isNotEmpty(expandsSet)) {
                     for (Expands exp : expandsSet) {
                         Map<String, Object> c = container;
+                        ExpandsMerge childRules = rules;
 
-                        // 平铺
-                        if (includeName && StringUtils.hasText(exp.key())) {
+                        boolean namespaced = includeName && StringUtils.hasText(exp.key());
+                        if (namespaced) {
                             c = new HashMap<>();
-                            if ("presentation".equals(exp.key()) && container.get(exp.key()) instanceof Map<?, ?> previous) {
-                                for (Map.Entry<?, ?> entry : previous.entrySet()) {
-                                    c.put(String.valueOf(entry.getKey()), entry.getValue());
-                                }
-                            }
-                            container.put(exp.key(), c);
+                            childRules = rules.field(exp.key(), ExpandsMerge.OVERWRITE);
                         }
                         // 注解继承的方式
                         if (ann.annotationType() != Expands.class &&
@@ -463,7 +494,7 @@ public class MetadataUtils {
                                 if (mapping != null) {
                                     Object value = annotationValue(entry.getValue());
                                     if (!mapping.ignoreEmpty() || !ObjectUtils.isEmpty(value)) {
-                                        putExpand(c, mapping.key(), value);
+                                        childRules.put(c, mapping.key(), value, ExpandsMerge.KEEP_FIRST);
                                     }
                                     continue;
                                 }
@@ -471,9 +502,9 @@ public class MetadataUtils {
                                     DataType parseType = parseType(ResolvableType.forClass(CastUtil.cast(entry.getValue())));
                                     if (parseType instanceof ObjectType objectType) {
                                         List<PropertyMetadata> properties = objectType.getProperties();
-                                        c.putIfAbsent(entry.getKey(), properties);
+                                        childRules.put(c, entry.getKey(), properties, ExpandsMerge.KEEP_FIRST);
                                     } else if (parseType != null) {
-                                        c.putIfAbsent(entry.getKey(), parseType);
+                                        childRules.put(c, entry.getKey(), parseType, ExpandsMerge.KEEP_FIRST);
                                     }
                                 } else if (entry.getValue() instanceof Annotation _ann) {
                                     if (_ann instanceof org.jetlinks.core.annotation.DataType _dataType) {
@@ -481,21 +512,28 @@ public class MetadataUtils {
                                         Class<?>[] gen = _dataType.generics();
                                         ResolvableType type = gen.length == 0 ? ResolvableType.forType(clazz) :
                                             ResolvableType.forClassWithGenerics(clazz, gen);
-                                        c.put(entry.getKey(), parseType(type));
+                                        childRules.put(c, entry.getKey(), parseType(type), ExpandsMerge.OVERWRITE);
                                     } else {
-                                        c.put(entry.getKey(),
-                                              MetadataUtils.parseExpands(_ann));
+                                        childRules.put(c, entry.getKey(),
+                                                       MetadataUtils.parseExpands(
+                                                           childRules.field(entry.getKey(), ExpandsMerge.KEEP_FIRST), _ann),
+                                                       ExpandsMerge.OVERWRITE);
                                     }
                                 } else {
-                                    putExpand(c, entry.getKey(), entry.getValue());
+                                    childRules.put(c, entry.getKey(), entry.getValue(), ExpandsMerge.KEEP_FIRST);
                                 }
                             }
-                            parseExpands(ann.annotationType(), false, c);
-                            parseAttr(ann.annotationType(), c);
+                            parseExpands(ann.annotationType().getAnnotations(), false, c, childRules);
+                            parseAttr(ann.annotationType(), c, childRules);
                         }
                         // 直接定义了attr
                         Map<String, Object> target = c;
-                        resolveAttrs(exp.value(), (key, value) -> putExpand(target, key, value));
+                        ExpandsMerge valueRules = childRules;
+                        resolveAttrs(exp.value(), (key, value) -> valueRules.put(target, key, value, ExpandsMerge.KEEP_FIRST));
+                        if (namespaced) {
+                            // 普通命名空间保留整体覆盖；只有定义方显式声明时才合并子键。
+                            rules.put(container, exp.key(), c, ExpandsMerge.OVERWRITE);
+                        }
                     }
                 }
             }
@@ -516,37 +554,10 @@ public class MetadataUtils {
             return value;
         }
 
-        /** Semantic declarations cannot depend on reflection or annotation iteration order. */
-        private static void putExpand(Map<String, Object> target, String key, Object value) {
-            Object previous = target.get(key);
-            if (previous != null && semanticKey(key)
-                && !Objects.deepEquals(semanticValue(key, previous), semanticValue(key, value))) {
-                throw new I18nSupportException.NoStackTrace(
-                    "error.conflicting_metadata_semantics", key);
-            }
-            target.putIfAbsent(key, value);
-        }
-
-        private static Object semanticValue(String key, Object value) {
-            // JSON collections and annotation arrays express the same open set of semantic terms.
-            if ("semanticTypes".equals(key)) {
-                if (value instanceof String[] terms) return new HashSet<>(Arrays.asList(terms));
-                if (value instanceof Collection<?> terms) return new HashSet<>(terms);
-            }
-            return value;
-        }
-
-        private static boolean semanticKey(String key) {
-            return switch (key) {
-                case "semanticRole", "semanticTypes", "functionKind", "graphSubject", "primary", "observedAt" -> true;
-                default -> false;
-            };
-        }
-
         static void parseExpands(AnnotatedElement element,
                                  boolean includeName,
                                  Map<String, Object> container) {
-            parseExpands(element.getAnnotations(), includeName, container);
+            parseExpands(element.getAnnotations(), includeName, container, MetadataSemantics.EXPANDS_MERGE);
         }
 
         private PropertyMetadata withField0(Class<?> owner, Field field, ResolvableType type) {

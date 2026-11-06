@@ -112,6 +112,12 @@ Java 声明复用 `MetadataUtils` 的组合注解解析：`@SemanticRole` 声明
 
 语义合并按实际含义比较：semanticTypes 的注解数组、JSON 集合、顺序与重复词项不构成冲突，未知合法词仍保留；不同角色和 query/action 声明继续拒绝。命令类、显式引用命令类与处理方法经同一合并规则，普通方法选项仍保持原优先级。采样时间路径相对字段所属对象，嵌套对象与多个主值分别解析；规范化图谱事实保留真实时间，缺失或非法源值保持未知，视图可显式选择其他已声明时间字段。
 
+`core.metadata.ExpandsMerge` 提供不可变的字段规则：`KEEP_FIRST`、`OVERWRITE`、`requireEqual` 和显式 `object` 子键合并。`MetadataSemantics.EXPANDS_MERGE` 装配上述语义规则，`MetadataUtils` 只解释规则，不识别扩展名。普通值仍先声明优先，未配置规则的同名注解命名空间仍整体覆盖；对象合并复制目标子对象，不修改来源。`primary/observedAt` 的严格规则只作用于 `presentation` 内，不影响其他命名空间的同名普通选项。
+
+自定义扩展可向 `MetadataUtils.parseExpands(element, rules)`、`parseExpands(rules, annotations)` 和 `mergeExpands(target, additions, rules)` 显式提供自己的规则；它们使用同一个合并内核。`requireEqual` 接受定义方的比较器及异常供应者；`unorderedEquals` 仅用于明确无序的数组/集合，默认值不做集合化。不会过滤未知词、修改原值或增加 JSON/RPC 字段，也不增加全局注册中心、扫描缓存及注解参数。形状校验仍由原模型定义负责；该同步内存合并没有 I/O、后台任务或独立追踪/MBean。
+
+合并规则验收（core [#103](https://github.com/jetlinks/jetlinks-core/pull/103)、配套 supports [#47](https://github.com/jetlinks/jetlinks-supports/pull/47)）：在各仓库根分别执行 `mvn -o -Dmaven.javadoc.skip=true -Dtest=ExpandsMergeTest,PresentationAnnotationsTest,MetadataSemanticsTest,MetadataUtilsTest,CommandMetadataResolverTest,MergeOptionTest install` 和 `mvn -o -Dmaven.javadoc.skip=true -Dtest=JavaBeanCommandSupportTest,DeviceMetadataCodecsTest install`，43 + 15 项通过，无失败、错误或跳过，两个制品已本地安装。覆盖自定义命名空间及集合、默认覆盖、顺序与重复项反例、未知词保留、嵌套冲突、getter/field、Selector 组合注解、FormField/事件及命令参数/显式引用两种适配和原 codec 往返。日志位于 `/private/tmp/ontology-{core,supports}-merge-rules.log`。未受影响的本体/UI证据继续复用，不重复运行；没有管理应用服务或验证混合版本部署。
+
 关系定义作为通用模型的可选目录，由独立 RelationMetadata 描述目标类型、关系标识、方向、名称及语义。使用 getRelationMetadata 避免与已发布 ObjectType.getRelations() 的 Map 接口冲突，原关系 SPI 不承担 JSON 解析：
 
 ```java
