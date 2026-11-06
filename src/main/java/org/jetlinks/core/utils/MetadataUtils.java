@@ -188,7 +188,7 @@ public class MetadataUtils {
      * @return 属性元数据
      */
     public static Map<String, Object> parseExpands(Annotation... annotations) {
-        return parseExpands(MetadataSemantics.EXPANDS_MERGE, annotations);
+        return parseExpands(ExpandsMerges.defaultStrategy(), annotations);
     }
 
     /**
@@ -198,11 +198,11 @@ public class MetadataUtils {
      * @return 属性元数据
      */
     public static Map<String, Object> parseExpands(AnnotatedElement element) {
-        return parseExpands(element, MetadataSemantics.EXPANDS_MERGE);
+        return parseExpands(element, ExpandsMerges.defaultStrategy());
     }
 
     /**
-     * 按定义方提供的规则解析扩展，不注册全局规则或改变元数据结构。
+     * 按显式局部规则解析扩展，不读取或修改全局默认策略。
      *
      * @param rules 合并规则
      * @param annotations 注解对象
@@ -227,7 +227,7 @@ public class MetadataUtils {
 
     /** 合并原元数据扩展；定义层声明冲突及对象规则，其余扩展保持原先声明优先。 */
     public static void mergeExpands(Map<String, Object> target, Map<String, Object> additions) {
-        mergeExpands(target, additions, MetadataSemantics.EXPANDS_MERGE);
+        mergeExpands(target, additions, ExpandsMerges.defaultStrategy());
     }
 
     /**
@@ -283,6 +283,8 @@ public class MetadataUtils {
         );
 
         Set<Object> distinct = new HashSet<>();
+
+        private final ExpandsMerge expandsMerge = ExpandsMerges.defaultStrategy();
 
         MetadataParser() {
         }
@@ -554,10 +556,10 @@ public class MetadataUtils {
             return value;
         }
 
-        static void parseExpands(AnnotatedElement element,
+        private void parseExpands(AnnotatedElement element,
                                  boolean includeName,
                                  Map<String, Object> container) {
-            parseExpands(element.getAnnotations(), includeName, container, MetadataSemantics.EXPANDS_MERGE);
+            parseExpands(element.getAnnotations(), includeName, container, expandsMerge);
         }
 
         private PropertyMetadata withField0(Class<?> owner, Field field, ResolvableType type) {
@@ -697,7 +699,7 @@ public class MetadataUtils {
                 .getProperties()
                 .sort(Comparator.comparingLong(m -> indexMap
                     .getOrDefault(m.getId(), Objects.equals(m.getId(), "id") ? Integer.MIN_VALUE : Integer.MAX_VALUE)));
-            objectType.setExpands(MetadataUtils.parseExpands(fClass));
+            objectType.setExpands(MetadataUtils.parseExpands(fClass, expandsMerge));
             MetadataSemantics.validateOutput(objectType);
             return objectType;
         }

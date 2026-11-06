@@ -17,7 +17,7 @@ import java.util.function.Supplier;
  * 仅显式声明的对象合并子键；等价比较保留原值，不规范化存储内容。
  *
  * @since 1.3.3
- * @see MetadataSemantics#EXPANDS_MERGE
+ * @see ExpandsMerges#defaultStrategy()
  */
 public final class ExpandsMerge {
 
@@ -31,12 +31,23 @@ public final class ExpandsMerge {
 
     private ExpandsMerge(BinaryOperator<Object> merger) {
         this.fields = Map.of();
-        this.merger = merger;
+        this.merger = Objects.requireNonNull(merger, "merger");
     }
 
     private ExpandsMerge(Map<String, ExpandsMerge> fields) {
         this.fields = Map.copyOf(fields);
         this.merger = this::mergeObjects;
+    }
+
+    /**
+     * 使用定义方的值合并函数。首次声明直接保留补充值；仅已有非 null 值时调用函数。
+     *
+     * @param merger 可并发复用的同步函数，不得修改输入；异常直接传播
+     * @return 不可变规则，可用作对象子键、局部规则或注册默认规则
+     * @since 1.3.3
+     */
+    public static ExpandsMerge of(BinaryOperator<Object> merger) {
+        return new ExpandsMerge(merger);
     }
 
     /**

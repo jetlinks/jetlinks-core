@@ -112,11 +112,20 @@ Java 声明复用 `MetadataUtils` 的组合注解解析：`@SemanticRole` 声明
 
 语义合并按实际含义比较：semanticTypes 的注解数组、JSON 集合、顺序与重复词项不构成冲突，未知合法词仍保留；不同角色和 query/action 声明继续拒绝。命令类、显式引用命令类与处理方法经同一合并规则，普通方法选项仍保持原优先级。采样时间路径相对字段所属对象，嵌套对象与多个主值分别解析；规范化图谱事实保留真实时间，缺失或非法源值保持未知，视图可显式选择其他已声明时间字段。
 
-`core.metadata.ExpandsMerge` 提供不可变的字段规则：`KEEP_FIRST`、`OVERWRITE`、`requireEqual` 和显式 `object` 子键合并。`MetadataSemantics.EXPANDS_MERGE` 装配上述语义规则，`MetadataUtils` 只解释规则，不识别扩展名。普通值仍先声明优先，未配置规则的同名注解命名空间仍整体覆盖；对象合并复制目标子对象，不修改来源。`primary/observedAt` 的严格规则只作用于 `presentation` 内，不影响其他命名空间的同名普通选项。
+`core.metadata.ExpandsMerge` 提供不可变的字段规则：`KEEP_FIRST`、`OVERWRITE`、`requireEqual`、自定义同步值函数 `of` 和显式 `object` 子键合并。`ExpandsMerges.defaultStrategy()` 提供统一默认入口，通过 `ExpandsMergeProvider` SPI 发现定义方规则；`MetadataSemantics.MergeProvider` 只声明所属语义规则。`MetadataUtils` 只解释默认快照，不引用语义专用策略常量或识别扩展名。普通值仍先声明优先，未配置规则的同名注解命名空间仍整体覆盖；对象合并复制目标子对象，不修改来源。`primary/observedAt` 的严格规则只作用于 `presentation` 内，不影响其他命名空间的同名普通选项。
 
-自定义扩展可向 `MetadataUtils.parseExpands(element, rules)`、`parseExpands(rules, annotations)` 和 `mergeExpands(target, additions, rules)` 显式提供自己的规则；它们使用同一个合并内核。`requireEqual` 接受定义方的比较器及异常供应者；`unorderedEquals` 仅用于明确无序的数组/集合，默认值不做集合化。不会过滤未知词、修改原值或增加 JSON/RPC 字段，也不增加全局注册中心、扫描缓存及注解参数。形状校验仍由原模型定义负责；该同步内存合并没有 I/O、后台任务或独立追踪/MBean。
+应用通过 `ExpandsMerges.register(key, rule)` 或 `register(rules)` 注册完整顶层键规则；输入会被复制，后注册的同名键覆盖先注册。返回的 `Disposable` 由注册方释放，重复或乱序注销只撤销该次注册，恢复其余有效注册或 SPI 默认规则。对象子键不会与被覆盖策略隐式拼接；SPI 同名键重复属于装配错误，避免把类路径枚举顺序当作优先级。
 
-合并规则验收（core [#103](https://github.com/jetlinks/jetlinks-core/pull/103)、配套 supports [#47](https://github.com/jetlinks/jetlinks-supports/pull/47)）：在各仓库根分别执行 `mvn -o -Dmaven.javadoc.skip=true -Dtest=ExpandsMergeTest,PresentationAnnotationsTest,MetadataSemanticsTest,MetadataUtilsTest,CommandMetadataResolverTest,MergeOptionTest install` 和 `mvn -o -Dmaven.javadoc.skip=true -Dtest=JavaBeanCommandSupportTest,DeviceMetadataCodecsTest install`，43 + 15 项通过，无失败、错误或跳过，两个制品已本地安装。覆盖自定义命名空间及集合、默认覆盖、顺序与重复项反例、未知词保留、嵌套冲突、getter/field、Selector 组合注解、FormField/事件及命令参数/显式引用两种适配和原 codec 往返。日志位于 `/private/tmp/ontology-{core,supports}-merge-rules.log`。未受影响的本体/UI证据继续复用，不重复运行；没有管理应用服务或验证混合版本部署。
+```java
+Disposable registration = ExpandsMerges.register("card", ExpandsMerge.object(Map.of(
+    "caption", ExpandsMerge.OVERWRITE)));
+// 此后 MetadataUtils 的默认解析与合并均使用该规则。
+// 组件卸载时调用 registration.dispose()，释放此注册。
+```
+
+默认策略按类加载器共享，只保存不可变规则，不保存请求或认证。注册/注销发布一次完整快照，读取无锁；一次注解解析/合并及同一 MetadataParser 使用同一快照。规则变更只影响后续解析，不追溯刷新已构造的模型或 CommandSupport。自定义扩展仍可向 `MetadataUtils.parseExpands(element, rules)`、`parseExpands(rules, annotations)` 和 `mergeExpands(target, additions, rules)` 提供显式局部规则，局部规则不读取或修改默认策略。`requireEqual` 接受定义方比较器及异常供应者；`unorderedEquals` 仅用于明确无序的数组/集合，普通值不做集合化。未知词、原值及 JSON/RPC 结构保持；原 MergeOption 的显式忽略/删除合同保留。没有 I/O、后台任务、模型缓存刷新或独立追踪/MBean。
+
+合并规则验收（core [#103](https://github.com/jetlinks/jetlinks-core/pull/103)、配套 supports [#47](https://github.com/jetlinks/jetlinks-supports/pull/47)）：在各仓库根分别执行 `mvn -o -B -ntp -Dtest=ExpandsMergesTest,ExpandsMergeTest,PresentationAnnotationsTest,MetadataSemanticsTest,CommandMetadataResolverTest,MetadataUtilsTest,MergeOptionTest install` 和 `mvn -o -B -ntp -Dtest=JavaBeanCommandSupportTest,MetadataDirectoryTest install`，48 + 19 项通过，无失败、错误或跳过，两个制品已本地安装。最终 core 包含 5 项注册用例，覆盖自定义同步值函数、SPI 覆盖恢复、最新及乱序注销断言，重复执行不累计。覆盖自动 SPI 发现、注册规则经注解/字段/命令适配生效、局部规则隔离、并发快照、普通值/数组原顺序、语义等价与冲突，以及原 codec 目录往返。日志为 `/private/tmp/ontology-global-merge-{core-final,supports}.log`。未变更的观测、JMH、本体及 UI 证据沿用，未重打包或管理运行服务，混合版本与生产容量未新增验收。
 
 关系定义作为通用模型的可选目录，由独立 RelationMetadata 描述目标类型、关系标识、方向、名称及语义。使用 getRelationMetadata 避免与已发布 ObjectType.getRelations() 的 Map 接口冲突，原关系 SPI 不承担 JSON 解析：
 

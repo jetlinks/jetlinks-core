@@ -39,8 +39,7 @@ public final class MetadataSemantics {
     public static final ConfigKey<String> RELATION_SEMANTIC =
         ConfigKey.of("semantic", "semantic", String.class);
 
-    /** 语义定义的合并规则；通用解析与命令适配共用，不把词汇判断写入解析器。 */
-    public static final ExpandsMerge EXPANDS_MERGE = ExpandsMerge.object(Map.of(
+    private static final Map<String, ExpandsMerge> mergeRules = Map.of(
         SEMANTIC_TYPES.getKey(), same(SEMANTIC_TYPES.getKey(), ExpandsMerge::unorderedEquals),
         PROPERTY_ROLE.getKey(), same(PROPERTY_ROLE.getKey(), Objects::deepEquals),
         FUNCTION_KIND.getKey(), same(FUNCTION_KIND.getKey(), Objects::deepEquals),
@@ -49,7 +48,21 @@ public final class MetadataSemantics {
             "primary", same("presentation.primary", Objects::deepEquals),
             "observedAt", same("presentation.observedAt", Objects::deepEquals)
         ))
-    ));
+    );
+
+    /**
+     * 语义定义的默认规则，由通用入口通过 SPI 发现，不依赖调用方先初始化本类。
+     * 仅声明本定义所属的顶层键，通用解析器不引用这些规则。
+     *
+     * @since 1.3.3
+     * @see ExpandsMergeProvider
+     */
+    public static final class MergeProvider implements ExpandsMergeProvider {
+        @Override
+        public Map<String, ExpandsMerge> getRules() {
+            return mergeRules;
+        }
+    }
 
     private static ExpandsMerge same(String key, BiPredicate<Object, Object> equality) {
         return ExpandsMerge.requireEqual(equality, () -> new I18nSupportException.NoStackTrace(
