@@ -12,8 +12,12 @@ import org.apache.commons.collections4.MapUtils;
 import org.hswebframework.ezorm.core.CastUtil;
 import org.hswebframework.web.dict.EnumDict;
 import org.hswebframework.web.i18n.LocaleUtils;
+import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.Expands;
+import org.jetlinks.core.annotation.GraphSubject;
+import org.jetlinks.core.annotation.SemanticRole;
+import org.jetlinks.core.annotation.ui.Presentation;
 import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.metadata.types.*;
 import org.jetlinks.core.things.ThingsConfigKeys;
@@ -26,6 +30,7 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.util.ObjectUtils;
 import reactor.util.function.Tuples;
 
 import java.beans.IntrospectionException;
@@ -200,16 +205,22 @@ public class MetadataUtils {
         return expands;
     }
 
+    /** 合并原元数据扩展；已知语义冲突明确拒绝，其余扩展保持原先声明优先。 */
+    public static void mergeExpands(Map<String, Object> target, Map<String, Object> additions) {
+        additions.forEach((key, value) -> MetadataParser.putExpand(target, key, value));
+    }
+
 
     public static void resolveAttrs(Attr[] attrs, BiConsumer<String, Object> handler) {
-        for (Attr attr : attrs) {
-            handler.accept(attr.key(), parseAttrValue(attr));
-        }
+        resolveAttrs(Arrays.asList(attrs), handler);
     }
 
     public static void resolveAttrs(Iterable<Attr> attrs, BiConsumer<String, Object> handler) {
         for (Attr attr : attrs) {
-            handler.accept(attr.key(), parseAttrValue(attr));
+            Object value = parseAttrValue(attr);
+            if (!attr.ignoreEmpty() || !ObjectUtils.isEmpty(value)) {
+                handler.accept(attr.key(), value);
+            }
         }
     }
 
@@ -396,7 +407,7 @@ public class MetadataUtils {
                     Attr.class
                 );
 
-            resolveAttrs(attrs, container::putIfAbsent);
+            resolveAttrs(attrs, (key, value) -> putExpand(container, key, value));
 
 
         }
@@ -406,7 +417,7 @@ public class MetadataUtils {
                                  Map<String, Object> container) {
             for (Annotation ann : annotation) {
 
-                Set<Expands> expandsSet = new HashSet<>();
+                Set<Expands> expandsSet = new LinkedHashSet<>();
                 if (ann instanceof Expands) {
                     expandsSet.add(((Expands) ann));
                 } else if (ann instanceof Expands.List) {
@@ -434,6 +445,11 @@ public class MetadataUtils {
                         // 平铺
                         if (includeName && StringUtils.hasText(exp.key())) {
                             c = new HashMap<>();
+                            if ("presentation".equals(exp.key()) && container.get(exp.key()) instanceof Map<?, ?> previous) {
+                                for (Map.Entry<?, ?> entry : previous.entrySet()) {
+                                    c.put(String.valueOf(entry.getKey()), entry.getValue());
+                                }
+                            }
                             container.put(exp.key(), c);
                         }
                         // 注解继承的方式
@@ -442,6 +458,15 @@ public class MetadataUtils {
                             AnnotationAttributes annotationAttributes = AnnotationUtils
                                 .getAnnotationAttributes(ann, false, false);
                             for (Map.Entry<String, Object> entry : annotationAttributes.entrySet()) {
+                                Method attribute = ReflectionUtils.findMethod(ann.annotationType(), entry.getKey());
+                                Attr mapping = attribute == null ? null : attribute.getAnnotation(Attr.class);
+                                if (mapping != null) {
+                                    Object value = annotationValue(entry.getValue());
+                                    if (!mapping.ignoreEmpty() || !ObjectUtils.isEmpty(value)) {
+                                        putExpand(c, mapping.key(), value);
+                                    }
+                                    continue;
+                                }
                                 if (entry.getValue() instanceof Class<?>) {
                                     DataType parseType = parseType(ResolvableType.forClass(CastUtil.cast(entry.getValue())));
                                     if (parseType instanceof ObjectType objectType) {
@@ -462,14 +487,15 @@ public class MetadataUtils {
                                               MetadataUtils.parseExpands(_ann));
                                     }
                                 } else {
-                                    c.putIfAbsent(entry.getKey(), entry.getValue());
+                                    putExpand(c, entry.getKey(), entry.getValue());
                                 }
                             }
                             parseExpands(ann.annotationType(), false, c);
                             parseAttr(ann.annotationType(), c);
                         }
                         // 直接定义了attr
-                        resolveAttrs(exp.value(), c::putIfAbsent);
+                        Map<String, Object> target = c;
+                        resolveAttrs(exp.value(), (key, value) -> putExpand(target, key, value));
                     }
                 }
             }
@@ -477,6 +503,34 @@ public class MetadataUtils {
             parseJsr303(annotation, container);
             parseJsonView(annotation, container);
             parseSwagger(annotation, container);
+        }
+
+        /** Only explicitly mapped annotation members use the stable scalar metadata vocabulary. */
+        private static Object annotationValue(Object value) {
+            if (value instanceof Enum<?> term) {
+                return term.name();
+            }
+            if (value instanceof Enum<?>[] terms) {
+                return Arrays.stream(terms).map(Enum::name).toArray(String[]::new);
+            }
+            return value;
+        }
+
+        /** Semantic declarations cannot depend on reflection or annotation iteration order. */
+        private static void putExpand(Map<String, Object> target, String key, Object value) {
+            Object previous = target.get(key);
+            if (previous != null && semanticKey(key) && !Objects.deepEquals(previous, value)) {
+                throw new I18nSupportException.NoStackTrace(
+                    "error.conflicting_metadata_semantics", key);
+            }
+            target.putIfAbsent(key, value);
+        }
+
+        private static boolean semanticKey(String key) {
+            return switch (key) {
+                case "semanticRole", "semanticTypes", "functionKind", "graphSubject", "primary", "observedAt" -> true;
+                default -> false;
+            };
         }
 
         static void parseExpands(AnnotatedElement element,
@@ -606,6 +660,10 @@ public class MetadataUtils {
                     return;
                 }
                 Schema schema = getSchema(fClass, field);
+                if ((schema == null || schema.hidden()) && hasSemanticDeclaration(field, getReadMethod(fClass, field))) {
+                    throw new I18nSupportException.NoStackTrace(
+                        "error.invalid_metadata_semantics", fClass.getName() + "." + field.getName() + ": @Schema");
+                }
                 if (schema != null && !schema.hidden()) {
                     PropertyMetadata propertyMetadata = withField0(fClass, field, ResolvableType.forField(field, type));
                     if (order != null) {
@@ -619,7 +677,20 @@ public class MetadataUtils {
                 .sort(Comparator.comparingLong(m -> indexMap
                     .getOrDefault(m.getId(), Objects.equals(m.getId(), "id") ? Integer.MIN_VALUE : Integer.MAX_VALUE)));
             objectType.setExpands(MetadataUtils.parseExpands(fClass));
+            MetadataSemantics.validateOutput(objectType);
             return objectType;
+        }
+
+        /** Semantic markers do not silently opt otherwise private fields into a public schema. */
+        private boolean hasSemanticDeclaration(AnnotatedElement... elements) {
+            for (AnnotatedElement element : elements) {
+                if (element != null && (AnnotatedElementUtils.hasAnnotation(element, GraphSubject.class)
+                    || AnnotatedElementUtils.hasAnnotation(element, SemanticRole.class)
+                    || AnnotatedElementUtils.hasAnnotation(element, Presentation.class))) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private Method getReadMethod(Class<?> owner, Field field) {

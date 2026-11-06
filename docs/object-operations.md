@@ -106,6 +106,10 @@ commands() 不返回 Mono；异步解析服务在内部使用既有 AsyncProxyCo
 
 语义键及类型化读取集中在 core.metadata.MetadataSemantics；不向 Metadata 基础接口堆叠各类语义 getter，也不再维护一份语义状态。
 
+Java 声明复用 `MetadataUtils` 的组合注解解析：`@SemanticRole` 声明字段角色，`@SemanticTypes` 声明模型角色，`@FunctionSemantics` 在命令类或处理方法上显式声明 query/action；未声明的功能保持未知。枚举值映射为标准字符串或数组，未知扩展词仍可通过原 `@Expands/@Attr` 使用。`@GraphSubject` 只标记结果所属对象，不隐含记录 identity；记录自身 ID 应独立声明。带语义注解的字段仍需非隐藏 `@Schema`，不能通过展示注解意外公开私有字段。
+
+`@Presentation(primary=true, observedAt="sampleTime")` 将主值绑定到实际采样时间字段，允许多主值；不使用查询时间代替采样时间。`observedAt` 支持最多 8 段的对象路径，目标必须是 date/long。可选空值通过 `@Attr(ignoreEmpty=true)` 省略，false/0 保留；不增加旧字段的空默认键。`MetadataSemantics.validateOutput` 拒绝多主体、无效时间路径和已知语义冲突；相同声明可合并。原物模型 JSON/codec/RPC 继续承载这些元数据，不建立平行扫描器或传输模型。
+
 关系定义作为通用模型的可选目录，由独立 RelationMetadata 描述目标类型、关系标识、方向、名称及语义。使用 getRelationMetadata 避免与已发布 ObjectType.getRelations() 的 Map 接口冲突，原关系 SPI 不承担 JSON 解析：
 
 ```java

@@ -4,6 +4,9 @@ import org.jetlinks.core.config.ConfigKey;
 import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.things.relation.Relation;
 import org.jetlinks.core.things.relation.RelationSemantic;
+import org.jetlinks.core.metadata.types.DateTimeType;
+import org.jetlinks.core.metadata.types.LongType;
+import org.jetlinks.core.metadata.types.ObjectType;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -76,6 +79,68 @@ public final class MetadataSemantics {
     /** @return 规范方向上的已识别关系语义；不会推断来源事实 */
     public static Optional<RelationSemantic> relationSemantic(Relation relation) {
         return term(relation.getExpands(), RELATION_SEMANTIC.getKey(), RelationSemantic.class);
+    }
+
+    /**
+     * 校验单个结果模型的主体和数值时间绑定。多个主值和未知角色均合法；
+     * 声明多个主体字段或引用不存在/非时间字段时拒绝，不依赖属性顺序猜测。
+     *
+     * @param output 原输出对象模型，不修改元数据
+     */
+    public static void validateOutput(ObjectType output) {
+        String subject = null;
+        for (PropertyMetadata field : output.getProperties()) {
+            propertyRole(field);
+            Object marker = value(field.getExpands(), "graphSubject");
+            if (marker != null && !(marker instanceof Boolean)) {
+                throw invalid(field.getId() + ".graphSubject");
+            }
+            if (Boolean.TRUE.equals(marker) || "subjectId".equals(value(field.getExpands(), PROPERTY_ROLE.getKey()))) {
+                if (subject != null) {
+                    throw invalid(subject + ", " + field.getId() + ": graphSubject");
+                }
+                subject = field.getId();
+            }
+            Object presentation = value(field.getExpands(), "presentation");
+            if (presentation == null) {
+                continue;
+            }
+            if (!(presentation instanceof Map<?, ?> hints)) {
+                throw invalid(field.getId() + ".presentation");
+            }
+            Object time = hints.get("observedAt");
+            if (time == null || "".equals(time)) {
+                continue;
+            }
+            if (!(time instanceof String path)) {
+                throw invalid(field.getId() + ".presentation.observedAt");
+            }
+            PropertyMetadata target = timeField(output, path);
+            if (target == null || target.getValueType() == null
+                || !(DateTimeType.ID.equals(target.getValueType().getId())
+                    || LongType.ID.equals(target.getValueType().getId()))) {
+                throw invalid(field.getId() + ".presentation.observedAt: " + path);
+            }
+        }
+    }
+
+    private static PropertyMetadata timeField(ObjectType output, String path) {
+        String[] parts = path.split("\\.", -1);
+        if (parts.length > 8) {
+            return null;
+        }
+        ObjectType current = output;
+        for (int i = 0; i < parts.length; i++) {
+            PropertyMetadata field = current.getProperty(parts[i]).orElse(null);
+            if (field == null || i == parts.length - 1) {
+                return field;
+            }
+            if (!(field.getValueType() instanceof ObjectType nested)) {
+                return null;
+            }
+            current = nested;
+        }
+        return null;
     }
 
     private static Object value(Map<String, Object> expands, String key) {

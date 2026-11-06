@@ -1,6 +1,7 @@
 package org.jetlinks.core.annotation.ui;
 
 import org.jetlinks.core.annotation.Expands;
+import org.jetlinks.core.annotation.Attr;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
@@ -21,4 +22,10 @@ import static java.lang.annotation.ElementType.*;
 public @interface Presentation {
     /** @return 是否为当前结果的主要展示字段 */
     boolean primary() default false;
+
+    /**
+     * @return 当前值对应的实际采样时间字段路径；空值表示未声明，不能以入库或查询时间替代
+     */
+    @Attr(key = "observedAt", ignoreEmpty = true)
+    String observedAt() default "";
 }
