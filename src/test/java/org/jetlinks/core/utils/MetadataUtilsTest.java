@@ -16,7 +16,10 @@ import org.jetlinks.core.JsonViews;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.Expands;
 import org.jetlinks.core.annotation.ui.Selector;
+import org.jetlinks.core.annotation.ui.FormField;
+import org.jetlinks.core.annotation.command.ModuleEventListener;
 import org.jetlinks.core.metadata.DataType;
+import org.jetlinks.core.metadata.ExpandsMerge;
 import org.jetlinks.core.metadata.types.DateTimeType;
 import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.utils.json.ObjectMappers;
@@ -41,16 +44,70 @@ public class MetadataUtilsTest {
 
 
     @Test
-    public void testParseExpands() {
+    public void testParseExpands() throws Exception {
+        var field = CustomExpands.class.getDeclaredField("value");
+        Assert.assertEquals(Map.of("caption", "second"), MetadataUtils.parseExpands(field).get("card"));
 
+        var rules = ExpandsMerge.object(Map.of("card", ExpandsMerge.object(Map.of())));
+        Assert.assertEquals(Map.of("caption", "first", "extra", "kept"),
+                            MetadataUtils.parseExpands(field, rules).get("card"));
+        var strict = ExpandsMerge.object(Map.of("card", ExpandsMerge.object(Map.of(
+            "caption", ExpandsMerge.requireEqual(java.util.Objects::deepEquals,
+                                                 () -> new IllegalArgumentException("caption"))))));
+        reactor.test.StepVerifier.create(reactor.core.publisher.Mono.fromRunnable(
+            () -> MetadataUtils.parseExpands(field, strict)))
+            .expectError(IllegalArgumentException.class).verify();
+    }
+
+    @Test
+    public void ordinaryGetterAndFieldNamespacesKeepTheirExistingPrecedence() {
+        ObjectType type = (ObjectType) MetadataUtils.parseType(ResolvableType.forClass(NamespacePrecedence.class));
+        var expands = type.getProperty("value").orElseThrow().getExpands();
+        Assert.assertEquals(Map.of("type", "field", "multiple", false), expands.get("selector"));
+        Assert.assertEquals(Map.of("label", "field", "hidden", false, "ignore", false), expands.get("form"));
+        Assert.assertEquals(Map.of("primary", "field"), expands.get("ordinary"));
+        Assert.assertEquals("retained", expands.get("getterOnly"));
+    }
+
+    @Test
+    public void eventConfigurationRetainsTheDeclaredArrayAndSequence() throws Exception {
+        var field = EventOptions.class.getMethod("listen");
+        var parsed = (Map<?, ?>) MetadataUtils.parseExpands(field).get("eventListener");
+        Assert.assertArrayEquals(new String[]{"second", "first", "second"}, (String[]) parsed.get("events"));
+    }
+
+    public static class CustomExpands {
+        @Expands(key = "card", value = {@Attr(key = "caption", value = "first"), @Attr(key = "extra", value = "kept")})
+        @Expands(key = "card", value = @Attr(key = "caption", value = "second"))
+        private String value;
+    }
+
+    public static class NamespacePrecedence {
+        @Schema @Selector(type = "field") @FormField(label = "field")
+        @Expands(key = "ordinary", value = @Attr(key = "primary", value = "field"))
+        private String value;
+
+        @Selector(type = "getter", multiple = true) @FormField(label = "getter", hidden = true)
+        @Expands(key = "ordinary", value = {@Attr(key = "primary", value = "getter"), @Attr(key = "extra", value = "discarded")})
+        @Expands(@Attr(key = "getterOnly", value = "retained"))
+        public String getValue() { return value; }
+        public void setValue(String value) { this.value = value; }
+    }
+
+    public static class EventOptions {
+        @ModuleEventListener(events = {"second", "first", "second"})
+        public void listen() { }
     }
 
     @Test
     public void testAttr() {
 
         ObjectType type = (ObjectType) MetadataUtils.parseType(ResolvableType.forType(TestEntity.class));
-
-        System.out.println(ObjectMappers.toJsonString(type));
+        Map<?, ?> selector = (Map<?, ?>) type.getProperty("deviceId").orElseThrow().getExpands().get(Selector.KEY);
+        Assert.assertEquals("device", selector.get("type"));
+        Assert.assertEquals(true, selector.get("multiple"));
+        Assert.assertTrue(selector.get("dataType") instanceof ObjectType);
+        Assert.assertEquals("v1", type.getProperty("productId").orElseThrow().getExpands().get("k1"));
 
     }
 

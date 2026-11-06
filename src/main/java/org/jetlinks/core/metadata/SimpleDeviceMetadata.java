@@ -1,6 +1,7 @@
 package org.jetlinks.core.metadata;
 
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONArray;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.things.ThingMetadata;
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 public class SimpleDeviceMetadata implements DeviceMetadata {
@@ -35,6 +37,10 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
 
     @Setter
     private Map<String, Object> expands;
+
+    @Getter
+    @Setter
+    private List<RelationMetadata> relationMetadata = Collections.emptyList();
 
     public void addProperty(PropertyMetadata metadata) {
         this.properties.put(metadata.getId(), metadata);
@@ -119,6 +125,16 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
         this.name = json.getString("name");
         this.description = json.getString("description");
         this.expands = json.getJSONObject("expands");
+        JSONArray definitions = json.getJSONArray("relations");
+        List<RelationMetadata> parsed = new ArrayList<>();
+        if (definitions != null) {
+            for (int i = 0; i < definitions.size(); i++) {
+                RelationMetadata relation = new RelationMetadata();
+                relation.fromJson(definitions.getJSONObject(i));
+                parsed.add(relation);
+            }
+        }
+        this.relationMetadata = parsed;
 
     }
 
@@ -147,6 +163,7 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
         deviceMetadata.setName(metadata.getName());
         deviceMetadata.setDescription(metadata.getDescription());
         deviceMetadata.setExpands(metadata.getExpands());
+        deviceMetadata.setRelationMetadata(new CompositeThingMetadata(this, metadata).getRelationMetadata());
 
 
         if (MergeOption.has(MergeOption.overwriteProperty, options)) {
