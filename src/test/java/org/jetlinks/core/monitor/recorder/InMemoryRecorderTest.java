@@ -18,10 +18,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -294,6 +296,63 @@ public class InMemoryRecorderTest {
                 assertTrue(recorder.snapshot().actions().isEmpty());
             }
         } finally { workers.shutdownNow(); }
+    }
+
+    @Test
+    public void shouldReleaseAnActionPublishedAfterClose() throws Exception {
+        var recorder = recorder();
+        var worker = Executors.newSingleThreadExecutor();
+        var reserved = new CountDownLatch(1);
+        var publish = new CompletableFuture<String>();
+        CharSequence name = new CharSequence() {
+            @Override public int length() { return 4; }
+            @Override public char charAt(int index) { return "work".charAt(index); }
+            @Override public CharSequence subSequence(int start, int end) { return "work".subSequence(start, end); }
+            @Override public String toString() { reserved.countDown(); return publish.join(); }
+        };
+        try {
+            Future<ActionRecorder<Object>> action = worker.submit(() -> recorder.action(name));
+            assertTrue(reserved.await(5, TimeUnit.SECONDS));
+            // 在槽位预留后、发布前关闭，确保迟到发布者不能留下可达操作。
+            recorder.close();
+            publish.complete("work");
+            assertSame(ActionRecorder.noop(), action.get(5, TimeUnit.SECONDS));
+            assertTrue(recorder.snapshot().actions().isEmpty());
+        } finally {
+            publish.complete("work");
+            worker.shutdownNow();
+            recorder.close();
+        }
+    }
+
+    @Test
+    public void shouldBoundConcurrentAdmissionsAndPublishDistinctSlots() throws Exception {
+        var recorder = recorder();
+        var workers = Executors.newFixedThreadPool(4);
+        var start = new CountDownLatch(1);
+        var futures = new ArrayList<Future<?>>();
+        try {
+            for (int worker = 0; worker < 4; worker++) futures.add(workers.submit(() -> {
+                start.await();
+                for (int i = 0; i < 32; i++) recorder.action("work").attribute(INPUT, i).complete();
+                return null;
+            }));
+            start.countDown();
+            for (Future<?> future : futures) future.get(5, TimeUnit.SECONDS);
+            var snapshot = recorder.snapshot();
+            assertTrue(snapshot.truncated());
+            assertEquals(32, snapshot.actions().size());
+            for (int i = 0; i < snapshot.actions().size(); i++) {
+                var action = snapshot.actions().get(i);
+                assertEquals(i, action.id());
+                assertEquals(InMemoryRecorder.Status.completed, action.status());
+                assertTrue(action.attributes().containsKey("input"));
+            }
+        } finally {
+            start.countDown();
+            workers.shutdownNow();
+            recorder.close();
+        }
     }
 
     @Test

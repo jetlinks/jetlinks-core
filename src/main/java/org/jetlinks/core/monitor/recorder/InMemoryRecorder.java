@@ -4,6 +4,8 @@ import org.jetlinks.core.Key;
 import reactor.core.Exceptions;
 import reactor.util.context.ContextView;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -13,10 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -39,16 +40,25 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
     private static final int TRUNCATED = 1;
     private static final int CLOSED = 2;
     private static final int MAX_NAME_LENGTH = 128;
+    // Updater 和数组访问器只创建一次，执行实例内只保留字段与原生数组。
+    private static final AtomicIntegerFieldUpdater<InMemoryRecorder> SIZE =
+        AtomicIntegerFieldUpdater.newUpdater(InMemoryRecorder.class, "size");
+    private static final AtomicIntegerFieldUpdater<InMemoryRecorder> FLAGS =
+        AtomicIntegerFieldUpdater.newUpdater(InMemoryRecorder.class, "flags");
+    private static final AtomicLongFieldUpdater<InMemoryRecorder> USED =
+        AtomicLongFieldUpdater.newUpdater(InMemoryRecorder.class, "used");
+    private static final VarHandle ACTIONS = MethodHandles.arrayElementVarHandle(MemoryAction[].class);
+
     private final Selection selection;
-    private final AtomicReferenceArray<MemoryAction<?>> actions;
-    private final AtomicInteger size = new AtomicInteger();
-    private final AtomicInteger flags = new AtomicInteger();
+    private final MemoryAction<?>[] actions;
+    private volatile int size;
+    private volatile int flags;
     // 高32位为字符数，低32位为值节点数；一次 CAS 同时接纳两个预算。
-    private final AtomicLong used = new AtomicLong();
+    private volatile long used;
 
     private InMemoryRecorder(Selection selection) {
         this.selection = selection;
-        actions = new AtomicReferenceArray<>(selection.limits.maxActions());
+        actions = new MemoryAction<?>[selection.limits.maxActions()];
     }
 
     /** 创建可跨执行复用的字段选择工厂；每次 get 返回独立接收端。 */
@@ -104,20 +114,20 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
         }
         int index;
         do {
-            index = size.get();
-            if (index >= actions.length()) {
+            index = size;
+            if (index >= actions.length) {
                 truncate();
                 return ActionRecorder.noop();
             }
-        } while (!size.compareAndSet(index, index + 1));
+        } while (!SIZE.compareAndSet(this, index, index + 1));
         String actionName = name.toString();
         if (actionName.length() > MAX_NAME_LENGTH) { truncate(); return ActionRecorder.noop(); }
         MemoryAction<E> action = new MemoryAction<>(index, parentId, actionName);
-        actions.set(index, action);
+        ACTIONS.setVolatile(actions, index, action);
         // close 可与已预留但尚未发布的操作并发；迟到发布者负责释放自己的状态。
         if (closed()) {
-            action.set(Frame.DISCARDED);
-            actions.compareAndSet(index, action, null);
+            action.frame = Frame.DISCARDED;
+            ACTIONS.compareAndSet(actions, index, action, null);
             return ActionRecorder.noop();
         }
         return action;
@@ -129,16 +139,16 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
      */
     public Snapshot snapshot() {
         List<ActionSnapshot> result = new ArrayList<>();
-        for (int i = 0, count = size.get(); i < count; i++) {
-            MemoryAction<?> action = actions.get(i);
+        for (int i = 0, count = size; i < count; i++) {
+            MemoryAction<?> action = (MemoryAction<?>) ACTIONS.getVolatile(actions, i);
             if (action == null) continue;
-            Frame frame = action.get();
+            Frame frame = action.frame;
             if (frame == Frame.DISCARDED) continue;
             result.add(new ActionSnapshot(action.id, action.parentId, action.name, frame.status,
                 frame.timestamp, frame.useNanos, fields(selection.tags, frame.values),
                 fields(selection.attributes, frame.values), frame.errorType, frame.errorMessage));
         }
-        return new Snapshot(result, (flags.get() & TRUNCATED) != 0);
+        return new Snapshot(result, (flags & TRUNCATED) != 0);
     }
 
     private static Map<String, Object> fields(Map<String, Integer> indexes, Object[] values) {
@@ -168,27 +178,27 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
     /** 释放已保留的值并禁止后续写入；已提取的快照继续有效，不重置或复用本实例。 */
     @Override
     public void close() {
-        if ((flags.getAndUpdate(value -> value | CLOSED) & CLOSED) != 0) return;
-        for (int i = 0; i < actions.length(); i++) {
-            MemoryAction<?> action = actions.getAndSet(i, null);
-            if (action != null) action.set(Frame.DISCARDED);
+        if ((FLAGS.getAndUpdate(this, value -> value | CLOSED) & CLOSED) != 0) return;
+        for (int i = 0; i < actions.length; i++) {
+            MemoryAction<?> action = (MemoryAction<?>) ACTIONS.getAndSet(actions, i, null);
+            if (action != null) action.frame = Frame.DISCARDED;
         }
     }
 
-    private boolean closed() { return (flags.get() & CLOSED) != 0; }
+    private boolean closed() { return (flags & CLOSED) != 0; }
     private void truncate() {
-        if ((flags.get() & TRUNCATED) == 0) flags.getAndUpdate(value -> value | TRUNCATED);
+        if ((flags & TRUNCATED) == 0) FLAGS.getAndUpdate(this, value -> value | TRUNCATED);
     }
 
     private boolean reserve(ValueCopy copy) {
         long previous, next;
         do {
-            previous = used.get();
+            previous = used;
             int values = (int) previous + copy.values;
             int characters = (int) (previous >>> 32) + copy.characters;
             if (values > selection.limits.maxValues() || characters > selection.limits.maxCharacters()) return false;
             next = ((long) characters << 32) | values;
-        } while (!used.compareAndSet(previous, next));
+        } while (!USED.compareAndSet(this, previous, next));
         return true;
     }
 
@@ -227,23 +237,27 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
         boolean ended() { return status.ordinal() >= Status.completed.ordinal(); }
     }
 
-    private final class MemoryAction<E> extends AtomicReference<Frame> implements ActionRecorder<E> {
+    private final class MemoryAction<E> implements ActionRecorder<E> {
+        @SuppressWarnings("rawtypes")
+        private static final AtomicReferenceFieldUpdater<MemoryAction, Frame> FRAME =
+            AtomicReferenceFieldUpdater.newUpdater(MemoryAction.class, Frame.class, "frame");
+
         private final int id;
         private final int parentId;
         private final String name;
+        private volatile Frame frame = Frame.CREATED;
 
         private MemoryAction(int id, int parentId, String name) {
-            super(Frame.CREATED);
             this.id = id;
             this.parentId = parentId;
             this.name = name;
         }
 
-        private boolean writable() { return !closed() && !get().ended(); }
+        private boolean writable() { return !closed() && !frame.ended(); }
 
         private boolean metadataWritable() {
             if (!writable()) return false;
-            if ((int) used.get() >= selection.limits.maxValues()) { truncate(); return false; }
+            if ((int) used >= selection.limits.maxValues()) { truncate(); return false; }
             return true;
         }
 
@@ -253,12 +267,12 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
             try {
                 Frame previous;
                 do {
-                    previous = get();
+                    previous = frame;
                     if (closed() || previous.ended()) return this;
                     Object selected = value;
                     Object old = previous.values == null ? null : previous.values[index];
                     if (old != null && key != null) selected = merge(key, old, value);
-                    long budget = used.get();
+                    long budget = used;
                     ValueCopy copy = new ValueCopy(selection.limits.maxValues() - (int) budget,
                         selection.limits.maxCharacters() - (int) (budget >>> 32));
                     Object snapshot = copy.copy(selected, 0);
@@ -267,7 +281,7 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
                     fields[index] = snapshot;
                     Frame next = new Frame(fields, previous.status, previous.timestamp, previous.startNanos,
                         previous.useNanos, previous.errorType, previous.errorMessage);
-                    if (compareAndSet(previous, next)) return this;
+                    if (FRAME.compareAndSet(this, previous, next)) return this;
                 } while (true);
             } catch (Throwable error) {
                 Exceptions.throwIfFatal(error);
@@ -318,9 +332,9 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
         public ActionRecorder<E> start(ContextView context) {
             Frame previous;
             do {
-                previous = get();
+                previous = frame;
                 if (closed() || previous.status != Status.created) return this;
-            } while (!compareAndSet(previous, new Frame(previous.values, Status.running,
+            } while (!FRAME.compareAndSet(this, previous, new Frame(previous.values, Status.running,
                 System.currentTimeMillis(), System.nanoTime(), 0, null, null)));
             return this;
         }
@@ -343,9 +357,9 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
             }
             Frame previous;
             do {
-                previous = get();
+                previous = frame;
                 if (closed() || previous.ended()) return this;
-            } while (!compareAndSet(previous, new Frame(previous.values, status, previous.timestamp,
+            } while (!FRAME.compareAndSet(this, previous, new Frame(previous.values, status, previous.timestamp,
                 0, previous.status == Status.running ? System.nanoTime() - previous.startNanos : 0,
                 error == null ? null : error.getClass().getName(), message)));
             return this;
