@@ -12,9 +12,7 @@ import reactor.test.StepVerifier;
 import reactor.util.context.Context;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,24 +76,19 @@ public class InMemoryRecorderTest {
     }
 
     @Test
-    public void shouldDetachNestedValuesAndKeepEarlierSnapshotsStable() {
+    public void shouldShareImmutableValuesAndKeepRecordSnapshotsStable() {
         var recorder = InMemoryRecorder.factory(Set.of(), Set.of("data")).get();
-        var source = new HashMap<String, Object>();
-        var values = new ArrayList<>(List.of(1));
-        source.put("values", values);
-        source.put("empty", null);
+        var source = Map.of("values", List.of(1));
         var action = recorder.action("accept");
         action.attribute("data", source);
         var first = recorder.snapshot();
-        values.add(2);
-        source.put("new", "changed");
         action.attribute("data", Map.of("new", "accepted"));
         action.complete();
         var second = recorder.snapshot();
         recorder.close();
         Map<?, ?> accepted = (Map<?, ?>) first.actions().get(0).attributes().get("data");
+        assertSame(source, accepted);
         assertEquals(List.of(1), accepted.get("values"));
-        assertTrue(accepted.containsKey("empty"));
         assertEquals(Map.of("new", "accepted"), second.actions().get(0).attributes().get("data"));
         assertThrows(UnsupportedOperationException.class, () -> first.actions().clear());
         assertThrows(UnsupportedOperationException.class, () -> first.actions().get(0).attributes().clear());
@@ -106,7 +99,7 @@ public class InMemoryRecorderTest {
 
     @Test
     public void shouldBoundActionsAndStopClosedOrCompletedSuppliers() {
-        var recorder = InMemoryRecorder.factory(Set.of(), Set.of("input"), new InMemoryRecorder.Limits(2, 8, 128)).get();
+        var recorder = InMemoryRecorder.factory(Set.of(), Set.of("input"), 2).get();
         var parent = recorder.action("parent");
         var child = parent.child("child");
         assertSame(ActionRecorder.noop(), parent.child("overflow"));
@@ -122,40 +115,30 @@ public class InMemoryRecorderTest {
     }
 
     @Test
-    public void shouldUseCumulativeBudgetsAndOmitWholeValues() {
-        var recorder = InMemoryRecorder.factory(Set.of(), Set.of("input"), new InMemoryRecorder.Limits(2, 1, 24)).get();
+    public void shouldKeepLatestFieldValueAcrossRepeatedWrites() {
+        var recorder = InMemoryRecorder.factory(Set.of(), Set.of("input"), 2).get();
         var action = recorder.action("calculate");
-        action.attribute(INPUT, 1);
+        for (int i = 0; i < 300; i++) action.attribute(INPUT, i);
+        var before = recorder.snapshot();
         var calls = new AtomicInteger();
-        action.attribute(INPUT, (Supplier<Integer>) calls::incrementAndGet);
-        action.attribute(INPUT, 2);
-        assertEquals(0, calls.get());
-        assertEquals(1, recorder.snapshot().actions().get(0).attributes().get("input"));
-        assertTrue(recorder.snapshot().truncated());
-
-        var strings = InMemoryRecorder.factory(Set.of(), Set.of("input"), new InMemoryRecorder.Limits(2, 8, 3)).get();
-        strings.action("text").attribute("input", "four").complete();
-        assertTrue(strings.snapshot().truncated());
-        assertTrue(strings.snapshot().actions().get(0).attributes().isEmpty());
+        action.attribute(INPUT, (Supplier<Integer>) () -> { calls.incrementAndGet(); return 300; }).complete();
+        var after = recorder.snapshot();
+        assertEquals(1, calls.get());
+        assertEquals(299, before.actions().get(0).attributes().get("input"));
+        assertEquals(Map.of("input", 300), after.actions().get(0).attributes());
+        assertFalse(after.truncated());
     }
 
     @Test
-    public void shouldRejectUnsupportedMutableAndUnboundedValuesWithoutTraversingPayloads() {
-        for (Object value : List.of(new Object() {
-            @Override public String toString() { throw new AssertionError("payload inspected"); }
-        }, new AtomicInteger(1), new BigInteger("1") { }, new BigDecimal("1") { },
-            List.of(List.of(List.of(List.of(1)))), "x".repeat(4097),
-            List.of(1, 2, 3, 4), new BigInteger("1" + "0".repeat(5000)), new BigDecimal("1E+100000"))) {
-            var recorder = InMemoryRecorder.factory(Set.of(), Set.of("input"), new InMemoryRecorder.Limits(2, 4, 4096)).get();
-            recorder.action("check").attribute("input", value).complete();
-            assertTrue(recorder.snapshot().truncated());
-            assertTrue(recorder.snapshot().actions().get(0).attributes().isEmpty());
+    public void shouldRetainImmutableSummaryReferencesWithoutInspectingThem() {
+        record Summary(int count) {
+            @Override public String toString() { throw new AssertionError("summary inspected"); }
         }
-        var cycle = new HashMap<String, Object>();
-        cycle.put("cycle", cycle);
+        var summary = new Summary(3);
         var recorder = recorder();
-        recorder.action("cycle").attribute("input", cycle).complete();
-        assertTrue(recorder.snapshot().truncated());
+        recorder.action("summary").attribute("input", summary).complete();
+        assertSame(summary, recorder.snapshot().actions().get(0).attributes().get("input"));
+        assertFalse(recorder.snapshot().truncated());
     }
 
     @Test
@@ -252,7 +235,7 @@ public class InMemoryRecorderTest {
 
     @Test
     public void shouldMergeParallelUpdatesWithoutLosingValuesOrMutatingSnapshots() throws Exception {
-        var recorder = InMemoryRecorder.factory(Set.of(), Set.of("sum"), new InMemoryRecorder.Limits(32, 100_000, 1_000_000)).get();
+        var recorder = InMemoryRecorder.factory(Set.of(), Set.of("sum")).get();
         Key<Integer> sum = new Key<>() {
             @Override public String getKey() { return "sum"; }
             @Override public Integer apply(Integer old, Integer next) { return old + next; }
@@ -357,8 +340,8 @@ public class InMemoryRecorderTest {
 
     @Test
     public void shouldValidateConfigurationAndCopySelectedNames() {
-        assertThrows(IllegalArgumentException.class, () -> new InMemoryRecorder.Limits(0, 1, 1));
-        assertThrows(IllegalArgumentException.class, () -> InMemoryRecorder.factory(Set.of(" "), Set.of()));
+        assertThrows(IllegalArgumentException.class, () -> InMemoryRecorder.factory(Set.of(), Set.of(), 0));
+        assertThrows(IllegalArgumentException.class, () -> InMemoryRecorder.factory(Set.of(), Set.of(), -1));
         var tags = new java.util.HashSet<>(Set.of("device"));
         var factory = InMemoryRecorder.factory(tags, Set.of());
         tags.clear();

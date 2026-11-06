@@ -6,8 +6,6 @@ import reactor.util.context.ContextView;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -16,7 +14,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -26,7 +23,8 @@ import java.util.function.Supplier;
  *
  * <p>工厂复用字段索引，实例不跨订阅共享。操作以局部序号关联，不分配完整 ActionRecord、
  * UUID、链路上下文或堆栈；业务结果只能经显式 tag/attribute 摘要进入记录。
- * 元数据接受不可变标量及深度不超过3的 List/Map 副本，不反射业务对象。</p>
+ * 元数据沿用 RecordMetadata 的约定：调用方提供已裁剪的不可变摘要，
+ * 本类只冻结记录结构，不递归复制、校验或序列化值，不提供字节容量保证。</p>
  *
  * <p>所有写入和释放使用 CAS；快照中每个操作自身一致，跨操作一致性由调用方的执行屏障保证。
  * 本类不订阅业务、不执行 I/O、不管理历史留存或全局缓存。</p>
@@ -34,67 +32,54 @@ import java.util.function.Supplier;
  * @since 1.3.3
  * @see Recorder#combine(Recorder...)
  * @see org.jetlinks.core.monitor.observation.Observations
+ * @see org.jetlinks.core.monitor.observation.RecordMetadata
  */
 public final class InMemoryRecorder implements Recorder, AutoCloseable {
 
     private static final int TRUNCATED = 1;
     private static final int CLOSED = 2;
-    private static final int MAX_NAME_LENGTH = 128;
     // Updater 和数组访问器只创建一次，执行实例内只保留字段与原生数组。
     private static final AtomicIntegerFieldUpdater<InMemoryRecorder> SIZE =
         AtomicIntegerFieldUpdater.newUpdater(InMemoryRecorder.class, "size");
     private static final AtomicIntegerFieldUpdater<InMemoryRecorder> FLAGS =
         AtomicIntegerFieldUpdater.newUpdater(InMemoryRecorder.class, "flags");
-    private static final AtomicLongFieldUpdater<InMemoryRecorder> USED =
-        AtomicLongFieldUpdater.newUpdater(InMemoryRecorder.class, "used");
     private static final VarHandle ACTIONS = MethodHandles.arrayElementVarHandle(MemoryAction[].class);
 
     private final Selection selection;
     private final MemoryAction<?>[] actions;
     private volatile int size;
     private volatile int flags;
-    // 高32位为字符数，低32位为值节点数；一次 CAS 同时接纳两个预算。
-    private volatile long used;
 
     private InMemoryRecorder(Selection selection) {
         this.selection = selection;
-        actions = new MemoryAction<?>[selection.limits.maxActions()];
+        actions = new MemoryAction<?>[selection.maxActions];
     }
 
     /** 创建可跨执行复用的字段选择工厂；每次 get 返回独立接收端。 */
     public static Supplier<InMemoryRecorder> factory(Set<String> tags, Set<String> attributes) {
-        return factory(tags, attributes, Limits.defaults());
+        return factory(tags, attributes, 32);
     }
 
     /**
-     * 预编译字段白名单；最多64个字段，字段名最长128字符。
-     * 值预算按接纳的写入累计，覆盖及 CAS 重试不返还预算，不承诺精确的堆或编码字节大小。
+     * 预编译字段白名单和操作数上限，值由调用方保证已裁剪且不可变。
      * 类型化 Key 的合并函数必须无副作用，CAS 竞争时可能重试。
      *
      * @param tags 保留的 tag 名称
      * @param attributes 保留的 attribute 名称
-     * @param limits 单次执行的容量
+     * @param maxActions 单次执行允许的操作数，必须为正数
      * @return 创建独立接收端的无状态工厂
      */
-    public static Supplier<InMemoryRecorder> factory(Set<String> tags, Set<String> attributes, Limits limits) {
-        Objects.requireNonNull(limits, "limits");
+    public static Supplier<InMemoryRecorder> factory(Set<String> tags, Set<String> attributes, int maxActions) {
+        if (maxActions <= 0) throw new IllegalArgumentException("maxActions must be positive");
         Map<String, Integer> tagIndexes = indexes(tags, 0);
         Map<String, Integer> attributeIndexes = indexes(attributes, tagIndexes.size());
-        if (tagIndexes.size() + attributeIndexes.size() > 64) {
-            throw new IllegalArgumentException("at most 64 selected fields are supported");
-        }
-        Selection selection = new Selection(tagIndexes, attributeIndexes, limits);
+        Selection selection = new Selection(tagIndexes, attributeIndexes, maxActions);
         return () -> new InMemoryRecorder(selection);
     }
 
     private static Map<String, Integer> indexes(Set<String> names, int offset) {
-        Objects.requireNonNull(names, "names");
-        if (names.size() > 64) throw new IllegalArgumentException("at most 64 selected fields are supported");
         Map<String, Integer> result = new LinkedHashMap<>();
-        for (String name : names) {
-            if (name == null || name.isBlank() || name.length() > MAX_NAME_LENGTH) {
-                throw new IllegalArgumentException("selected field names must contain 1 to 128 characters");
-            }
+        for (String name : Set.copyOf(names)) {
             result.put(name, offset + result.size());
         }
         return Collections.unmodifiableMap(result);
@@ -106,12 +91,7 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
     }
 
     private <E> ActionRecorder<E> create(CharSequence name, int parentId) {
-        Objects.requireNonNull(name, "action");
         if (closed()) return ActionRecorder.noop();
-        if (name.length() == 0 || name.length() > MAX_NAME_LENGTH) {
-            truncate();
-            return ActionRecorder.noop();
-        }
         int index;
         do {
             index = size;
@@ -120,9 +100,7 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
                 return ActionRecorder.noop();
             }
         } while (!SIZE.compareAndSet(this, index, index + 1));
-        String actionName = name.toString();
-        if (actionName.length() > MAX_NAME_LENGTH) { truncate(); return ActionRecorder.noop(); }
-        MemoryAction<E> action = new MemoryAction<>(index, parentId, actionName);
+        MemoryAction<E> action = new MemoryAction<>(index, parentId, name.toString());
         ACTIONS.setVolatile(actions, index, action);
         // close 可与已预留但尚未发布的操作并发；迟到发布者负责释放自己的状态。
         if (closed()) {
@@ -134,7 +112,8 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
     }
 
     /**
-     * 返回独立且不可变的当前快照，不终止操作。局部 id 仅在本接收端内唯一，根 parentId 为-1。
+     * 返回记录结构不可变的当前快照，不终止操作；元数据保留调用方提供的不可变引用。
+     * 局部 id 仅在本接收端内唯一，根 parentId 为-1。
      * 应在相关步骤完成后提取；仍在执行的操作会明确标记为 created/running。
      */
     public Snapshot snapshot() {
@@ -190,43 +169,20 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
         if ((flags & TRUNCATED) == 0) FLAGS.getAndUpdate(this, value -> value | TRUNCATED);
     }
 
-    private boolean reserve(ValueCopy copy) {
-        long previous, next;
-        do {
-            previous = used;
-            int values = (int) previous + copy.values;
-            int characters = (int) (previous >>> 32) + copy.characters;
-            if (values > selection.limits.maxValues() || characters > selection.limits.maxCharacters()) return false;
-            next = ((long) characters << 32) | values;
-        } while (!USED.compareAndSet(this, previous, next));
-        return true;
-    }
-
-    /** 元数据容量，字符数和节点数是保守接纳预算，不是序列化字节数或真实堆占用。 */
-    public record Limits(int maxActions, int maxValues, int maxCharacters) {
-        public Limits {
-            if (maxActions < 1 || maxActions > 4096 || maxValues < 0 || maxValues > 1_000_000
-                || maxCharacters < 0 || maxCharacters > 1_000_000) {
-                throw new IllegalArgumentException("invalid in-memory recorder limits");
-            }
-        }
-        public static Limits defaults() { return new Limits(32, 128, 4096); }
-    }
-
     /** 操作生命周期；completed 只表示执行完成，不代表业务已持久化。 */
     public enum Status { created, running, completed, failed, cancelled }
 
-    /** 有界执行快照；truncated 表示超限、类型不支持或提取失败造成了记录缺口。 */
+    /** 执行快照；truncated 表示操作数超限或元数据/错误摘要提取不完整。 */
     public record Snapshot(List<ActionSnapshot> actions, boolean truncated) {
         public Snapshot { actions = List.copyOf(actions); }
     }
 
-    /** 不持有原操作、业务结果、上下文或 Throwable 的操作快照。 */
+    /** 不持有原操作、上下文或 Throwable；元数据沿用来源的不可变摘要引用。 */
     public record ActionSnapshot(int id, int parentId, String action, Status status, long timestamp,
                                  long useNanos, Map<String, Object> tags, Map<String, Object> attributes,
                                  String errorType, String errorMessage) { }
 
-    private record Selection(Map<String, Integer> tags, Map<String, Integer> attributes, Limits limits) {
+    private record Selection(Map<String, Integer> tags, Map<String, Integer> attributes, int maxActions) {
         int fields() { return tags.size() + attributes.size(); }
     }
 
@@ -255,15 +211,9 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
 
         private boolean writable() { return !closed() && !frame.ended(); }
 
-        private boolean metadataWritable() {
-            if (!writable()) return false;
-            if ((int) used >= selection.limits.maxValues()) { truncate(); return false; }
-            return true;
-        }
-
         private <V> ActionRecorder<E> write(Map<String, Integer> indexes, String name, Key<V> key, V value) {
             Integer index = indexes.get(name);
-            if (index == null || value == null || !metadataWritable()) return this;
+            if (index == null || value == null || !writable()) return this;
             try {
                 Frame previous;
                 do {
@@ -272,13 +222,8 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
                     Object selected = value;
                     Object old = previous.values == null ? null : previous.values[index];
                     if (old != null && key != null) selected = merge(key, old, value);
-                    long budget = used;
-                    ValueCopy copy = new ValueCopy(selection.limits.maxValues() - (int) budget,
-                        selection.limits.maxCharacters() - (int) (budget >>> 32));
-                    Object snapshot = copy.copy(selected, 0);
-                    if (!reserve(copy)) throw Omitted.INSTANCE;
                     Object[] fields = previous.values == null ? new Object[selection.fields()] : previous.values.clone();
-                    fields[index] = snapshot;
+                    fields[index] = selected;
                     Frame next = new Frame(fields, previous.status, previous.timestamp, previous.startNanos,
                         previous.useNanos, previous.errorType, previous.errorMessage);
                     if (FRAME.compareAndSet(this, previous, next)) return this;
@@ -307,7 +252,7 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
         public <V> ActionRecorder<E> attribute(Key<V> key, Supplier<V> value) { return supplied(selection.attributes, key, value); }
 
         private <V> ActionRecorder<E> supplied(Map<String, Integer> indexes, Key<V> key, Supplier<V> supplier) {
-            if (!indexes.containsKey(key.getKey()) || !metadataWritable()) return this;
+            if (!indexes.containsKey(key.getKey()) || !writable()) return this;
             try { return write(indexes, key.getKey(), key, supplier.get()); }
             catch (Throwable error) { Exceptions.throwIfFatal(error); truncate(); return this; }
         }
@@ -373,67 +318,4 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
         public ActionRecorder<E> valueConverter(Function<E, Object> converter) { return this; }
     }
 
-    /** 只复制可审计的值形状；不调用业务对象序列化、toString 或反射。 */
-    private static final class ValueCopy {
-        private final int maxValues;
-        private final int maxCharacters;
-        private int values;
-        private int characters;
-
-        ValueCopy(int maxValues, int maxCharacters) {
-            this.maxValues = maxValues;
-            this.maxCharacters = maxCharacters;
-        }
-
-        private void characters(int count) {
-            if (count > maxCharacters - characters) throw Omitted.INSTANCE;
-            characters += count;
-        }
-
-        private Object copy(Object value, int depth) {
-            if (++values > maxValues) throw Omitted.INSTANCE;
-            if (value == null || value instanceof Boolean) return value;
-            if (value instanceof String text) { characters(text.length()); return text; }
-            if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long
-                || value instanceof Float || value instanceof Double) {
-                characters(24);
-                return value;
-            }
-            if (value.getClass() == BigInteger.class) {
-                BigInteger integer = (BigInteger) value;
-                if (integer.bitLength() > 3L * (maxCharacters - characters)) throw Omitted.INSTANCE;
-                characters(integer.toString().length());
-                return integer;
-            }
-            if (value.getClass() == BigDecimal.class) {
-                BigDecimal decimal = (BigDecimal) value;
-                if (Math.abs((long) decimal.scale()) > maxCharacters || decimal.precision() > maxCharacters - characters) throw Omitted.INSTANCE;
-                characters(decimal.toString().length());
-                return decimal;
-            }
-            if (depth >= 3) throw Omitted.INSTANCE;
-            if (value instanceof List<?> list) {
-                if (list.size() > maxValues - values) throw Omitted.INSTANCE;
-                List<Object> result = new ArrayList<>(list.size());
-                for (Object element : list) result.add(copy(element, depth + 1));
-                return Collections.unmodifiableList(result);
-            }
-            if (value instanceof Map<?, ?> map) {
-                if (map.size() > maxValues - values) throw Omitted.INSTANCE;
-                Map<String, Object> result = new LinkedHashMap<>();
-                for (Map.Entry<?, ?> entry : map.entrySet()) {
-                    if (!(entry.getKey() instanceof String key)) throw Omitted.INSTANCE;
-                    characters(key.length());
-                    result.put(key, copy(entry.getValue(), depth + 1));
-                }
-                return Collections.unmodifiableMap(result);
-            }
-            throw Omitted.INSTANCE;
-        }
-    }
-
-    private static final class Omitted extends RuntimeException {
-        private static final Omitted INSTANCE = new Omitted();
-        private Omitted() { super(null, null, false, false); }
-    }
 }

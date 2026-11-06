@@ -74,17 +74,15 @@ Mono/Flux 共用按订阅创建的父作用域，嵌套调用使用同一接收�
 
 ### 选择性内存接收端
 
-core 提供通用的 `InMemoryRecorder`，用于从现有固定埋点提取一次执行的有限 tag/attribute。选择规则与容量通过可复用工厂预编译，每次订阅创建独立实例，与原 Recorder 通过 `Recorder.combine` 组合后放入 Reactor Context；不替换已有接收端，不把活 Recorder 传到远端。
+core 提供通用的 `InMemoryRecorder`，从现有固定埋点收集一次执行的指定 tag/attribute。`factory(tags, attributes)` 预编译字段索引，默认最多32个操作；可用 `factory(tags, attributes, maxActions)` 配置操作数。工厂跨执行复用，每次订阅创建独立实例，通过 `Recorder.combine` 保留原接收端后放入 Reactor Context，不把活 Recorder 传到远端。
 
-实现范围为字段白名单、局部父子操作、生命周期与纳秒耗时、无锁有界存储、不可变快照和执行结束后的释放。接收端只接受标量及有限深度的 List/Map 快照，不反射或保留业务 DTO、Throwable、Context、原始序列或完整 ActionRecord；实际输入输出由原 ObservationSpec 显式提取。关闭或非白名单字段不触发本接收端的 Supplier。类型化 Key 沿用合并规则。
+值沿用 `RecordMetadata` 的已有契约：埋点提供经过裁剪的不可变摘要，直接调用 tag/attribute 时同样遵守该约定。接收端只冻结记录结构并保留值引用，不递归复制、检查数字类型、估算字节或限制名称格式；不能将未经裁剪的业务 DTO、原始历史或可变容器直接作为摘要。操作数限制不代表总堆或序列化大小保证，最新展示摘要的字节上限、缓存总量及过期由拥有缓存的业务模块控制。
 
-计数、标志、累计预算和操作状态使用类级共享的 FieldUpdater 与实例 volatile 字段，不为每次执行创建 AtomicInteger/AtomicLong/AtomicReference 包装对象。操作槽位使用原生数组及共享 VarHandle，保持发布、读取、关闭清理的原子可见性，并保留迟到发布者自清理规则。
+计数、标志和操作状态使用类级共享 FieldUpdater 与实例 volatile 字段，不为每次执行创建原子包装对象。操作槽位使用原生数组与共享 VarHandle，保留迟到发布者自清理规则。CAS 发布同一操作的完整状态，结果端在相关步骤完成后提取快照；并发读取只保证每个操作自身一致，不声明跨操作事务快照。结构快照不会随后续字段更新或关闭而改变；值的稳定性由来源的不可变摘要契约保证。
 
-默认最多32个操作、累计128个元数据值节点和4096个字符；元数据预算按接受的写入累计，覆盖及并发重试不返还预算，限制高频更新的保留量和复制规模。超预算或无法快照的字段省略并标记不完整，不改变业务值、错误、取消、背压或订阅次数。结果端在相关步骤完成后获取快照；并发读取只保证每个操作自身一致，不声明跨操作事务快照。业务模块决定只保留最新结果或写入历史；core 接收端不接入指标存储、前端或平台动态策略。
+操作数超限、元数据提取失败或错误消息截断以 `truncated` 标记。普通字段保留最新写入，类型化 Key 沿用合并规则；合并函数必须无副作用且返回不可变值，CAS 竞争时可能重试。没有累计写入预算，重复更新不会因为旧值或重试占用预算而停止。接收端不保存业务 payload，`value()` 和 `valueConverter()` 不采集值；错误只保留类型和至多512字符消息，不保留 Throwable。局部 id 只在单个接收端内唯一，与原记录 id 独立，跨执行关联使用选中的观测标签。
 
-验证边界为字段过滤与惰性提取、Key合并与父子关系、不可变快照、容量/异常/取消/释放、并行写入与订阅隔离，以及与原 Recorder/Observations 的组合。使用已有 JMH/GCProfiler 比较每次分配和耗时；不以墙钟断言替代正确性测试，也不把内存基准当作存储吞吐保证。
-
-71项定向回归通过；实现、基准结果、复现参数及业务接入边界见 [Core PR #107](https://github.com/jetlinks/jetlinks-core/pull/107)。
+验证覆盖字段过滤与惰性提取、不可变摘要引用复用、重复更新、Key合并和父子关系、记录结构稳定性、操作数上限、异常/取消/释放、并行写入与订阅隔离，以及与原 Recorder/Observations 的组合。验证结果与 JMH/GCProfiler 的分配量及耗时见 [Core PR #107](https://github.com/jetlinks/jetlinks-core/pull/107)；该基准不包含网络或存储，不用于推断生产吞吐。core 不管理最新缓存、历史存储、前端或平台动态策略。
 
 ```java
 // 工厂作为配置复用；collector 每次订阅创建，原接收端继续保留。
@@ -103,8 +101,6 @@ return Mono.deferContextual(context -> {
 ```
 
 `workflow` 仍使用既有 `Observations` 埋点；开启详细元数据提取继续由现有 `RecorderProvider` 决定，仅安装接收端不会绕过采集开关。需要在结果组装时取值，可从本地 Context 获取 `InMemoryRecorder.class`，在相关步骤完成后调用 `snapshot()`；不要等待结果发出后的 `doFinally` 再修改结果。上述示例在整个流程完成后提取，`close()` 只释放接收端持有的值，已经提取的不可变快照继续有效。
-
-类型化 Key 沿用无副作用合并；CAS 竞争可重试，不允许合并函数修改原值或执行业务副作用。快照只接受 String、Boolean、基本数值包装类、BigInteger/BigDecimal 本身（不含自定义子类），以及包含这些值的有界 List/字符串键 Map；不支持的 DTO 由来源转换为显式标量摘要。`value()` 和 `valueConverter()` 不采集业务 payload。错误只保留类型和至多512字符的消息，操作名最多128字符。局部操作 id 只在单个接收端内唯一，与现有接收端的原生记录 id 独立；跨执行关联使用选中的观测标签。
 
 惰性过滤仅约束直接调用本接收端的 Supplier；组合接收端仍可能为其他接收端求值。该能力没有进程级缓存、后台任务或 I/O，因此不新增 MBean，也不为记录器自身再创建追踪 span。
 
