@@ -72,6 +72,40 @@ Mono/Flux 共用按订阅创建的父作用域，嵌套调用使用同一接收�
 
 ## 禁用路径与性能
 
+### 选择性内存接收端
+
+core 提供通用的 `InMemoryRecorder`，用于从现有固定埋点提取一次执行的有限 tag/attribute。选择规则与容量通过可复用工厂预编译，每次订阅创建独立实例，与原 Recorder 通过 `Recorder.combine` 组合后放入 Reactor Context；不替换已有接收端，不把活 Recorder 传到远端。
+
+实现范围为字段白名单、局部父子操作、生命周期与纳秒耗时、无锁有界存储、不可变快照和执行结束后的释放。接收端只接受标量及有限深度的 List/Map 快照，不反射或保留业务 DTO、Throwable、Context、原始序列或完整 ActionRecord；实际输入输出由原 ObservationSpec 显式提取。关闭或非白名单字段不触发本接收端的 Supplier。类型化 Key 沿用合并规则。
+
+默认最多32个操作、累计128个元数据值节点和4096个字符；元数据预算按接受的写入累计，覆盖及并发重试不返还预算，限制高频更新的保留量和复制规模。超预算或无法快照的字段省略并标记不完整，不改变业务值、错误、取消、背压或订阅次数。结果端在相关步骤完成后获取快照；并发读取只保证每个操作自身一致，不声明跨操作事务快照。业务模块决定只保留最新结果或写入历史；core 接收端不接入指标存储、前端或平台动态策略。
+
+验证边界为字段过滤与惰性提取、Key合并与父子关系、不可变快照、容量/异常/取消/释放、并行写入与订阅隔离，以及与原 Recorder/Observations 的组合。使用已有 JMH/GCProfiler 比较每次分配和耗时；不以墙钟断言替代正确性测试，也不把内存基准当作存储吞吐保证。
+
+```java
+// 工厂作为配置复用；collector 每次订阅创建，原接收端继续保留。
+Supplier<InMemoryRecorder> factory = InMemoryRecorder.factory(
+    Set.of("observation.executionId"), Set.of("metric.input", "metric.output"));
+
+return Mono.deferContextual(context -> {
+    InMemoryRecorder collector = factory.get();
+    Recorder combined = Recorder.combine(
+        context.getOrDefault(Recorder.class, Recorder.noop()), collector);
+    return workflow.then(Mono.fromSupplier(collector::snapshot))
+        .contextWrite(current -> current.put(Recorder.class, combined)
+            .put(InMemoryRecorder.class, collector))
+        .doFinally(signal -> collector.close());
+});
+```
+
+`workflow` 仍使用既有 `Observations` 埋点；开启详细元数据提取继续由现有 `RecorderProvider` 决定，仅安装接收端不会绕过采集开关。需要在结果组装时取值，可从本地 Context 获取 `InMemoryRecorder.class`，在相关步骤完成后调用 `snapshot()`；不要等待结果发出后的 `doFinally` 再修改结果。上述示例在整个流程完成后提取，`close()` 只释放接收端持有的值，已经提取的不可变快照继续有效。
+
+类型化 Key 沿用无副作用合并；CAS 竞争可重试，不允许合并函数修改原值或执行业务副作用。快照只接受 String、Boolean、基本数值包装类、BigInteger/BigDecimal 本身（不含自定义子类），以及包含这些值的有界 List/字符串键 Map；不支持的 DTO 由来源转换为显式标量摘要。`value()` 和 `valueConverter()` 不采集业务 payload。错误只保留类型和至多512字符的消息，操作名最多128字符。局部操作 id 只在单个接收端内唯一，与现有接收端的原生记录 id 独立；跨执行关联使用选中的观测标签。
+
+惰性过滤仅约束直接调用本接收端的 Supplier；组合接收端仍可能为其他接收端求值。该能力没有进程级缓存、后台任务或 I/O，因此不新增 MBean，也不为记录器自身再创建追踪 span。
+
+### 观测入口
+
 上下文入口只增加一个 deferContextual 边界。没有 recorder 和有效 provider 时只做 Context 查找及默认槽的一次原子读取，随后直接调用业务，不分配每次选择、组合器、action、Capture 或 MetadataBuffer，也不再嵌套 defer。Mono 包装和捕获 lambda 仍有组装开销，不承诺零成本。
 
 仅原记录器开启时不创建详细提取状态；已知 disabled 选择复用常量。动态 provider 每次订阅仍须读取本地有效快照；选择了详细采集后才按需分配提取预算与输出回调。原记录器非 noop 时保留安全组合的故障隔离，不以牺牲业务信号安全省略包装。
