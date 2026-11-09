@@ -69,6 +69,7 @@ public class DeviceSessionInfo implements Serializable {
      * 连接信息
      */
     private List<DeviceConnectionInfo> connections;
+    private org.jetlinks.core.server.ConnectionLifecycle connectionLifecycle;
 
     public static DeviceSessionInfo of(String serverId, DeviceSession session) {
         DeviceSessionInfo sessionInfo = new DeviceSessionInfo();
@@ -93,6 +94,7 @@ public class DeviceSessionInfo implements Serializable {
         }
 
         if (session.isWrapFrom(ClientConnectionSession.class)) {
+            sessionInfo.connectionLifecycle = session.unwrap(ClientConnectionSession.class).getConnectionLifecycle();
             sessionInfo.connections = session
                 .unwrap(ClientConnectionSession.class)
                 .getConnections()

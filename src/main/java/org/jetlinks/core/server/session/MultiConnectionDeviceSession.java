@@ -36,6 +36,8 @@ public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
     extends CopyOnWriteArrayList<C>
     implements DeviceSession, ClientConnectionSession, Scannable {
     private final Disposable.Composite disposable = Disposables.composite();
+    private final org.jetlinks.core.server.ConnectionLifecycleRecorder connectionLifecycle =
+        new org.jetlinks.core.server.ConnectionLifecycleRecorder();
 
     @Getter
     @Generated
@@ -63,8 +65,12 @@ public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
             return;
         }
 
-        if (addIfAbsent(connection)) {
-            connection.onDisconnect(() -> this.handleDisconnect(connection));
+        synchronized (this) {
+            if (disposable.isDisposed()) return;
+            if (addIfAbsent(connection)) {
+                connectionLifecycle.opened();
+                connection.onDisconnect(() -> this.handleDisconnect(connection));
+            }
         }
 
     }
@@ -79,7 +85,9 @@ public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
 
     protected void unregisterConnection(C connection) {
         synchronized (this) {
-            this.remove(connection);
+            if (this.remove(connection)) {
+                connectionLifecycle.closed();
+            }
         }
     }
 
@@ -141,6 +149,11 @@ public abstract class MultiConnectionDeviceSession<C extends ClientConnection>
     @Override
     public Collection<? extends ClientConnection> getConnections() {
         return Collections.unmodifiableCollection(this);
+    }
+
+    @Override
+    public synchronized org.jetlinks.core.server.ConnectionLifecycle getConnectionLifecycle() {
+        return connectionLifecycle.snapshot();
     }
 
     protected final C takeConnection() {

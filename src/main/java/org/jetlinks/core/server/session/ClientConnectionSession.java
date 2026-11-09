@@ -8,4 +8,7 @@ public interface ClientConnectionSession {
 
     Collection<? extends ClientConnection> getConnections();
 
+    /** Optional lifetime facts, reset when this session instance is replaced. */
+    default org.jetlinks.core.server.ConnectionLifecycle getConnectionLifecycle() { return null; }
+
 }
