@@ -31,6 +31,10 @@ public class ObjectOperationsTest {
             }
         };
         StepVerifier.create(object.getMetadata()).verifyComplete();
+        assertNull(object.getProviderId());
+        assertNull(org.jetlinks.core.things.relation.ObjectProperty.of("name", "Original").getProviderId());
+        StepVerifier.create(Mono.fromSupplier(() -> object.forProvider("unknown")))
+            .expectError(UnsupportedOperationException.class).verify();
         StepVerifier.create(object.commands().getCommandMetadata("missing")).verifyComplete();
         StepVerifier.create(object.commands().commandIsSupported("missing")).expectNext(false).verifyComplete();
         StepVerifier.create(object.commands().executeToFlux("control", Collections.emptyMap()))

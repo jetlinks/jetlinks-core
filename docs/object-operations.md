@@ -6,6 +6,12 @@
 
 ## 1. 目标与模块边界
 
+逻辑来源选择使用 `ObjectOperations.forProvider(providerId)`，所选句柄的
+`getProviderId()` 与批量 `ObjectProperty.getProviderId()` 保留真实提供方。
+未限定或旧来源返回 null，不推断提供方。默认方法保持既有实现可用，
+不改变 SimpleObjectProperty 的已发布 Externalizable 格式。
+提供方发现、注册和多来源组合归 relation，core 不依赖业务或本体。
+
 以 `type + id` 标识对象，以物模型描述属性、功能、事件，以关系模型描述对象间的联系。观测、事件发生、活动执行、结果保留原数据结构，通过元数据和关系表达共同语义，不另建万能数据 DTO 或查询函数注册中心。
 
 | Owning module | 责任 |
@@ -42,7 +48,8 @@ jetlinks-core/.../org/jetlinks/core/
 relation-component/.../org/jetlinks/pro/relation/
 ├── RelationObjectProvider.java     修改：增加 operations(id)
 ├── RelationObjectManager.java      修改：完整模型发现、关联分页便利入口
-├── RelationObjectProviders.java    复用：唯一 Provider 路由
+├── RelationObjectProviders.java    复用：唯一身份与独立能力来源路由
+├── ObjectSupportProvider.java      关系层：同一对象的补充模型与操作
 ├── query/RelatedObjectQuery.java   新增：关联查询请求，贯穿 Manager/Provider
 ├── metadata/ObjectDataMetadata.java 新增：数据行的 $metadata 值类型
 ├── metadata/ObjectLink.java        新增：数据行相对另一对象的已知联系
@@ -50,7 +57,9 @@ relation-component/.../org/jetlinks/pro/relation/
 └── impl/                          旧接口/模型适配、对象委托、集群代理
 ```
 
-新增运行时 SPI 只有 ObjectOperations；模型统一复用 ThingMetadata，不增加组合模型接口。数据元信息值类型、枚举和辅助工具不承担运行时调度。默认适配器、只读模型视图、不支持句柄为内部实现，不再抽象 Factory、Registry 或另一套 Provider。
+core 的实例运行时 SPI 保持 ObjectOperations；模型统一复用 ThingMetadata，不增加组合模型接口。
+relation 的 ObjectSupportProvider 声明补充来源，复用现有 Provider 注册能力；不增加 Factory 或独立注册框架。
+数据元信息值类型、枚举和辅助工具不承担运行时调度。默认适配器、只读模型视图和不支持句柄为内部实现。
 
 ### 2.1 ObjectOperations
 
@@ -60,6 +69,10 @@ public interface ObjectOperations extends Wrapper {
     String getType();
 
     String getId();
+
+    default String getProviderId() { return null; }
+
+    default ObjectOperations forProvider(String providerId) { throw new UnsupportedOperationException(); }
 
     Mono<? extends ThingMetadata> getMetadata();
 
@@ -78,6 +91,7 @@ public interface ObjectOperations extends Wrapper {
 | 方法 | 调用与结果契约 |
 | --- | --- |
 | getType/getId | 构造时校验非空，句柄存续期间身份不变 |
+| getProviderId/forProvider | 可选逻辑来源标识及显式来源句柄；不改变对象身份，也不授予权限 |
 | getMetadata | 订阅时解析实例适用模型；空表示旧来源没有完整模型，不能解释为实例不存在；解析及服务错误保留 |
 | properties | 同步返回非空句柄，无 I/O；get 在订阅时读取当前值，没有值沿用原空结果，不伪造 null、0 或空字符串 |
 | relations(reverse) | 同步返回非空句柄；false 导航出边，true 导航入边；返回另一端对象，实际读取在订阅时执行 |
