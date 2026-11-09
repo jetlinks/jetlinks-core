@@ -24,6 +24,22 @@ public interface ObjectOperations extends Wrapper {
     /** @return 来源稳定实例 ID，不是关联目标 ID */
     String getId();
 
+    /** 当前已选择的逻辑来源，未限定时为 null；不是服务节点或权限标识。 */
+    default String getProviderId() {
+        return null;
+    }
+
+    /**
+     * 显式选择同一对象的逻辑能力来源。句柄不执行 I/O；
+     * 该来源空值、拒绝或失败时不得改用另一来源。旧实现默认不支持来源路由。
+     * @param providerId 提供方声明的稳定 ID
+     * @return 仍绑定同一 type/id 的来源句柄
+     */
+    default ObjectOperations forProvider(String providerId) {
+        if (providerId.equals(getProviderId())) return this;
+        throw new UnsupportedOperationException("Unsupported object provider: " + providerId);
+    }
+
     /**
      * 按订阅解析实例适用模型，不修改来源共享模型。
      *
