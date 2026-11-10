@@ -205,6 +205,20 @@ public interface DeviceSessionManager {
     }
 
     /**
+     * 按需读取当前统计；集群实现应在各节点汇总并仅传输统计，避免传回连接明细。
+     * 成功无会话返回计数0的快照，缺少能力保持未知；节点失败不能贡献部分数据。
+     * 调用方检查 isComplete，完整性只相对于本次已发现服务，不是事务快照。
+     * 默认从旧快照适配，保留其未知覆盖；取消与超时沿用现有读取链路。
+     *
+     * @param deviceId 设备ID，空白可返回 Mono.empty()
+     * @return 本次统计及节点覆盖，不持久化或主动探测设备
+     * @since 1.3.3
+     */
+    default Mono<DeviceSessionStatistics> getDeviceSessionStatistics(String deviceId) {
+        return getDeviceSessionSnapshot(deviceId).map(DeviceSessionStatistics::fromReadResult);
+    }
+
+    /**
      * 获取指定服务的会话信息
      *
      * @param serverId 服务ID
