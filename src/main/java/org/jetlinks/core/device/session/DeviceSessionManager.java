@@ -189,6 +189,22 @@ public interface DeviceSessionManager {
     Flux<DeviceSessionInfo> getDeviceSessionInfo(String deviceId);
 
     /**
+     * 读取指定设备的本地及集群会话，并报告本次已发现节点的读取覆盖情况。
+     * 每次订阅重新读取；成功但无会话与节点失败必须分开，失败节点不贡献部分数据。
+     * 完整性只相对于本次服务发现快照，不是跨节点事务快照。沿用调用方的 RPC 超时，
+     * 取消订阅应停止仍在进行的读取；实现不得将节点失败伪装为成功空结果。
+     * 默认适配外部旧实现，但覆盖标为未知；需要完整性保证的调用方必须检查 isComplete。
+     *
+     * @param deviceId 设备标识，空白时实现可返回 Mono.empty()
+     * @return 本次会话和覆盖结果；无法建立读取时可传播异常，不应静默重试
+     * @see DeviceSessionReadResult#isComplete()
+     * @since 1.3.3
+     */
+    default Mono<DeviceSessionReadResult> getDeviceSessionSnapshot(String deviceId) {
+        return getDeviceSessionInfo(deviceId).collectList().map(DeviceSessionReadResult::unknown);
+    }
+
+    /**
      * 获取指定服务的会话信息
      *
      * @param serverId 服务ID

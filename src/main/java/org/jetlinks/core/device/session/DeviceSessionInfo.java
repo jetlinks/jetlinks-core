@@ -1,7 +1,10 @@
 package org.jetlinks.core.device.session;
 
+import com.alibaba.fastjson.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.server.ConnectionMetricsInfo;
 import org.jetlinks.core.server.session.ChildrenDeviceSession;
 import org.jetlinks.core.server.session.DeviceSession;
 import org.jetlinks.core.server.session.ClientConnectionSession;
@@ -70,6 +73,20 @@ public class DeviceSessionInfo implements Serializable {
      */
     private List<DeviceConnectionInfo> connections;
     private org.jetlinks.core.server.ConnectionLifecycle connectionLifecycle;
+
+    /**
+     * 从本次连接明细按需派生汇总，不再次读取连接，也不保留已关闭连接的历史。
+     * 汇总不参与 JSON 或字段序列化，接收端使用收到的 connections 计算，避免重复传输。
+     * 连接未提供指标或快照不完整时为空；每次调用仅访问当前 DTO 中的快照。
+     *
+     * @see ConnectionMetricsInfo#aggregate(Iterable, java.util.function.Function)
+     * @since 1.3.3
+     */
+    @JsonIgnore
+    @JSONField(serialize = false, deserialize = false)
+    public ConnectionMetricsInfo getMetrics() {
+        return connections == null ? null : ConnectionMetricsInfo.aggregate(connections, DeviceConnectionInfo::getMetrics);
+    }
 
     public static DeviceSessionInfo of(String serverId, DeviceSession session) {
         DeviceSessionInfo sessionInfo = new DeviceSessionInfo();
