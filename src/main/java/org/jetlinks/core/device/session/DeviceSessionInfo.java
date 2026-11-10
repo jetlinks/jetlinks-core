@@ -2,6 +2,7 @@ package org.jetlinks.core.device.session;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jetlinks.core.server.ConnectionMetricsInfo;
 import org.jetlinks.core.server.session.ChildrenDeviceSession;
 import org.jetlinks.core.server.session.DeviceSession;
 import org.jetlinks.core.server.session.ClientConnectionSession;
@@ -71,6 +72,15 @@ public class DeviceSessionInfo implements Serializable {
     private List<DeviceConnectionInfo> connections;
     private org.jetlinks.core.server.ConnectionLifecycle connectionLifecycle;
 
+    /**
+     * 本次读取中各连接指标的汇总，不保留已关闭连接的历史。
+     * 连接未提供指标或快照不完整时为空；沿用 connections 中已读取的快照。
+     *
+     * @see ConnectionMetricsInfo#aggregate(Iterable, java.util.function.Function)
+     * @since 1.3.3
+     */
+    private ConnectionMetricsInfo metrics;
+
     public static DeviceSessionInfo of(String serverId, DeviceSession session) {
         DeviceSessionInfo sessionInfo = new DeviceSessionInfo();
         sessionInfo.setServerId(serverId);
@@ -101,6 +111,7 @@ public class DeviceSessionInfo implements Serializable {
                 .stream()
                 .map(DeviceConnectionInfo::of)
                 .collect(Collectors.toList());
+            sessionInfo.metrics = ConnectionMetricsInfo.aggregate(sessionInfo.connections, DeviceConnectionInfo::getMetrics);
         }
 
         return sessionInfo;

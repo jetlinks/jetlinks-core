@@ -24,6 +24,18 @@
 
 Monitor 执行观测的 API、SPI、兼容边界与验证入口见 [执行观测说明](docs/monitor-observation.md)。
 
+## 连接指标快照
+
+`DeviceSessionInfo.of` 复用本次读取的 `connections`，通过 `getMetrics()` 提供活动连接的指标汇总。
+字节和消息计数相加；`connectTime` / `latestConnectTime`、`earliestLastCommTime` / `lastCommTime`
+分别保留连接建立和最近通信的时间边界。空集合或任一连接缺少快照时汇总为空，可选计数字段缺失时对应汇总为空。
+汇总为弱一致快照，不保存已关闭连接的历史，不代表累计重连或故障次数；原 `connectionLifecycle` 保持可用。
+
+确认耗时仅汇总支持确认的连接，平均值按样本数加权；P95 合并固定桶后求估计值，缺少完整分布时为空。
+分布采样起点不同则不提供统一起点；多个有确认样本的快照无法判断全局最近一次确认，`ackLastDuration` 为空。
+`ConnectionMetricsInfo.aggregate` 支持连接及会话分层汇总，单次遍历，不修改源快照，默认不创建直方图。
+该操作只读取内存快照，不增加 I/O、后台任务、追踪 span 或 MBean。
+
 # Hex 点位编解码
 
 内置 `hex` codec 将全部可读字节转换成字符串，例如 `00 01 41 A0` 解码为
