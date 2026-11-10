@@ -51,9 +51,13 @@ public class DeviceSessionReadResultTest {
         assertFalse(snapshot.isComplete());
         assertFalse(snapshot.isCoverageKnown());
         assertEquals(1, snapshot.getSessions().size());
+        var statistics = manager.getDeviceSessionStatistics("one").block();
+        assertFalse(statistics.isComplete());
+        assertFalse(statistics.isCoverageKnown());
+        assertEquals(1, statistics.getSessionCount());
         var cancelled = new AtomicBoolean();
         reads.put("pending", Flux.<DeviceSessionInfo>never().doOnCancel(() -> cancelled.set(true)));
-        StepVerifier.create(manager.getDeviceSessionSnapshot("pending")).thenCancel().verify();
+        StepVerifier.create(manager.getDeviceSessionStatistics("pending")).thenCancel().verify();
         assertTrue(cancelled.get());
         reads.put("failed", Flux.error(new IllegalStateException("unavailable")));
         StepVerifier.create(manager.getDeviceSessionSnapshot("failed")).expectError(IllegalStateException.class).verify();
