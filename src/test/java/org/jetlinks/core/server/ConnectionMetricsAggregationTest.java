@@ -6,6 +6,7 @@ import org.jetlinks.core.device.session.DeviceSessionInfo;
 import org.jetlinks.core.message.codec.EncodedMessage;
 import org.jetlinks.core.message.codec.Transport;
 import org.jetlinks.core.server.session.MultiConnectionDeviceSession;
+import org.jetlinks.core.utils.json.ObjectMappers;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -171,15 +172,17 @@ public class ConnectionMetricsAggregationTest {
     }
 
     @Test
-    public void sessionAggregateAndTimeBoundariesSurviveJsonRoundTrip() {
+    public void sessionAggregateIsDerivedAfterJsonRoundTripWithoutDuplicatingTheWirePayload() throws Exception {
         var first = new DeviceConnectionInfo();
         first.setMetrics(new ConnectionMetricsInfo(10, 20, 100, 800, 1, 0, 0));
         var second = new DeviceConnectionInfo();
         second.setMetrics(new ConnectionMetricsInfo(30, 40, 300, 900, 1, 0, 0));
         var session = new DeviceSessionInfo();
         session.setConnections(List.of(first, second));
-        session.setMetrics(ConnectionMetricsInfo.aggregate(session.getConnections(), DeviceConnectionInfo::getMetrics));
-        var copy = JSON.parseObject(JSON.toJSONString(session), DeviceSessionInfo.class);
+        String encoded = JSON.toJSONString(session);
+        assertFalse(JSON.parseObject(encoded).containsKey("metrics"));
+        assertFalse(ObjectMappers.JSON_MAPPER.readTree(ObjectMappers.toJsonBytes(session)).has("metrics"));
+        var copy = JSON.parseObject(encoded, DeviceSessionInfo.class);
         assertEquals(2, copy.getConnections().size());
         assertEquals(40, copy.getMetrics().getReadBytes());
         assertEquals(100, copy.getMetrics().getConnectTime());
@@ -187,6 +190,13 @@ public class ConnectionMetricsAggregationTest {
         assertEquals(800, copy.getMetrics().getEarliestLastCommTime());
         assertEquals(900, copy.getMetrics().getLastCommTime());
         assertNull(copy.getMetrics().getAckAverageDuration());
+        var jacksonCopy = ObjectMappers.parseJson(ObjectMappers.toJsonBytes(session), DeviceSessionInfo.class);
+        assertEquals(40, jacksonCopy.getMetrics().getReadBytes());
+        // Changing DTO details cannot leave a stale independently stored aggregate behind.
+        copy.setConnections(List.of(first));
+        assertEquals(10, copy.getMetrics().getReadBytes());
+        copy.setConnections(null);
+        assertNull(copy.getMetrics());
     }
 
     private static ConnectionMetricsInfo aggregate(ConnectionMetricsInfo... snapshots) {

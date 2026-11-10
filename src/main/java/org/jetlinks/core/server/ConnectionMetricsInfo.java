@@ -107,7 +107,10 @@ public class ConnectionMetricsInfo {
     }
 
     public Double getAckAverageDuration() {
-        return ackCount != null && ackCount > 0 && ackTotalDuration != null ? ackTotalDuration / ackCount : ackAverageDuration;
+        if (ackCount != null && ackCount > 0 && ackTotalDuration != null) {
+            return ackTotalDuration / ackCount;
+        }
+        return ackAverageDuration;
     }
 
     public Long getAckDurationSampleCount() {

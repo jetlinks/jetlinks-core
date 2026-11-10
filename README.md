@@ -26,7 +26,8 @@ Monitor 执行观测的 API、SPI、兼容边界与验证入口见 [执行观测
 
 ## 连接指标快照
 
-`DeviceSessionInfo.of` 复用本次读取的 `connections`，通过 `getMetrics()` 提供活动连接的指标汇总。
+`DeviceSessionInfo.of` 只读取一次连接明细，`getMetrics()` 在调用端基于收到的 `connections` 按需汇总。
+汇总没有独立存储字段，并明确排除 Fastjson/Jackson 序列化；二进制字段编码也只传明细，避免重复传输或保存过时汇总。
 字节和消息计数相加；`connectTime` / `latestConnectTime`、`earliestLastCommTime` / `lastCommTime`
 分别保留连接建立和最近通信的时间边界。空集合或任一连接缺少快照时汇总为空，可选计数字段缺失时对应汇总为空。
 汇总为弱一致快照，不保存已关闭连接的历史，不代表累计重连或故障次数；原 `connectionLifecycle` 保持可用。
@@ -35,6 +36,12 @@ Monitor 执行观测的 API、SPI、兼容边界与验证入口见 [执行观测
 分布采样起点不同则不提供统一起点；多个有确认样本的快照无法判断全局最近一次确认，`ackLastDuration` 为空。
 `ConnectionMetricsInfo.aggregate` 支持连接及会话分层汇总，单次遍历，不修改源快照，默认不创建直方图。
 该操作只读取内存快照，不增加 I/O、后台任务、追踪 span 或 MBean。
+
+`DeviceSessionManager.getDeviceSessionSnapshot(deviceId)` 为需要读取完整性的调用方提供 `DeviceSessionReadResult`：
+会话明细、本次请求节点和失败节点分别返回，成功空会话与失败不混淆。`isComplete()` 仅在已知覆盖且所有请求节点成功时成立；
+外部旧实现的默认适配标记覆盖未知。现有 `getDeviceSessionInfo` 保留原有尽力读取语义。
+完整性相对于本次已发现的会话服务，不保证服务发现覆盖整个物理集群或多个节点的读取处于同一时刻；
+汇总当前值的调用方应先检查完整性，并沿用当前 RPC 超时及取消机制。
 
 # Hex 点位编解码
 

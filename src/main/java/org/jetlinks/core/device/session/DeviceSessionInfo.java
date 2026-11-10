@@ -1,5 +1,7 @@
 package org.jetlinks.core.device.session;
 
+import com.alibaba.fastjson.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.core.server.ConnectionMetricsInfo;
@@ -73,13 +75,18 @@ public class DeviceSessionInfo implements Serializable {
     private org.jetlinks.core.server.ConnectionLifecycle connectionLifecycle;
 
     /**
-     * 本次读取中各连接指标的汇总，不保留已关闭连接的历史。
-     * 连接未提供指标或快照不完整时为空；沿用 connections 中已读取的快照。
+     * 从本次连接明细按需派生汇总，不再次读取连接，也不保留已关闭连接的历史。
+     * 汇总不参与 JSON 或字段序列化，接收端使用收到的 connections 计算，避免重复传输。
+     * 连接未提供指标或快照不完整时为空；每次调用仅访问当前 DTO 中的快照。
      *
      * @see ConnectionMetricsInfo#aggregate(Iterable, java.util.function.Function)
      * @since 1.3.3
      */
-    private ConnectionMetricsInfo metrics;
+    @JsonIgnore
+    @JSONField(serialize = false, deserialize = false)
+    public ConnectionMetricsInfo getMetrics() {
+        return connections == null ? null : ConnectionMetricsInfo.aggregate(connections, DeviceConnectionInfo::getMetrics);
+    }
 
     public static DeviceSessionInfo of(String serverId, DeviceSession session) {
         DeviceSessionInfo sessionInfo = new DeviceSessionInfo();
@@ -111,7 +118,6 @@ public class DeviceSessionInfo implements Serializable {
                 .stream()
                 .map(DeviceConnectionInfo::of)
                 .collect(Collectors.toList());
-            sessionInfo.metrics = ConnectionMetricsInfo.aggregate(sessionInfo.connections, DeviceConnectionInfo::getMetrics);
         }
 
         return sessionInfo;
