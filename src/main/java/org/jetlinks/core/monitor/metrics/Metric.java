@@ -1,13 +1,10 @@
 package org.jetlinks.core.monitor.metrics;
 
 import org.jetlinks.core.metadata.PropertyMetadata;
-import org.jetlinks.core.utils.MetadataUtils;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * 一项共享的只读指标定义；仅绑定 public 契约方法，不捕获被观测实例或历史值。
@@ -19,10 +16,12 @@ import java.util.Map;
 public final class Metric {
     private final PropertyMetadata definition;
     private final MethodHandle reader;
+    private final MetricKind kind;
 
-    Metric(PropertyMetadata definition, Method method) throws IllegalAccessException {
+    Metric(PropertyMetadata definition, Method method, MetricKind kind) throws IllegalAccessException {
         this.definition = definition;
         this.reader = MethodHandles.publicLookup().unreflect(method);
+        this.kind = kind;
     }
 
     public String getId() {
@@ -30,18 +29,16 @@ public final class Metric {
     }
 
     public MetricKind getKind() {
-        Map<?, ?> semantic = (Map<?, ?>) definition.getExpand("metric").orElseThrow();
-        return MetricKind.valueOf((String) semantic.get("kind"));
+        return kind;
     }
 
     /**
-     * 生成当前请求的独立描述，不暴露可变的共享模板。
+     * 获取共享的中立定义；调用方只读，通过 getI18nName / getI18nDescription 获取文案。
      *
-     * @param locale 请求语言
-     * @return 标准属性元数据
+     * @return 标准属性元数据，不得修改其属性、类型或扩展
      */
-    public PropertyMetadata getMetadata(Locale locale) {
-        return MetadataUtils.localize(definition, locale);
+    public PropertyMetadata getMetadata() {
+        return definition;
     }
 
     /**

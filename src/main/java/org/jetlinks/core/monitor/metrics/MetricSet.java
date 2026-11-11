@@ -4,7 +4,6 @@ import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.metadata.*;
 import org.jetlinks.core.metadata.types.NumberType;
 import org.jetlinks.core.metadata.types.ObjectType;
-import org.jetlinks.core.metadata.unit.ValueUnit;
 import org.jetlinks.core.metadata.unit.ValueUnits;
 import org.jetlinks.core.utils.MetadataUtils;
 import org.springframework.core.ResolvableType;
@@ -16,7 +15,7 @@ import java.util.*;
 /**
  * 按 public 契约共享的指标定义与读取器，不是对象注册表，也不保存目标实例。
  * 元数据统一来自 MetadataUtils；ClassValue 允许动态插件类随其类加载器卸载。
- * 编译后的中立定义不对外暴露，消费边界按 Locale 生成独立视图。
+ * 中立定义按只读契约共享，消费边界按 Locale 读取文案，无需复制模型。
  *
  * @since 1.3.3
  * @see org.jetlinks.core.annotation.metric.Metric
@@ -48,15 +47,15 @@ public final class MetricSet {
             if (value == null) {
                 continue;
             }
-            normalize(property, value);
+            MetricKind kind = normalize(property, value);
             try {
-                parsed.add(new Metric(property, entry.getKey()));
+                parsed.add(new Metric(property, entry.getKey(), kind));
             } catch (IllegalAccessException e) {
                 throw invalid(entry.getKey().toGenericString());
             }
-            definition.addPropertyMetadata(property);
         }
         this.metrics = List.copyOf(parsed);
+        definition.setProperties(metrics.stream().map(Metric::getMetadata).toList());
     }
 
     /**
@@ -73,47 +72,34 @@ public final class MetricSet {
         return metrics;
     }
 
-    public ObjectType getMetadata(Locale locale) {
-        return MetadataUtils.localize(definition, locale);
+    /**
+     * @return 共享的中立定义；调用方不得修改其属性、类型或扩展
+     * @see PropertyMetadata#getI18nName(Locale)
+     */
+    public ObjectType getMetadata() {
+        return definition;
     }
 
-    private static void normalize(PropertyMetadata property, Object value) {
-        if (!(value instanceof Map<?, ?> source)
-            || !(source.get("kind") instanceof String kind)
-            || !(source.get("semantic") instanceof String semantic)) {
+    private static MetricKind normalize(PropertyMetadata property, Object value) {
+        if (!(value instanceof Map<?, ?> source)) {
             throw invalid(property.getId());
         }
-        MetricKind parsedKind;
-        MetricSemantic parsedSemantic;
-        try {
-            parsedKind = MetricKind.valueOf(kind);
-            parsedSemantic = MetricSemantic.valueOf(semantic);
-        } catch (IllegalArgumentException e) {
-            throw invalid(property.getId());
-        }
-        if ((parsedKind == MetricKind.counter || parsedSemantic != MetricSemantic.value)
+        MetricKind kind = MetricKind.valueOf((String) source.get("kind"));
+        MetricSemantic semantic = MetricSemantic.valueOf((String) source.get("semantic"));
+        if ((kind == MetricKind.counter || semantic != MetricSemantic.value)
             && !(property.getValueType() instanceof NumberType<?>)) {
             throw invalid(property.getId());
         }
-        if (parsedKind == MetricKind.counter && parsedSemantic != MetricSemantic.value) {
-            throw invalid(property.getId());
-        }
-        Object unit = source.get("unit");
+        // 注解参数的类型已由声明保证；这里只校验 DataType 是否支持所声明的语义。
+        String unit = (String) source.remove("unit");
         if (unit != null) {
-            if (!(unit instanceof String id) || !(property.getValueType() instanceof UnitSupported supported)) {
+            if (!(property.getValueType() instanceof UnitSupported supported)) {
                 throw invalid(property.getId() + ".unit");
             }
-            ValueUnit resolved = ValueUnits.lookup(id).orElseThrow(() -> invalid(property.getId() + ".unit"));
-            if (supported.getUnit() != null && !supported.getUnit().getId().equals(resolved.getId())) {
-                throw invalid(property.getId() + ".unit");
-            }
-            supported.setUnit(resolved);
+            supported.setUnit(ValueUnits.lookup(unit).orElseThrow(() -> invalid(property.getId() + ".unit")));
         }
-        // 声明语法中的单位只用于构造标准 DataType；对外不维护两个权威单位。
-        Map<String, Object> normalized = new LinkedHashMap<>();
-        normalized.put("kind", parsedKind.name());
-        normalized.put("semantic", parsedSemantic.name());
-        property.getExpands().put("metric", normalized);
+        // 单位归一到标准 DataType，保留其余扩展，不重建另一份 metric 描述。
+        return kind;
     }
 
     private static I18nSupportException invalid(String property) {

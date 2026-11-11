@@ -90,6 +90,38 @@ public class MetadataUtils {
                                             Metadata metadata,
                                             String key,
                                             String defaultMsg) {
+        return resolveI18nMessage(locale, metadata, key, defaultMsg,
+            (code, fallback) -> LocaleUtils.resolveMessage(code, locale, fallback));
+    }
+
+    /**
+     * 使用指定消息源读取文案，不修改元数据或缓存请求语言。
+     * 内嵌 i18nMessages 优先于 i18nKeys 资源及默认文案。
+     *
+     * @param locale 语言地区
+     * @param metadata 中立元数据
+     * @param key 文案属性名
+     * @param defaultMsg 默认文案
+     * @param source 应用消息源
+     * @return 当前语言的文案
+     * @since 1.3.3
+     */
+    public static String resolveI18nMessage(Locale locale, Metadata metadata, String key,
+                                            String defaultMsg, MessageSource source) {
+        return resolveI18nMessage(locale, metadata, key, defaultMsg,
+            (code, fallback) -> LocaleUtils.resolveMessage(source, locale, code, fallback));
+    }
+
+    private static String resolveI18nMessage(Locale locale, Metadata metadata, String key,
+                                             String defaultMsg, BiFunction<String, String, String> messages) {
+        Object keys = metadata.getExpand(I18N_KEYS).orElse(null);
+        if (keys instanceof Map<?, ?> map && map.get(key) instanceof List<?> candidates) {
+            for (int i = candidates.size() - 1; i >= 0; i--) {
+                if (candidates.get(i) instanceof String code) {
+                    defaultMsg = messages.apply(code, defaultMsg);
+                }
+            }
+        }
         return resolveI18nMessage(
             locale,
             metadata.getExpand(ThingsConfigKeys.i18nMessages).orElse(null),
@@ -180,7 +212,7 @@ public class MetadataUtils {
 
     /**
      * 解析可共享的中立方法属性，保留资源键与默认文案，不缓存当前用户语言。
-     * 使用 {@link #localize(PropertyMetadata, Locale)} 在消费边界生成独立描述。
+     * 消费边界通过 {@link Metadata#getI18nName(Locale)} 等入口读取文案，无需复制定义。
      *
      * @param owner 声明契约
      * @param method 无参、非 void 方法
@@ -206,7 +238,7 @@ public class MetadataUtils {
 
     /**
      * 使用局部扩展合并规则发现只读属性；规则不修改全局策略。
-     * 同名不同类型属性或局部规则拒绝的冲突直接失败，不按反射顺序覆盖。
+     * 不同 getter 重用属性 ID 或局部规则拒绝的冲突直接失败。
      *
      * @param type 声明契约
      * @param rules 本次解析的不可变合并规则
@@ -232,8 +264,7 @@ public class MetadataUtils {
     public static Map<Method, PropertyMetadata> parseReadOnlyProperties(ResolvableType type, ExpandsMerge rules) {
         return LocaleUtils.doWith(Locale.ROOT, () -> {
             MetadataParser parser = new MetadataParser(false, rules);
-            Map<String, PropertyMetadata> properties = new LinkedHashMap<>();
-            Map<String, Method> readers = new LinkedHashMap<>();
+            Map<String, Map.Entry<Method, PropertyMetadata>> properties = new LinkedHashMap<>();
             Method[] methods = type.toClass().getMethods();
             Arrays.sort(methods, Comparator.comparing(Method::toGenericString));
             for (Method method : methods) {
@@ -249,22 +280,28 @@ public class MetadataUtils {
                     continue;
                 }
                 PropertyMetadata property = parser.withMethod(type, method, propertyName(method));
-                PropertyMetadata previous = properties.putIfAbsent(property.getId(), property);
-                readers.putIfAbsent(property.getId(), method);
+                Map.Entry<Method, PropertyMetadata> candidate = Map.entry(method, property);
+                Map.Entry<Method, PropertyMetadata> previous = properties.putIfAbsent(property.getId(), candidate);
                 if (previous != null) {
-                    if (!readers.get(property.getId()).getName().equals(method.getName())
-                        || !Objects.equals(previous.getValueType().toJson(), property.getValueType().toJson())) {
+                    if (!previous.getKey().getName().equals(method.getName())) {
                         throw new I18nSupportException.NoStackTrace("error.conflicting_metadata_semantics", property.getId());
                     }
-                    mergeExpands(previous.getExpands(), property.getExpands(), rules);
+                    // Java 已约束同签名返回类型；协变声明使用更具体的读取方法和类型。
+                    if (previous.getKey().getReturnType() != method.getReturnType()
+                        && previous.getKey().getReturnType().isAssignableFrom(method.getReturnType())) {
+                        mergeExpands(property.getExpands(), previous.getValue().getExpands(), rules);
+                        properties.put(property.getId(), candidate);
+                    } else {
+                        mergeExpands(previous.getValue().getExpands(), property.getExpands(), rules);
+                    }
                 }
             }
             Map<Method, PropertyMetadata> result = new LinkedHashMap<>();
             properties.values().stream()
-                .sorted(Comparator.comparingInt((PropertyMetadata p) -> p.getExpand("order")
+                .sorted(Comparator.comparingInt((Map.Entry<Method, PropertyMetadata> entry) -> entry.getValue().getExpand("order")
                     .filter(Number.class::isInstance).map(Number.class::cast).map(Number::intValue)
-                    .orElse(Integer.MAX_VALUE)).thenComparing(PropertyMetadata::getId))
-                .forEach(property -> result.put(readers.get(property.getId()), property));
+                    .orElse(Integer.MAX_VALUE)).thenComparing(entry -> entry.getValue().getId()))
+                .forEach(entry -> result.put(entry.getKey(), entry.getValue()));
             return Collections.unmodifiableMap(result);
         });
     }
@@ -289,110 +326,6 @@ public class MetadataUtils {
         int prefix = name.startsWith("get") && name.length() > 3 ? 3
             : name.startsWith("is") && name.length() > 2 ? 2 : 0;
         return Introspector.decapitalize(name.substring(prefix));
-    }
-
-    /**
-     * 生成指定语言的独立属性视图，不修改共享定义；内嵌 i18nMessages 优先于资源键。
-     * 仅用于元数据发现边界，不在每次指标采样时调用。
-     *
-     * @param definition 中立属性定义
-     * @param locale 请求语言
-     * @return 独立的可序列化描述
-     * @since 1.3.3
-     */
-    public static PropertyMetadata localize(PropertyMetadata definition, Locale locale) {
-        return localizePropertyView(definition, locale, (key, fallback) -> LocaleUtils.resolveMessage(key, locale, fallback));
-    }
-
-    /**
-     * 使用显式消息源生成独立属性视图；适用于隔离的应用上下文，不替换进程默认消息源。
-     *
-     * @param definition 中立定义
-     * @param locale 请求语言
-     * @param source 已配置的消息源
-     * @return 独立属性描述
-     * @since 1.3.3
-     */
-    public static PropertyMetadata localize(PropertyMetadata definition, Locale locale, MessageSource source) {
-        Objects.requireNonNull(source, "source");
-        return localizePropertyView(definition, locale,
-            (key, fallback) -> LocaleUtils.resolveMessage(source, locale, key, fallback));
-    }
-
-    private static PropertyMetadata localizePropertyView(PropertyMetadata definition, Locale locale,
-                                                         BiFunction<String, String, String> messages) {
-        Objects.requireNonNull(locale, "locale");
-        SimplePropertyMetadata copy = new SimplePropertyMetadata();
-        copy.fromJson(com.alibaba.fastjson.JSON.parseObject(definition.toJson().toJSONString()));
-        localizeProperty(copy, locale, messages);
-        return copy;
-    }
-
-    /**
-     * 为共享对象属性定义生成指定语言的独立视图，不保留请求 Locale。
-     *
-     * @param definition 语言中立类型
-     * @param locale 请求语言
-     * @return 包含嵌套属性与枚举文案的独立类型
-     * @since 1.3.3
-     */
-    public static ObjectType localize(ObjectType definition, Locale locale) {
-        return localizeObjectView(definition, locale, (key, fallback) -> LocaleUtils.resolveMessage(key, locale, fallback));
-    }
-
-    /**
-     * 使用显式消息源本地化对象类型，避免隔离应用或测试修改全局消息源。
-     *
-     * @param definition 中立类型
-     * @param locale 请求语言
-     * @param source 已配置的消息源
-     * @return 独立类型描述
-     * @since 1.3.3
-     */
-    public static ObjectType localize(ObjectType definition, Locale locale, MessageSource source) {
-        Objects.requireNonNull(source, "source");
-        return localizeObjectView(definition, locale,
-            (key, fallback) -> LocaleUtils.resolveMessage(source, locale, key, fallback));
-    }
-
-    private static ObjectType localizeObjectView(ObjectType definition, Locale locale,
-                                                  BiFunction<String, String, String> messages) {
-        Objects.requireNonNull(locale, "locale");
-        ObjectType copy = new ObjectType();
-        copy.fromJson(com.alibaba.fastjson.JSON.parseObject(definition.toJson().toJSONString()));
-        localizeType(copy, locale, messages);
-        return copy;
-    }
-
-    private static void localizeProperty(PropertyMetadata property, Locale locale, BiFunction<String, String, String> messages) {
-        SimplePropertyMetadata mutable = (SimplePropertyMetadata) property;
-        mutable.setName(localizedText(property, locale, "name", property.getName(), messages));
-        mutable.setDescription(localizedText(property, locale, "description", property.getDescription(), messages));
-        localizeType(property.getValueType(), locale, messages);
-    }
-
-    private static String localizedText(Metadata metadata, Locale locale, String attribute, String fallback,
-                                        BiFunction<String, String, String> messages) {
-        Object keys = metadata.getExpand(I18N_KEYS).orElse(null);
-        if (keys instanceof Map<?, ?> map && map.get(attribute) instanceof List<?> candidates) {
-            for (int i = candidates.size() - 1; i >= 0; i--) {
-                if (candidates.get(i) instanceof String key) {
-                    fallback = messages.apply(key, fallback);
-                }
-            }
-        }
-        return resolveI18nMessage(locale, metadata, attribute, fallback);
-    }
-
-    private static void localizeType(DataType type, Locale locale, BiFunction<String, String, String> messages) {
-        if (type instanceof ObjectType object) {
-            object.getProperties().forEach(property -> localizeProperty(property, locale, messages));
-        } else if (type instanceof ArrayType array && array.getElementType() != null) {
-            localizeType(array.getElementType(), locale, messages);
-        } else if (type instanceof EnumType enumeration && enumeration.getElements() != null) {
-            enumeration.getElements().forEach(element -> element.setText(
-                localizedText(enumeration, locale, element.getValue(), element.getText(), messages)));
-        }
     }
 
     /**

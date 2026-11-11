@@ -10,8 +10,6 @@ import org.jetlinks.core.metadata.types.ObjectType;
 import org.junit.Test;
 import org.springframework.core.annotation.Order;
 
-import java.util.Locale;
-
 import static org.junit.Assert.*;
 
 public class MetricSetTest {
@@ -37,16 +35,17 @@ public class MetricSetTest {
     }
 
     @Test
-    public void unitsAreNormalizedToTheExistingDataTypeAndViewsDoNotMutateTemplates() {
+    public void unitsUseTheExistingDataTypeAndMetadataIsSharedForReadOnlyAccess() {
         MetricSet set = MetricSet.of(QueueView.class);
-        ObjectType metadata = set.getMetadata(Locale.ENGLISH);
+        ObjectType metadata = set.getMetadata();
         assertEquals("count", ((UnitSupported) metadata.getProperty("received").orElseThrow().getValueType()).getUnit().getId());
         assertEquals("nanoseconds", ((UnitSupported) metadata.getProperty("elapsed").orElseThrow().getValueType()).getUnit().getId());
         assertEquals("milliseconds", ((UnitSupported) metadata.getProperty("lastSuccess").orElseThrow().getValueType()).getUnit().getId());
         assertFalse(metadata.getProperty("received").orElseThrow().getExpand("metric")
             .map(java.util.Map.class::cast).orElseThrow().containsKey("unit"));
-        metadata.getProperties().clear();
-        assertEquals(4, set.getMetadata(Locale.ENGLISH).getProperties().size());
+        assertSame(metadata, set.getMetadata());
+        assertSame(metadata.getProperty("received").orElseThrow(), metric(set, "received").getMetadata());
+        assertEquals(4, metadata.getProperties().size());
     }
 
     @Test
@@ -76,15 +75,24 @@ public class MetricSetTest {
 
     @Test
     public void symbolicUnitsKeepTheExistingValueUnitsBehavior() {
-        ObjectType metadata = MetricSet.of(SymbolCounter.class).getMetadata(Locale.ENGLISH);
+        ObjectType metadata = MetricSet.of(SymbolCounter.class).getMetadata();
         assertEquals("sample", ((UnitSupported) metadata.getProperty("value").orElseThrow().getValueType()).getUnit().getSymbol());
     }
 
     @Test
     public void childInterfacesCanOverrideLabelsWhileInheritingTheMetricContract() {
-        var field = MetricSet.of(Renamed.class).getMetadata(Locale.ROOT).getProperty("value").orElseThrow();
+        var field = MetricSet.of(Renamed.class).getMetadata().getProperty("value").orElseThrow();
         assertEquals("当前累计", field.getName());
         assertEquals(MetricKind.counter, metric(MetricSet.of(Renamed.class), "value").getKind());
+    }
+
+    @Test
+    public void accumulatedDurationsAreValidNumericCounters() {
+        Metric elapsed = metric(MetricSet.of(TotalDuration.class), "elapsed");
+        assertEquals(MetricKind.counter, elapsed.getKind());
+        assertEquals("milliseconds", ((UnitSupported) elapsed.getMetadata().getValueType()).getUnit().getId());
+        assertEquals("processing", elapsed.getMetadata().getExpand("metric")
+            .map(java.util.Map.class::cast).orElseThrow().get("group"));
     }
 
     private static Metric metric(MetricSet set, String id) {
@@ -112,6 +120,11 @@ public class MetricSetTest {
     }
 
     public interface InvalidCounter { @Counter String getValue(); }
+    public interface TotalDuration {
+        @org.jetlinks.core.annotation.metric.Metric(kind = MetricKind.counter, semantic = MetricSemantic.duration, unit = "milliseconds")
+        @org.jetlinks.core.annotation.Expands(key = "metric", value = @org.jetlinks.core.annotation.Attr(key = "group", value = "processing"))
+        long getElapsed();
+    }
     public interface InvalidDuration { @Duration String getValue(); }
     public interface InvalidUnit { @Gauge(unit = "milliseconds") String getValue(); }
     public interface SymbolCounter { @Counter(unit = "sample") long getValue(); }

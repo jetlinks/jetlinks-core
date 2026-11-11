@@ -6,6 +6,7 @@ import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.metric.Counter;
 import org.jetlinks.core.annotation.metric.Gauge;
+import org.jetlinks.core.metadata.Metadata;
 import org.jetlinks.core.metadata.PropertyMetadata;
 import org.jetlinks.core.metadata.types.EnumType;
 import org.jetlinks.core.metadata.types.LongType;
@@ -31,6 +32,7 @@ public class ReadOnlyMetadataTest {
     public static void messages() {
         StaticMessageSource messages = new StaticMessageSource();
         messages.addMessage(Values.class.getName() + ".value.title", Locale.ENGLISH, "Current value");
+        messages.addMessage(Values.class.getName() + ".value", Locale.ENGLISH, "Current reading");
         messages.addMessage(Samples.class.getName() + ".title", Locale.ENGLISH, "Samples");
         messages.addMessage(Status.class.getName() + ".running", Locale.ENGLISH, "Running");
         messages.addMessage(Nested.class.getName() + ".name.title", Locale.ENGLISH, "Nested value");
@@ -59,58 +61,75 @@ public class ReadOnlyMetadataTest {
         PropertyMetadata property = MetadataUtils.parsePropertyDefinition(
             ResolvableType.forClass(Values.class), Values.class.getMethod("getReceived"));
         assertEquals("接收样本", property.getName());
-        assertEquals("Samples", MetadataUtils.localize(property, Locale.ENGLISH, source).getName());
+        assertEquals("Samples", name(property, Locale.ENGLISH));
         Map<?, ?> customized = (Map<?, ?>) MetadataUtils.parseExpands(Customized.class.getMethod("getReceived")).get("metric");
         assertEquals("seconds", customized.get("unit"));
     }
 
     @Test
-    public void definitionsAreIndependentOfTheFirstCallersLocaleAndViewsAreIsolated() throws Exception {
+    public void concurrentTextResolutionDoesNotChangeSharedDefinitions() throws Exception {
         ObjectType definition = LocaleUtils.doWith(Locale.ENGLISH,
             () -> MetadataUtils.parseReadOnlyType(ResolvableType.forClass(Values.class)));
-        assertEquals("当前值", definition.getProperty("value").orElseThrow().getName());
+        PropertyMetadata property = definition.getProperty("value").orElseThrow();
+        assertEquals("当前值", property.getName());
         for (int i = 0; i < 10; i++) {
-            var english = CompletableFuture.supplyAsync(() -> MetadataUtils.localize(definition, Locale.ENGLISH, source));
-            var chinese = CompletableFuture.supplyAsync(() -> MetadataUtils.localize(definition, Locale.CHINESE, source));
-            assertEquals("Current value", english.get().getProperty("value").orElseThrow().getName());
-            assertEquals("当前值", chinese.get().getProperty("value").orElseThrow().getName());
+            var english = CompletableFuture.supplyAsync(() -> name(property, Locale.ENGLISH));
+            var chinese = CompletableFuture.supplyAsync(() -> name(property, Locale.CHINESE));
+            assertEquals("Current value", english.get());
+            assertEquals("当前值", chinese.get());
         }
-        ObjectType english = MetadataUtils.localize(definition, Locale.ENGLISH, source);
-        english.getProperty("value").orElseThrow().getExpands().clear();
-        assertFalse(definition.getProperty("value").orElseThrow().getExpands().isEmpty());
-        assertEquals("当前值", definition.getProperty("value").orElseThrow().getName());
+        assertEquals("Current reading", MetadataUtils.resolveI18nMessage(
+            Locale.ENGLISH, property, "description", property.getDescription(), source));
+        assertEquals("当前值", property.getName());
+        assertEquals("当前读取值", property.getDescription());
     }
 
     @Test
     public void nestedPropertiesAndEnumLabelsAreLocalizedWithoutMutatingDefinitions() {
         ObjectType definition = MetadataUtils.parseReadOnlyType(ResolvableType.forClass(Values.class));
-        ObjectType english = MetadataUtils.localize(definition, Locale.ENGLISH, source);
-        EnumType state = (EnumType) english.getProperty("status").orElseThrow().getValueType();
-        assertEquals("Running", state.getElements().get(0).getText());
-        EnumType original = (EnumType) definition.getProperty("status").orElseThrow().getValueType();
-        assertEquals("运行中", original.getElements().get(0).getText());
-        assertEquals("Nested value", ((ObjectType) english.getProperty("nested").orElseThrow().getValueType())
-            .getProperty("name").orElseThrow().getName());
-        assertEquals("运行中", ((EnumType) MetadataUtils.localize(definition, Locale.JAPANESE)
-            .getProperty("status").orElseThrow().getValueType()).getElements().get(0).getText());
+        EnumType state = (EnumType) definition.getProperty("status").orElseThrow().getValueType();
+        EnumType.Element element = state.getElements().get(0);
+        assertEquals("Running", MetadataUtils.resolveI18nMessage(
+            Locale.ENGLISH, state, element.getValue(), element.getText(), source));
+        assertEquals("运行中", element.getText());
+        assertEquals("Nested value", name(((ObjectType) definition.getProperty("nested").orElseThrow().getValueType())
+            .getProperty("name").orElseThrow(), Locale.ENGLISH));
+        assertEquals("运行中", MetadataUtils.resolveI18nMessage(
+            Locale.JAPANESE, state, element.getValue(), element.getText(), source));
     }
 
     @Test
     public void bareSemanticAnnotationsCanUsePropertyResourceKeysWithoutSchemaBoilerplate() {
         ObjectType definition = MetadataUtils.parseReadOnlyType(ResolvableType.forClass(Bare.class));
         assertEquals("received", definition.getProperty("received").orElseThrow().getName());
-        assertEquals("Received", MetadataUtils.localize(definition, Locale.ENGLISH, source)
-            .getProperty("received").orElseThrow().getName());
+        assertEquals("Received", name(definition.getProperty("received").orElseThrow(), Locale.ENGLISH));
     }
 
     @Test
     public void embeddedMessagesHavePriorityOverResourceKeys() throws Exception {
         PropertyMetadata definition = MetadataUtils.parsePropertyDefinition(
             ResolvableType.forClass(Values.class), Values.class.getMethod("getReceived"));
-        definition.getExpands().put("i18nMessages", Map.of("name", Map.of("en", "Embedded", "zh_CN", "内嵌")));
-        assertEquals("Embedded", MetadataUtils.localize(definition, Locale.UK).getName());
-        assertEquals("内嵌", MetadataUtils.localize(definition, Locale.SIMPLIFIED_CHINESE).getName());
-        assertEquals("接收样本", MetadataUtils.localize(definition, Locale.JAPANESE).getName());
+        definition.getExpands().put("i18nMessages", Map.of(
+            "name", Map.of("en", "Embedded", "zh_CN", "内嵌"),
+            "description", Map.of("en", "Embedded description")));
+        assertEquals("Embedded", name(definition, Locale.ENGLISH));
+        assertEquals("Embedded", definition.getI18nName(Locale.UK));
+        assertEquals("内嵌", definition.getI18nName(Locale.SIMPLIFIED_CHINESE));
+        assertEquals("接收样本", definition.getI18nName(Locale.JAPANESE));
+        assertEquals("Embedded description", definition.getI18nDescription(Locale.UK));
+        assertEquals("已接收的样本", definition.getI18nDescription(Locale.JAPANESE));
+        assertEquals("Embedded description", LocaleUtils.doWith(Locale.UK, () -> definition.getI18nDescription()));
+    }
+
+    @Test
+    public void covariantGettersUseTheMoreSpecificJavaType() {
+        ObjectType definition = MetadataUtils.parseReadOnlyType(ResolvableType.forClass(Covariant.class));
+        assertEquals(1, definition.getProperties().size());
+        assertTrue(definition.getProperty("value").orElseThrow().getValueType() instanceof LongType);
+    }
+
+    private static String name(Metadata metadata, Locale locale) {
+        return MetadataUtils.resolveI18nMessage(locale, metadata, "name", metadata.getName(), source);
     }
 
     public interface Generic<T> {
@@ -135,6 +154,9 @@ public class ReadOnlyMetadataTest {
     }
 
     public interface Bare { @Counter long getReceived(); }
+    public interface AGeneral { @Gauge Number getValue(); }
+    public interface ZSpecific { @Gauge Long getValue(); }
+    public interface Covariant extends AGeneral, ZSpecific { }
     public static class Nested { @Schema(title = "嵌套值") private String name; }
 
     @Target({METHOD, ANNOTATION_TYPE})
