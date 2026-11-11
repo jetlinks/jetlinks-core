@@ -123,13 +123,22 @@ core 的 `metadata/MetadataDefinitionParser` 以 JDK `Map` / `Collection` 统一
 supports 的 `DefaultThingsMetadata` 在复制和合并时隔离关系声明与递归模块对象，各层扩展 Map 独立，
 嵌套扩展值沿用原值语义。沿用原 JSON 字段和可选目录形状，不调整业务接口或执行链路，也不新增追踪或 MBean。
 
+可选类型与复制边界：事件缺失、null 或未注册类型沿用未知类型语义，默认 Codec 往返后仍可安全访问；
+数组元素和枚举值的显式类型通过 supports 的 `JetLinksDataTypeCodecs` 共用解析边界，
+保留类型名简写及对象定义，未声明的嵌套类型仍可选，显式空对象或未注册类型返回 i18n 格式错误。
+属性未声明类型仍返回 null，字符串描述以 unknown 表示；`SimpleFunctionMetadata.copy` 通过
+非空 `getInputs()` 取得参数并复制容器，无参数功能可直接复制。回归用例覆盖事件默认类型经默认 Codec 往返、
+数组/枚举的类型名与对象定义、无效类型的错误边界、可选类型空值和无参功能复制容器隔离。
+
 验证入口（聚合工程）：
-`mvn -o -B -ntp -pl jetlinks-core,jetlinks-supports -am -Djacoco.skip=true -Dtest=MetadataDefinitionParserTest,SimpleDeviceMetadataTest,MetadataSemanticsTest,MetadataDirectoryTest,MetadataExpandTest,PropertyMetadataTest,CommandMetadataResolverTest,JavaBeanCommandSupportTest,MetadataUtilsTest,MergeOptionTest,PresentationAnnotationsTest,ExpandsMergeTest,ExpandsMergesTest -Dsurefire.failIfNoSpecifiedTests=false test`。
-验证（2026-11-11）：主代码与测试代码编译成功，core 67 项、supports 27 项，共 94 项通过，
-无失败、错误或跳过；日志 `/private/tmp/jetlinks-metadata-neutral-parser-20261111.log`。
+`mvn -o -B -ntp -pl jetlinks-core,jetlinks-supports -am -Djacoco.skip=true -Dtest=MetadataDefinitionParserTest,SimpleDeviceMetadataTest,MetadataNpeRegressionTest,MetadataSemanticsTest,MetadataDirectoryTest,MetadataExpandTest,PropertyMetadataTest,CommandMetadataResolverTest,JavaBeanCommandSupportTest,MetadataUtilsTest,MergeOptionTest,PresentationAnnotationsTest,ExpandsMergeTest,ExpandsMergesTest -Dsurefire.failIfNoSpecifiedTests=false test`。
+验证（2026-11-11）：新增回归在修复前复现事件类型、数组元素类型、无参功能复制及属性字符串描述的 NPE，
+日志 `/private/tmp/jetlinks-metadata-npe-red-20261111.log`。修复后主代码与测试代码编译成功，
+core 68 项、supports 33 项，共 101 项通过，无失败、错误或跳过；
+日志 `/private/tmp/jetlinks-metadata-npe-green-20261111.log`。
 新增用例在 `jetlinks-core/src/test/java/org/jetlinks/core/metadata/MetadataDefinitionParserTest.java`、
 `jetlinks-core/src/test/java/org/jetlinks/core/metadata/SimpleDeviceMetadataTest.java` 与
-`jetlinks-supports/src/test/java/org/jetlinks/supports/official/MetadataDirectoryTest.java`，覆盖根空输入、重载清空、
+`jetlinks-supports/src/test/java/org/jetlinks/supports/official/MetadataDirectoryTest.java`、`MetadataNpeRegressionTest.java`，覆盖根空输入、重载清空、
 非法目录、条目及嵌套对象/功能输入、普通 Map/List、重复标识、非法输入不替换旧模型、双向修改隔离与默认 Codec 往返。
 本次未发布或替换部署制品，运行环境仍需更新包含修复的 core/supports 并重启。
 交付为 core [PR #112](https://github.com/jetlinks/jetlinks-core/pull/112) 与

@@ -54,7 +54,7 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
                   name,
                   description,
                   expands == null ? null : new HashMap<>(expands),
-                  new ArrayList<>(inputs),
+                  new ArrayList<>(getInputs()),
                   output,
                   async);
     }

@@ -108,6 +108,19 @@ public class SimpleDeviceMetadataTest {
     }
 
     @Test
+    public void should_copy_functions_without_inputs_into_independent_containers() {
+        for (SimpleFunctionMetadata function : List.of(
+            new SimpleFunctionMetadata(), SimpleFunctionMetadata.of("read", "Read", null, null))) {
+            SimpleFunctionMetadata copied = function.copy();
+            assertEquals(function.getId(), copied.getId());
+            assertTrue(copied.getInputs().isEmpty());
+            copied.getInputs().add(SimplePropertyMetadata.of("value", "Value", null));
+            assertTrue(function.getInputs().isEmpty());
+            assertEquals(1, copied.getInputs().size());
+        }
+    }
+
+    @Test
     public void should_replace_function_inputs_and_optional_output() {
         SimpleFunctionMetadata function = new SimpleFunctionMetadata();
         function.fromJson(model().getFunctionOrNull("read").toJson());
