@@ -130,15 +130,26 @@ supports 的 `DefaultThingsMetadata` 在复制和合并时隔离关系声明与�
 非空 `getInputs()` 取得参数并复制容器，无参数功能可直接复制。回归用例覆盖事件默认类型经默认 Codec 往返、
 数组/枚举的类型名与对象定义、无效类型的错误边界、可选类型空值和无参功能复制容器隔离。
 
+空产品模型参与组合和合并时仍是空目录，不应丢失另一侧的设备独立定义；两侧都为空时可安全编码和再次解析。
+空输入还包括全目录为 null 或空列表的模型；平台返回的空 `SimpleDeviceMetadata` 与默认 Codec 模型可相互组合，
+`ignoreExists` 合并及产品优先的组合均保留原重复标识定义，同时追加新标识。回归矩阵覆盖上述表示与六类目录。
+
 验证入口（聚合工程）：
-`mvn -o -B -ntp -pl jetlinks-core,jetlinks-supports -am -Djacoco.skip=true -Dtest=MetadataDefinitionParserTest,SimpleDeviceMetadataTest,MetadataNpeRegressionTest,MetadataSemanticsTest,MetadataDirectoryTest,MetadataExpandTest,PropertyMetadataTest,CommandMetadataResolverTest,JavaBeanCommandSupportTest,MetadataUtilsTest,MergeOptionTest,PresentationAnnotationsTest,ExpandsMergeTest,ExpandsMergesTest -Dsurefire.failIfNoSpecifiedTests=false test`。
+`mvn -o -B -ntp -pl jetlinks-core,jetlinks-supports -am -Djacoco.skip=false -Djacoco.append=false -Dtest=MetadataDefinitionParserTest,SimpleDeviceMetadataTest,MetadataEmptyModelTest,MetadataNpeRegressionTest,MetadataSemanticsTest,MetadataDirectoryTest,MetadataExpandTest,PropertyMetadataTest,CommandMetadataResolverTest,JavaBeanCommandSupportTest,MetadataUtilsTest,MergeOptionTest,PresentationAnnotationsTest,ExpandsMergeTest,ExpandsMergesTest -Dsurefire.failIfNoSpecifiedTests=false test`。
 验证（2026-11-11）：新增回归在修复前复现事件类型、数组元素类型、无参功能复制及属性字符串描述的 NPE，
 日志 `/private/tmp/jetlinks-metadata-npe-red-20261111.log`。修复后主代码与测试代码编译成功，
-core 68 项、supports 33 项，共 101 项通过，无失败、错误或跳过；
-日志 `/private/tmp/jetlinks-metadata-npe-green-20261111.log`。
+core 70 项、supports 39 项，共 109 项通过，无失败、错误或跳过；
+日志 `/private/tmp/jetlinks-metadata-empty-coverage-final-20261111.log`。
+平台公开方法矩阵另有 220 个用例通过（207 个边界矩阵用例、13 个已有回归），覆盖产品解析、设备详情的产品/派生模型组合、
+设备模型合并及产品/设备缓存读取；日志 `/private/tmp/platform-empty-metadata-20261111.log`。
+该矩阵使用平台已编译类和修复后的 SDK 类，不修改平台源码，不代表完整平台构建或 HTTP/数据库保存链路验证。
+本地复核入口为 `/private/tmp/run_platform_empty_metadata.py` 与 `/private/tmp/PlatformEmptyMetadataTest.java`。
+合并 SDK 与平台执行数据后，JaCoCo 在两个 PR 新增/修改的可执行行上覆盖 core 101/101、supports 61/61，
+这些行上的分支覆盖分别为 24/24、26/26；这是改动范围覆盖率，不是整库覆盖率。
+报告 `/private/tmp/jetlinks-metadata-combined-coverage-20261111/index.html`，统计入口 `/private/tmp/summarize_metadata_coverage.py`。
 新增用例在 `jetlinks-core/src/test/java/org/jetlinks/core/metadata/MetadataDefinitionParserTest.java`、
 `jetlinks-core/src/test/java/org/jetlinks/core/metadata/SimpleDeviceMetadataTest.java` 与
-`jetlinks-supports/src/test/java/org/jetlinks/supports/official/MetadataDirectoryTest.java`、`MetadataNpeRegressionTest.java`，覆盖根空输入、重载清空、
+`jetlinks-supports/src/test/java/org/jetlinks/supports/official/MetadataDirectoryTest.java`、`MetadataNpeRegressionTest.java`、`MetadataEmptyModelTest.java`，覆盖根空输入、重载清空、
 非法目录、条目及嵌套对象/功能输入、普通 Map/List、重复标识、非法输入不替换旧模型、双向修改隔离与默认 Codec 往返。
 本次未发布或替换部署制品，运行环境仍需更新包含修复的 core/supports 并重启。
 交付为 core [PR #112](https://github.com/jetlinks/jetlinks-core/pull/112) 与

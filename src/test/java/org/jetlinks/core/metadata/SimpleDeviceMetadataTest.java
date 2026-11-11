@@ -2,8 +2,9 @@ package org.jetlinks.core.metadata;
 
 import com.alibaba.fastjson.JSONObject;
 import org.hswebframework.web.exception.I18nSupportException;
-import org.junit.Test;
+import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.utils.json.ObjectMappers;
+import org.junit.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -105,6 +106,28 @@ public class SimpleDeviceMetadataTest {
         JSONObject invalid = json("{\"properties\":[{\"id\":\"object\","
             + "\"valueType\":{\"type\":\"object\",\"properties\":[null]}}]}");
         assertInvalidDefinition(() -> new SimpleDeviceMetadata().fromJson(invalid));
+    }
+
+    @Test
+    public void should_roundtrip_valid_nested_object_properties() {
+        SimpleDeviceMetadata model = new SimpleDeviceMetadata();
+        model.fromJson(json("{\"properties\":[{\"id\":\"object\",\"valueType\":{\"type\":\"object\","
+            + "\"properties\":[{\"id\":\"nested\",\"valueType\":{\"type\":\"boolean\"}}]}}]}"));
+        ObjectType type = (ObjectType) model.getPropertyOrNull("object").getValueType();
+        assertEquals(1, type.getProperties().size());
+        assertEquals("nested", type.getProperties().get(0).getId());
+        assertEquals("boolean", type.getProperties().get(0).getValueType().getId());
+        SimpleDeviceMetadata decoded = new SimpleDeviceMetadata();
+        decoded.fromJson(model.toJson());
+        assertEquals(model.toJson(), decoded.toJson());
+    }
+
+    @Test
+    public void should_merge_a_populated_model_into_an_empty_simple_product_model() {
+        SimpleDeviceMetadata populated = model();
+        DeviceMetadata merged = new SimpleDeviceMetadata().merge(populated, MergeOption.ignoreExists);
+        assertEquals(populated.toJson(), merged.toJson());
+        assertEquals("nested", merged.getModules().get(0).getId());
     }
 
     @Test
