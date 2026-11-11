@@ -90,4 +90,61 @@ registration.dispose();
 
 `Metrics.observe` 是兼容默认方法：旧 count / value / error 实现、NoopMetrics 返回已关闭的共享 unsupported 句柄，不解析注解或保留 target；不能将 unsupported 当成已采样的零值。ProxyMetrics 在注册时获取一次实际 owner 并返回其句柄，关闭不重新查找 lazy owner。支持实现必须自行校验 target、绑定实例代次、保证幂等注销，并复用 MetricSet；core 不提供对象注册表或采样调度。
 
-注册表、采集累计、JMX、外部导出与前端由后续所属模块实现。现有 Recorder / ObservationContext 执行观测保持原契约；本能力没有采集 I/O、后台线程、新增 Trace 或平台 MBean。
+注册表、业务埋点、JMX、外部导出与前端由所属模块实现。现有 Recorder / ObservationContext 执行观测保持原契约；本能力没有采集 I/O、后台线程、新增 Trace 或平台 MBean。
+
+## 低成本运行统计
+
+`monitor.metrics` 提供四种独立能力，实例/数组由业务 owner 或插件直接持有，不进入全局注册表，
+不自动为采集器、点位或连接创建统计。没有时间序列或逐样本缓存，读取不清零。
+
+| 能力 | 状态与语义 |
+| --- | --- |
+| `RateMeter` | 一个累计字段和1/5/15分钟 EWMA，共享五秒节拍参数；事件/查询时惰性更新，无定时器 |
+| `DurationSummary` | 次数、累计秒、最近/最大纳秒耗时和峰值时刻；固定 primitive 字段，最大值刷新时加锁 |
+| `WindowMax` | 一个固定时间分段的最大值及发生时刻；按需进入新分段，不保存上一段或滚动历史 |
+| `FixedHistogram` | 边界配置按契约共享；启用分布时由 owner 分配 long[]，每次仅定位桶并原子加一 |
+
+请求、样本、字节使用同一速率实现，分别得到次/秒、样本/秒、字节/秒；收、发方向分开持有。
+`RateMeter.mark(amount)` 支持批量增量，调用方应尽量按已有报文/批次记录，而非逐字节调用。
+直接使用其 `getCount()` 暴露累计，避免再维护一份同口径计数。
+多个线程竞争同一实例会增加原子更新成本；优先按运行 owner 持有，再在查询侧汇总，避免全节点写入同一个统计热点。
+首次五秒节拍前的 EWMA 为零；1/5/15分钟是平滑时间常数，不是最近窗口的精确平均或历史曲线。
+空闲读取会衰减，长时间空闲按公式一次推进，不随空闲时长循环。
+
+```java
+final RateMeter receivedBytes = new RateMeter();
+final DurationSummary requestDuration = new DurationSummary();
+final WindowMax hourlyDuration = new WindowMax(java.time.Duration.ofHours(1));
+
+// 在通信完成边界，复用一次时钟读取；不创建逐请求统计对象。
+long elapsedNanos = System.nanoTime() - startedAtNanos;
+long completedAtMillis = System.currentTimeMillis();
+receivedBytes.mark(readableBytes);
+requestDuration.record(elapsedNanos, completedAtMillis);
+hourlyDuration.record(elapsedNanos, completedAtMillis);
+```
+
+通信 RTT、排队等待和采集任务耗时需要分别选择埋点起止；不能将任务流耗时直接当 RTT，
+也不能将最后收到原始数据当成最后有效输出。仅变化上报的订阅长期零流量可以正常。
+耗时用单调时钟之差，发生时刻用 epoch 毫秒；错误、超时、取消由业务按口径独立计数。
+
+各字段为弱一致观测，不是事务快照。`DurationSummary.snapshot()` 保证最大值/发生时刻成对，
+其余累计仍是弱一致读取；`count == 0` 表示没有耗时样本。快照仅在请求侧分配。
+业务接口继续使用 `@Counter` / `@Gauge` / `@Duration` / `@Timestamp` 等组合注解描述 getter，
+单位、文案和国际化仍由 `MetadataUtils` / `MetricSet` 统一处理，算法不另建描述模型。
+
+`WindowMax` 从 epoch 对齐固定时长，默认日窗口从 UTC 午夜开始；UTC+8 午夜可以显式传入
+`new WindowMax(Duration.ofDays(1), Duration.ofHours(-8))`。固定24小时不能替代夏令时自然日。
+窗口查询带 `available`，过期/未采样窗口不补真实零值；迟到旧窗口记录不会覆盖新窗口。
+启用或实例重建之前的观测不会补齐，展示方需结合 owner 的观测起点/实例代次解释覆盖范围。
+“本小时/今日”峰值可使用它；精确“最近60分钟”峰值需额外保存候选或分桶，不由 EWMA 提供。
+吞吐峰值还须明确采样间隔，例如“一分钟平均字节速率峰值”，不能标为瞬时峰值。
+
+直方图默认为可选，不给所有点位/连接预分配桶。边界、单位及观测起点相同的桶先相加再求分位，
+不可平均 P95。`percentile` 返回所在桶上界并限制为实际最大值，无样本/无效参数为 NaN。
+累计直方图不是最近一小时分布；`ConnectionMetricsSupport` 复用同一实现，保留原14桶及观测起点格式。
+节点/通道/采集器按真实 owner 持有统计；汇总峰值必须对同一时刻的汇总值求峰，不能相加不同时间的峰值。
+
+参考：[Dropwizard EWMA/窗口统计](https://www.dropwizard.io/projects/metrics/en/latest/manual/core/)、
+[Prometheus 分布与聚合](https://prometheus.io/docs/practices/histograms/)、
+[Google SRE 四个黄金信号](https://sre.google/sre-book/monitoring-distributed-systems/)。
