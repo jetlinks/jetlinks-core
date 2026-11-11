@@ -126,6 +126,8 @@ core 61 项、supports 25 项，共 86 项通过，无失败、错误或跳过�
 `jetlinks-supports/src/test/java/org/jetlinks/supports/official/MetadataDirectoryTest.java`，覆盖根空输入、重载清空、
 非法条目及嵌套对象、非法输入不替换旧模型、双向修改隔离与默认 Codec 往返。
 本次未发布或替换部署制品，运行环境仍需更新包含修复的 core/supports 并重启。
+修复代码：core `8a10b5b5`（[PR #112](https://github.com/jetlinks/jetlinks-core/pull/112)），
+supports `e905964`（[PR #51](https://github.com/jetlinks/jetlinks-supports/pull/51)）；supports 配套依赖 core 修复，按 core、supports 顺序合入和发布。
 
 语义是模型的通用描述，不属于某种对象操作门面。设备、业务记录、事件载荷和命令输出可以复用同一组语义约定；它们通过原模型及其 expands 声明，不要求先转为另一套模型。物模型只描述结构和含义，不因此要求实现 Thing 生命周期。
 
