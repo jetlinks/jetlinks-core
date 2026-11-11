@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.metadata.types.DateTimeType;
+import org.jetlinks.core.metadata.types.LongType;
+import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.things.relation.RelationSemantic;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
@@ -17,6 +19,29 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 public class MetadataSemanticsTest {
+
+    @Test
+    public void dynamicDeclarationsShareAnnotationEncodingAndDefaultMergeRules() {
+        var field = SimplePropertyMetadata.of("count", "Count", LongType.GLOBAL);
+        field.expand("presentation", Map.of("primary", true, "future", "keep"));
+        assertSame(field, MetadataSemantics.withPropertyRole(field, PropertySemanticRole.result));
+        assertSame(field, MetadataSemantics.withObservation(field, new ObservationMapping("at", "valid")));
+        assertEquals(Map.of("primary", true, "future", "keep", "observedAt", "at", "quality", "valid"),
+            field.getExpand("presentation").orElseThrow());
+        var type = new ObjectType();
+        type.setProperties(List.of(field,
+            SimplePropertyMetadata.of("at", "Time", LongType.GLOBAL),
+            SimplePropertyMetadata.of("valid", "Quality", org.jetlinks.core.metadata.types.BooleanType.GLOBAL)));
+        MetadataSemantics.validateOutput(type);
+        var encoded = org.jetlinks.core.metadata.types.DataTypes.fromJsonNow(JSON.parseObject(type.toJson().toJSONString()));
+        assertEquals(new ObservationMapping("at", "valid"), MetadataSemantics.observation(SemanticRecord.field(encoded, "count")));
+        var model = new SimpleDeviceMetadata();
+        assertSame(model, MetadataSemantics.withSemanticTypes(model, SemanticType.observation, SemanticType.result));
+        assertEquals(java.util.Set.of(SemanticType.observation, SemanticType.result), MetadataSemantics.semanticTypes(model));
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.withObservation(field, new ObservationMapping("other", null))))
+            .expectError(I18nSupportException.class).verify();
+        assertEquals(new ObservationMapping("at", "valid"), MetadataSemantics.observation(field));
+    }
 
     @Test
     public void should_preserve_alarm_roles_and_future_vocabulary() {

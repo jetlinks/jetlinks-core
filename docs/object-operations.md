@@ -652,6 +652,67 @@ N1 失败、N2 重试成功保留独立尝试 ID，不按告警去重，不凭�
 
 ## 7. 本体场景覆盖与架构边界
 
+### 统一语义声明与消费（已确认）
+
+通用语义由 core 的 `MetadataSemantics`、字段角色和注解维护；relation 负责带逻辑来源的能力描述与传输，本体只消费并投影。沿用 ThingMetadata、DataType 和原 Command，不新建对象模型、查询框架或授权入口。
+
+实施范围：统一内置字段角色及扩展键，为观测值提供类型化的时间/质量字段映射；将有界 schema 路径及记录读取收敛到 core 的只读语义视图；relation 集中编码来源描述；迁移本体消费与设备快照注解。类型、单位、枚举由原值模型提供，窗口由已有开始/结束角色表达，缺失声明保持未知。旧 `value` 角色与 `presentation.observedAt` 在 core 读取边界解释，现有传输字段及开放词汇保留，业务 Map 数据不强制改成固定 DTO。
+
+步骤为 core 契约、relation 描述、本体和已有声明迁移、集中集成验证。只校验已声明的映射形状和字段引用，不新增逐次权限/实例预检、常驻状态、后台任务或 Trace/MBean；实际读写仍使用原上下文和来源授权。验证覆盖注解与序列化、旧格式、未知扩展、0/false、多个结果、时间/质量绑定、同名来源、图谱投影及原查询/操作回归。无服务启停或业务功能扩展。
+
+实现入口为 `metadata/MetadataSemantics`、`PropertySemanticRole`、`ObservationMapping` 与 `SemanticRecord`。`semanticTypeTerms` 返回包含未知词的有序只读集合；`propertyRole` 将旧 `value` 解释为 `result`，不修改原 expands。`subjectId`、`modelId`、`valueMetadata`、`formattedValue` 补齐原字段含义；记录身份与被描述对象身份仍分开。
+
+结果值可使用 `@SemanticRole(result)`、`@Observation(observedAt = "sampledAt", quality = "valid")`，时间、质量字段继续使用原 `@Schema`、`@SemanticRole` 和 DataType。观测映射沿用已有 `presentation` 线上键，不新增平行编码，旧 `@Presentation(observedAt=...)` 同样适用。质量字段类型由来源决定，读取保留 `false`/`0`，不把它转换成统一业务状态。
+
+`SemanticRecord.field/value/fields` 只读声明路径，深度上限 8，不跨数组取值或聚合；`roleValue` 遇到多个同角色字段返回未知，调用者应显式选路径。`observedAt`、`quality` 相对于当前字段所在记录读取；新声明缺少时间映射时保持未知。仅旧 `value` 别名兼容“唯一结果＋唯一采样时间角色”，不把查询时间或其他结果时间作为兜底。单位、枚举、精度继续来自原属性模型，不增加万能值 DTO。
+
+契约回归入口为 `SemanticRecordTest,MetadataSemanticsTest,PresentationAnnotationsTest,ExpandsMergesTest,ExpandsMergeTest,MetadataUtilsTest,CommandMetadataResolverTest,MergeOptionTest`；relation 与消费者验证入口见配套本体 `docs/development-plan.md` 的同名条目。运行服务与混合版本部署仍需配套验收。
+
+#### 用业务记录理解这些声明
+
+整体分类、字段用途、功能用途和对象关系是不同维度。以当前设备属性快照为例：
+
+| 声明位置 | 对应内容 | 消费者应如何理解 |
+| --- | --- | --- |
+| Snapshot 模型 | observation + result | 这是一条观测结果，不代表创建了另一个设备对象 |
+| deviceId | GraphSubject，与 subjectId 表达相同用途 | 这条快照描述哪台设备；快照自身若有 ID，应另用 identity |
+| productId | modelId | 采用哪个产品的属性模型，不改变对象类型 device |
+| metadata | valueMetadata | 原属性定义，例如 temperature 的数值类型、摄氏度单位和精度 |
+| value | 现有 value 别名，读取为 result | 参与计算的原始值，例如 21；不是“21 ℃”显示文本 |
+| formattedValue | formattedValue | 来源格式化后的显示文本；不能据此求平均值 |
+| timestamp | observedAt，且 value 显式映射到此字段 | 原采样时刻的 Unix 毫秒值，不是本次查询时刻 |
+
+告警记录的 alarmTime 表示事情何时发生，适合 occurredAt；温度补报数据的入库时间适合 recordedAt，二者都不能替代原采样时间。质量描述值是否可信，例如来源额外提供“估算值”或 valid=false，不等于设备在线状态或告警处理状态；当前设备快照没有额外质量字段，不会凭空补出质量。通知的一次发送尝试是 activity，重试仍是独立尝试；发送请求受理不等于发送成功。
+
+时间、质量路径相对结果字段所在的记录：sensor.value 映射 timestamp，读取 sensor.timestamp。多个观测优先用各自子记录或原多行结果保留值、属性定义、时间和质量的对应关系；整体分类和字段角色本身不会自动完成查询、图谱关联或因果证明。
+
+#### 三轮对照审查与收敛
+
+第一轮对照语义。参考 [SOSA/SSN 的观测与属性](https://www.w3.org/TR/vocab-ssn/#SOSAobservedProperty)、[现象时间](https://www.w3.org/TR/vocab-ssn/#SOSAphenomenonTime)与[结果完成时间](https://www.w3.org/TR/vocab-ssn/#SOSAresultTime)，结果、所描述属性、被描述对象、适用时间分别表达。`SemanticRecord.resultQualifier/resultPropertyId` 仅关联当前层唯一结果和唯一说明；多结果不共享未绑定的定义、单位或显示值，优先使用各自子记录或多行输出。`observedProperty` 参与结果关联，不再单独输出为无关数值。两个身份声明矛盾时保持未知，payload 不丢弃。未知角色通过 `propertyRoleTerm` 区分“有声明但不认识”与“没有声明”，结构化值不被隐式拆分。时间采用精确、有符号 Unix 毫秒，拒绝小数、非有限数和溢出；纪元前时间合法。
+
+平台的 observation 是观测数据分类，投影中的 Observation 是观测值节点；SOSA 的 Observation 则指执行观测的活动，当前没有断言二者等同。[PROV-O](https://www.w3.org/TR/prov-o/#description-starting-point-terms) 的 Entity、Activity、Agent 及 used/generated 提供职责参考，providerId 仅表示逻辑读取来源，不能自行证明因果或责任。[RDF 1.1 的空白节点](https://www.w3.org/TR/rdf11-concepts/#section-blank-nodes)只在本次响应内标识事实，不能作为持久记录身份。输出使用平台词汇，未宣称完整实现 SOSA、PROV 或推理引擎。
+
+第二轮对照业务接入。静态来源复用原 `AbstractObjectSupport`、`@ObjectSupport`、`@CommandHandler` 和 `@PropertySource`，没有增加反射调用器或新模板。单值摘要、观测、事件和动作均用同一路径发现/执行；`@PropertySource` 已含 query 用途，无需重复注解。实例动态模型与批量属性可覆盖 relation 原模板的 `getMetadata(objectId)`、`properties(objectId, commands)`；复杂来源仍实现原小接口，完整约定见配套 components README。动态模型可使用以下写法，不必手拼扩展键或嵌套 Map：
+
+```java
+var output = withSemanticTypes(new ObjectType(), SemanticType.observation, SemanticType.result);
+var value = withPropertyRole(
+    SimplePropertyMetadata.of("count", "当前告警数", LongType.GLOBAL),
+    PropertySemanticRole.result);
+withObservation(value, new ObservationMapping("sampledAt", "valid"));
+output.setProperties(List.of(value,
+    SimplePropertyMetadata.of("sampledAt", "采样时间", LongType.GLOBAL),
+    SimplePropertyMetadata.of("valid", "数据有效", BooleanType.GLOBAL)));
+// 完整输出装配后核对声明路径，不逐次预检业务实例或权限。
+MetadataSemantics.validateOutput(output);
+```
+
+以上静态方法来自 `MetadataSemantics`，返回原可修改模型，共用原默认合并规则，保留 primary 和未知展示项。`sampledAt`、`valid` 是来源 schema 中已声明的字段路径，业务 ID 和自定义角色仍由业务命名，不把它们搬进通用枚举。`name/severity/description` 等原展示角色不扩成新的核心分类。来源方法应委托已有授权服务/命令，目标并非自动代理的 Spring Bean，不能依赖目标方法 AOP 自动生效。
+
+第三轮对照结构与跨来源契约。core 统一声明和记录读取，relation 统一来源发现与传输，本体只匹配已授权引用并输出图；不恢复 Provider 实例预检，不猜第一条/最新条，不因失败切换来源。属性定义保持原 `PropertyMetadata` JSON，在投影边界原样携带远端自定义类型和扩展，避免消费端重新解码后丢字段或要求注册同一业务类型。任意业务 payload 依据 [JSON-LD 1.1 JSON literal](https://www.w3.org/TR/json-ld11/#json-literals)保留，不从其任意键推断图关系；这也意味着 payload 内部不会自动成为可查询的 RDF 事实。
+
+验证入口为 core `SemanticRecordTest/MetadataSemanticsTest` 与配套本体 `ContextGraphProjectionTest/ObjectSemanticsReuseTest`。后者使用真实注解、命令适配、模型解析和图谱投影，业务 I/O 以测试来源代替；已有 relation 回归覆盖同名来源、RPC、上下文、空值与故障。本轮 335 项全部通过，四个原缺陷探针已输出纠正结果，13 个公共语义类/注解 Javadoc doclint 无诊断，四仓库 diff 检查通过。此前 328 项仅为上一阶段证据。没有增加缓存、后台资源或业务执行链路，追踪与 MBean 无需新增；混合版本和运行服务待部署验收。
+
 结论：这套 SPI 可以作为 IoT 业务本体的来源访问层，覆盖对象、属性、关系、数据记录及动作的发现和调用；它不是完整本体运行时。不能仅凭接口和语义枚举，就认定任意历史、因果、推理或业务闭环都已实现。
 
 下面评价的是设计可承载程度，不是当前 Java 实现交付状态：
