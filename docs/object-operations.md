@@ -111,23 +111,30 @@ commands() 不返回 Mono；异步解析服务在内部使用既有 AsyncProxyCo
 
 物模型解析与复制契约：根空输入表示空模型，重载时清空旧身份、扩展及所有目录；
 目录缺失或为 `null` 表示没有定义，但目录条目必须为对象。
-core 的 `metadata/Jsonable.requireObject` 统一返回 `error.invalid_metadata_definition` 格式错误，
-`RelationMetadata`、对象类型属性与 supports 的默认目录解析复用此边界。
+core 的 `metadata/MetadataDefinitionParser` 以 JDK `Map` / `Collection` 统一校验对象与目录结构，
+非法目录、空条目、标量、数组条目及非字符串键均返回 `error.invalid_metadata_definition` 格式错误；
+不将字符串或 Bean 隐式转换为物模型定义。属性、功能输入、事件、标签、关系、递归模块及对象类型属性
+复用此边界，重复标识沿用第一个定义。解析器返回独立容器，不修改来源容器，不依赖 JSON 引擎。
+`Jsonable` 保持原公开契约，具体模型仅在调用旧 `JSONObject` 签名时适配 Map；
+新增解析不使用 Fastjson 的文本解析、对象转换或数组访问方法，不新增 JSON 引擎依赖。
 `SimpleDeviceMetadata.fromJson` 在替换旧状态前完整解析属性、功能、事件、标签、关系与模块；
 功能和事件通过 `SimpleFunctionMetadata`、`SimpleEventMetadata` 及原 `DataTypes` 注册表进行 JSON 往返，
 不依赖 supports 实现、不阻塞或加载业务来源。
 supports 的 `DefaultThingsMetadata` 在复制和合并时隔离关系声明与递归模块对象，各层扩展 Map 独立，
 嵌套扩展值沿用原值语义。沿用原 JSON 字段和可选目录形状，不调整业务接口或执行链路，也不新增追踪或 MBean。
 
-验证（2026-11-11）：在聚合工程执行
-`mvn -o -B -ntp -pl jetlinks-core,jetlinks-supports -am -Djacoco.skip=true -Dtest=SimpleDeviceMetadataTest,MetadataSemanticsTest,MetadataDirectoryTest,MetadataExpandTest,PropertyMetadataTest,CommandMetadataResolverTest,JavaBeanCommandSupportTest,MetadataUtilsTest,MergeOptionTest,PresentationAnnotationsTest,ExpandsMergeTest,ExpandsMergesTest -Dsurefire.failIfNoSpecifiedTests=false test`，
-core 61 项、supports 25 项，共 86 项通过，无失败、错误或跳过；主代码与测试代码编译成功。
-新增用例在 `jetlinks-core/src/test/java/org/jetlinks/core/metadata/SimpleDeviceMetadataTest.java` 与
+验证入口（聚合工程）：
+`mvn -o -B -ntp -pl jetlinks-core,jetlinks-supports -am -Djacoco.skip=true -Dtest=MetadataDefinitionParserTest,SimpleDeviceMetadataTest,MetadataSemanticsTest,MetadataDirectoryTest,MetadataExpandTest,PropertyMetadataTest,CommandMetadataResolverTest,JavaBeanCommandSupportTest,MetadataUtilsTest,MergeOptionTest,PresentationAnnotationsTest,ExpandsMergeTest,ExpandsMergesTest -Dsurefire.failIfNoSpecifiedTests=false test`。
+验证（2026-11-11）：主代码与测试代码编译成功，core 67 项、supports 27 项，共 94 项通过，
+无失败、错误或跳过；日志 `/private/tmp/jetlinks-metadata-neutral-parser-20261111.log`。
+新增用例在 `jetlinks-core/src/test/java/org/jetlinks/core/metadata/MetadataDefinitionParserTest.java`、
+`jetlinks-core/src/test/java/org/jetlinks/core/metadata/SimpleDeviceMetadataTest.java` 与
 `jetlinks-supports/src/test/java/org/jetlinks/supports/official/MetadataDirectoryTest.java`，覆盖根空输入、重载清空、
-非法条目及嵌套对象、非法输入不替换旧模型、双向修改隔离与默认 Codec 往返。
+非法目录、条目及嵌套对象/功能输入、普通 Map/List、重复标识、非法输入不替换旧模型、双向修改隔离与默认 Codec 往返。
 本次未发布或替换部署制品，运行环境仍需更新包含修复的 core/supports 并重启。
-修复代码：core `8a10b5b5`（[PR #112](https://github.com/jetlinks/jetlinks-core/pull/112)），
-supports `e905964`（[PR #51](https://github.com/jetlinks/jetlinks-supports/pull/51)）；supports 配套依赖 core 修复，按 core、supports 顺序合入和发布。
+交付为 core [PR #112](https://github.com/jetlinks/jetlinks-core/pull/112) 与
+supports [PR #51](https://github.com/jetlinks/jetlinks-supports/pull/51)；初始修复提交分别为 `8a10b5b5`、`e905964`，
+结构解析修订维护在同一组 PR。supports 配套依赖 core 修复，按 core、supports 顺序合入和发布。
 
 语义是模型的通用描述，不属于某种对象操作门面。设备、业务记录、事件载荷和命令输出可以复用同一组语义约定；它们通过原模型及其 expands 声明，不要求先转为另一套模型。物模型只描述结构和含义，不因此要求实现 Thing 生命周期。
 

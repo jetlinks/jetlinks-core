@@ -1,6 +1,5 @@
 package org.jetlinks.core.metadata;
 
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Maps;
 import lombok.AllArgsConstructor;
@@ -8,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.commons.collections4.CollectionUtils;
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.config.ConfigKey;
 import org.jetlinks.core.metadata.types.DataTypes;
 
@@ -83,35 +83,28 @@ public class SimpleFunctionMetadata implements FunctionMetadata {
 
     @Override
     public void fromJson(JSONObject json) {
-        json = Jsonable.requireObject(json);
-        List<PropertyMetadata> parsedInputs = new ArrayList<>();
-        JSONArray definitions = json.getJSONArray("inputs");
-        if (definitions != null) {
-            for (Object definition : definitions) {
-                SimplePropertyMetadata input = new SimplePropertyMetadata();
-                input.fromJson(Jsonable.requireObject(definition));
-                parsedInputs.add(input);
-            }
-        }
-        JSONObject outputJson = json.getJSONObject("output");
-        DataType parsedOutput = outputJson == null ? null : DataTypes.fromJsonNow(outputJson);
-        id = json.getString("id");
-        name = json.getString("name");
-        description = json.getString("description");
-        expands = json.getJSONObject("expands");
-        async = json.getBooleanValue("async");
+        Map<String, Object> definition = MetadataDefinitionParser.parseObject(json);
+        List<PropertyMetadata> parsedInputs = MetadataDefinitionParser.parseList(definition.get("inputs"), input -> {
+            SimplePropertyMetadata metadata = new SimplePropertyMetadata();
+            metadata.fromJson(new JSONObject(input));
+            return metadata;
+        });
+        Object outputDefinition = definition.get("output");
+        DataType parsedOutput = outputDefinition == null ? null
+            : DataTypes.fromJsonNow(new JSONObject(MetadataDefinitionParser.parseObject(outputDefinition)));
+        SimpleFunctionMetadata parsed = FastBeanCopier.copy(definition, SimpleFunctionMetadata::new, "inputs", "output");
+        id = parsed.id;
+        name = parsed.name;
+        description = parsed.description;
+        expands = parsed.expands;
+        async = parsed.async;
         inputs = parsedInputs;
         output = parsedOutput;
     }
 
     @Override
     public JSONObject toJson() {
-        JSONObject json = new JSONObject();
-        json.put("id", id);
-        json.put("name", name);
-        json.put("description", description);
-        json.put("expands", expands);
-        json.put("async", async);
+        JSONObject json = FastBeanCopier.copy(this, JSONObject::new, "inputs", "output");
         json.put("inputs", getInputs().stream().map(Jsonable::toJson).collect(Collectors.toList()));
         json.put("output", output == null ? null : output.toJson());
         return json;

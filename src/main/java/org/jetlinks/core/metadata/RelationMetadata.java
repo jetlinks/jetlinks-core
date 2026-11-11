@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.things.relation.Relation;
 
@@ -52,14 +53,16 @@ public class RelationMetadata implements Metadata, Relation, Jsonable {
 
     @Override
     public void fromJson(JSONObject json) {
-        json = Jsonable.requireObject(json);
-        id = required(json.getString("id"), "id");
-        targetType = required(json.getString("targetType"), "targetType");
-        name = json.getString("name");
-        description = json.getString("description");
-        reverseName = json.getString("reverseName");
-        reverse = json.getBooleanValue("reverse");
-        expands = json.getJSONObject("expands");
+        RelationMetadata parsed = FastBeanCopier.copy(MetadataDefinitionParser.parseObject(json), RelationMetadata::new);
+        String parsedId = required(parsed.id, "id");
+        String parsedTargetType = required(parsed.targetType, "targetType");
+        id = parsedId;
+        targetType = parsedTargetType;
+        name = parsed.name;
+        description = parsed.description;
+        reverseName = parsed.reverseName;
+        reverse = parsed.reverse;
+        expands = parsed.expands;
     }
 
     @Override
