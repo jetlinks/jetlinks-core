@@ -62,6 +62,20 @@ public final class ExpandsMerge {
     }
 
     /**
+     * 从现有对象规则派生一个局部规则，仅替换指定子键，不修改原规则或全局注册。
+     *
+     * @param key 子键
+     * @param rule 替换规则
+     * @return 保留其他已声明子键的不可变对象规则
+     * @since 1.3.3
+     */
+    public ExpandsMerge with(String key, ExpandsMerge rule) {
+        Map<String, ExpandsMerge> derived = new LinkedHashMap<>(fields);
+        derived.put(Objects.requireNonNull(key, "key"), Objects.requireNonNull(rule, "rule"));
+        return object(derived);
+    }
+
+    /**
      * 已存在的值必须等价；冲突时使用定义方提供的异常。
      *
      * @param equality 等价比较，不得修改输入

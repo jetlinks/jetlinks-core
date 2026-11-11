@@ -22,6 +22,8 @@
 
 ## 执行观测
 
+只读对象指标与注解元数据见 [对象指标与属性元数据](docs/metrics.md)，复用 `MetadataUtils`、组合注解及 `Metrics.observe`，与下方执行过程观测分别承接各自的生命周期。
+
 Monitor 执行观测的 API、SPI、兼容边界与验证入口见 [执行观测说明](docs/monitor-observation.md)。
 
 ## 连接指标快照

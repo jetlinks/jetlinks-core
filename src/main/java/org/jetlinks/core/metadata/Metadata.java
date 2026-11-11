@@ -62,6 +62,23 @@ public interface Metadata extends Serializable {
     }
 
     /**
+     * @return 当前语言的说明，不修改共享定义
+     * @since 1.3.3
+     */
+    default String getI18nDescription() {
+        return getI18nDescription(LocaleUtils.current());
+    }
+
+    /**
+     * @param locale 语言地区
+     * @return 指定语言的说明，不修改共享定义
+     * @since 1.3.3
+     */
+    default String getI18nDescription(Locale locale) {
+        return MetadataUtils.resolveI18nMessage(locale, this, "description", getDescription());
+    }
+
+    /**
      * 说明
      *
      * @return 说明

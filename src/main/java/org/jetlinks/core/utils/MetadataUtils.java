@@ -24,25 +24,32 @@ import org.jetlinks.core.things.ThingsConfigKeys;
 import org.jetlinks.core.utils.json.ObjectMappers;
 import org.reactivestreams.Publisher;
 import org.springframework.core.ResolvableType;
+import org.springframework.context.MessageSource;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.annotation.MergedAnnotation;
+import org.springframework.core.annotation.MergedAnnotations;
+import org.springframework.core.annotation.RepeatableContainers;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.util.ObjectUtils;
 import reactor.util.function.Tuples;
 
 import java.beans.IntrospectionException;
+import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -52,6 +59,9 @@ import java.util.stream.Collectors;
  * @since 1.2.2
  */
 public class MetadataUtils {
+
+    /** 延迟国际化的资源键列表；值仍使用原有 name / description 作为默认文案。 */
+    public static final String I18N_KEYS = "i18nKeys";
 
     /**
      * 解析物模型中的国际化消息,通过在物模型的{@link Metadata#getExpand(String)}中定义国际化信息.
@@ -80,6 +90,38 @@ public class MetadataUtils {
                                             Metadata metadata,
                                             String key,
                                             String defaultMsg) {
+        return resolveI18nMessage(locale, metadata, key, defaultMsg,
+            (code, fallback) -> LocaleUtils.resolveMessage(code, locale, fallback));
+    }
+
+    /**
+     * 使用指定消息源读取文案，不修改元数据或缓存请求语言。
+     * 内嵌 i18nMessages 优先于 i18nKeys 资源及默认文案。
+     *
+     * @param locale 语言地区
+     * @param metadata 中立元数据
+     * @param key 文案属性名
+     * @param defaultMsg 默认文案
+     * @param source 应用消息源
+     * @return 当前语言的文案
+     * @since 1.3.3
+     */
+    public static String resolveI18nMessage(Locale locale, Metadata metadata, String key,
+                                            String defaultMsg, MessageSource source) {
+        return resolveI18nMessage(locale, metadata, key, defaultMsg,
+            (code, fallback) -> LocaleUtils.resolveMessage(source, locale, code, fallback));
+    }
+
+    private static String resolveI18nMessage(Locale locale, Metadata metadata, String key,
+                                             String defaultMsg, BiFunction<String, String, String> messages) {
+        Object keys = metadata.getExpand(I18N_KEYS).orElse(null);
+        if (keys instanceof Map<?, ?> map && map.get(key) instanceof List<?> candidates) {
+            for (int i = candidates.size() - 1; i >= 0; i--) {
+                if (candidates.get(i) instanceof String code) {
+                    defaultMsg = messages.apply(code, defaultMsg);
+                }
+            }
+        }
         return resolveI18nMessage(
             locale,
             metadata.getExpand(ThingsConfigKeys.i18nMessages).orElse(null),
@@ -140,6 +182,150 @@ public class MetadataUtils {
      */
     public static PropertyMetadata parseProperty(Field field, ResolvableType type) {
         return MetadataParser.withField(field, type);
+    }
+
+    /**
+     * 解析无参方法属性，不执行方法；泛型以声明契约解析，不读取实现对象。
+     *
+     * @param owner 声明契约及其泛型
+     * @param method 属性方法，可使用组合 Schema
+     * @return 按当前语言生成的属性描述
+     * @since 1.3.3
+     */
+    public static PropertyMetadata parseProperty(ResolvableType owner, Method method) {
+        return parseProperty(owner, method, propertyName(method));
+    }
+
+    /**
+     * 使用调用方已确定的属性身份解析方法；供保留原有命名规则的命令等入口复用。
+     * 不负责发现方法或授权；不执行 getter。
+     *
+     * @param owner 声明契约
+     * @param method 无参、非 void 方法
+     * @param id 稳定属性 ID
+     * @return 当前语言下的描述
+     * @since 1.3.3
+     */
+    public static PropertyMetadata parseProperty(ResolvableType owner, Method method, String id) {
+        return new MetadataParser().withMethod(owner, method, id);
+    }
+
+    /**
+     * 解析可共享的中立方法属性，保留资源键与默认文案，不缓存当前用户语言。
+     * 消费边界通过 {@link Metadata#getI18nName(Locale)} 等入口读取文案，无需复制定义。
+     *
+     * @param owner 声明契约
+     * @param method 无参、非 void 方法
+     * @return 语言中立属性定义
+     * @since 1.3.3
+     */
+    public static PropertyMetadata parsePropertyDefinition(ResolvableType owner, Method method) {
+        return LocaleUtils.doWith(Locale.ROOT, () -> new MetadataParser(false, ExpandsMerges.defaultStrategy())
+            .withMethod(owner, method, propertyName(method)));
+    }
+
+    /**
+     * 显式发现带 Schema 或组合 Expands 声明的 public 只读 getter，返回语言中立定义。
+     * hidden、static、桥接方法与 Object 方法不导出；现有 parseType 字段模式不受影响。
+     *
+     * @param type 声明契约，支持接口继承与泛型
+     * @return 只读属性集合，不含目标实例或值
+     * @since 1.3.3
+     */
+    public static ObjectType parseReadOnlyType(ResolvableType type) {
+        return parseReadOnlyType(type, ExpandsMerges.defaultStrategy());
+    }
+
+    /**
+     * 使用局部扩展合并规则发现只读属性；规则不修改全局策略。
+     * 不同 getter 重用属性 ID 或局部规则拒绝的冲突直接失败。
+     *
+     * @param type 声明契约
+     * @param rules 本次解析的不可变合并规则
+     * @return 语言中立属性集合
+     * @since 1.3.3
+     */
+    public static ObjectType parseReadOnlyType(ResolvableType type, ExpandsMerge rules) {
+        ObjectType object = new ObjectType();
+        parseReadOnlyProperties(type, rules).values().forEach(object::addPropertyMetadata);
+        object.setExpands(parseExpands(type.toClass(), rules));
+        return object;
+    }
+
+    /**
+     * 发现只读属性并保留其公开读取方法；方法仅供进程内绑定，不进入元数据协议。
+     * 属性解析、命名、选择与排序和 parseReadOnlyType 使用同一实现，不执行 getter。
+     *
+     * @param type 声明契约
+     * @param rules 局部扩展合并规则
+     * @return 按属性顺序排列的方法与中立描述
+     * @since 1.3.3
+     */
+    public static Map<Method, PropertyMetadata> parseReadOnlyProperties(ResolvableType type, ExpandsMerge rules) {
+        return LocaleUtils.doWith(Locale.ROOT, () -> {
+            MetadataParser parser = new MetadataParser(false, rules);
+            Map<String, Map.Entry<Method, PropertyMetadata>> properties = new LinkedHashMap<>();
+            Method[] methods = type.toClass().getMethods();
+            Arrays.sort(methods, Comparator.comparing(Method::toGenericString));
+            for (Method method : methods) {
+                if (!isReadOnlyProperty(method)) {
+                    continue;
+                }
+                Schema schema = AnnotatedElementUtils.findMergedAnnotation(method, Schema.class);
+                if (schema != null && schema.hidden()) {
+                    continue;
+                }
+                if (schema == null && Arrays.stream(propertyAnnotations(method))
+                    .allMatch(annotation -> expandAnnotations(annotation).isEmpty())) {
+                    continue;
+                }
+                PropertyMetadata property = parser.withMethod(type, method, propertyName(method));
+                Map.Entry<Method, PropertyMetadata> candidate = Map.entry(method, property);
+                Map.Entry<Method, PropertyMetadata> previous = properties.putIfAbsent(property.getId(), candidate);
+                if (previous != null) {
+                    if (!previous.getKey().getName().equals(method.getName())) {
+                        throw new I18nSupportException.NoStackTrace("error.conflicting_metadata_semantics", property.getId());
+                    }
+                    // Java 已约束同签名返回类型；协变声明使用更具体的读取方法和类型。
+                    if (previous.getKey().getReturnType() != method.getReturnType()
+                        && previous.getKey().getReturnType().isAssignableFrom(method.getReturnType())) {
+                        mergeExpands(property.getExpands(), previous.getValue().getExpands(), rules);
+                        properties.put(property.getId(), candidate);
+                    } else {
+                        mergeExpands(previous.getValue().getExpands(), property.getExpands(), rules);
+                    }
+                }
+            }
+            Map<Method, PropertyMetadata> result = new LinkedHashMap<>();
+            properties.values().stream()
+                .sorted(Comparator.comparingInt((Map.Entry<Method, PropertyMetadata> entry) -> entry.getValue().getExpand("order")
+                    .filter(Number.class::isInstance).map(Number.class::cast).map(Number::intValue)
+                    .orElse(Integer.MAX_VALUE)).thenComparing(entry -> entry.getValue().getId()))
+                .forEach(entry -> result.put(entry.getKey(), entry.getValue()));
+            return Collections.unmodifiableMap(result);
+        });
+    }
+
+    private static boolean isReadOnlyProperty(Method method) {
+        String name = method.getName();
+        return Modifier.isPublic(method.getModifiers()) && !Modifier.isStatic(method.getModifiers())
+            && !method.isBridge() && !method.isSynthetic() && method.getDeclaringClass() != Object.class
+            && method.getParameterCount() == 0 && method.getReturnType() != void.class
+            && method.getReturnType() != Void.class
+            && ((name.startsWith("get") && name.length() > 3)
+            || (name.startsWith("is") && name.length() > 2
+            && (method.getReturnType() == boolean.class || method.getReturnType() == Boolean.class)));
+    }
+
+    private static String propertyName(Method method) {
+        Schema schema = AnnotatedElementUtils.findMergedAnnotation(method, Schema.class);
+        if (schema != null && StringUtils.hasText(schema.name())) {
+            return schema.name();
+        }
+        String name = method.getName();
+        int prefix = name.startsWith("get") && name.length() > 3 ? 3
+            : name.startsWith("is") && name.length() > 2 ? 2 : 0;
+        return Introspector.decapitalize(name.substring(prefix));
     }
 
     /**
@@ -222,7 +408,50 @@ public class MetadataUtils {
      * @return 扩展信息
      */
     public static Map<String, Object> parseExpands(AnnotatedElement element, ExpandsMerge rules) {
-        return parseExpands(rules, element.getAnnotations());
+        if (!(element instanceof Method method)) {
+            return parseExpands(rules, element.getAnnotations());
+        }
+        Map<String, Object> expands = new HashMap<>();
+        // 按声明层级分别解析：普通命名空间保留最近声明，严格语义仍能发现父子冲突。
+        for (List<Annotation> annotations : methodAnnotations(method).values()) {
+            mergeExpands(expands, parseExpands(rules, annotations.toArray(new Annotation[0])), rules);
+        }
+        return expands;
+    }
+
+    private static Annotation[] propertyAnnotations(AnnotatedElement element) {
+        if (!(element instanceof Method)) {
+            return element.getAnnotations();
+        }
+        return methodAnnotations((Method) element).values().stream().flatMap(Collection::stream)
+            .toArray(Annotation[]::new);
+    }
+
+    private static Map<Integer, List<Annotation>> methodAnnotations(Method method) {
+        // 方法注解不受 Java @Inherited 支持；保留来源层级，由局部规则决定覆盖或拒绝。
+        Map<Integer, List<Annotation>> annotations = new TreeMap<>();
+        // Expands.value 是 Attr[]，不能让标准 repeatable 容器识别把其命名空间解包丢失。
+        MergedAnnotations.from(method, MergedAnnotations.SearchStrategy.TYPE_HIERARCHY, RepeatableContainers.none()).stream()
+            .filter(annotation -> annotation.getDistance() == 0)
+            .forEach(annotation -> annotations.computeIfAbsent(annotation.getAggregateIndex(), ignored -> new ArrayList<>())
+                .add(annotation.synthesize()));
+        return annotations;
+    }
+
+    private static Set<Expands> expandAnnotations(Annotation annotation) {
+        Set<Expands> expands = new LinkedHashSet<>();
+        if (annotation instanceof Expands value) {
+            expands.add(value);
+        } else if (annotation instanceof Expands.List values) {
+            expands.addAll(Arrays.asList(values.value()));
+        } else {
+            expands.addAll(AnnotatedElementUtils.findMergedRepeatableAnnotations(annotation.annotationType(), Expands.class));
+            Expands value = AnnotatedElementUtils.findMergedAnnotation(annotation.annotationType(), Expands.class);
+            if (value != null) {
+                expands.add(value);
+            }
+        }
+        return expands;
     }
 
     /** 合并原元数据扩展；定义层声明冲突及对象规则，其余扩展保持原先声明优先。 */
@@ -284,9 +513,17 @@ public class MetadataUtils {
 
         Set<Object> distinct = new HashSet<>();
 
-        private final ExpandsMerge expandsMerge = ExpandsMerges.defaultStrategy();
+        private final ExpandsMerge expandsMerge;
+
+        private final boolean resolveMessages;
 
         MetadataParser() {
+            this(true, ExpandsMerges.defaultStrategy());
+        }
+
+        MetadataParser(boolean resolveMessages, ExpandsMerge expandsMerge) {
+            this.resolveMessages = resolveMessages;
+            this.expandsMerge = expandsMerge;
         }
 
         public static PropertyMetadata withField(Field field, ResolvableType type) {
@@ -453,26 +690,28 @@ public class MetadataUtils {
                                  Map<String, Object> container,
                                  ExpandsMerge rules) {
             for (Annotation ann : annotation) {
+                parseExpands(new Annotation[]{ann}, includeName, container, rules, MergedAnnotations.from(ann));
+            }
+            parseJsr303(annotation, container);
+            parseJsonView(annotation, container);
+            parseSwagger(annotation, container);
+        }
 
-                Set<Expands> expandsSet = new LinkedHashSet<>();
-                if (ann instanceof Expands) {
-                    expandsSet.add(((Expands) ann));
-                } else if (ann instanceof Expands.List) {
-                    expandsSet.addAll(Arrays.asList(((Expands.List) ann).value()));
-                } else {
-
-                    expandsSet.addAll(
-                        AnnotatedElementUtils
-                            .findMergedRepeatableAnnotations(ann.annotationType(), Expands.class)
-                    );
-
-                    Expands e = AnnotatedElementUtils
-                        .findMergedAnnotation(ann.annotationType(), Expands.class);
-                    if (e == null) {
-                        continue;
+        private static void parseExpands(Annotation[] annotation,
+                                         boolean includeName,
+                                         Map<String, Object> container,
+                                         ExpandsMerge rules,
+                                         MergedAnnotations context) {
+            for (Annotation original : annotation) {
+                Annotation ann = original;
+                if (!(ann instanceof Expands) && !(ann instanceof Expands.List)) {
+                    MergedAnnotation<?> merged = context.get(ann.annotationType());
+                    if (merged.isPresent()) {
+                        ann = merged.synthesize();
                     }
-                    expandsSet.add(e);
                 }
+
+                Set<Expands> expandsSet = expandAnnotations(ann);
 
 
                 if (CollectionUtils.isNotEmpty(expandsSet)) {
@@ -525,7 +764,11 @@ public class MetadataUtils {
                                     childRules.put(c, entry.getKey(), entry.getValue(), ExpandsMerge.KEEP_FIRST);
                                 }
                             }
-                            parseExpands(ann.annotationType().getAnnotations(), false, c, childRules);
+                            Annotation[] meta = ann.annotationType().getAnnotations();
+                            parseExpands(meta, false, c, childRules, context);
+                            parseJsr303(meta, c);
+                            parseJsonView(meta, c);
+                            parseSwagger(meta, c);
                             parseAttr(ann.annotationType(), c, childRules);
                         }
                         // 直接定义了attr
@@ -540,9 +783,6 @@ public class MetadataUtils {
                 }
             }
 
-            parseJsr303(annotation, container);
-            parseJsonView(annotation, container);
-            parseSwagger(annotation, container);
         }
 
         /** Only explicitly mapped annotation members use the stable scalar metadata vocabulary. */
@@ -559,7 +799,80 @@ public class MetadataUtils {
         private void parseExpands(AnnotatedElement element,
                                  boolean includeName,
                                  Map<String, Object> container) {
-            parseExpands(element.getAnnotations(), includeName, container, expandsMerge);
+            if (element instanceof Method) {
+                MetadataUtils.parseExpands(element, expandsMerge)
+                    .forEach((key, value) -> expandsMerge.put(container, key, value, ExpandsMerge.KEEP_FIRST));
+            } else {
+                parseExpands(element.getAnnotations(), includeName, container, expandsMerge);
+            }
+        }
+
+        private PropertyMetadata withMethod(ResolvableType owner, Method method, String id) {
+            if (method.getParameterCount() != 0 || method.getReturnType() == void.class
+                || method.getReturnType() == Void.class || !StringUtils.hasText(id)) {
+                throw new I18nSupportException.NoStackTrace("error.invalid_metadata_semantics", method.toGenericString());
+            }
+            Schema schema = AnnotatedElementUtils.findMergedAnnotation(method, Schema.class);
+            SimplePropertyMetadata metadata = new SimplePropertyMetadata();
+            metadata.setId(id);
+            metadata.setName(id);
+            metadata.setValueType(withType0(method, ResolvableType.forType(
+                method.getGenericReturnType(), owner.as(method.getDeclaringClass()))));
+            metadata.setExpands(MetadataUtils.parseExpands(method, expandsMerge));
+            if (schema != null) {
+                List<String> sources = new ArrayList<>();
+                if (!resolveMessages) {
+                    sources.add(owner.toClass().getName() + "." + id);
+                }
+                sources.add(method.getDeclaringClass().getName() + "." + id);
+                MergedAnnotation<?> annotation = MergedAnnotations
+                    .from(method, MergedAnnotations.SearchStrategy.TYPE_HIERARCHY).get(Schema.class).getMetaSource();
+                while (annotation != null) {
+                    sources.add(annotation.getType().getName());
+                    annotation = annotation.getMetaSource();
+                }
+                describe(metadata, schema, sources.stream().distinct().toList(), true);
+                metadata.expand("hidden", schema.hidden());
+            } else if (!resolveMessages) {
+                retainMessageKeys(metadata, List.of(owner.toClass().getName() + "." + id,
+                    method.getDeclaringClass().getName() + "." + id).stream().distinct().toList());
+            }
+            Order order = AnnotatedElementUtils.findMergedAnnotation(method, Order.class);
+            if (order != null) {
+                metadata.expand("order", order.value());
+            }
+            return metadata;
+        }
+
+        private void describe(SimplePropertyMetadata metadata, Schema schema, List<String> keys, boolean method) {
+            String description = schema.description();
+            String title = schema.title();
+            if (method || StringUtils.hasText(description)) {
+                metadata.setDescription(resolveMessages ? resolve(keys, "", description) : description);
+                metadata.setName(metadata.getDescription());
+            }
+            if (StringUtils.hasText(title)) {
+                metadata.setName(resolveMessages ? resolve(keys, ".title", title) : title);
+            }
+            if (!resolveMessages) {
+                if (!StringUtils.hasText(metadata.getName())) {
+                    metadata.setName(metadata.getId());
+                }
+                retainMessageKeys(metadata, keys);
+            }
+        }
+
+        private void retainMessageKeys(SimplePropertyMetadata metadata, List<String> keys) {
+            metadata.expand(I18N_KEYS, Map.of(
+                "name", keys.stream().flatMap(key -> java.util.stream.Stream.of(key + ".title", key)).toList(),
+                "description", keys));
+        }
+
+        private String resolve(List<String> keys, String suffix, String fallback) {
+            for (int i = keys.size() - 1; i >= 0; i--) {
+                fallback = LocaleUtils.resolveMessage(keys.get(i) + suffix, fallback);
+            }
+            return fallback;
         }
 
         private PropertyMetadata withField0(Class<?> owner, Field field, ResolvableType type) {
@@ -585,15 +898,9 @@ public class MetadataUtils {
                 Class<?> declaringType = method != null && AnnotationUtils.findAnnotation(method, Schema.class) != null
                     ? method.getDeclaringClass()
                     : field.getDeclaringClass();
-                String messageKey = declaringType.getName() + "." + id;
-                if (StringUtils.hasText(schema.description())) {
-                    metadata.setDescription(LocaleUtils.resolveMessage(messageKey, schema.description()));
-                    metadata.setName(metadata.getDescription());
-                }
-
-                if (StringUtils.hasText(schema.title())) {
-                    metadata.setName(LocaleUtils.resolveMessage(messageKey + ".title", schema.title()));
-                }
+                // 先设置扩展，延迟国际化可在同一模型中保留资源键。
+                metadata.setExpands(expands);
+                describe(metadata, schema, List.of(declaringType.getName() + "." + id), false);
             }
             metadata.setExpands(expands);
 
@@ -656,14 +963,21 @@ public class MetadataUtils {
 
             if (clazz.isEnum()) {
                 EnumType enumType = new EnumType();
+                Map<String, List<String>> keys = new LinkedHashMap<>();
                 for (Object constant : clazz.getEnumConstants()) {
                     if (constant instanceof EnumDict) {
                         EnumDict<?> dict = ((EnumDict<?>) constant);
                         enumType.addElement(EnumType.Element.of(String.valueOf(dict.getValue()), dict.getText()));
+                        if (!resolveMessages) {
+                            keys.put(String.valueOf(dict.getValue()), List.of(dict.getI18nCode()));
+                        }
                     } else {
                         Enum<?> dict = ((Enum<?>) constant);
                         enumType.addElement(EnumType.Element.of(dict.name(), dict.name()));
                     }
+                }
+                if (!keys.isEmpty()) {
+                    enumType.expand(I18N_KEYS, keys);
                 }
                 return enumType;
             }

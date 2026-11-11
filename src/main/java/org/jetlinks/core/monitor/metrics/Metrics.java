@@ -11,6 +11,23 @@ import java.util.function.Supplier;
 public interface Metrics {
 
     /**
+     * 注册一个运行对象，由实现按需读取契约声明的指标，而非冻结注册时的值。
+     * 默认不支持，保留既有 count/value/error 实现的兼容性；不解析注解或调用 getter。
+     * 支持实现应复用 MetricSet，绑定实例生命周期，读取不清零；注册表与采样调度由实现管理。
+     *
+     * @param scope 实现所属范围内的稳定实例身份；不自动导出为无限基数标签
+     * @param contract public 观测契约，不从 target 的实现类推断额外属性
+     * @param target 实现契约的对象，由调用方保证 getter 只读有界内存值
+     * @param <T> 契约类型
+     * @return 本次注册的句柄；关闭须幂等，只释放本次注册；unsupported 不等于零值
+     * @since 1.3.3
+     * @see MetricSet
+     */
+    default <T> MetricRegistration observe(String scope, Class<T> contract, T target) {
+        return MetricRegistration.unsupported();
+    }
+
+    /**
      * @return 什么也不做的Metrics
      */
     static Metrics noop() {

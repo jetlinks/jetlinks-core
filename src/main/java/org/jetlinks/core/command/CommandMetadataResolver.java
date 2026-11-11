@@ -202,7 +202,7 @@ public class CommandMetadataResolver {
         if (null == schema) {
             return null;
         }
-        if (method.getReturnType() == Void.class || method.getParameterCount() != 0) {
+        if (method.getReturnType() == Void.class || method.getReturnType() == void.class || method.getParameterCount() != 0) {
             return null;
         }
         String name;
@@ -219,17 +219,8 @@ public class CommandMetadataResolver {
             name = new String(propertyName);
         }
 
-        SimplePropertyMetadata prop = new SimplePropertyMetadata();
-        prop.setId(name);
-        String messageKey = method.getDeclaringClass().getName() + "." + name;
-        prop.setDescription(LocaleUtils.resolveMessage(messageKey, schema.description()));
-        prop.setName(StringUtils.hasText(schema.title())
-                         ? LocaleUtils.resolveMessage(messageKey + ".title", schema.title())
-                         : prop.getDescription());
-        prop.setValueType(MetadataUtils.parseType(ResolvableType.forMethodReturnType(method, clazz)));
-        prop.setExpands(MetadataUtils.parseExpands(method));
-        prop.expand("hidden", schema.hidden());
-        return prop;
+        // 命令保留既有属性命名，类型、组合注解及文案交由共享属性入口解析。
+        return MetadataUtils.parseProperty(ResolvableType.forClass(clazz), method, name);
     }
 
 
