@@ -153,8 +153,7 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
         ofNullable(json.getJSONArray("properties"))
                 .map(list -> list
                         .stream()
-                        .map(JSON::toJSON)
-                        .map(JSONObject.class::cast)
+                        .map(Jsonable::requireObject)
                         .<PropertyMetadata>map(j -> {
                             SimplePropertyMetadata metadata = new SimplePropertyMetadata();
                             metadata.fromJson(j);

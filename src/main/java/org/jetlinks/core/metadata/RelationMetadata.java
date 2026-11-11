@@ -52,6 +52,7 @@ public class RelationMetadata implements Metadata, Relation, Jsonable {
 
     @Override
     public void fromJson(JSONObject json) {
+        json = Jsonable.requireObject(json);
         id = required(json.getString("id"), "id");
         targetType = required(json.getString("targetType"), "targetType");
         name = json.getString("name");
