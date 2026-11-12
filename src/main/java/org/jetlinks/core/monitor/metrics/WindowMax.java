@@ -9,6 +9,7 @@ import java.time.Duration;
  * 使用本地 epoch 毫秒，忽略迟到的旧分段记录；相同最大值保留首次记录的时刻。
  *
  * @since 1.3.3
+ * @see WindowMaxMetrics
  */
 public final class WindowMax {
     private final long periodMillis;
@@ -77,6 +78,11 @@ public final class WindowMax {
 
     /** 不可用分段没有样本，不能将其零占位当成真实峰值。 */
     public record Snapshot(long startMillis, long endMillis, boolean available,
-                           long maximum, long occurredAtMillis) {
+                           long maximum, long occurredAtMillis) implements WindowMaxMetrics {
+        @Override public long getStartMillis() { return startMillis; }
+        @Override public long getEndMillis() { return endMillis; }
+        @Override public boolean isAvailable() { return available; }
+        @Override public long getMaximum() { return maximum; }
+        @Override public long getOccurredAtMillis() { return occurredAtMillis; }
     }
 }

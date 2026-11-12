@@ -11,6 +11,7 @@ import java.util.Arrays;
  * 累计桶不表示最近一小时分布，分位结果为所在桶上界并受实际最大值限制。
  *
  * @since 1.3.3
+ * @see HistogramMetrics
  */
 public final class FixedHistogram {
     private static final VarHandle COUNTS = MethodHandles.arrayElementVarHandle(long[].class);
@@ -52,6 +53,33 @@ public final class FixedHistogram {
             result[i] = (long) COUNTS.getVolatile(counts, i);
         }
         return result;
+    }
+
+    /**
+     * 按需取得可自描述的分布快照，使用 HistogramMetrics 解析定义。
+     * 只在读取边界分配；内部复用不可变边界，getter 返回副本，避免外部修改共享配置或快照。
+     */
+    public Snapshot snapshotMetrics(long[] counts) {
+        return new Snapshot(upperBounds, snapshot(counts));
+    }
+
+    /**
+     * 稳定的分布快照；计数来自一次弱一致复制，不保留 owner 或其原始计数数组。
+     *
+     * @since 1.3.3
+     * @see HistogramMetrics
+     */
+    public static final class Snapshot implements HistogramMetrics {
+        private final long[] upperBounds;
+        private final long[] bucketCounts;
+
+        private Snapshot(long[] upperBounds, long[] bucketCounts) {
+            this.upperBounds = upperBounds;
+            this.bucketCounts = bucketCounts;
+        }
+
+        @Override public long[] getUpperBounds() { return upperBounds.clone(); }
+        @Override public long[] getBucketCounts() { return bucketCounts.clone(); }
     }
 
     /**

@@ -11,8 +11,9 @@ import java.util.function.LongSupplier;
  * 并发更新不丢计数，节拍边界的归属和多个 getter 为弱一致读取。
  *
  * @since 1.3.3
+ * @see RateMetrics
  */
-public final class RateMeter {
+public final class RateMeter implements RateMetrics {
     private static final long INTERVAL = TimeUnit.SECONDS.toNanos(5);
     private static final double ONE_ALPHA = -Math.expm1(-5D / 60);
     private static final double FIVE_ALPHA = -Math.expm1(-5D / 300);

@@ -9,8 +9,9 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * 空摘要通过 count == 0 识别；摘要不代表一小时分布或端到端业务成功。
  *
  * @since 1.3.3
+ * @see DurationMetrics
  */
-public final class DurationSummary {
+public final class DurationSummary implements DurationMetrics {
     private static final AtomicLongFieldUpdater<DurationSummary> COUNT =
         AtomicLongFieldUpdater.newUpdater(DurationSummary.class, "count");
     private static final AtomicLongFieldUpdater<DurationSummary> TOTAL =
@@ -87,8 +88,14 @@ public final class DurationSummary {
         return new Snapshot(count, getTotalDurationSeconds(), lastNanos, Math.max(0, maxNanos), maxAtMillis);
     }
 
-    /** 一次请求的耗时摘要；count 为零时没有样本，非窗口统计。 */
+    /** 一次读取的耗时摘要；count 为零时没有样本，非窗口统计。 */
     public record Snapshot(long count, double totalDurationSeconds, long lastDurationNanos,
-                           long maxDurationNanos, long maxAtMillis) {
+                           long maxDurationNanos, long maxAtMillis) implements DurationMetrics {
+        @Override public long getCount() { return count; }
+        @Override public double getTotalDurationSeconds() { return totalDurationSeconds; }
+        @Override public double getMeanDurationSeconds() { return count == 0 ? 0 : totalDurationSeconds / count; }
+        @Override public long getLastDurationNanos() { return lastDurationNanos; }
+        @Override public long getMaxDurationNanos() { return maxDurationNanos; }
+        @Override public long getMaxAtMillis() { return maxAtMillis; }
     }
 }
