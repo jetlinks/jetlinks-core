@@ -2,6 +2,7 @@ package org.jetlinks.core.monitor.metrics;
 
 import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.metadata.*;
+import org.jetlinks.core.metadata.types.ArrayType;
 import org.jetlinks.core.metadata.types.NumberType;
 import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.metadata.unit.ValueUnits;
@@ -93,7 +94,10 @@ public final class MetricSet {
         // 注解参数的类型已由声明保证；这里只校验 DataType 是否支持所声明的语义。
         String unit = (String) source.remove("unit");
         if (unit != null) {
-            if (!(property.getValueType() instanceof UnitSupported supported)) {
+            // 数组的单位属于元素，沿用标准 elementType，不在 metric 中另存一套单位。
+            DataType unitType = property.getValueType();
+            while (unitType instanceof ArrayType array) unitType = array.getElementType();
+            if (!(unitType instanceof UnitSupported supported)) {
                 throw invalid(property.getId() + ".unit");
             }
             supported.setUnit(ValueUnits.lookup(unit).orElseThrow(() -> invalid(property.getId() + ".unit")));

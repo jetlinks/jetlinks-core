@@ -31,6 +31,27 @@ public class ConnectionMetricsTest {
     }
 
     @Test
+    public void sharedHistogramRetainsAckBoundariesAndObservationTrailer() {
+        long[] bounds = {1_000_000L, 5_000_000L, 10_000_000L, 25_000_000L, 50_000_000L,
+            100_000_000L, 250_000_000L, 500_000_000L, 1_000_000_000L, 2_500_000_000L,
+            5_000_000_000L, 10_000_000_000L, 30_000_000_000L};
+        for (int i = 0; i < bounds.length; i++) {
+            assertEquals(i, ConnectionMetricsSupport.ackDurationBucket(bounds[i] - 1));
+            assertEquals(i, ConnectionMetricsSupport.ackDurationBucket(bounds[i]));
+            assertEquals(i + 1, ConnectionMetricsSupport.ackDurationBucket(bounds[i] + 1));
+        }
+        long[] histogram = ConnectionMetricsSupport.createAckDurationHistogram();
+        long start = histogram[ConnectionMetricsSupport.ACK_DURATION_BUCKET_COUNT];
+        ConnectionMetricsSupport.recordAckDuration(histogram, 100_000_000);
+        long[] copy = ConnectionMetricsSupport.ackDurationHistogramSnapshot(histogram);
+        assertEquals(14, copy.length);
+        assertEquals(start, histogram[14]);
+        assertEquals(0.1, ConnectionMetricsSupport.ackDurationPercentile(copy, 0.95, 0.1), 0);
+        assertNull(ConnectionMetricsSupport.ackDurationHistogramSnapshot(null));
+        ConnectionMetricsSupport.recordAckDuration(null, 100);
+    }
+
+    @Test
     public void concurrentDurationAccumulationUsesNoPerCounterObjectsAndAvoidsNanosecondTotalOverflow() {
         var metric = new DurationMetric();
         java.util.stream.IntStream.range(0, 10000).parallel().forEach(i ->

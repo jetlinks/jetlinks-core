@@ -825,8 +825,13 @@ public class MetadataUtils {
                     sources.add(owner.toClass().getName() + "." + id);
                 }
                 sources.add(method.getDeclaringClass().getName() + "." + id);
-                MergedAnnotation<?> annotation = MergedAnnotations
-                    .from(method, MergedAnnotations.SearchStrategy.TYPE_HIERARCHY).get(Schema.class).getMetaSource();
+                MergedAnnotation<?> declaration = MergedAnnotations
+                    .from(method, MergedAnnotations.SearchStrategy.TYPE_HIERARCHY).get(Schema.class);
+                // 实现类重写 getter 时，仍保留接口上 Schema 的资源来源，复用契约的共享翻译。
+                if (declaration.getSource() instanceof Method source) {
+                    sources.add(source.getDeclaringClass().getName() + "." + id);
+                }
+                MergedAnnotation<?> annotation = declaration.getMetaSource();
                 while (annotation != null) {
                     sources.add(annotation.getType().getName());
                     annotation = annotation.getMetaSource();
@@ -952,7 +957,7 @@ public class MetadataUtils {
             }
 
             // 其他数字类型默认double
-            if (Number.class.isAssignableFrom(clazz)) {
+            if (clazz == double.class || Number.class.isAssignableFrom(clazz)) {
                 return new DoubleType();
             }
 

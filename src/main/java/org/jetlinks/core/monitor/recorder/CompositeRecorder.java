@@ -36,6 +36,11 @@ final class CompositeRecorder implements Recorder {
 
     static Recorder withParent(Recorder recorder, ActionRecorder<?> parent) {
         Objects.requireNonNull(parent, "parent");
+        // 已归一化的接收端身份表可直接复用；仍用组合包装保留回调隔离和原生父子关系。
+        if (recorder instanceof CompositeRecorder composite && composite.parent == null
+            && parent instanceof CompositeAction<?> action) {
+            return new CompositeRecorder(composite.recorders, action);
+        }
         Recorder selected = create(Objects.requireNonNull(recorder, "recorder"));
         if (selected instanceof CompositeRecorder composite && parent instanceof CompositeAction<?> action) {
             return new CompositeRecorder(composite.recorders, action);

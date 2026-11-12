@@ -47,11 +47,59 @@ public interface WorkerMetrics {
 
 底层 `@Metric` 通过既有 `@Expands / @Attr` 描述 kind、semantic 与单位声明。变化属性使用 `@AliasFor` 指向元注解，可选空值使用 `@Attr(ignoreEmpty = true)`；false / 0 仍是有效值。名称与说明复用 `@Schema`，顺序复用 `@Order`，无需在 Metric 中重复填写。
 
-编译后仍使用标准 `PropertyMetadata`：度量语义保存在 `expands.metric`，单位归一到 `valueType.unit`，其他扩展保留，类型、枚举与精度沿用既有 DataType。单位沿用 `ValueUnits` 的注册、JSON 与符号单位行为，例如 `sample` 可作为符号单位，不建立另一份监控单位表；不隐式转换数值尺度。Counter、Duration、Timestamp 要求数值类型；带单位的属性必须支持 `UnitSupported`。累计耗时可用 `@Metric(kind = MetricKind.counter, semantic = MetricSemantic.duration, unit = "milliseconds")` 声明。普通无单位 Gauge 可描述布尔或枚举等状态，外部数值指标导出器应显式选择能导出的类型。
+编译后仍使用标准 `PropertyMetadata`：度量语义保存在 `expands.metric`，单位归一到 `valueType.unit`，其他扩展保留，类型、枚举与精度沿用既有 DataType。单位沿用 `ValueUnits` 的注册、JSON 与符号单位行为，例如 `sample` 可作为符号单位，不建立另一份监控单位表；不隐式转换数值尺度。Counter、Duration、Timestamp 要求数值类型；带单位的标量须支持 `UnitSupported`，Gauge 数组的单位写入其最内层 `elementType.unit`。累计耗时可用 `@TotalDuration(unit = "milliseconds")` 声明。普通无单位 Gauge 可描述布尔、枚举或数组等状态，外部数值指标导出器应显式选择能导出的类型。
 
 `MetricSet` 按声明契约使用 ClassValue 共享定义，公开 getter 和指标种类只解析一次；实现类上的额外注解不会改变接口契约。只选显式 Schema / 组合 Expands 声明，排除 hidden、static、参数方法、桥接方法与 Object 方法。父子接口的文案可覆盖，同一指标的种类、单位冲突及不同 getter 重用同一 ID 会在解析时失败。返回类型沿用 Java 的覆盖约束，协变声明选择更具体的类型。发现元数据不调用 getter，运行期 getter 应仅读取有界内存状态；读取错误交由消费方表示为 unavailable。
 
 `MetricSet.getMetadata()` 与 `Metric.getMetadata()` 返回同一份共享中立定义，调用方按只读契约使用，不得修改属性、DataType 或扩展。属性集合不支持增删；标准元数据模型本身仍有 setter，此约束不表示整个对象图都不可变。展示或导出时构造自己的响应，按需读取本地化文案，无需为每个请求深复制模型。
+
+## 内置统计的自描述契约
+
+内置算法和业务指标使用同一套 `MetricSet` / `MetadataUtils`，不另建描述模型或注册表。
+直接读取 `RateMeter`、`DurationSummary` 的定义可发现接口继承的注解；需要稳定的关联值时先取一次快照，
+再用契约读取该快照，不对每个字段重复执行 `snapshot()`。
+
+| 只读契约 | 可读取的对象 | 表达的统计含义 |
+| --- | --- | --- |
+| `RateMetrics` | `RateMeter` | 累计量、生命周期平均速率、1/5/15 分钟 EWMA |
+| `DurationMetrics` | `DurationSummary` 或其 `Snapshot` | 样本数、累计/平均/最近/最大耗时、峰值发生时刻 |
+| `WindowMaxMetrics` | `WindowMax.snapshot()` | 固定分段起止、是否有样本、峰值及发生时刻 |
+| `HistogramMetrics` | `FixedHistogram.snapshotMetrics(counts)` | 有限桶上界、独立桶计数与末尾溢出桶 |
+
+```java
+MetricSet definition = MetricSet.of(DurationMetrics.class);
+DurationSummary.Snapshot current = durations.snapshot();
+for (org.jetlinks.core.monitor.metrics.Metric metric : definition.getMetrics()) {
+    PropertyMetadata property = metric.getMetadata();
+    String label = property.getI18nName(requestLocale);
+    Object value = metric.read(current);
+    // 将定义与值按 property.getId() 关联；定义按契约共享，值只存在于本次读取。
+}
+```
+
+常用语义通过组合注解复用，`@Metric` 无需增加大量参数：
+
+- `@Statistic`：`statistic` 声明 count/total/mean/last/maximum/rate/distribution；`scope` 声明 lifetime、exponential 或 fixedWindow。可选 `sampleCountProperty` 指向样本数，零表示没有样本。
+- `@Rate` / `@EwmaRate`：`perSeconds=1`；`aggregation` 区分 mean 与 ewma。EWMA 还声明 `timeConstantSeconds` 和 `tickSeconds`，不能据“1分钟”推断精确滚动平均。
+- `@TotalDuration`：counter + duration + total，默认秒，和单次耗时的 gauge 区分。
+- `@WindowMaximum`：fixedWindow + maximum，关联 `availableProperty`、`windowStartProperty`、`windowEndProperty`。起止值来自本次快照，区间为前闭后开，不在类级元数据中写死一小时或一天。
+- `@HistogramBuckets`：distribution，关联 `boundsProperty`，声明 `bucketMode=independent`、`boundary=inclusiveUpper`、`overflowBucket=true` 和 `quantileEstimation=bucketUpperBound`。计数在生命周期内累计，桶间不累计；不是 Prometheus 的 `le` 桶，也不是一小时分布。分位估计仍需同一范围的实际最大值约束。
+
+这些扩展都是 `expands.metric` 中的稳定字符串、数字或属性 ID，不保存 Java 枚举或表达式执行器。
+元数据声明无样本/过期规则，读取层继续保留原始值；消费方必须检查关联的样本数/available，
+不能将占位零当作真实观测。峰值时刻用 `valueProperty` 关联峰值，不将其解释为“最大的时间戳”。
+
+`RateMetrics` 的数量单位、`WindowMaxMetrics.maximum` 与 `HistogramMetrics.upperBounds` 的量纲不预设。
+业务 owner 可实现子契约，在需要的 getter 上补 `@Counter(unit = "bytes")`、`@Gauge(unit = "bytes/s")`
+或数组边界的 `@Gauge(unit = "nanoseconds")`，其余统计方式和文案沿用父契约。子契约须由实际 target 实现，
+不能将原始算法对象强转成业务子接口。耗时接口已经确定秒/纳秒/epoch毫秒，不对声明单位做隐式换算。
+
+名称与说明位于 core 既有资源目录，覆盖简体中文、繁体中文、英语、日语、韩语、德语、法语和西班牙语。
+繁体资源使用 `zh_Hant`，`zh-TW`、`zh-HK` 及显式 `zh-Hant` 通过标准 ResourceBundle 候选规则读取，
+不增加语言别名映射。继承 getter 或实现类重写 getter 均可回退到声明接口资源。
+定义仍按 ClassValue 共享，写入热路径没有新增字段、对象、反射或元数据解析。
+直方图的类型化快照只在显式读取时复制计数；内部共享不可变边界，数组 getter 返回副本以保护配置与快照。
+既有 primitive 数组快照 API 保留，只有需要外部自描述时才使用类型化快照。
 
 ## MetadataUtils 公共复用
 
@@ -90,4 +138,86 @@ registration.dispose();
 
 `Metrics.observe` 是兼容默认方法：旧 count / value / error 实现、NoopMetrics 返回已关闭的共享 unsupported 句柄，不解析注解或保留 target；不能将 unsupported 当成已采样的零值。ProxyMetrics 在注册时获取一次实际 owner 并返回其句柄，关闭不重新查找 lazy owner。支持实现必须自行校验 target、绑定实例代次、保证幂等注销，并复用 MetricSet；core 不提供对象注册表或采样调度。
 
-注册表、采集累计、JMX、外部导出与前端由后续所属模块实现。现有 Recorder / ObservationContext 执行观测保持原契约；本能力没有采集 I/O、后台线程、新增 Trace 或平台 MBean。
+注册表、业务埋点、JMX、外部导出与前端由所属模块实现。现有 Recorder / ObservationContext 执行观测保持原契约；本能力没有采集 I/O、后台线程、新增 Trace 或平台 MBean。
+
+## 低成本运行统计
+
+先确定指标回答的运维问题，再选择需要的算法。以下优先项结合 Google SRE 的流量、延迟、错误、
+饱和度四个黄金信号，以及 Prometheus 对流水线新鲜度、任务最后成功时间和队列等待的建议。
+core 提供计算能力，业务 owner 决定测量起止、成功语义、阈值及观测范围。
+
+| 运维问题 | 有价值的指标 | 记录边界与最小状态 |
+| --- | --- | --- |
+| 数据停了吗？ | 最近有效数据/成功时间、距现在时长 | 在有效处理阶段保存一个时间戳；复用已有状态，无需历史算法 |
+| 流量改变了吗？ | 收/发字节速率、任务/样本速率 | 在相应边界批量 mark；同一 RateMeter 暴露对应累计，单位分开 |
+| 哪次最慢、是否持续变慢？ | 平均、最大耗时及发生时刻，超期占比或 P95 | 本地单调时钟测量；DurationSummary，按需加 WindowMax/FixedHistogram |
+| 数据为什么失败？ | 来源/处理错误、超时、丢弃的分类计数 | 在实际失败边界累计，复用原子字段；只为需要速率的分类启用 meter |
+| 处理能力不足了吗？ | 当前积压/执行数、排队等待、积压峰值 | 当前值直接读原队列/运行状态；复用入队时刻测等待，按需记录峰值 |
+
+成功与失败延迟分开统计，避免立即失败拉低平均耗时。已完成任务的最大耗时也不能代替
+正在挂起任务的年龄；后者应从现有运行任务的开始时刻读取。错误率分母使用同一阶段、同一范围的
+尝试次数，取消、主动过滤/死区、质量无效与技术失败分别解释，不能简单相加后除以收到样本数。
+
+通信字节在选定的编解码/收发边界计数并注明统计层；一次请求可能产生多个样本，字节、请求和样本
+不能互相代用。数据新鲜度使用成功/有效阶段的本地时间，不能仅凭“收到原始数据”判断链路正常；
+仅变化上报的订阅还需结合预期更新周期或保活状态，不能统一将零流量视为异常。
+
+分布按需开启。只关心延迟阈值时，可用单个上界的 FixedHistogram（两个计数桶）统计
+超期占比；需要尾部定位的 owner 再选择更细桶估算 P95。窗口、单位和观测起点必须与展示名称一致，
+累计分布、EWMA 和本小时峰值不相互替代。多实例汇总先合并计数/桶，不平均分位数或不同时间的峰值。
+
+`monitor.metrics` 提供四种独立能力，实例/数组由业务 owner 或插件直接持有，不进入全局注册表，
+不自动为采集器、点位或连接创建统计。没有时间序列或逐样本缓存，读取不清零。
+
+| 能力 | 状态与语义 |
+| --- | --- |
+| `RateMeter` | 一个累计字段和1/5/15分钟 EWMA，共享五秒节拍参数；事件/查询时惰性更新，无定时器 |
+| `DurationSummary` | 次数、累计秒、最近/最大纳秒耗时和峰值时刻；固定 primitive 字段，最大值刷新时加锁 |
+| `WindowMax` | 一个固定时间分段的最大值及发生时刻；按需进入新分段，不保存上一段或滚动历史 |
+| `FixedHistogram` | 边界配置按契约共享；启用分布时由 owner 分配 long[]，每次仅定位桶并原子加一 |
+
+请求、样本、字节使用同一速率实现，分别得到次/秒、样本/秒、字节/秒；收、发方向分开持有。
+`RateMeter.mark(amount)` 支持批量增量，调用方应尽量按已有报文/批次记录，而非逐字节调用。
+直接使用其 `getCount()` 暴露累计，避免再维护一份同口径计数。
+多个线程竞争同一实例会增加原子更新成本；优先按运行 owner 持有，再在查询侧汇总，避免全节点写入同一个统计热点。
+首次五秒节拍前的 EWMA 为零；1/5/15分钟是平滑时间常数，不是最近窗口的精确平均或历史曲线。
+空闲读取会衰减，长时间空闲按公式一次推进，不随空闲时长循环。
+
+```java
+final RateMeter receivedBytes = new RateMeter();
+final DurationSummary requestDuration = new DurationSummary();
+final WindowMax hourlyDuration = new WindowMax(java.time.Duration.ofHours(1));
+
+// 在通信完成边界，复用一次时钟读取；不创建逐请求统计对象。
+long elapsedNanos = System.nanoTime() - startedAtNanos;
+long completedAtMillis = System.currentTimeMillis();
+receivedBytes.mark(readableBytes);
+requestDuration.record(elapsedNanos, completedAtMillis);
+hourlyDuration.record(elapsedNanos, completedAtMillis);
+```
+
+通信 RTT、排队等待和采集任务耗时需要分别选择埋点起止；不能将任务流耗时直接当 RTT，
+也不能将最后收到原始数据当成最后有效输出。仅变化上报的订阅长期零流量可以正常。
+耗时用单调时钟之差，发生时刻用 epoch 毫秒；错误、超时、取消由业务按口径独立计数。
+
+各字段为弱一致观测，不是事务快照。`DurationSummary.snapshot()` 保证最大值/发生时刻成对，
+其余累计仍是弱一致读取；`count == 0` 表示没有耗时样本。快照仅在请求侧分配。
+业务接口继续使用 `@Counter` / `@Gauge` / `@Duration` / `@Timestamp` 等组合注解描述 getter，
+单位、文案和国际化仍由 `MetadataUtils` / `MetricSet` 统一处理，算法不另建描述模型。
+
+`WindowMax` 从 epoch 对齐固定时长，默认日窗口从 UTC 午夜开始；UTC+8 午夜可以显式传入
+`new WindowMax(Duration.ofDays(1), Duration.ofHours(-8))`。固定24小时不能替代夏令时自然日。
+窗口查询带 `available`，过期/未采样窗口不补真实零值；迟到旧窗口记录不会覆盖新窗口。
+启用或实例重建之前的观测不会补齐，展示方需结合 owner 的观测起点/实例代次解释覆盖范围。
+“本小时/今日”峰值可使用它；精确“最近60分钟”峰值需额外保存候选或分桶，不由 EWMA 提供。
+吞吐峰值还须明确采样间隔，例如“一分钟平均字节速率峰值”，不能标为瞬时峰值。
+
+直方图默认为可选，不给所有点位/连接预分配桶。边界、单位及观测起点相同的桶先相加再求分位，
+不可平均 P95。`percentile` 返回所在桶上界并限制为实际最大值，无样本/无效参数为 NaN。
+累计直方图不是最近一小时分布；`ConnectionMetricsSupport` 复用同一实现，保留原14桶及观测起点格式。
+节点/通道/采集器按真实 owner 持有统计；汇总峰值必须对同一时刻的汇总值求峰，不能相加不同时间的峰值。
+
+参考：[Dropwizard EWMA/窗口统计](https://www.dropwizard.io/projects/metrics/en/latest/manual/core/)、
+[Prometheus 分布与聚合](https://prometheus.io/docs/practices/histograms/)、
+[Prometheus 流水线/任务与队列观测](https://prometheus.io/docs/practices/instrumentation/)、
+[Google SRE 四个黄金信号](https://sre.google/sre-book/monitoring-distributed-systems/)。
