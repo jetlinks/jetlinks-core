@@ -33,6 +33,7 @@ import java.util.function.BiPredicate;
 public final class MetadataSemantics {
 
     public static final String SEMANTIC_TYPES_KEY = "semanticTypes";
+    public static final String SEMANTIC_ID_KEY = "semanticId";
     public static final String PROPERTY_ROLE_KEY = "semanticRole";
     public static final String FUNCTION_KIND_KEY = "functionKind";
     public static final String EVENT_KIND_KEY = "eventKind";
@@ -45,6 +46,9 @@ public final class MetadataSemantics {
 
     public static final ConfigKey<String[]> SEMANTIC_TYPES =
         ConfigKey.of(SEMANTIC_TYPES_KEY, SEMANTIC_TYPES_KEY, String[].class);
+
+    public static final ConfigKey<String> SEMANTIC_ID =
+        ConfigKey.of(SEMANTIC_ID_KEY, SEMANTIC_ID_KEY, String.class);
 
     public static final ConfigKey<String> PROPERTY_ROLE =
         ConfigKey.of(PROPERTY_ROLE_KEY, PROPERTY_ROLE_KEY, String.class);
@@ -60,9 +64,11 @@ public final class MetadataSemantics {
 
     private static final Map<String, ExpandsMerge> mergeRules = Map.of(
         SEMANTIC_TYPES.getKey(), same(SEMANTIC_TYPES.getKey(), ExpandsMerge::unorderedEquals),
+        SEMANTIC_ID.getKey(), same(SEMANTIC_ID.getKey(), Objects::deepEquals),
         PROPERTY_ROLE.getKey(), same(PROPERTY_ROLE.getKey(), Objects::deepEquals),
         FUNCTION_KIND.getKey(), same(FUNCTION_KIND.getKey(), Objects::deepEquals),
         EVENT_KIND.getKey(), same(EVENT_KIND.getKey(), Objects::deepEquals),
+        RELATION_SEMANTIC.getKey(), same(RELATION_SEMANTIC.getKey(), Objects::deepEquals),
         GRAPH_SUBJECT_KEY, same(GRAPH_SUBJECT_KEY, Objects::deepEquals),
         PRESENTATION_KEY, ExpandsMerge.object(Map.of(
             PRIMARY_KEY, same(PRESENTATION_KEY + "." + PRIMARY_KEY, Objects::deepEquals),
@@ -99,6 +105,29 @@ public final class MetadataSemantics {
      */
     public static <M extends Metadata> M withSemanticTypes(M metadata, SemanticType... types) {
         return declare(metadata, SEMANTIC_TYPES_KEY, Arrays.stream(types).map(Enum::name).toArray(String[]::new));
+    }
+
+    /**
+     * 引用稳定的领域概念，例如两个来源的温度字段引用同一概念。
+     * 不替代字段 ID、角色、单位或读取路径，也不据此判定数据等价；返回原模型。
+     */
+    public static <M extends Metadata> M withSemanticId(M metadata, String semanticId) {
+        return declare(metadata, SEMANTIC_ID_KEY, text(semanticId, SEMANTIC_ID_KEY));
+    }
+
+    /** @return 来源声明的领域概念引用；未声明为空，不根据字段名称猜测或访问外部术语服务 */
+    public static Optional<String> semanticId(Metadata metadata) {
+        return metadata.getExpand(SEMANTIC_ID_KEY).map(value -> text(value, SEMANTIC_ID_KEY));
+    }
+
+    /** 声明关系大类，例如告警记录到设备为 about；分类不蕴含传递性或权限继承。 */
+    public static RelationMetadata withRelationSemantic(RelationMetadata relation, RelationSemantic semantic) {
+        return withRelationSemantic(relation, semantic.name());
+    }
+
+    /** 声明来源自己的关系分类；沿用原 semantic 键，未知词保持原样。 */
+    public static RelationMetadata withRelationSemantic(RelationMetadata relation, String semantic) {
+        return declare(relation, RELATION_SEMANTIC_KEY, text(semantic, RELATION_SEMANTIC_KEY));
     }
 
     /** 声明事件用途，例如关系解除用 relationLifecycle；不创建订阅或改变投递保证。 */
@@ -232,7 +261,13 @@ public final class MetadataSemantics {
 
     /** @return 来源声明的内置关系分类，例如告警记录“描述设备”为 about；不根据数据推断关系或因果 */
     public static Optional<RelationSemantic> relationSemantic(Relation relation) {
-        return term(relation.getExpands(), RELATION_SEMANTIC.getKey(), RelationSemantic.class);
+        return relationSemanticTerm(relation).flatMap(semantic -> parse(RelationSemantic.class, semantic));
+    }
+
+    /** @return 原关系分类，包括来源自定义词；浏览方向不改变此分类，缺省保持未知 */
+    public static Optional<String> relationSemanticTerm(Relation relation) {
+        return Optional.ofNullable(value(relation.getExpands(), RELATION_SEMANTIC_KEY))
+            .map(semantic -> text(semantic, RELATION_SEMANTIC_KEY));
     }
 
     /**

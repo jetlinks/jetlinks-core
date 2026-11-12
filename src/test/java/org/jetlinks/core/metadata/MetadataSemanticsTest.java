@@ -20,6 +20,55 @@ import static org.junit.Assert.*;
 
 public class MetadataSemanticsTest {
 
+    static class TemperatureReading {
+        @org.jetlinks.core.annotation.SemanticId("urn:example:temperature")
+        @org.jetlinks.core.annotation.SemanticRole(PropertySemanticRole.result)
+        double temperature;
+    }
+
+    @Test
+    public void conceptReferencesRemainSeparateFromFieldIdentityRoleAndUnit() throws Exception {
+        var property = SimplePropertyMetadata.of("temperature", "Temperature", LongType.GLOBAL);
+        assertTrue(MetadataSemantics.semanticId(property).isEmpty());
+        property.setExpands(org.jetlinks.core.utils.MetadataUtils.parseExpands(
+            TemperatureReading.class.getDeclaredField("temperature")));
+        assertSame(property, MetadataSemantics.withSemanticId(property, "urn:example:temperature"));
+        var decoded = new SimplePropertyMetadata();
+        decoded.fromJson(JSON.parseObject(property.toJson().toJSONString()));
+        assertEquals("urn:example:temperature", MetadataSemantics.semanticId(decoded).orElseThrow());
+        assertEquals("temperature", decoded.getId());
+        assertEquals(PropertySemanticRole.result, MetadataSemantics.propertyRole(decoded).orElseThrow());
+        var other = MetadataSemantics.withSemanticId(
+            SimplePropertyMetadata.of("ambient", "Ambient", LongType.GLOBAL), "urn:example:temperature");
+        assertNotEquals(decoded.getId(), other.getId());
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.withSemanticId(property, "urn:other")))
+            .expectError(I18nSupportException.class).verify();
+        assertEquals("urn:example:temperature", MetadataSemantics.semanticId(property).orElseThrow());
+        property.expand(MetadataSemantics.SEMANTIC_ID_KEY, false);
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.semanticId(property)))
+            .expectError(I18nSupportException.class).verify();
+    }
+
+    @Test
+    public void relationClassificationsPreserveCustomTermsAndCanonicalMeaning() {
+        var relation = new RelationMetadata();
+        relation.setId("describes");
+        relation.setTargetType("machine");
+        assertTrue(MetadataSemantics.relationSemanticTerm(relation).isEmpty());
+        MetadataSemantics.withRelationSemantic(relation, "urn:example:calibratedBy");
+        relation.setReverse(true);
+        var decoded = new RelationMetadata();
+        decoded.fromJson(JSON.parseObject(relation.toJson().toJSONString()));
+        assertEquals("urn:example:calibratedBy", MetadataSemantics.relationSemanticTerm(decoded).orElseThrow());
+        assertTrue(MetadataSemantics.relationSemantic(decoded).isEmpty());
+        assertTrue(decoded.isReverse());
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.withRelationSemantic(decoded, RelationSemantic.about)))
+            .expectError(I18nSupportException.class).verify();
+        var structural = MetadataSemantics.withRelationSemantic(new RelationMetadata(), RelationSemantic.structural);
+        assertEquals(RelationSemantic.structural, MetadataSemantics.relationSemantic(structural).orElseThrow());
+        assertFalse(structural.getExpands().containsKey("transitive"));
+    }
+
     @org.jetlinks.core.annotation.EventSemantics(EventKind.data)
     static class TemperatureReport { }
 
