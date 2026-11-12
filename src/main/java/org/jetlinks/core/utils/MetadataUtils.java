@@ -16,6 +16,7 @@ import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.annotation.Attr;
 import org.jetlinks.core.annotation.Expands;
 import org.jetlinks.core.annotation.GraphSubject;
+import org.jetlinks.core.annotation.Observation;
 import org.jetlinks.core.annotation.SemanticRole;
 import org.jetlinks.core.annotation.ui.Presentation;
 import org.jetlinks.core.metadata.*;
@@ -1018,11 +1019,12 @@ public class MetadataUtils {
             return objectType;
         }
 
-        /** Semantic markers do not silently opt otherwise private fields into a public schema. */
+        /** 标记“采样时间”等含义不等于公开字段；仍须通过 Schema 等原机制明确导出。 */
         private boolean hasSemanticDeclaration(AnnotatedElement... elements) {
             for (AnnotatedElement element : elements) {
                 if (element != null && (AnnotatedElementUtils.hasAnnotation(element, GraphSubject.class)
                     || AnnotatedElementUtils.hasAnnotation(element, SemanticRole.class)
+                    || AnnotatedElementUtils.hasAnnotation(element, Observation.class)
                     || AnnotatedElementUtils.hasAnnotation(element, Presentation.class))) {
                     return true;
                 }
