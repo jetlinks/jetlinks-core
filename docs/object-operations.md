@@ -664,6 +664,8 @@ N1 失败、N2 重试成功保留独立尝试 ID，不按告警去重，不凭�
 
 结果值可使用 `@SemanticRole(result)`、`@Observation(observedAt = "sampledAt", quality = "valid")`，时间、质量字段继续使用原 `@Schema`、`@SemanticRole` 和 DataType。观测映射沿用已有 `presentation` 线上键，不新增平行编码，旧 `@Presentation(observedAt=...)` 同样适用。质量字段类型由来源决定，读取保留 `false`/`0`，不把它转换成统一业务状态。
 
+需要跨来源识别领域概念时，可在原字段上附加 `@SemanticId("urn:factory:property:temperature")`；动态模型使用 `MetadataSemantics.withSemanticId(field, conceptId)`，读取使用 `semanticId(metadata)`。例如传感器的 `value` 与巡检记录的 `ambientTemperature` 可指向同一温度概念，各自字段 ID、result 角色、读取路径、单位和采样时间仍保留；共享概念不等于两个值可直接比较。概念 ID 由来源维护，不要求业务连接术语服务。原 `RelationMetadata` 可用 `withRelationSemantic(relation, RelationSemantic.about)` 或来源自定义词声明分类，`relationSemanticTerm` 保留完整词，枚举读取仅返回已认识的分类。
+
 `SemanticRecord.field/value/fields` 只读声明路径，深度上限 8，不跨数组取值或聚合；`roleValue` 遇到多个同角色字段返回未知，调用者应显式选路径。`observedAt`、`quality` 相对于当前字段所在记录读取；新声明缺少时间映射时保持未知。仅旧 `value` 别名兼容“唯一结果＋唯一采样时间角色”，不把查询时间或其他结果时间作为兜底。单位、枚举、精度继续来自原属性模型，不增加万能值 DTO。
 
 契约回归入口为 `SemanticRecordTest,MetadataSemanticsTest,PresentationAnnotationsTest,ExpandsMergesTest,ExpandsMergeTest,MetadataUtilsTest,CommandMetadataResolverTest,MergeOptionTest`；relation 与消费者验证入口见配套本体 `docs/development-plan.md` 的同名条目。运行服务与混合版本部署仍需配套验收。
@@ -812,6 +814,23 @@ MetadataSemantics.validateOutput(output);
 | 批量、游标及跨源性能 | 实测有重复远程读取或大集合分页瓶颈 | 优先原批量 Command/索引，必要时给独立请求增加有缺省行为的字段；不逐行 I/O、不扩成跨库 join 或任意图查询引擎 |
 | 统一实时订阅 | 至少两个真实消费者需要同样的对象级订阅与取消/恢复语义 | 先复用现有事件管理器；只有原生命周期契约无法覆盖时再评审对象事件入口，不因模型声明了 event 就新增常驻订阅 |
 | 标准导出、约束或大模型查询入口 | 有明确互操作方、验证规则或受控工具需求 | 专用适配器把模型映射为 WoT/JSON-LD/SHACL 等；大模型或 GraphQL 仅消费已公开的有界能力。SPI 不强制 RDF，不开放任意服务/表达式，不另写推理或流程引擎 |
+
+### 7.7 最小语义契约与事实复用（已实施）
+
+目标是补齐已经需要的声明入口和消除重复事实结构，不以覆盖规范为由扩充对象框架。范围为 core 的语义声明、components 的事件基础设施及 ontology 的原事实消费，不新增业务接入。
+
+1. core 为原 `Metadata.expands` 增加可选 `semanticId` 的统一键、类型化读写和轻量注解，表示稳定的领域概念引用。例如两个不同字段可引用同一个温度概念，但字段 ID、角色、读取路径、单位及来源仍分别保留。沿用原合并入口处理矛盾声明；只检查声明的基本字符串形状，不验证远端 IRI、不请求术语服务、不推断业务等价。
+2. 补齐原关系分类的开放词汇读写，仍使用 `RelationMetadata`、`RelationSemantic` 和既有 `semantic` 编码。规范 source/relation/target 与反向浏览分开；`structural` 不蕴含传递性、对称性或权限继承。没有真实共用需求，本轮不增加基数、类继承或关系约束执行器。
+3. ontology 的路径结果直接复用原 `RelationFact`，删除 `ResolvedPath.Link` 的字段复制和转换。保留 record、evidence、半开有效期及关系实例属性；JSON 字段形状不变，Java 调用方配套迁移。`EvidenceReference` 的查询范围和能力参数留在 ontology，不下沉为 core/relation 的通用执行协议；`ObjectLink` 不冒充完整关系事实。
+4. 配套 components 复用原 Topic 工具、跳过无关事件的异步登记并同步主题追加/快照；具体边界见其 `README.md` 的“语义声明与事件处理边界”。Topic 接收使用 `CharSequence`，优先 `SharedPathString` 模板与分段重载，原路由形状保持。分段序列的 equals 区分实现类，事件在去重边界统一为 SharedPathString，不在各层编码成字符串。
+
+兼容边界：新增可选声明对旧模型缺省无影响。路径 Java 类型、公共资产发布器的 topic 返回类型及未合并的 scope 配置键需要配套重新编译/升级；只替换依赖而保留旧设备字节码会产生 AbstractMethodError。配置统一为 `relation.lifecycle-scope`，默认 default。清理构建后已确认制品不再包含 AssetEventTopics 或 ResolvedPath.Link。模型不授予权限，实际执行仍由来源控制；不新增 Provider 预检、推理、查询 DSL、事件运行时、可靠投递、常驻状态或逐事件追踪。事件仍沿原追踪和订阅链，无新增 MBean。
+
+三次对照审查已完成：①按 7.3 的 SAREF、SOSA/SSN、PROV-O 与 OWL 边界区分领域概念、字段角色、值模型、规范关系及限定事实，不从共享概念推断数值等价，也不从 structural 推断传递性。②以真实 Expands 注解解析、动态模型写入、非设备来源及原设备发布器验证使用方式，保持未知词、来源执行和原 JSON 形状。③检查职责、异步适用性、并发追加、scope 装配和重复结构，删除主题重复展开及路径边复制，未增加新的匹配/授权/订阅 SPI。
+
+本阶段集中回归按测试类去重共 206 项通过，0 失败/错误/跳过：core 62、components 60（公共 9、资产 7、关系 44）、本体 56、设备 28。覆盖概念注解/动态声明/合并冲突、开放关系分类、同端点不同记录、有效期和证据 JSON 往返、无关实体不登记异步任务、混合主题表示的并行追加/去重、提交/回滚、删除前快照、scope 清理及原权限/RPC。core/components/本体编译和 install 成功，设备 clean test 成功；11 个公共源文件 Javadoc doclint 无诊断。不是全模块全量测试，原服务、混合版本部署与宕机补发未验收。
+
+复现命令和日志索引保存在隔离工作目录 `task-state.md`；最终日志为 `core-minimal-convergence-test.log`、`components-minimal-convergence-clean.log`、`ontology-minimal-convergence-clean.log`、`device-minimal-convergence-clean.log`。首轮新增测试的 JUnit 写法、分段集合比较及证据身份夹具已按真实契约修正；设备增量构建暴露旧子类字节码后改为干净构建。最终结果不累计失败重试或上阶段测试。core 基础语义已由 #114 合入 #112 分支，本节增量以其合并结果为基线单独评审；运行服务与浏览器由用户管理。
 
 ## 8. 错误、事件及集群
 
