@@ -20,6 +20,27 @@ import static org.junit.Assert.*;
 
 public class MetadataSemanticsTest {
 
+    @org.jetlinks.core.annotation.EventSemantics(EventKind.data)
+    static class TemperatureReport { }
+
+    @Test
+    public void eventKindsUseTheSameAnnotationAndDynamicEncodingWithoutInferringChanges() {
+        var metadata = new SimpleEventMetadata();
+        metadata.setId("temperature-report");
+        metadata.setExpands(org.jetlinks.core.utils.MetadataUtils.parseExpands(TemperatureReport.class));
+        assertEquals("data", metadata.getExpands().get("eventKind"));
+        assertSame(metadata, MetadataSemantics.withEventKind(metadata, EventKind.data));
+        var decoded = new SimpleEventMetadata();
+        decoded.fromJson(JSON.parseObject(metadata.toJson().toJSONString()));
+        assertEquals(EventKind.data, MetadataSemantics.eventKind(decoded).orElseThrow());
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.withEventKind(metadata, EventKind.objectLifecycle)))
+            .expectError(I18nSupportException.class).verify();
+        var custom = MetadataSemantics.withEventKind(new SimpleEventMetadata(), "urn:example:maintenance");
+        decoded.fromJson(JSON.parseObject(custom.toJson().toJSONString()));
+        assertEquals("urn:example:maintenance", MetadataSemantics.eventKindTerm(decoded).orElseThrow());
+        assertTrue(MetadataSemantics.eventKind(decoded).isEmpty());
+    }
+
     @Test
     public void dynamicDeclarationsShareAnnotationEncodingAndDefaultMergeRules() {
         var field = SimplePropertyMetadata.of("count", "Count", LongType.GLOBAL);

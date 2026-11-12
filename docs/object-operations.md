@@ -825,7 +825,17 @@ MetadataSemantics.validateOutput(output);
 
 不新增异常层级/结果包装。新增文案及模型展示沿用原国际化机制。来源逐次授权，通知接收人过滤不能由通用资产权限替代，关系可见性不能扩大命令权限。
 
-事件首期通过 EventMetadata 发现，订阅复用 EventDefinitionProvider、EventSubscriptionManager 及其长期上下文、取消和投递机制；不在 core 新增事件运行时。定义未绑定订阅时不得宣称可订阅，ThingEvent 载荷也不自动等于持久发生记录。
+事件通过 EventMetadata 发现，订阅复用 EventDefinitionProvider、EventSubscriptionManager 及其长期上下文、取消和投递机制；不在 core 新增事件运行时。定义未绑定订阅时不得宣称可订阅，ThingEvent 载荷也不自动等于持久发生记录。
+
+已确认的事件契约补齐：core 只维护 EventKind、EventSemantics 注解及 MetadataSemantics 类型化访问，区分对象生命周期、关系定义、关系实例、对象数据和业务事件；开放的事件 ID 与来源 payload 仍由来源声明。relation 提供 ObjectEventReference 身份引用及 Spring 本地通知，业务 data 和跨服务信封继续使用 StructuredEvent。对象创建、保存、修改、删除分别表达，saved 不推断 created/modified，上报不推断值变化，关系实例保留规范 source/relation/target 和来源实例标识。
+
+实现按 core 声明 → 公共资产发布复用 → relation 桥接及原删除消费者迁移 → 集中契约/事务/序列化回归推进。已存在的设备实体与设备消息结构化转发保持原 ID、事件类型、Topic、权限快照和订阅入口；对象语义在公共资产发布阶段附加，别名 Topic 复用同一事件，不再次创建设备业务事件。普通 ORM 身份来源才走兜底桥接。scope 继续隔离，删除前取得资产路由、提交后流转，回滚不发；内部异步句柄不进入线上数据。
+
+范围为 core、components/common/assets/relation 及本体原删除消费；不扩大设备等业务事件接入，不迁移既有公开 Topic，不新增事件注册中心、可靠消息/outbox、代际标识、权限引擎或全量采集。追踪沿原事件总线和订阅机制，无新增常驻队列或 MBean。验收包含声明合并及开放词汇、三类载荷 JSON/Java 编码、本地与跨服务同 ID、提交/回滚、复用资产路由且不重复设备转发、非 GenericEntity 诊断、同 scope 删除清理与自定义非设备来源；真实服务和宕机恢复仍需部署验证。
+
+事件补齐的三轮对照已完成：①沿 7.3 的规范边界区分身份、关系声明、实际关系和业务发生，保留 saved、同值上报及规范关系方向，不把来源标识当作因果证明。②以真实设备原发布器和非设备巡检样例核对接入，身份来源只需 ObjectEntity，补充来源仍使用原命令/模型；身份引用命名为 ObjectEventReference，业务载荷仍在 StructuredEvent.data。③核对 core 声明、资产快照/路由、relation 适配与本体清理各自职责，删除原单用途 ObjectLifecycleEvents，未增加 Provider 权限预检、缓存或第二套事件注册器。
+
+本轮集中验证按测试类去重为 126 项（core 18、common 4、assets 6、relation 43、本体 27、设备 28），均无失败、错误或跳过；不是各模块全量测试。relation 最终 clean install 后 43 项通过，确认旧 ObjectLifecycleEvents/ObjectEventData 字节码不再进入制品；引用命名定稿后设备实体 6 项及本体消费者 3 项复验通过。14 个公共契约源文件 Javadoc doclint 无诊断。具体命令和日志索引保存在当前隔离工作目录的 task-state.md；原业务进程与真实集群部署未验收。
 
 集群复用 ClusterRelationManager 和既有命令/RPC。远端只传模型、身份、关系、有界查询、功能 ID/参数及结果，不传 ObjectOperations、CommandSupport、回调或 Reactor Context。源端重新取得 operations(id)、绑定主体并授权。
 

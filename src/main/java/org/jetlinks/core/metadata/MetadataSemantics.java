@@ -35,6 +35,7 @@ public final class MetadataSemantics {
     public static final String SEMANTIC_TYPES_KEY = "semanticTypes";
     public static final String PROPERTY_ROLE_KEY = "semanticRole";
     public static final String FUNCTION_KIND_KEY = "functionKind";
+    public static final String EVENT_KIND_KEY = "eventKind";
     public static final String RELATION_SEMANTIC_KEY = "semantic";
     public static final String GRAPH_SUBJECT_KEY = "graphSubject";
     public static final String PRESENTATION_KEY = "presentation";
@@ -51,6 +52,9 @@ public final class MetadataSemantics {
     public static final ConfigKey<String> FUNCTION_KIND =
         ConfigKey.of(FUNCTION_KIND_KEY, FUNCTION_KIND_KEY, String.class);
 
+    public static final ConfigKey<String> EVENT_KIND =
+        ConfigKey.of(EVENT_KIND_KEY, EVENT_KIND_KEY, String.class);
+
     public static final ConfigKey<String> RELATION_SEMANTIC =
         ConfigKey.of(RELATION_SEMANTIC_KEY, RELATION_SEMANTIC_KEY, String.class);
 
@@ -58,6 +62,7 @@ public final class MetadataSemantics {
         SEMANTIC_TYPES.getKey(), same(SEMANTIC_TYPES.getKey(), ExpandsMerge::unorderedEquals),
         PROPERTY_ROLE.getKey(), same(PROPERTY_ROLE.getKey(), Objects::deepEquals),
         FUNCTION_KIND.getKey(), same(FUNCTION_KIND.getKey(), Objects::deepEquals),
+        EVENT_KIND.getKey(), same(EVENT_KIND.getKey(), Objects::deepEquals),
         GRAPH_SUBJECT_KEY, same(GRAPH_SUBJECT_KEY, Objects::deepEquals),
         PRESENTATION_KEY, ExpandsMerge.object(Map.of(
             PRIMARY_KEY, same(PRESENTATION_KEY + "." + PRIMARY_KEY, Objects::deepEquals),
@@ -94,6 +99,26 @@ public final class MetadataSemantics {
      */
     public static <M extends Metadata> M withSemanticTypes(M metadata, SemanticType... types) {
         return declare(metadata, SEMANTIC_TYPES_KEY, Arrays.stream(types).map(Enum::name).toArray(String[]::new));
+    }
+
+    /** 声明事件用途，例如关系解除用 relationLifecycle；不创建订阅或改变投递保证。 */
+    public static <M extends Metadata> M withEventKind(M metadata, EventKind kind) {
+        return withEventKind(metadata, kind.name());
+    }
+
+    /** 声明开放的事件种类；词义由来源维护，沿用默认冲突规则，不覆盖已有声明。 */
+    public static <M extends Metadata> M withEventKind(M metadata, String kind) {
+        return declare(metadata, EVENT_KIND_KEY, text(kind, EVENT_KIND_KEY));
+    }
+
+    /** @return 原事件种类，包括未知词；未声明为空，不从事件 ID 或 Topic 猜测 */
+    public static Optional<String> eventKindTerm(Metadata metadata) {
+        return metadata.getExpand(EVENT_KIND_KEY).map(kind -> text(kind, EVENT_KIND_KEY));
+    }
+
+    /** @return 已识别的事件种类；未知词保留在模型中，不等于事件不可订阅 */
+    public static Optional<EventKind> eventKind(Metadata metadata) {
+        return eventKindTerm(metadata).flatMap(kind -> parse(EventKind.class, kind));
     }
 
     /** 为可修改字段声明内置用途，例如动态模型中的计数值标为 result；返回原字段。 */
