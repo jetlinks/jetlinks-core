@@ -12,14 +12,54 @@ import org.junit.Test;
 import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.core.ResolvableType;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.text.MessageFormat;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
+import java.util.ResourceBundle;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.Assert.*;
 
 public class BuiltinMetricsMetadataTest {
+    private static final List<String> LANGUAGES = List.of("en", "zh", "zh_Hant", "ja", "ko", "de", "fr", "es");
+
+    @Test
+    public void languageBundlesCoverEveryCoreKeyAndPreserveMessageArguments() throws Exception {
+        Properties english = messages("en");
+        for (String language : LANGUAGES) {
+            Properties translated = messages(language);
+            assertEquals(language, english.stringPropertyNames(), translated.stringPropertyNames());
+            Locale locale = Locale.forLanguageTag(language.replace('_', '-'));
+            for (String key : english.stringPropertyNames()) {
+                String value = translated.getProperty(key);
+                assertFalse(language + ":" + key, value.isBlank());
+                assertEquals(language + ":" + key, arguments(english.getProperty(key)), arguments(value));
+                assertFalse(language + ":" + key, value.contains("\ufffd"));
+                new MessageFormat(value, locale);
+            }
+        }
+    }
+
+    @Test
+    public void traditionalChineseLocalesUseTheHantBundleThroughStandardLookup() {
+        ResourceBundle.Control control = ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES);
+        for (String tag : List.of("zh-Hant", "zh-TW", "zh-HK", "zh-Hant-TW", "zh-Hant-HK")) {
+            ResourceBundle bundle = ResourceBundle.getBundle("i18n/jetlinks-core/messages", Locale.forLanguageTag(tag), control);
+            assertEquals(tag, Locale.forLanguageTag("zh-Hant"), bundle.getLocale());
+            assertEquals("累計量", bundle.getString("org.jetlinks.core.monitor.metrics.RateMetrics.count.title"));
+            assertEquals("陣列", bundle.getString("message.metadata.type.array"));
+        }
+    }
+
     @Test
     public void primitiveAndBoxedDoublesShareNumericMetadataIncludingArrayElements() {
         assertEquals("double", MetadataUtils.parseType(ResolvableType.forClass(double.class)).getId());
@@ -178,6 +218,14 @@ public class BuiltinMetricsMetadataTest {
                 assertNotEquals("missing", MetadataUtils.resolveI18nMessage(
                     Locale.ENGLISH, property, "description", "missing", messages));
                 assertEquals(chinese, property.getName());
+                for (String language : LANGUAGES) {
+                    Locale locale = Locale.forLanguageTag(language.replace('_', '-'));
+                    String name = MetadataUtils.resolveI18nMessage(locale, property, "name", "missing", messages);
+                    String description = MetadataUtils.resolveI18nMessage(locale, property, "description", "missing", messages);
+                    assertEquals(language + ":" + metric.getId(), messages.getMessage(
+                        declaration(contract).getName() + "." + metric.getId() + ".title", null, locale), name);
+                    assertNotEquals(language + ":" + metric.getId(), "missing", description);
+                }
             }
             // 元数据协议只保留稳定值，外部无需加载算法类或 Java 枚举。
             String json = set.getMetadata().toJson().toJSONString();
@@ -188,6 +236,36 @@ public class BuiltinMetricsMetadataTest {
 
     private static Metric metric(MetricSet set, String id) {
         return set.getMetrics().stream().filter(metric -> id.equals(metric.getId())).findFirst().orElseThrow();
+    }
+
+    private static Class<?> declaration(Class<?> type) {
+        if (RateMetrics.class.isAssignableFrom(type)) return RateMetrics.class;
+        if (DurationMetrics.class.isAssignableFrom(type)) return DurationMetrics.class;
+        if (WindowMaxMetrics.class.isAssignableFrom(type)) return WindowMaxMetrics.class;
+        return HistogramMetrics.class;
+    }
+
+    private static Properties messages(String language) throws Exception {
+        String path = "/i18n/jetlinks-core/messages_" + language + ".properties";
+        Properties properties = new Properties() {
+            @Override public synchronized Object put(Object key, Object value) {
+                assertFalse(path + ": duplicate " + key, containsKey(key));
+                return super.put(key, value);
+            }
+        };
+        try (InputStream input = BuiltinMetricsMetadataTest.class.getResourceAsStream(path)) {
+            assertNotNull(path, input);
+            properties.load(new InputStreamReader(input, StandardCharsets.UTF_8));
+        }
+        return properties;
+    }
+
+    private static List<String> arguments(String text) {
+        Matcher matcher = Pattern.compile("\\{[0-9]+(?:,[^}]+)?}").matcher(text);
+        List<String> arguments = new ArrayList<>();
+        while (matcher.find()) arguments.add(matcher.group());
+        Collections.sort(arguments);
+        return arguments;
     }
 
     private static PropertyMetadata property(MetricSet set, String id) {

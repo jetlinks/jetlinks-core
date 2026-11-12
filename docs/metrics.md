@@ -94,7 +94,9 @@ for (org.jetlinks.core.monitor.metrics.Metric metric : definition.getMetrics()) 
 或数组边界的 `@Gauge(unit = "nanoseconds")`，其余统计方式和文案沿用父契约。子契约须由实际 target 实现，
 不能将原始算法对象强转成业务子接口。耗时接口已经确定秒/纳秒/epoch毫秒，不对声明单位做隐式换算。
 
-中英文名称与说明位于 core 既有资源目录，继承 getter 或实现类重写 getter 均可回退到声明接口资源。
+名称与说明位于 core 既有资源目录，覆盖简体中文、繁体中文、英语、日语、韩语、德语、法语和西班牙语。
+繁体资源使用 `zh_Hant`，`zh-TW`、`zh-HK` 及显式 `zh-Hant` 通过标准 ResourceBundle 候选规则读取，
+不增加语言别名映射。继承 getter 或实现类重写 getter 均可回退到声明接口资源。
 定义仍按 ClassValue 共享，写入热路径没有新增字段、对象、反射或元数据解析。
 直方图的类型化快照只在显式读取时复制计数；内部共享不可变边界，数组 getter 返回副本以保护配置与快照。
 既有 primitive 数组快照 API 保留，只有需要外部自描述时才使用类型化快照。
