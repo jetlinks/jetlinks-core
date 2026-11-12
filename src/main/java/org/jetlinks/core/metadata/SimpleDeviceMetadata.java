@@ -1,9 +1,9 @@
 package org.jetlinks.core.metadata;
 
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONArray;
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.core.things.ThingMetadata;
 import reactor.function.Function3;
 
@@ -12,8 +12,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Collections;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
+/**
+ * 由调用方构造和修改的设备物模型，支持完整 JSON 目录的替换解析与编码。
+ * 根空输入清空整个模型，目录条目必须为对象；不保存设备运行态或执行任何 I/O。
+ *
+ * @see DeviceMetadata
+ */
 public class SimpleDeviceMetadata implements DeviceMetadata {
     private volatile Map<String, PropertyMetadata> properties = new LinkedHashMap<>();
 
@@ -41,6 +47,10 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
     @Getter
     @Setter
     private List<RelationMetadata> relationMetadata = Collections.emptyList();
+
+    @Getter
+    @Setter
+    private List<ThingMetadata> modules = Collections.emptyList();
 
     public void addProperty(PropertyMetadata metadata) {
         this.properties.put(metadata.getId(), metadata);
@@ -117,25 +127,43 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
 
     @Override
     public void fromJson(JSONObject json) {
+        Map<String, Object> definition = json == null ? Collections.emptyMap() : json;
+        // 先解析完整新目录，避免非法条目使已有模型只更新一部分。
+        Map<String, PropertyMetadata> parsedProperties = parseMetadata(definition.get("properties"), SimplePropertyMetadata::new);
+        Map<String, FunctionMetadata> parsedFunctions = parseMetadata(definition.get("functions"), SimpleFunctionMetadata::new);
+        Map<String, EventMetadata> parsedEvents = parseMetadata(definition.get("events"), SimpleEventMetadata::new);
+        Map<String, PropertyMetadata> parsedTags = parseMetadata(definition.get("tags"), SimplePropertyMetadata::new);
+        List<RelationMetadata> parsedRelations = parseDefinitions(definition.get("relations"), RelationMetadata::new);
+        List<ThingMetadata> parsedModules = parseDefinitions(definition.get("modules"), SimpleDeviceMetadata::new);
+        SimpleDeviceMetadata parsed = FastBeanCopier.copy(definition, SimpleDeviceMetadata::new,
+            "properties", "functions", "events", "tags", "relationMetadata", "modules");
+        this.id = parsed.id;
+        this.name = parsed.name;
+        this.description = parsed.description;
+        this.expands = parsed.expands;
+        this.properties = parsedProperties;
+        this.functions = parsedFunctions;
+        this.events = parsedEvents;
+        this.tags = parsedTags;
+        this.relationMetadata = parsedRelations;
+        this.modules = parsedModules;
+    }
 
-        this.properties = null;
-        this.events = null;
-        this.functions = null;
-        this.id = json.getString("id");
-        this.name = json.getString("name");
-        this.description = json.getString("description");
-        this.expands = json.getJSONObject("expands");
-        JSONArray definitions = json.getJSONArray("relations");
-        List<RelationMetadata> parsed = new ArrayList<>();
-        if (definitions != null) {
-            for (int i = 0; i < definitions.size(); i++) {
-                RelationMetadata relation = new RelationMetadata();
-                relation.fromJson(definitions.getJSONObject(i));
-                parsed.add(relation);
-            }
+    private static <M extends Metadata & Jsonable> Map<String, M> parseMetadata(Object definitions, Supplier<M> factory) {
+        Map<String, M> parsed = new LinkedHashMap<>();
+        for (M metadata : parseDefinitions(definitions, factory)) {
+            parsed.putIfAbsent(metadata.getId(), metadata);
         }
-        this.relationMetadata = parsed;
+        return parsed;
+    }
 
+    private static <M extends Jsonable> List<M> parseDefinitions(Object definitions, Supplier<M> factory) {
+        return MetadataDefinitionParser.parseList(definitions, definition -> {
+            M metadata = factory.get();
+            // 已发布的 Jsonable 入口仍使用 JSONObject，仅在调用边界适配 Map。
+            metadata.fromJson(new JSONObject(definition));
+            return metadata;
+        });
     }
 
     private <V extends Metadata> void doMerge(Map<String, V> map,
@@ -164,6 +192,7 @@ public class SimpleDeviceMetadata implements DeviceMetadata {
         deviceMetadata.setDescription(metadata.getDescription());
         deviceMetadata.setExpands(metadata.getExpands());
         deviceMetadata.setRelationMetadata(new CompositeThingMetadata(this, metadata).getRelationMetadata());
+        deviceMetadata.setModules(new CompositeThingMetadata(this, metadata).getModules());
 
 
         if (MergeOption.has(MergeOption.overwriteProperty, options)) {

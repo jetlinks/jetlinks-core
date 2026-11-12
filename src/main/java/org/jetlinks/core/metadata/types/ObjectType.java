@@ -150,17 +150,12 @@ public class ObjectType extends AbstractType<ObjectType> implements DataType, Co
     @Override
     public void fromJson(JSONObject json) {
         super.fromJson(json);
-        ofNullable(json.getJSONArray("properties"))
-                .map(list -> list
-                        .stream()
-                        .map(JSON::toJSON)
-                        .map(JSONObject.class::cast)
-                        .<PropertyMetadata>map(j -> {
-                            SimplePropertyMetadata metadata = new SimplePropertyMetadata();
-                            metadata.fromJson(j);
-                            return metadata;
-                        })
-                        .collect(Collectors.toList()))
+        ofNullable(json.get("properties"))
+                .map(definitions -> MetadataDefinitionParser.<PropertyMetadata>parseList(definitions, definition -> {
+                    SimplePropertyMetadata metadata = new SimplePropertyMetadata();
+                    metadata.fromJson(new JSONObject(definition));
+                    return metadata;
+                }))
                 .ifPresent(this::setProperties);
     }
 }

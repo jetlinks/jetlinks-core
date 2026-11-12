@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.core.metadata.types.DateTimeType;
+import org.jetlinks.core.metadata.types.LongType;
+import org.jetlinks.core.metadata.types.ObjectType;
 import org.jetlinks.core.things.relation.RelationSemantic;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
@@ -17,6 +19,99 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 public class MetadataSemanticsTest {
+
+    static class TemperatureReading {
+        @org.jetlinks.core.annotation.SemanticId("urn:example:temperature")
+        @org.jetlinks.core.annotation.SemanticRole(PropertySemanticRole.result)
+        double temperature;
+    }
+
+    @Test
+    public void conceptReferencesRemainSeparateFromFieldIdentityRoleAndUnit() throws Exception {
+        var property = SimplePropertyMetadata.of("temperature", "Temperature", LongType.GLOBAL);
+        assertTrue(MetadataSemantics.semanticId(property).isEmpty());
+        property.setExpands(org.jetlinks.core.utils.MetadataUtils.parseExpands(
+            TemperatureReading.class.getDeclaredField("temperature")));
+        assertSame(property, MetadataSemantics.withSemanticId(property, "urn:example:temperature"));
+        var decoded = new SimplePropertyMetadata();
+        decoded.fromJson(JSON.parseObject(property.toJson().toJSONString()));
+        assertEquals("urn:example:temperature", MetadataSemantics.semanticId(decoded).orElseThrow());
+        assertEquals("temperature", decoded.getId());
+        assertEquals(PropertySemanticRole.result, MetadataSemantics.propertyRole(decoded).orElseThrow());
+        var other = MetadataSemantics.withSemanticId(
+            SimplePropertyMetadata.of("ambient", "Ambient", LongType.GLOBAL), "urn:example:temperature");
+        assertNotEquals(decoded.getId(), other.getId());
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.withSemanticId(property, "urn:other")))
+            .expectError(I18nSupportException.class).verify();
+        assertEquals("urn:example:temperature", MetadataSemantics.semanticId(property).orElseThrow());
+        property.expand(MetadataSemantics.SEMANTIC_ID_KEY, false);
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.semanticId(property)))
+            .expectError(I18nSupportException.class).verify();
+    }
+
+    @Test
+    public void relationClassificationsPreserveCustomTermsAndCanonicalMeaning() {
+        var relation = new RelationMetadata();
+        relation.setId("describes");
+        relation.setTargetType("machine");
+        assertTrue(MetadataSemantics.relationSemanticTerm(relation).isEmpty());
+        MetadataSemantics.withRelationSemantic(relation, "urn:example:calibratedBy");
+        relation.setReverse(true);
+        var decoded = new RelationMetadata();
+        decoded.fromJson(JSON.parseObject(relation.toJson().toJSONString()));
+        assertEquals("urn:example:calibratedBy", MetadataSemantics.relationSemanticTerm(decoded).orElseThrow());
+        assertTrue(MetadataSemantics.relationSemantic(decoded).isEmpty());
+        assertTrue(decoded.isReverse());
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.withRelationSemantic(decoded, RelationSemantic.about)))
+            .expectError(I18nSupportException.class).verify();
+        var structural = MetadataSemantics.withRelationSemantic(new RelationMetadata(), RelationSemantic.structural);
+        assertEquals(RelationSemantic.structural, MetadataSemantics.relationSemantic(structural).orElseThrow());
+        assertFalse(structural.getExpands().containsKey("transitive"));
+    }
+
+    @org.jetlinks.core.annotation.EventSemantics(EventKind.data)
+    static class TemperatureReport { }
+
+    @Test
+    public void eventKindsUseTheSameAnnotationAndDynamicEncodingWithoutInferringChanges() {
+        var metadata = new SimpleEventMetadata();
+        metadata.setId("temperature-report");
+        metadata.setExpands(org.jetlinks.core.utils.MetadataUtils.parseExpands(TemperatureReport.class));
+        assertEquals("data", metadata.getExpands().get("eventKind"));
+        assertSame(metadata, MetadataSemantics.withEventKind(metadata, EventKind.data));
+        var decoded = new SimpleEventMetadata();
+        decoded.fromJson(JSON.parseObject(metadata.toJson().toJSONString()));
+        assertEquals(EventKind.data, MetadataSemantics.eventKind(decoded).orElseThrow());
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.withEventKind(metadata, EventKind.objectLifecycle)))
+            .expectError(I18nSupportException.class).verify();
+        var custom = MetadataSemantics.withEventKind(new SimpleEventMetadata(), "urn:example:maintenance");
+        decoded.fromJson(JSON.parseObject(custom.toJson().toJSONString()));
+        assertEquals("urn:example:maintenance", MetadataSemantics.eventKindTerm(decoded).orElseThrow());
+        assertTrue(MetadataSemantics.eventKind(decoded).isEmpty());
+    }
+
+    @Test
+    public void dynamicDeclarationsShareAnnotationEncodingAndDefaultMergeRules() {
+        var field = SimplePropertyMetadata.of("count", "Count", LongType.GLOBAL);
+        field.expand("presentation", Map.of("primary", true, "future", "keep"));
+        assertSame(field, MetadataSemantics.withPropertyRole(field, PropertySemanticRole.result));
+        assertSame(field, MetadataSemantics.withObservation(field, new ObservationMapping("at", "valid")));
+        assertEquals(Map.of("primary", true, "future", "keep", "observedAt", "at", "quality", "valid"),
+            field.getExpand("presentation").orElseThrow());
+        var type = new ObjectType();
+        type.setProperties(List.of(field,
+            SimplePropertyMetadata.of("at", "Time", LongType.GLOBAL),
+            SimplePropertyMetadata.of("valid", "Quality", org.jetlinks.core.metadata.types.BooleanType.GLOBAL)));
+        MetadataSemantics.validateOutput(type);
+        var encoded = org.jetlinks.core.metadata.types.DataTypes.fromJsonNow(JSON.parseObject(type.toJson().toJSONString()));
+        assertEquals(new ObservationMapping("at", "valid"), MetadataSemantics.observation(SemanticRecord.field(encoded, "count")));
+        var model = new SimpleDeviceMetadata();
+        assertSame(model, MetadataSemantics.withSemanticTypes(model, SemanticType.observation, SemanticType.result));
+        assertEquals(java.util.Set.of(SemanticType.observation, SemanticType.result), MetadataSemantics.semanticTypes(model));
+        StepVerifier.create(Mono.fromRunnable(() -> MetadataSemantics.withObservation(field, new ObservationMapping("other", null))))
+            .expectError(I18nSupportException.class).verify();
+        assertEquals(new ObservationMapping("at", "valid"), MetadataSemantics.observation(field));
+    }
 
     @Test
     public void should_preserve_alarm_roles_and_future_vocabulary() {
