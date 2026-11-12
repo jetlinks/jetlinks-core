@@ -12,7 +12,9 @@ import reactor.test.StepVerifier;
 import reactor.util.context.Context;
 
 import java.math.BigDecimal;
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -95,6 +97,110 @@ public class InMemoryRecorderTest {
         assertThrows(UnsupportedOperationException.class, accepted::clear);
         assertThrows(UnsupportedOperationException.class, () -> ((List<?>) accepted.get("values")).clear());
         assertTrue(recorder.snapshot().actions().isEmpty());
+    }
+
+    @Test
+    public void repeatedReferencesMustStillMergeAndEqualValuesMustKeepLatestReference() {
+        var recorder = InMemoryRecorder.factory(Set.of(), Set.of("samples", "value")).get();
+        var action = recorder.action("repeat");
+        Key<List<Integer>> samples = Key.listKey("samples");
+        var sameInput = List.of(1);
+        action.attribute(samples, sameInput).attribute(samples, sameInput);
+        String first = new String("same");
+        String latest = new String("same");
+        action.attribute("value", first).attribute("value", first);
+        var before = recorder.snapshot();
+        action.attribute("value", latest).complete();
+        var after = recorder.snapshot();
+        assertEquals(List.of(1, 1), after.actions().get(0).attributes().get("samples"));
+        assertSame(first, before.actions().get(0).attributes().get("value"));
+        assertSame(latest, after.actions().get(0).attributes().get("value"));
+        recorder.close();
+    }
+
+    @Test
+    public void shouldBatchSelectedFieldsAndPreserveEarlierSnapshots() {
+        try (var recorder = InMemoryRecorder.factory(Set.of("same"), Set.of("same", "input", "output")).get()) {
+            var action = recorder.action("batch");
+            action.tags(Map.of("same", "tag")).attributes(Map.of("same", "attribute", "input", 1, "output", 2));
+            var before = recorder.snapshot();
+            var update = new HashMap<String, Object>();
+            update.put("input", 3);
+            update.put("output", null);
+            update.put("ignored", 9);
+            action.attributes(update).attributes(update).tags(null).attributes(null).complete();
+            action.attributes(Map.of("input", 99));
+            var after = recorder.snapshot();
+            assertEquals(Map.of("same", "tag"), after.actions().get(0).tags());
+            assertEquals(Map.of("same", "attribute", "input", 1, "output", 2), before.actions().get(0).attributes());
+            assertEquals(Map.of("same", "attribute", "input", 3, "output", 2), after.actions().get(0).attributes());
+            assertFalse(after.truncated());
+        }
+    }
+
+    @Test
+    public void shouldKeepABatchAtomicAndRetryAgainstConcurrentSingleFieldUpdates() throws Exception {
+        var recorder = InMemoryRecorder.factory(Set.of(), Set.of("left", "right", "sum")).get();
+        var action = recorder.action("batch");
+        action.attributes(Map.of("left", 0, "right", 0, "sum", 0));
+        var before = recorder.snapshot();
+        var readingSecondField = new CountDownLatch(1);
+        var release = new CompletableFuture<Void>();
+        var reads = new AtomicInteger();
+        Map<String, Object> update = new AbstractMap<>() {
+            @Override public Set<Entry<String, Object>> entrySet() { throw new AssertionError("must only read selected keys"); }
+            @Override public Object get(Object key) {
+                if (!"left".equals(key) && !"right".equals(key)) return null;
+                if (reads.incrementAndGet() == 2) {
+                    readingSecondField.countDown();
+                    release.join();
+                }
+                return 1;
+            }
+        };
+        var worker = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> write = worker.submit(() -> action.attributes(update));
+            assertTrue(readingSecondField.await(5, TimeUnit.SECONDS));
+            // 第二个字段尚未读完时，第一个字段不能提前发布给快照。
+            assertEquals(before.actions().get(0).attributes(), recorder.snapshot().actions().get(0).attributes());
+            action.attribute("sum", 7);
+            release.complete(null);
+            write.get(5, TimeUnit.SECONDS);
+            assertEquals(Map.of("left", 1, "right", 1, "sum", 7), recorder.snapshot().actions().get(0).attributes());
+            assertEquals(Map.of("left", 0, "right", 0, "sum", 0), before.actions().get(0).attributes());
+            assertFalse(recorder.snapshot().truncated());
+        } finally {
+            release.complete(null);
+            worker.shutdownNow();
+            recorder.close();
+        }
+    }
+
+    @Test
+    public void shouldIsolateBatchExtractionFailuresAndSkipClosedReaders() {
+        try (var recorder = recorder()) {
+            var reads = new AtomicInteger();
+            Map<String, Object> values = new AbstractMap<>() {
+                @Override public Set<Entry<String, Object>> entrySet() { throw new AssertionError("must only read selected keys"); }
+                @Override public Object get(Object key) {
+                    reads.incrementAndGet();
+                    if ("input".equals(key)) throw new IllegalArgumentException("unavailable input");
+                    assertEquals("output", key);
+                    return 4;
+                }
+            };
+            var action = recorder.action("partial");
+            action.attributes(values).complete();
+            assertEquals(Map.of("output", 4), recorder.snapshot().actions().get(0).attributes());
+            assertTrue(recorder.snapshot().truncated());
+            assertEquals(2, reads.get());
+            action.attributes(values);
+            recorder.close();
+            action.attributes(values);
+            assertEquals(2, reads.get());
+            assertTrue(recorder.snapshot().actions().isEmpty());
+        }
     }
 
     @Test

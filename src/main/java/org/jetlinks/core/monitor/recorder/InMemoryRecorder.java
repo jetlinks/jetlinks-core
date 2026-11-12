@@ -158,7 +158,8 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
     @Override
     public void close() {
         if ((FLAGS.getAndUpdate(this, value -> value | CLOSED) & CLOSED) != 0) return;
-        for (int i = 0; i < actions.length; i++) {
+        // 只清理已预留槽位；关闭后才预留或发布的操作由 create 的关闭检查自行释放。
+        for (int i = 0, count = size; i < count; i++) {
             MemoryAction<?> action = (MemoryAction<?>) ACTIONS.getAndSet(actions, i, null);
             if (action != null) action.frame = Frame.DISCARDED;
         }
@@ -222,6 +223,8 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
                     Object selected = value;
                     Object old = previous.values == null ? null : previous.values[index];
                     if (old != null && key != null) selected = merge(key, old, value);
+                    // 合并之后才判断引用未变，既跳过重复快照复制，也保留 Key 的累计语义。
+                    if (old == selected) return this;
                     Object[] fields = previous.values == null ? new Object[selection.fields()] : previous.values.clone();
                     fields[index] = selected;
                     Frame next = new Frame(fields, previous.status, previous.timestamp, previous.startNanos,
@@ -263,14 +266,35 @@ public final class InMemoryRecorder implements Recorder, AutoCloseable {
         public ActionRecorder<E> attributes(Map<String, Object> values) { return bulk(selection.attributes, values); }
 
         private ActionRecorder<E> bulk(Map<String, Integer> indexes, Map<String, Object> values) {
-            if (values != null && writable()) {
-                // 遍历预编译白名单，避免扫描调用方提供的无界元数据 Map。
-                for (String key : indexes.keySet()) {
-                    try { write(indexes, key, null, values.get(key)); }
-                    catch (Throwable error) { Exceptions.throwIfFatal(error); truncate(); }
+            if (values == null || !writable()) return this;
+            while (true) {
+                Frame previous = frame;
+                if (closed() || previous.ended()) return this;
+                Object[] fields = null;
+                // 只读取白名单；同一批字段共用一次复制与提交，快照不会看到半批更新。
+                for (Map.Entry<String, Integer> entry : indexes.entrySet()) {
+                    Object value;
+                    try {
+                        value = values.get(entry.getKey());
+                    } catch (Throwable error) {
+                        Exceptions.throwIfFatal(error);
+                        truncate();
+                        continue;
+                    }
+                    if (value == null) continue;
+                    int index = entry.getValue();
+                    if (previous.values != null && previous.values[index] == value) continue;
+                    if (fields == null) {
+                        fields = previous.values == null ? new Object[selection.fields()] : previous.values.clone();
+                    }
+                    fields[index] = value;
                 }
+                if (fields == null) return this;
+                Frame next = new Frame(fields, previous.status, previous.timestamp, previous.startNanos,
+                    previous.useNanos, previous.errorType, previous.errorMessage);
+                // 单字段写入或生命周期变化可能抢先提交，重试时必须基于最新 Frame 合并。
+                if (FRAME.compareAndSet(this, previous, next)) return this;
             }
-            return this;
         }
 
         @Override
