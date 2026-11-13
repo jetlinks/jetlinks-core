@@ -832,6 +832,52 @@ MetadataSemantics.validateOutput(output);
 
 复现命令和日志索引保存在隔离工作目录 `task-state.md`；最终日志为 `core-minimal-convergence-test.log`、`components-minimal-convergence-clean.log`、`ontology-minimal-convergence-clean.log`、`device-minimal-convergence-clean.log`。首轮新增测试的 JUnit 写法、分段集合比较及证据身份夹具已按真实契约修正；设备增量构建暴露旧子类字节码后改为干净构建。最终结果不累计失败重试或上阶段测试。core 基础语义已由 #114 合入 #112 分支，本节增量以其合并结果为基线单独评审；运行服务与浏览器由用户管理。
 
+### 7.8 对象标识与字段引用
+
+来源明确区分自身标识、业务编号、指向其他对象的字段和普通数据，消费者据此统一呈现；设备的产品、工单的项目和人员的部门使用相同契约。本节的值对象、注解、默认合并与前端消费已实现；设备来源完成最小声明，真实运行服务需重启加载。
+
+实施前：`PropertySemanticRole` 的 identity、subjectId、modelId 等用途不能表达“这个字符串指向哪个类型的对象、对应哪条关系”。`DeviceObjectProvider` 原已声明设备到产品的 product 关系，但 productId、productName 只是普通字符串。现在通过 `PropertyReferenceMapping` 连接原关系，而不按字段名过滤或生成另一条关系。
+
+依据：OWL 2 Primer 第 4.4/4.8 节区分对象之间的关系与对象到字面值的属性；第 4.4 节强调方向和无歧义关系名。这不要求平台把物模型改成 OWL，也不代表模型字段名就是领域语义。`semanticId` 仍引用概念，不引用某个实例；productId 也不能被自动解释为 rdf:type 或对象类型。
+
+| 含义 | 建议契约 | 消费规则 |
+| --- | --- | --- |
+| 当前模型所述实体自身的身份 | 复用 semanticRole=identity | 当前对象以可信上下文中的 type/id 定位；名称优先，ID 为辅助信息。记录自己的 identity 仍属于记录，不挪到被描述设备的标题 |
+| 资产编号、序列号等业务编号 | 可选增加 identifier 字段角色 | 作为业务信息保留；不自动认为唯一、不取代对象身份、不触发查询或关系生成 |
+| 指向产品、部门、项目等对象 | 新增一个可选、类型化的字段引用说明 | 原值类型不变，字符串/数组仍沿原 DataType；对象名称、进入目标及关系消费使用统一引用处理 |
+| 温度、说明、状态等数据 | 原字段角色、DataType 和展示声明 | 按原值类型渲染，不根据 Id 后缀或名称推测语义 |
+
+原 `PropertyMetadata.expands` 增加可选 reference 声明，core 提供统一键、可序列化的 `PropertyReferenceMapping`、`MetadataSemantics.withReference/reference` 及组合注解 `@PropertyReference`。成员为 targetType、可选 relationId、reverse（默认 false）；可选 labelProperty 仅引用同层已公开字段，表示来源提供的对象名称快照。字段自身就是 ID 值的读取位置，不增加表达式、任意脚本、表连接或另一套 DataType。数组元素复用同一说明；本轮前端消费当前对象的顶层属性，嵌套结构继续沿原类型渲染。
+
+静态声明示例，动态字段使用 `MetadataSemantics.withReference`：
+
+```java
+@SemanticRole(PropertySemanticRole.identity)
+@Schema(description = "设备标识")
+private String id;
+
+@PropertyReference(targetType = TYPE_PRODUCT, relationId = REL_PRODUCT,
+                   labelProperty = "productName")
+@Schema(description = "所属产品")
+private String productId;
+```
+
+TYPE_PRODUCT 与 REL_PRODUCT 引用来源已有常量；动态模型使用同一 helper 和编码，不能在前端再手写一份魔法值规则。`modelId` 等用途与 reference 正交：某字段可以同时表示所用模型和指向模型对象，但不能用 modelId 替代目标类型声明。目标名称优先取原来源已授权返回的 labelProperty；需要补充目标数据时继续由目标来源授权读取，名称快照不证明目标仍存在或可打开。
+
+关系定义继续归 `RelationMetadata`，reference 只链接既有定义。完整关系定位包含定义所在对象类型、relationId、targetType 和方向，不按 relationId 全局合并；reverse 只是导航投影，不改变规范事实。未声明 relationId 时，只表示对象引用，不虚构“关联到”边。声明了关系时，概览与图谱复用同一来源的导航和事实，不再按字段创建第二条关系、不另建关系存储；数据行已有 `ObjectDataMetadata/ObjectLink` 的实例联系继续复用。
+
+职责与边界：core 拥有语义值、注解、默认合并及最小结构读取；relation 负责把来源原声明和规范关系目录完整透传，复用原导航与授权；web-core 提供引用解析、紧凑对象呈现和统一值渲染；ontology-ui 决定标题、概览、关联图中的位置与默认去重。业务仅声明真实映射和必要的自定义表现，不注册针对产品 ID 的专用渲染器。引用不授予写权限，也不把外键变成可编辑输入框；维护仍使用来源已注册的关系维护器或明确动作。
+
+解析仅处理当前可见内容，按可信 scope、类型和来源合并已有查询、请求内去重；切换主体取消旧请求，不新增全局跨账号缓存。未能解析目标时保留来源实际返回的可读标识，不凭空补名称或提供可打开承诺；来源未区分拒绝和不存在时统一显示不可查看。未声明名称映射的普通字段保留，不按 productName 等命名自动隐藏。默认布局消费声明后去重，用户保存的字段和布局不被改写。
+
+落点：core 的 `PropertyReferenceMapping`、`PropertyReference` 和 `MetadataSemantics`；relation 保持原元数据透传；web-core 的 `object-capability/references.ts`、`useObjectCapabilities` 和 `ObjectReferenceDisplay`；本体 `ResourceOverview/ResourceBrowser` 负责布局及原导航。设备与产品自身标识声明 identity，设备 productId 指向原 product 关系并读取 productName 名称快照。不改变设备取数、关系维护或授权流程。
+
+验收：注解与动态装配编码一致，JSON/Codec/RPC 及默认合并不丢失；identity、业务编号和 modelId 不被误识别；同 ID 不同类型/租户、正反向关系、多个来源、名称快照、长名称、单/多值、空值、目标无法读取及旧模型均有明确结果；概览引用、图谱边和进入目标保持同一身份与原授权；批量列表不产生逐字段查名称，未保存布局及原关系维护链不回退。阶段末集中编译、契约/集成测试和真实页面复验，不逐次构建。
+
+验证：core 14 项测试通过，覆盖注解/动态装配、冲突合并、未知键保留、JSON 与 Java 序列化；relation 8 项测试通过，包含真实两节点 RPC 的引用声明往返；设备/产品 4 项来源回归通过。core 与设备制品已安装，运行服务加载及真实产品引用仍待用户重启后验证。前端数据、组件、构建与实验验收见本体交互设计；多租户源的实际数据隔离仍由原来源契约负责，本轮仅验证请求隔离与无全局缓存。提交/PR：pending。
+
+参考：https://www.w3.org/TR/owl2-primer/#Object_Properties 、https://www.w3.org/TR/owl2-primer/#Datatypes 。
+
 ## 8. 错误、事件及集群
 
 | 情况 | 处理 |

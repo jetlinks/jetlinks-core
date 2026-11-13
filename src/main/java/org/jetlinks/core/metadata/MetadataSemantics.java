@@ -43,6 +43,11 @@ public final class MetadataSemantics {
     public static final String PRIMARY_KEY = "primary";
     public static final String OBSERVED_AT_KEY = "observedAt";
     public static final String QUALITY_KEY = "quality";
+    public static final String REFERENCE_KEY = "reference";
+    public static final String REFERENCE_TYPE_KEY = "targetType";
+    public static final String REFERENCE_RELATION_KEY = "relationId";
+    public static final String REFERENCE_REVERSE_KEY = "reverse";
+    public static final String REFERENCE_LABEL_KEY = "labelProperty";
 
     public static final ConfigKey<String[]> SEMANTIC_TYPES =
         ConfigKey.of(SEMANTIC_TYPES_KEY, SEMANTIC_TYPES_KEY, String[].class);
@@ -70,6 +75,12 @@ public final class MetadataSemantics {
         EVENT_KIND.getKey(), same(EVENT_KIND.getKey(), Objects::deepEquals),
         RELATION_SEMANTIC.getKey(), same(RELATION_SEMANTIC.getKey(), Objects::deepEquals),
         GRAPH_SUBJECT_KEY, same(GRAPH_SUBJECT_KEY, Objects::deepEquals),
+        REFERENCE_KEY, ExpandsMerge.object(Map.of(
+            REFERENCE_TYPE_KEY, same(REFERENCE_KEY + "." + REFERENCE_TYPE_KEY, Objects::deepEquals),
+            REFERENCE_RELATION_KEY, same(REFERENCE_KEY + "." + REFERENCE_RELATION_KEY, Objects::deepEquals),
+            REFERENCE_REVERSE_KEY, same(REFERENCE_KEY + "." + REFERENCE_REVERSE_KEY, Objects::deepEquals),
+            REFERENCE_LABEL_KEY, same(REFERENCE_KEY + "." + REFERENCE_LABEL_KEY, Objects::deepEquals)
+        )),
         PRESENTATION_KEY, ExpandsMerge.object(Map.of(
             PRIMARY_KEY, same(PRESENTATION_KEY + "." + PRIMARY_KEY, Objects::deepEquals),
             OBSERVED_AT_KEY, same(PRESENTATION_KEY + "." + OBSERVED_AT_KEY, Objects::deepEquals),
@@ -161,6 +172,44 @@ public final class MetadataSemantics {
      */
     public static <P extends PropertyMetadata> P withPropertyRole(P property, String role) {
         return declare(property, PROPERTY_ROLE_KEY, text(role, PROPERTY_ROLE_KEY));
+    }
+
+    /**
+     * 为动态字段声明对象引用，例如 productId 指向产品的 product 关系；原值类型和字段用途保持不变。
+     * 与 PropertyReference 注解使用相同编码及默认合并规则，不解析实例、不校验目标权限。
+     */
+    public static <P extends PropertyMetadata> P withReference(P property, PropertyReferenceMapping mapping) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(REFERENCE_TYPE_KEY, text(mapping.targetType(), REFERENCE_KEY + "." + REFERENCE_TYPE_KEY));
+        values.put(REFERENCE_REVERSE_KEY, mapping.reverse());
+        if (mapping.relationId() != null && !mapping.relationId().isEmpty()) {
+            values.put(REFERENCE_RELATION_KEY, text(mapping.relationId(), REFERENCE_KEY + "." + REFERENCE_RELATION_KEY));
+        }
+        if (mapping.labelProperty() != null && !mapping.labelProperty().isEmpty()) {
+            values.put(REFERENCE_LABEL_KEY, text(mapping.labelProperty(), REFERENCE_KEY + "." + REFERENCE_LABEL_KEY));
+        }
+        return declare(property, REFERENCE_KEY, values);
+    }
+
+    /**
+     * @return 字段的对象引用说明；未声明为空，不从 Id 后缀、modelId 角色或字段名称推断。
+     * 只检查线缆结构，不加载关系目录；未知扩展仍留在原元数据中。
+     */
+    public static Optional<PropertyReferenceMapping> reference(PropertyMetadata property) {
+        Object declaration = value(property.getExpands(), REFERENCE_KEY);
+        if (declaration == null) return Optional.empty();
+        if (!(declaration instanceof Map<?, ?> mapping)) throw invalid(REFERENCE_KEY);
+        Object reverse = mapping.get(REFERENCE_REVERSE_KEY);
+        if (reverse != null && !(reverse instanceof Boolean)) throw invalid(REFERENCE_KEY + "." + REFERENCE_REVERSE_KEY);
+        return Optional.of(new PropertyReferenceMapping(
+            text(mapping.get(REFERENCE_TYPE_KEY), REFERENCE_KEY + "." + REFERENCE_TYPE_KEY),
+            optionalReferenceText(mapping, REFERENCE_RELATION_KEY), Boolean.TRUE.equals(reverse),
+            optionalReferenceText(mapping, REFERENCE_LABEL_KEY)));
+    }
+
+    private static String optionalReferenceText(Map<?, ?> mapping, String key) {
+        Object value = mapping.get(key);
+        return value == null || "".equals(value) ? null : text(value, REFERENCE_KEY + "." + key);
     }
 
     /**

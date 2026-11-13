@@ -9,8 +9,10 @@ package org.jetlinks.core.metadata;
  * @see org.jetlinks.core.metadata.MetadataSemantics
  */
 public enum PropertySemanticRole {
-    /** 当前记录自身的 ID，例如告警记录 ID；不能拿设备 ID 或临时拼接的时间代替记录身份。 */
+    /** 当前模型所述实体自身的 ID，例如设备或告警记录 ID；不能拿关联设备 ID 代替记录身份。 */
     identity,
+    /** 业务编号，例如资产编号或序列号；不因此声明唯一性，也不取代对象自身的身份。 */
+    identifier,
     /** 这条记录描述谁，例如设备温度快照中的 deviceId；对象类型仍由查询上下文提供。 */
     subjectId,
     /** 当前数据采用哪个业务模型，例如设备快照中的 productId；对象类型仍是 device，不是产品 ID。 */
