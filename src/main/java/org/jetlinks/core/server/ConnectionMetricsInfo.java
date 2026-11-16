@@ -74,6 +74,9 @@ public class ConnectionMetricsInfo {
     /** 本地传输写入失败次数。 */
     private Long writeErrors;
 
+    /** 协议请求失败累计，包括确认超时/拒绝；不能与写入或传输错误直接相加。 */
+    private Long requestErrors;
+
     /** 本连接已完成的对端确认次数，不含无确认语义的发送。 */
     private Long ackCount;
 
@@ -156,6 +159,7 @@ public class ConnectionMetricsInfo {
                 result.transportErrors = 0L;
                 result.writeSuccesses = 0L;
                 result.writeErrors = 0L;
+                result.requestErrors = 0L;
             }
             result.readBytes += current.readBytes;
             result.writeBytes += current.writeBytes;
@@ -170,6 +174,7 @@ public class ConnectionMetricsInfo {
             result.transportErrors = sum(result.transportErrors, current.transportErrors);
             result.writeSuccesses = sum(result.writeSuccesses, current.writeSuccesses);
             result.writeErrors = sum(result.writeErrors, current.writeErrors);
+            result.requestErrors = sum(result.requestErrors, current.requestErrors);
 
             if (current.ackCount == null) {
                 continue;
