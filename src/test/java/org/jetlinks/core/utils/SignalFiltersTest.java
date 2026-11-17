@@ -6,6 +6,139 @@ import static org.junit.Assert.*;
 
 public class SignalFiltersTest {
     @Test
+    public void medianKeepsSubnormalValuesDuringWarmup() {
+        var filter = new SignalFilters.Median(3);
+        assertEquals(Double.MIN_VALUE, filter.apply(Double.MIN_VALUE), 0);
+        assertEquals(Double.MIN_VALUE, filter.apply(Double.MIN_VALUE), 0);
+        assertEquals(Double.MIN_VALUE, filter.apply(2 * Double.MIN_VALUE), 0);
+        filter.reset();
+        assertEquals(-Double.MIN_VALUE, filter.apply(-Double.MIN_VALUE), 0);
+        assertEquals(-Double.MIN_VALUE, filter.apply(-Double.MIN_VALUE), 0);
+    }
+
+    @Test
+    public void inPlaceMedianDoesNotReorderTheAgeOfRawSamples() {
+        var filter = new SignalFilters.Median(5);
+        double[] input = {100, -10, 80, 0, 1, 2, 3, 4, 5, 6};
+        double[] expected = {100, 45, 80, 40, 1, 1, 2, 2, 3, 4};
+        for (int i = 0; i < input.length; i++) assertEquals("sample " + i, expected[i], filter.apply(input[i]), 0);
+    }
+
+    @Test
+    public void causalMediansMatchAnIndependentSortedWindowAfterManyWrapsAndResets() {
+        var random = new java.util.Random(903551);
+        for (int size : new int[]{3, 5}) {
+            var filter = new SignalFilters.Median(size);
+            var history = new java.util.ArrayDeque<Double>();
+            for (int i = 0; i < 5000; i++) {
+                if (i % 191 == 0) { filter.reset(); history.clear(); }
+                double value = random.nextInt(2048) / 8D;
+                if (history.size() == size) history.removeFirst();
+                history.addLast(value);
+                double[] ordered = history.stream().mapToDouble(Double::doubleValue).sorted().toArray();
+                int middle = ordered.length / 2;
+                double expected = (ordered.length & 1) == 0
+                    ? (ordered[middle - 1] + ordered[middle]) / 2 : ordered[middle];
+                assertEquals(expected, filter.apply(value), 0);
+            }
+        }
+    }
+
+    @Test
+    public void hampelMatchesIndependentCausalMedianAndMadAcrossAllWindowSizes() {
+        var random = new java.util.Random(13452);
+        for (int size : new int[]{3, 7, 15, 31}) {
+            var filter = new SignalFilters.Hampel(size, 3, .1);
+            var history = new java.util.ArrayDeque<Double>();
+            for (int i = 0; i < 1000; i++) {
+                if (i % 157 == 0) { filter.reset(); history.clear(); }
+                double value = i % 29 == 0 ? 1000 : random.nextInt(9) / 4D;
+                if (history.size() == size) history.removeFirst();
+                history.addLast(value);
+                double[] ordered = history.stream().mapToDouble(Double::doubleValue).sorted().toArray();
+                int middle = ordered.length / 2;
+                double median = (ordered.length & 1) == 0
+                    ? (ordered[middle - 1] + ordered[middle]) / 2 : ordered[middle];
+                double[] deviations = history.stream().mapToDouble(sample -> Math.abs(sample - median)).sorted().toArray();
+                boolean expected = history.size() < size
+                    || Math.abs(value - median) <= Math.max(.1, 3 * 1.4826 * deviations[middle]);
+                assertEquals(expected, filter.accept(value));
+                assertEquals(median, filter.replacement(), 0);
+            }
+        }
+    }
+
+    @Test
+    public void libraryMeansUseOnlyTheActiveWindowAfterResetAndIgnoreInvalidInput() {
+        var mean = new SignalFilters.MovingAverage(64);
+        var trimmed = new SignalFilters.TrimmedMean(31, 3);
+        for (int i = 0; i < 64; i++) {
+            double average = mean.apply(Double.MAX_VALUE);
+            double trimmedAverage = trimmed.apply(Double.MAX_VALUE);
+            assertTrue(Double.isFinite(average));
+            assertTrue(Double.isFinite(trimmedAverage));
+            assertEquals(Double.MAX_VALUE, average, Math.ulp(Double.MAX_VALUE) * 2);
+            assertEquals(Double.MAX_VALUE, trimmedAverage, Math.ulp(Double.MAX_VALUE) * 2);
+        }
+        mean.reset();
+        trimmed.reset();
+        assertTrue(Double.isNaN(mean.apply(Double.NaN)));
+        assertTrue(Double.isInfinite(trimmed.apply(Double.POSITIVE_INFINITY)));
+        assertEquals(1e-300, mean.apply(1e-300), 1e-314);
+        assertEquals(1e-300, trimmed.apply(1e-300), 1e-314);
+        assertEquals(1e-300, mean.apply(1e-300), 1e-314);
+        assertEquals(1e-300, trimmed.apply(1e-300), 1e-314);
+    }
+
+    @Test
+    public void windowMeansAgreeWithAnIndependentDecimalReferenceOverChangingMagnitudes() {
+        var random = new java.util.Random(81473);
+        for (int size : new int[]{2, 3, 31, 64}) {
+            var filter = new SignalFilters.MovingAverage(size);
+            var window = new java.util.ArrayDeque<java.math.BigDecimal>();
+            for (int i = 0; i < 2000; i++) {
+                if (i % 173 == 0) { filter.reset(); window.clear(); }
+                double value = (random.nextDouble() - .5) * (i % 7 == 0 ? 1e12 : 100);
+                if (window.size() == size) window.removeFirst();
+                window.addLast(new java.math.BigDecimal(value));
+                var sum = java.math.BigDecimal.ZERO;
+                for (var sample : window) sum = sum.add(sample);
+                double expected = sum.divide(java.math.BigDecimal.valueOf(window.size()), java.math.MathContext.DECIMAL128).doubleValue();
+                double scale = 0;
+                for (var sample : window) scale = Math.max(scale, sample.abs().doubleValue());
+                assertEquals(expected, filter.apply(value), Math.max(1e-10, Math.ulp(scale) * 16));
+            }
+        }
+    }
+
+    @Test
+    public void trimmedMeansMatchAnIndependentDecimalReferenceAcrossWindowShapes() {
+        var random = new java.util.Random(672114);
+        for (int size : new int[]{3, 4, 5, 16, 31}) {
+            for (int trim : new int[]{1, (size - 1) / 2}) {
+                var filter = new SignalFilters.TrimmedMean(size, trim);
+                var history = new java.util.ArrayDeque<Double>();
+                for (int i = 0; i < 900; i++) {
+                    if (i % 137 == 0) { filter.reset(); history.clear(); }
+                    if (i % 17 == 0) assertTrue(Double.isNaN(filter.apply(Double.NaN)));
+                    double value = (random.nextDouble() - .5) * (i % 7 == 0 ? 1e9 : 100);
+                    if (history.size() == size) history.removeFirst();
+                    history.addLast(value);
+                    double[] ordered = history.stream().mapToDouble(Double::doubleValue).sorted().toArray();
+                    int cut = trim * ordered.length / size;
+                    var sum = java.math.BigDecimal.ZERO;
+                    for (int j = cut; j < ordered.length - cut; j++) {
+                        sum = sum.add(new java.math.BigDecimal(ordered[j]));
+                    }
+                    double expected = sum.divide(java.math.BigDecimal.valueOf(ordered.length - 2L * cut),
+                        java.math.MathContext.DECIMAL128).doubleValue();
+                    assertEquals(expected, filter.apply(value), Math.max(1e-9, Math.ulp(expected) * 4));
+                }
+            }
+        }
+    }
+
+    @Test
     public void confirmsRealStepsButDoesNotDelayNormalChanges() {
         var filter = new SignalFilters.StepConfirmation<Double>(3, 1000, Double::compare,
             (a, b) -> Math.abs(a - b) <= 2);
@@ -210,8 +343,8 @@ public class SignalFiltersTest {
     }
 
     @Test
-    public void debounceRequiresContinuousObservedStability() {
-        var filter = new SignalFilters.Debounce(100, 200);
+    public void booleanConfirmationRequiresContinuousObservedStability() {
+        var filter = new SignalFilters.Confirmation<Boolean>(100, 1, 0, Boolean::equals);
         assertTrue(filter.accept(false, 0));
         assertFalse(filter.accept(true, 1));
         assertTrue(filter.accept(false, 50));
@@ -219,8 +352,10 @@ public class SignalFiltersTest {
         assertFalse(filter.accept(true, 159));
         assertTrue(filter.accept(true, 160));
         assertFalse(filter.accept(false, 170));
-        assertFalse(filter.accept(false, 369));
-        assertTrue(filter.accept(false, 370));
+        assertTrue(filter.accept(true, 190));
+        assertFalse(filter.accept(false, 200));
+        assertFalse(filter.accept(false, 299));
+        assertTrue(filter.accept(false, 300));
     }
 
     @Test

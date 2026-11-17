@@ -92,6 +92,16 @@ Monitor 执行观测的 API、SPI、兼容边界与验证入口见 [执行观测
 `EnumType.toJson()` 在未声明选项（`elements == null`）时省略 `elements`，显式空列表保留为 `[]`。
 `valueType` 在非 null 时写入，`multi` 始终写入；两者不依赖选项列表，避免配置经过 JSON 或安全序列化后丢失。
 
+# 有界信号处理
+
+`utils.SignalFilters` 提供按信号独占、串行调用的有界窗口及样本驱动状态。
+布尔、数字编码及枚举的防抖统一使用 `Confirmation`，不再维护单独的布尔算法。
+中位数、Hampel 的中位数与 MAD 在奇数窗口复用 JDK 原位排序，偶数预热使用 Apache Commons Statistics 1.3。
+截尾均值复用 Commons Statistics；移动平均保留摊销 O(1) 增量路径，仅极限数值恢复委托统计库。
+仅在可复用工作区原位计算，原始环形样本不受统计库重排影响。预热使用已有有效样本，不补零，
+非有限值不推进窗口，重置后重新预热。调用方负责源时间、质量切换、断流及实例生命周期。
+库依赖随 core 传递，协议插件不需要重复实现统计内核；数值平滑不代替精确累计量计算。
+
 # License
 Apache-2.0
 

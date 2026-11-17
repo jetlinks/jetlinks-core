@@ -1,5 +1,7 @@
 package org.jetlinks.core.utils;
 
+import org.apache.commons.statistics.descriptive.Mean;
+
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.BiPredicate;
@@ -11,7 +13,18 @@ import java.util.function.BiPredicate;
  * @since 1.3.3
  */
 public final class SignalFilters {
+    private static final org.apache.commons.statistics.descriptive.Median MEDIAN =
+        org.apache.commons.statistics.descriptive.Median.withDefaults();
+
     private SignalFilters() {
+    }
+
+    private static double median(double[] values, int count) {
+        // 奇数窗口复用JDK原位排序，不在逐样本路径创建统计库的临时选择数组。
+        // 偶数预热委托统计库，兼顾极大值及次正规数的插值边界。
+        if ((count & 1) == 0) return MEDIAN.evaluateRange(values, 0, count);
+        Arrays.sort(values, 0, count);
+        return values[count / 2];
     }
 
     /**
@@ -143,9 +156,8 @@ public final class SignalFilters {
             if (window.count < window.samples.length) return true;
             // 用半幅距离避免两个有限极值相减溢出；阈值和偏差采用同一尺度。
             for (int i = 0; i < window.count; i++) {
-                window.sorted[i] = Math.abs(window.samples[i] / 2 - median / 2);
+                window.scratch[i] = Math.abs(window.samples[i] / 2 - median / 2);
             }
-            Arrays.sort(window.sorted, 0, window.count);
             double mad = window.median();
             return Math.abs(input / 2 - median / 2) <= Math.max(tolerance / 2, sigma * 1.4826 * mad);
         }
@@ -173,14 +185,8 @@ public final class SignalFilters {
             if (!Double.isFinite(input)) return input;
             window.add(input);
             int cut = (int) ((long) trim * window.count / window.samples.length);
-            double mean = window.sorted[cut];
-            for (int i = cut + 1; i < window.count - cut; i++) {
-                int n = i - cut + 1;
-                double difference = window.sorted[i] - mean;
-                mean = Double.isFinite(difference) ? mean + difference / n
-                    : mean * ((double) (n - 1) / n) + window.sorted[i] / n;
-            }
-            return mean;
+            Arrays.sort(window.scratch, 0, window.count);
+            return Mean.ofRange(window.scratch, cut, window.count - cut).getAsDouble();
         }
     }
 
@@ -221,24 +227,23 @@ public final class SignalFilters {
         }
     }
 
-    /** 仅稳健窗口算法共用的固定工作区，不装箱、不在逐样本路径分配数组。 */
+    /** 固定样本及工作数组；统计库只改动工作区，不打乱原始环形窗口。 */
     private static final class SampleWindow {
         private final double[] samples;
-        private final double[] sorted;
+        private final double[] scratch;
         private int count;
         private int index;
 
-        private SampleWindow(int size) { samples = new double[size]; sorted = new double[size]; }
+        private SampleWindow(int size) { samples = new double[size]; scratch = new double[size]; }
         private void reset() { count = index = 0; }
         private void add(double input) {
             samples[index] = input;
             index = (index + 1) % samples.length;
             count = Math.min(count + 1, samples.length);
-            System.arraycopy(samples, 0, sorted, 0, count);
-            Arrays.sort(sorted, 0, count);
+            System.arraycopy(samples, 0, scratch, 0, count);
         }
         private double median() {
-            return (count & 1) == 1 ? sorted[count / 2] : sorted[count / 2 - 1] / 2 + sorted[count / 2] / 2;
+            return SignalFilters.median(scratch, count);
         }
     }
 
@@ -278,14 +283,14 @@ public final class SignalFilters {
     /** 最近3或5个有效样本的中值；预热使用已有样本，不补零，工作区循环复用。 */
     public static final class Median {
         private final double[] samples;
-        private final double[] sorted;
+        private final double[] scratch;
         private int index;
         private int count;
 
         public Median(int size) {
             if (size != 3 && size != 5) throw new IllegalArgumentException("median window must be 3 or 5");
             samples = new double[size];
-            sorted = new double[size];
+            scratch = new double[size];
         }
 
         /** 断流后重新预热，复用固定工作区；旧样本不参与新窗口。 */
@@ -298,16 +303,14 @@ public final class SignalFilters {
             samples[index] = input;
             index = (index + 1) % samples.length;
             count = Math.min(count + 1, samples.length);
-            System.arraycopy(samples, 0, sorted, 0, count);
-            Arrays.sort(sorted, 0, count);
-            // 偶数预热窗口取两中值的均值，避免大数求和溢出。
-            return (count & 1) == 1 ? sorted[count / 2] : sorted[count / 2 - 1] / 2 + sorted[count / 2] / 2;
+            System.arraycopy(samples, 0, scratch, 0, count);
+            return SignalFilters.median(scratch, count);
         }
     }
 
     /**
      * 固定窗口移动平均；环形数组最多64项，预热不补零，摊销O(1)。
-     * 缩放后补偿求和，每轮重建一次，避免长期累积舍入误差及大值移出后的消减误差。
+     * 缩放后补偿求和，每轮重建一次；极限数值恢复委托统计库，不扩大高频路径的计算量。
      */
     public static final class MovingAverage {
         private final double[] samples;
@@ -339,13 +342,7 @@ public final class SignalFilters {
             }
             double mean = (sum + correction) / ((double) count / samples.length);
             if (Double.isFinite(mean)) return mean;
-            // 极限数值的中间舍入仍可能溢出，有限输入的均值采用分别加权恢复。
-            mean = samples[0];
-            for (int i = 1; i < count; i++) {
-                double difference = samples[i] - mean;
-                mean = Double.isFinite(difference) ? mean + difference / (i + 1)
-                    : mean * ((double) i / (i + 1)) + samples[i] / (i + 1);
-            }
+            mean = Mean.ofRange(samples, 0, count).getAsDouble();
             sum = mean * ((double) count / samples.length);
             correction = 0;
             return mean;
@@ -458,44 +455,6 @@ public final class SignalFilters {
                 count = 1;
             } else if (count < samples) count++;
             return count >= samples && time - since >= duration;
-        }
-    }
-
-    /** 样本驱动的布尔防抖；只有持续收到相同候选值超过稳定时间才准入，不合成新样本。 */
-    public static final class Debounce {
-        private final long onDelay;
-        private final long offDelay;
-        private boolean initialized;
-        private boolean stable;
-        private boolean candidate;
-        private long since;
-
-        public Debounce(long onDelay, long offDelay) {
-            if (onDelay < 0 || offDelay < 0) throw new IllegalArgumentException("invalid debounce duration");
-            this.onDelay = onDelay;
-            this.offDelay = offDelay;
-        }
-
-        public boolean accept(boolean input, long time) {
-            if (!initialized) {
-                initialized = true;
-                stable = candidate = input;
-                since = time;
-                return true;
-            }
-            if (input == stable) {
-                candidate = input;
-                since = time;
-                return true;
-            }
-            if (input != candidate) {
-                candidate = input;
-                since = time;
-            }
-            long delay = input ? onDelay : offDelay;
-            if (time - since < delay) return false;
-            stable = input;
-            return true;
         }
     }
 
