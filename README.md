@@ -87,6 +87,11 @@ Monitor 执行观测的 API、SPI、兼容边界与验证入口见 [执行观测
 编码拒绝负数和大于 `2^64-1` 的值，解码要求至少有 8 个可读字节。
 `unsigned_int64_array` 支持连续的 8 字节无符号整数；字节布局由调用方调整。
 
+# 枚举类型 JSON 序列化
+
+`EnumType.toJson()` 在未声明选项（`elements == null`）时省略 `elements`，显式空列表保留为 `[]`。
+`valueType` 在非 null 时写入，`multi` 始终写入；两者不依赖选项列表，避免配置经过 JSON 或安全序列化后丢失。
+
 # License
 Apache-2.0
 
