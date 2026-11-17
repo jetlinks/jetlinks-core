@@ -73,6 +73,9 @@ public interface ConnectionMetrics {
     /** 等待对端确认超时次数。 */
     default Long getAckTimeouts() { return null; }
 
+    /** 协议请求失败累计，包括确认超时或拒绝；无请求确认语义时为空。 */
+    default Long getRequestErrors() { return null; }
+
     /** 成功确认平均耗时，单位秒；无成功样本时为空。 */
     default Double getAckAverageDuration() { return null; }
 
@@ -107,6 +110,7 @@ public interface ConnectionMetrics {
         info.setWriteSuccesses(getWriteSuccesses());
         info.setWriteErrors(getWriteErrors());
         info.setAckTimeouts(getAckTimeouts());
+        info.setRequestErrors(getRequestErrors());
         info.setAckAverageDuration(getAckAverageDuration());
         info.setAckMaxDuration(getAckMaxDuration());
         info.setAckDurationP95(getAckDurationP95());

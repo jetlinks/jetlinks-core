@@ -6,6 +6,22 @@ import static org.junit.Assert.*;
 
 public class ConnectionMetricsTest {
     @Test
+    public void requestFailuresSurviveSnapshotsAndOnlyAggregateCompleteCounters() {
+        ConnectionMetrics measured = new LegacyMetrics() {
+            @Override
+            public Long getRequestErrors() {
+                return 3L;
+            }
+        };
+        assertEquals(Long.valueOf(3), measured.toInfo().getRequestErrors());
+        var total = ConnectionMetricsInfo.aggregate(java.util.List.of(measured.toInfo(), measured.toInfo()),
+            java.util.function.Function.identity());
+        assertEquals(Long.valueOf(6), total.getRequestErrors());
+        assertNull(ConnectionMetricsInfo.aggregate(java.util.List.of(total, new LegacyMetrics().toInfo()),
+            java.util.function.Function.identity()).getRequestErrors());
+    }
+
+    @Test
     public void legacyImplementationsAndSnapshotsKeepOptionalCapabilitiesAbsent() {
         ConnectionMetrics legacy = new LegacyMetrics();
         assertNull(legacy.toInfo().getAckCount());
