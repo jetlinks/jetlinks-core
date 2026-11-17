@@ -188,19 +188,24 @@ public class EnumType extends AbstractType<EnumType> implements DataType {
         }
     }
 
+    /**
+     * 序列化枚举配置，未声明选项时仍保留独立的值类型和多选设置。
+     */
     @Override
     public JSONObject toJson() {
         JSONObject json = super.toJson();
-        if (this.getElements() == null) {
-            return json;
-        }
-        json.put("elements", this
+        if (this.getElements() != null) {
+            json.put("elements", this
                 .getElements()
                 .stream()
-                .map(EnumType.Element::toMap).collect(Collectors.toList()));
+                .map(EnumType.Element::toMap)
+                .collect(Collectors.toList()));
+        }
 
-        if(this.getValueType()!=null){
-            json.put("valueType", this.getValueType().toJson());
+        if (this.getValueType() != null) {
+            json.put("valueType", this
+                .getValueType()
+                .toJson());
         }
 
         json.put("multi", this.isMulti());
