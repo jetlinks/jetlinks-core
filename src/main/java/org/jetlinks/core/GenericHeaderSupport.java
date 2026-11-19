@@ -18,7 +18,7 @@ public class GenericHeaderSupport<SELF extends GenericHeaderSupport<SELF>> imple
         if (headers == null) {
             synchronized (this) {
                 if (headers == null) {
-                    headers = new ConcurrentHashMap<>(64);
+                    headers = new ConcurrentHashMap<>();
                 }
             }
         }
