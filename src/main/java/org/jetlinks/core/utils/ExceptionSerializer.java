@@ -97,6 +97,12 @@ public class ExceptionSerializer implements SerializeUtils.Serializer {
         ExceptionSerializerSupport support = supports
             .get(error.getClass());
 
+        Class<?> parent = error.getClass().getSuperclass();
+        while (support == null && parent != null) {
+            support = supports.get(parent);
+            parent = parent.getSuperclass();
+        }
+
         if (support == null) {
             // 先检查具体的异常类型，再检查父类型
             if (error instanceof BusinessException) {
@@ -188,7 +194,10 @@ public class ExceptionSerializer implements SerializeUtils.Serializer {
                 int status = input.readInt();
 
                 return deserializeI18nBase(
-                    input, (msg, code, args) -> new BusinessException.NoStackTrace(msg, status, code, args)
+                    input, (msg, code, args) -> new BusinessException.NoStackTrace(code, status, args) {
+                        @Override
+                        public String getOriginalMessage() { return msg; }
+                    }
                 );
             }
 
@@ -206,7 +215,10 @@ public class ExceptionSerializer implements SerializeUtils.Serializer {
             @SneakyThrows
             public Throwable deserialize(DataInput input) {
                 return deserializeI18nBase(
-                    input, (msg, code, args) -> new NotFoundException.NoStackTrace(msg, args)
+                    input, (msg, code, args) -> new NotFoundException.NoStackTrace(code, args) {
+                        @Override
+                        public String getOriginalMessage() { return msg; }
+                    }
                 );
 
             }
@@ -223,7 +235,10 @@ public class ExceptionSerializer implements SerializeUtils.Serializer {
             @SneakyThrows
             public Throwable deserialize(DataInput input) {
                 return deserializeI18nBase(
-                    input, (msg, code, args) -> new I18nSupportException.NoStackTrace(msg, args)
+                    input, (msg, code, args) -> new I18nSupportException.NoStackTrace(code, args) {
+                        @Override
+                        public String getOriginalMessage() { return msg; }
+                    }
                 );
 
             }
@@ -251,7 +266,10 @@ public class ExceptionSerializer implements SerializeUtils.Serializer {
                     );
                 }
                 return deserializeI18nBase(
-                    input, (msg, code, args) -> new ValidationException.NoStackTrace(msg, details, args)
+                    input, (msg, code, args) -> new ValidationException.NoStackTrace(code, details, args) {
+                        @Override
+                        public String getOriginalMessage() { return msg; }
+                    }
                 );
 
             }
@@ -279,7 +297,11 @@ public class ExceptionSerializer implements SerializeUtils.Serializer {
                 byte statusValue = input.readByte();
                 TokenState state = statusValue < states.length ? states[statusValue] : TokenState.expired;
                 return deserializeI18nBase(
-                    input, (msg, code, args) -> new UnAuthorizedException.NoStackTrace(msg, state)
+                    input, (msg, code, args) -> new UnAuthorizedException.NoStackTrace(code, state) {
+                        { setArgs(args); }
+                        @Override
+                        public String getOriginalMessage() { return msg; }
+                    }
                 );
 
             }
@@ -298,7 +320,11 @@ public class ExceptionSerializer implements SerializeUtils.Serializer {
             @SneakyThrows
             public Throwable deserialize(DataInput input) {
                 return deserializeI18nBase(
-                    input, (msg, code, args) -> new AccessDenyException.NoStackTrace(msg)
+                    input, (msg, code, args) -> new AccessDenyException.NoStackTrace(code) {
+                        { setArgs(args); }
+                        @Override
+                        public String getOriginalMessage() { return msg; }
+                    }
                 );
 
             }
@@ -382,7 +408,8 @@ public class ExceptionSerializer implements SerializeUtils.Serializer {
             } else {
                 args = new Object[0];
             }
-            return builder.apply(msg, code, args);
+            // 原因码用于识别及重新翻译；接收端没有译文时仍显示发送端文案。
+            return builder.apply(msg, StringUtils.hasText(code) ? code : msg, args);
         }
 
         private final int code;
