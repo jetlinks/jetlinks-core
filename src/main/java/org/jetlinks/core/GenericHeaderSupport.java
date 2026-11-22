@@ -25,7 +25,7 @@ public class GenericHeaderSupport<SELF extends GenericHeaderSupport<SELF>> imple
         return headers;
     }
 
-    public final void setHeaders(Map<String, Object> headers) {
+    public void setHeaders(Map<String, Object> headers) {
         if (headers != null && !(headers instanceof ConcurrentHashMap)) {
             headers = new ConcurrentHashMap<>(headers);
         }
@@ -34,7 +34,7 @@ public class GenericHeaderSupport<SELF extends GenericHeaderSupport<SELF>> imple
 
     @Nullable
     @Override
-    public final Map<String, Object> getHeaders() {
+    public Map<String, Object> getHeaders() {
         return headers;
     }
 
@@ -71,8 +71,9 @@ public class GenericHeaderSupport<SELF extends GenericHeaderSupport<SELF>> imple
 
     @Override
     public final Object computeHeader(String key, BiFunction<String, Object, Object> computer) {
-        return safeGetHeader()
-                .compute(key, computer);
+        // 计算回调与读取者看到相同的头值，允许子类先准备延迟生成的内容。
+        Map<String, Object> current = getHeaders();
+        return (current == null ? safeGetHeader() : current).compute(key, computer);
     }
 
     @Override
