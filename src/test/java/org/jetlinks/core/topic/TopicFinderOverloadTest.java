@@ -46,6 +46,52 @@ public class TopicFinderOverloadTest {
     }
 
     @Test
+    public void testLiteralPrefixesAndWildcardSuffixes() {
+        Topic<String> tree = Topic.createRoot();
+        tree.append("/scope/item/leaf").subscribe("leaf");
+        tree.append("/scope/other/leaf").subscribe("other");
+        tree.append("/scope/item/**").subscribe("descendants");
+        assertSubscribers(tree, "/scope/item/**", Set.of("leaf", "descendants"));
+        assertSubscribers(tree, "/scope/*/leaf", Set.of("leaf", "other", "descendants"));
+        assertSubscribers(tree, "/missing/later/**", Set.of());
+        assertSubscribers(tree, "/scope/missing/**", Set.of());
+        assertSubscribers(tree.append("/scope"), "/item/leaf", Set.of("leaf", "descendants"));
+    }
+
+    @Test
+    public void testWildcardBranchesAndDoubleStarSearchRoot() {
+        Topic<String> tree = Topic.createRoot();
+        tree.append("/*/leaf").subscribe("star");
+        tree.append("/**/tail").subscribe("double");
+        assertSubscribers(tree, "/different/leaf", Set.of("star"));
+        assertSubscribers(tree, "/different/path/tail", Set.of("double"));
+
+        Topic<String> doubleStar = Topic.<String>createRoot().append("**");
+        doubleStar.subscribe("any");
+        doubleStar.append("leaf").subscribe("leaf");
+        assertSubscribers(doubleStar, "/unrelated/path/leaf", Set.of("any", "leaf"));
+    }
+
+    private static void assertSubscribers(Topic<String> tree, String query, Set<String> expected) {
+        for (Object representation : new Object[]{
+            query, new StringBuilder(query), SharedPathString.of(query, false), query.split("/", -1)}) {
+            Set<String> actual = new HashSet<>();
+            AtomicInteger ended = new AtomicInteger();
+            if (representation instanceof String[]) {
+                TopicFinder.find(tree, (String[]) representation, null, null, null, null,
+                    (a, b, c, d, found) -> actual.addAll(found.getSubscribers()),
+                    (a, b, c, d) -> ended.incrementAndGet());
+            } else {
+                TopicFinder.find(tree, (CharSequence) representation, null, null, null, null,
+                    (a, b, c, d, found) -> actual.addAll(found.getSubscribers()),
+                    (a, b, c, d) -> ended.incrementAndGet());
+            }
+            Assert.assertEquals(query, expected, actual);
+            Assert.assertEquals(query, 1, ended.get());
+        }
+    }
+
+    @Test
     public void testArrayOverloadWithAndWithoutLeadingSeparator() {
         for (String[] parts : List.of(
             new String[]{"", "device", "001", "message", "property", "report"},

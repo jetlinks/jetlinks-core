@@ -128,8 +128,9 @@ abstract class AbstractSeparatedCharSequence implements SeparatedCharSequence {
         int h = $hash;
         if (h == 0) {
             h = this.getClass().hashCode();
-            // 单层 append 保留索引遍历，便于 JIT 消除短生命周期节点；深链才使用线性遍历。
-            if (this instanceof AppendSeparatedCharSequence
+            // 复合或深链 append 复用逐段遍历；单层 append 保留索引遍历，便于 JIT 消除短生命周期节点。
+            if (this instanceof AppendSeparatedCharSequenceX
+                || this instanceof AppendSeparatedCharSequence
                 && ((AppendSeparatedCharSequence) this).source instanceof AppendSeparatedCharSequence) {
                 h = appendHash(h);
             } else {
