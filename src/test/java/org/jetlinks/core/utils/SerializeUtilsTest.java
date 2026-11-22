@@ -358,21 +358,15 @@ public class SerializeUtilsTest {
         assertTrue(decoded instanceof BusinessException.NoStackTrace);
 
         // 测试 BusinessException
-        BusinessException businessException = new BusinessException.NoStackTrace("业务异常", 400, "error.business", "arg1", "arg2");
+        BusinessException businessException = new BusinessException.NoStackTrace("业务异常", 400, "arg1", "arg2");
         decoded = (Throwable) codec(businessException);
         assertNotNull(decoded);
         assertTrue(decoded instanceof BusinessException.NoStackTrace);
         BusinessException.NoStackTrace decodedBusiness = (BusinessException.NoStackTrace) decoded;
         assertEquals(400, decodedBusiness.getStatus());
         assertEquals("业务异常", decodedBusiness.getMessage());
-        // 注意：getI18nCode() 可能返回本地化后的消息，这里只验证消息和状态码
-        if (decodedBusiness instanceof I18nSupportException) {
-            I18nSupportException i18nException = (I18nSupportException) decodedBusiness;
-            // 验证 i18n 代码或消息不为空
-            assertNotNull(i18nException.getI18nCode());
-        }
-        assertNotNull(decodedBusiness.getArgs());
-        assertEquals(2, decodedBusiness.getArgs().length);
+        assertEquals(businessException.getI18nCode(), decodedBusiness.getI18nCode());
+        assertArrayEquals(businessException.getArgs(), decodedBusiness.getArgs());
 
         // 测试 NotFoundException
         NotFoundException notFoundException = new NotFoundException.NoStackTrace("未找到", "arg1");
