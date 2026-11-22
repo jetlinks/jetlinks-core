@@ -186,7 +186,24 @@ public class TopicFinder {
                                                         Consumer5<ARG0, ARG1, ARG2, ARG3, Topic<T>> sink,
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
         int first = firstTopicIndex(topic);
-        byte wildcardMode = detectWildcardMode(topic);
+        // 确定前缀先沿树查找，缺失时不再扫描无关后缀。
+        while (first < topic.size()
+            && !"**".equals(root.getPart())
+            && root.getStarChild() == null
+            && root.getDoubleStarChild() == null) {
+            String part = topicPart(topic.get(first));
+            if ("*".equals(part) || "**".equals(part)) {
+                break;
+            }
+            Map<String, Topic<T>> children = root.getChildrenMap();
+            root = children == null ? null : children.get(part);
+            if (root == null) {
+                end.accept(arg0, arg1, arg2, arg3);
+                return;
+            }
+            first++;
+        }
+        byte wildcardMode = detectWildcardMode(topic, first);
         // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
         if (wildcardMode == WILDCARD_NONE) {
             findExactInner(topic, first, root, arg0, arg1, arg2, arg3, sink);
@@ -216,7 +233,23 @@ public class TopicFinder {
                                                         Consumer4<ARG0, ARG1, ARG2, ARG3> end) {
 
         int first = firstTopicIndex(topicParts);
-        byte wildcardMode = detectWildcardMode(topicParts);
+        while (first < topicParts.length
+            && !"**".equals(root.getPart())
+            && root.getStarChild() == null
+            && root.getDoubleStarChild() == null) {
+            String part = topicParts[first];
+            if (part == null || "*".equals(part) || "**".equals(part)) {
+                break;
+            }
+            Map<String, Topic<T>> children = root.getChildrenMap();
+            root = children == null ? null : children.get(part);
+            if (root == null) {
+                end.accept(arg0, arg1, arg2, arg3);
+                return;
+            }
+            first++;
+        }
+        byte wildcardMode = detectWildcardMode(topicParts, first);
         // 精确 topic 直接走无分支路径, 避免通配符 DFS 的额外递归和集合开销.
         if (wildcardMode == WILDCARD_NONE) {
             findExactInner(topicParts, first, root, arg0, arg1, arg2, arg3, sink);
@@ -251,9 +284,10 @@ public class TopicFinder {
         return first == null || first.length() == 0 ? 1 : 0;
     }
 
-    private static byte detectWildcardMode(String[] parts) {
+    private static byte detectWildcardMode(String[] parts, int start) {
         byte mode = WILDCARD_NONE;
-        for (String p : parts) {
+        for (int i = start; i < parts.length; i++) {
+            String p = parts[i];
             if ("*".equals(p)) {
                 mode = WILDCARD_SINGLE;
             } else if ("**".equals(p)) {
@@ -263,9 +297,9 @@ public class TopicFinder {
         return mode;
     }
 
-    private static byte detectWildcardMode(SeparatedCharSequence parts) {
+    private static byte detectWildcardMode(SeparatedCharSequence parts, int start) {
         byte mode = WILDCARD_NONE;
-        for (int i = 0, n = parts.size(); i < n; i++) {
+        for (int i = start, n = parts.size(); i < n; i++) {
             CharSequence c = parts.get(i);
             if (c == null) {
                 continue;

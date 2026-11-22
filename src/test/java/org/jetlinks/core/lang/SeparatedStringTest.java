@@ -8,6 +8,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.*;
 
@@ -231,6 +233,33 @@ public class SeparatedStringTest {
         assertEquals(expectedDeep.length(), deep.length());
         assertTrue(deep.contentEquals(expectedDeep));
         assertEquals(calculateLegacyHash(deep), deep.hashCode());
+    }
+
+    @Test
+    public void testCompositeAppendHashCompatibility() {
+        for (char separator : new char[]{'/', '|'}) {
+            SeparatedCharSequence path = SeparatedString.create(separator, "", "type", "object");
+            SeparatedCharSequence equalPath = SeparatedString.create(separator, "", "type", "object");
+            String[] tails = {"", "/", "child", "/child/leaf/", "child//leaf"};
+            Map<SeparatedCharSequence, Integer> paths = new HashMap<>();
+            for (int depth = 0; depth < 20; depth++) {
+                SeparatedCharSequence prefix = SeparatedString.create(separator, "", "owner", "*")
+                    .replace(2, "scope" + depth);
+                SeparatedCharSequence tail = SeparatedString.create(separator,
+                    tails[depth % tails.length].split("/", -1));
+                path = prefix.append(path).append(tail);
+                equalPath = prefix.append(equalPath).append(tail);
+                assertEquals(AppendSeparatedCharSequenceX.class, path.getClass());
+                for (SeparatedCharSequence candidate : new SeparatedCharSequence[]{
+                    path, path.append("value"), path.replace(1, "next"), path.range(0, path.size() - 1)}) {
+                    int expected = calculateLegacyHash(candidate);
+                    assertEquals(expected, candidate.hashCode());
+                    assertEquals(expected, candidate.hashCode());
+                }
+                paths.put(path, depth);
+                assertEquals(Integer.valueOf(depth), paths.get(equalPath));
+            }
+        }
     }
 
     private static int calculateLegacyHash(SeparatedCharSequence sequence) {
