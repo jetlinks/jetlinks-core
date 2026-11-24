@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.fasterxml.jackson.annotation.JsonView;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.extensions.Extension;
 import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -144,6 +145,19 @@ public class MetadataUtilsTest {
     }
 
     @Test
+    public void testSwaggerHiddenExpands() throws Exception {
+        Assert.assertEquals(Boolean.TRUE, MetadataUtils.parseExpands(HiddenMetadata.class).get("hidden"));
+        Assert.assertFalse(MetadataUtils.parseExpands(SwaggerEntity.class).containsKey("hidden"));
+
+        var method = HiddenMetadata.class.getMethod("getValue");
+        Assert.assertEquals(Boolean.TRUE, MetadataUtils.parseExpands(method).get("hidden"));
+        Assert.assertEquals(Boolean.TRUE, MetadataUtils.parseExpands(method.getAnnotations()).get("hidden"));
+        Assert.assertEquals(Boolean.TRUE, MetadataUtils
+            .parseProperty(ResolvableType.forClass(HiddenMetadata.class), method)
+            .getExpands().get("hidden"));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void testSwaggerExternalDocsAndExtensions() throws Exception {
         ObjectType type = (ObjectType) MetadataUtils.parseType(ResolvableType.forType(SwaggerEntity.class));
@@ -257,6 +271,15 @@ public class MetadataUtilsTest {
 
         @Schema(description = "产品ID")
         private String productId;
+    }
+
+    @Hidden
+    public static class HiddenMetadata {
+        @Hidden
+        @Schema(title = "Hidden value")
+        public String getValue() {
+            return "value";
+        }
     }
 
     @Getter

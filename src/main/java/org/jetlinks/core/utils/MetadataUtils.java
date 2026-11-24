@@ -3,6 +3,7 @@ package org.jetlinks.core.utils;
 import com.fasterxml.jackson.annotation.JsonView;
 import com.google.common.collect.Sets;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.extensions.Extension;
 import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.extensions.Extensions;
@@ -379,7 +380,7 @@ public class MetadataUtils {
     }
 
     /**
-     * 解析拓展信息
+     * 解析拓展信息，Swagger {@link Hidden} 映射为布尔值 {@code hidden=true}。
      *
      * @param element 元素
      * @return 属性元数据
@@ -598,8 +599,12 @@ public class MetadataUtils {
                                  Map<String, Object> container) {
             Schema schema = null;
             ExternalDocumentation doc = null;
+            boolean hidden = false;
             List<Extension> extensions = new ArrayList<>();
             for (Annotation ann : annotation) {
+                if (ann instanceof Hidden) {
+                    hidden = true;
+                }
                 if (ann instanceof Schema _schema) {
                     schema = _schema;
                     extensions.addAll(Arrays.asList(_schema.extensions()));
@@ -643,6 +648,9 @@ public class MetadataUtils {
             }
             for (Extension extension : extensions) {
                 mergeSwaggerExtension(container, extension);
+            }
+            if (hidden) {
+                container.put("hidden", true);
             }
         }
 
@@ -838,7 +846,7 @@ public class MetadataUtils {
                     annotation = annotation.getMetaSource();
                 }
                 describe(metadata, schema, sources.stream().distinct().toList(), true);
-                metadata.expand("hidden", schema.hidden());
+                metadata.expand("hidden", schema.hidden() || Boolean.TRUE.equals(metadata.getExpands().get("hidden")));
             } else if (!resolveMessages) {
                 retainMessageKeys(metadata, List.of(owner.toClass().getName() + "." + id,
                     method.getDeclaringClass().getName() + "." + id).stream().distinct().toList());
