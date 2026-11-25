@@ -1,7 +1,9 @@
 package org.jetlinks.core.things;
 
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -11,6 +13,46 @@ import java.util.List;
  * @since 1.1.9
  */
 public interface ThingsDataManager {
+
+    /** 批量读取有界近期历史，后端定义保留数量；区间为 [from,to)。 */
+    default Mono<List<ThingProperty>> getProperties(String thingType, String thingId,
+                                                    Collection<String> properties, long from, long to) {
+        return Flux.fromIterable(properties)
+                   .concatMap(property -> getProperties(thingType, thingId, property, from, to))
+                   .collectList()
+                   .map(batches -> {
+                       List<ThingProperty> result = new java.util.ArrayList<>();
+                       for (List<ThingProperty> batch : batches) result.addAll(batch);
+                       return result;
+                   });
+    }
+
+    /**
+     * 批量读取基准时间前的最新观测；缺失字段不返回，多字段之间不保证事务快照。
+     * 后端应覆写此方法以避免逐字段网络往返。
+     */
+    default Mono<List<ThingProperty>> getLastProperties(String thingType, String thingId,
+                                                        Collection<String> properties, long baseTime) {
+        return Flux.fromIterable(properties)
+                   .flatMap(property -> getLastProperty(thingType, thingId, property, baseTime))
+                   .collectList();
+    }
+
+    /** 批量读取事件的最近观测；不承诺可靠事件重放。 */
+    default Mono<List<ThingEvent>> getLastEvents(String thingType, String thingId,
+                                                 Collection<String> events, long baseTime) {
+        return Flux.fromIterable(events)
+                   .flatMap(event -> getLastEvent(thingType, thingId, event, baseTime))
+                   .collectList();
+    }
+
+    /** 批量读取标签的最近观测。 */
+    default Mono<List<ThingTag>> getLastTags(String thingType, String thingId,
+                                            Collection<String> tags, long baseTime) {
+        return Flux.fromIterable(tags)
+                   .flatMap(tag -> getLastTag(thingType, thingId, tag, baseTime))
+                   .collectList();
+    }
 
 
     /**
@@ -73,9 +115,11 @@ public interface ThingsDataManager {
                                                     String property,
                                                     long from,
                                                     long to) {
+        if (from >= to) return Mono.just(java.util.Collections.emptyList());
         return this
-                .getLastProperty(thingType, thingId, property, to)
-                .expandDeep(prop -> this
+                .getLastProperty(thingType, thingId, property, to - 1)
+                .filter(prop -> prop.getTimestamp() >= from)
+                .expandDeep(prop -> prop.getTimestamp() == Long.MIN_VALUE ? Mono.empty() : this
                         .getLastProperty(thingType, thingId, property, prop.getTimestamp() - 1)
                         .filter(p -> p.getTimestamp() >= from))
                 .collectList();
