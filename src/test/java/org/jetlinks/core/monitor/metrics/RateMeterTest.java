@@ -12,7 +12,7 @@ public class RateMeterTest {
     @Test
     public void ratesUseTheSameUnitAsBatchedCountsAndCloseThePreviousInterval() {
         AtomicLong clock = new AtomicLong();
-        RateMeter meter = new RateMeter(clock::get);
+        RateMeter meter = new RateMeter(clock::get) {};
         assertEquals(0, meter.getMeanRate(), 0);
         meter.mark(10);
         assertEquals(0, meter.getOneMinuteRate(), 0);
@@ -50,7 +50,7 @@ public class RateMeterTest {
     @Test
     public void concurrentMarksKeepTheTotalAndCrossTickBoundaries() {
         AtomicLong clock = new AtomicLong();
-        RateMeter meter = new RateMeter(clock::get);
+        RateMeter meter = new RateMeter(clock::get) {};
         IntStream.range(0, 20_000).parallel().forEach(i -> {
             clock.addAndGet(TimeUnit.MILLISECONDS.toNanos(1));
             meter.mark(3);
