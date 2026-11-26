@@ -6,14 +6,14 @@ import java.util.function.LongSupplier;
 
 /**
  * 固定内存的累计与每秒速率统计，适用于次数、样本数或字节数。
- * owner 持有实例；更新和读取时惰性推进五秒节拍，不创建定时器或保存历史。
+ * owner 持有实例或直接继承以复用对象布局；更新和读取时惰性推进五秒节拍，不创建定时器或保存历史。
  * 1/5/15 分钟值是 EWMA，首次节拍前为零，并非对应窗口的精确算术平均。
  * 并发更新不丢计数，节拍边界的归属和多个 getter 为弱一致读取。
  *
  * @since 1.3.3
  * @see RateMetrics
  */
-public final class RateMeter implements RateMetrics {
+public class RateMeter implements RateMetrics {
     private static final long INTERVAL = TimeUnit.SECONDS.toNanos(5);
     private static final double ONE_ALPHA = -Math.expm1(-5D / 60);
     private static final double FIVE_ALPHA = -Math.expm1(-5D / 300);
