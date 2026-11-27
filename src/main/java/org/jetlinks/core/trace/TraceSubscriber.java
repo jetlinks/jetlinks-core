@@ -6,11 +6,13 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.web.exception.TraceSourceException;
 import org.jetlinks.core.Lazy;
 import org.jetlinks.core.LazyConverter;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
+import reactor.core.Exceptions;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.SignalType;
 import reactor.function.Consumer3;
@@ -25,6 +27,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+@Slf4j
 class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     final static AttributeKey<Long> ATTR_NEXT_COUNT = AttributeKey.longKey("flux-next-count");
@@ -74,13 +77,21 @@ class TraceSubscriber<T> extends BaseSubscriber<T> implements ReactiveSpan {
 
     @Override
     protected void hookOnError(@Nonnull Throwable throwable) {
-        span.setStatus(StatusCode.ERROR);
-        if (onError != null) {
-            onError.accept(context, throwable);
-        } else {
-            span.addEvent("exception",
-                          new ErrorAttributes(throwable),
-                          startWith.plusNanos(System.nanoTime() - startWithNanos));
+        try {
+            span.setStatus(StatusCode.ERROR);
+            if (onError != null) {
+                onError.accept(context, throwable);
+            } else {
+                span.addEvent("exception",
+                              new ErrorAttributes(throwable),
+                              startWith.plusNanos(System.nanoTime() - startWithNanos));
+            }
+        } catch (Throwable traceError) {
+            Exceptions.throwIfFatal(traceError);
+            String traceId = context
+                .get(SpanContext.class)
+                .getTraceId();
+            log.warn("Failed to record error on trace span, traceId={}", traceId, traceError);
         }
 
         try (Scope ignored = span.makeCurrent()) {
