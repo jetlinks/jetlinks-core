@@ -47,6 +47,23 @@ public class ConnectionMetricsAggregationTest {
     }
 
     @Test
+    public void physicalConnectionCountersAggregateOnlyWhenEverySourceSupportsThem() {
+        var first = new ConnectionMetricsRecorder();
+        var second = new ConnectionMetricsRecorder();
+        first.connecting(); first.connected();
+        second.connecting(); second.connected(); second.disconnected();
+        second.connecting(); second.connectFailed();
+        var result = aggregate(first.toInfo(), second.toInfo());
+        assertEquals(Long.valueOf(1), result.getActiveConnections());
+        assertEquals(Long.valueOf(3), result.getConnectAttempts());
+        assertEquals(Long.valueOf(1), result.getConnectFailures());
+        result = aggregate(result, new ConnectionMetricsInfo());
+        assertNull(result.getActiveConnections());
+        assertNull(result.getConnectAttempts());
+        assertNull(result.getConnectFailures());
+    }
+
+    @Test
     public void confirmationsAreWeightedAndDistributionsMergedWithoutMutatingSources() {
         var fast = confirmation(100, 1_000_000L);
         var slow = confirmation(1, 10_000_000_000L);
@@ -121,7 +138,7 @@ public class ConnectionMetricsAggregationTest {
     }
 
     @Test
-    public void publishedConstructorsRemainAvailable() {
+    public void publishedConstructorsRemainAvailable() throws Exception {
         var original = new ConnectionMetricsInfo(1, 2, 3, 4, 5, 6, 7,
             8L, 9L, 10L, 11L, 12L, 13L, 14D, 15D, 16D, 17D, 18D, 19L, null);
         assertEquals(1, original.getReadBytes());
@@ -130,6 +147,11 @@ public class ConnectionMetricsAggregationTest {
         assertEquals(Long.valueOf(19), original.getAckDurationObservationStart());
         assertEquals(3, original.getLatestConnectTime());
         assertEquals(4, original.getEarliestLastCommTime());
+        assertNotNull(ConnectionMetricsInfo.class.getConstructor(
+            long.class, long.class, long.class, long.class, Long.class, Long.class,
+            long.class, long.class, long.class, Long.class, Long.class, Long.class,
+            Long.class, Long.class, Long.class, Long.class, Double.class, Double.class,
+            Double.class, Double.class, Double.class, Long.class, long[].class));
     }
 
     @Test

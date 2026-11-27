@@ -2,7 +2,7 @@
 
 ## 通信累计器
 
-`ConnectionMetricsRecorder` 为传输适配器提供固定内存的流量、消息、连接回调和请求耗时累计，不保留报文、逐次样本或定时任务。实际收发字节与解码消息分别记录；`recordRequest` 在每次订阅时独立测时，取消不计为失败，空结果不作为成功确认。通过 `ConnectionMetrics` 读取当前通信指标，`toInfo()` 同时携带成功确认的原始样本数与累计耗时，以便跨连接按样本数加权，未开启的耗时分布保持空值。连接会话生命周期继续使用独立的 `ConnectionLifecycleRecorder`，不增加 `ConnectionMetrics` 的生命周期字段。
+`ConnectionMetricsRecorder` 为传输适配器提供固定内存的流量、消息、连接回调和请求耗时累计，不保留报文、逐次样本或定时任务。实际收发字节与解码消息分别记录；`recordRequest` 在每次订阅时独立测时，取消不计为失败，空结果不作为成功确认。通过 `ConnectionMetrics` 读取当前通信指标，`toInfo()` 同时携带成功确认的原始样本数与累计耗时，以便跨连接按样本数加权，未开启的耗时分布保持空值。`activeConnections`、`connectAttempts`、`connectFailures` 描述物理传输资源，按公开契约采样并随 `toInfo()` 和聚合快照传递；未接入能力时为空，不能冒充零。会话代际的 opened／closed 事件继续由独立的 `ConnectionLifecycleRecorder` 表达，不与物理连接计数混用。重连次数不从多连接资源的建连总数推断。
 
 通过 public 只读契约与组合注解声明指标，使用 `MetadataUtils` 统一解析属性、类型、扩展与国际化。`MetricSet` 编译一份共享描述与读取器，读取时传入当前运行对象；不持有目标实例、数值副本、窗口或历史数据。
 
