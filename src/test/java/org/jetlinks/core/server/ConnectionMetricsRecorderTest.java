@@ -21,7 +21,28 @@ public class ConnectionMetricsRecorderTest {
         assertTrue(read.getExpand("metric").isPresent());
         assertTrue(properties.stream().anyMatch(property -> property.getId().equals("requestErrors")));
         assertTrue(properties.stream().anyMatch(property -> property.getId().equals("ackAverageDuration")));
-        assertTrue(properties.stream().noneMatch(property -> property.getId().equals("activeConnections")));
+        for (String id : List.of("activeConnections", "connectAttempts", "connectFailures")) {
+            assertTrue(properties.stream().anyMatch(property -> property.getId().equals(id)));
+        }
+    }
+
+    @Test
+    public void publicReadersAndSnapshotsRetainPhysicalConnectionState() throws Throwable {
+        var metrics = new ConnectionMetricsRecorder();
+        metrics.connecting(); metrics.connected();
+        metrics.connecting(); metrics.connected();
+        metrics.connecting(); metrics.connectFailed();
+        var definitions = MetricSet.of(ConnectionMetrics.class);
+        var active = definitions.getMetrics().stream().filter(metric -> metric.getId().equals("activeConnections"))
+            .findFirst().orElseThrow();
+        assertEquals(2L, active.read(metrics));
+        var snapshot = metrics.toInfo();
+        assertEquals(Long.valueOf(2), snapshot.getActiveConnections());
+        assertEquals(Long.valueOf(3), snapshot.getConnectAttempts());
+        assertEquals(Long.valueOf(1), snapshot.getConnectFailures());
+        metrics.disconnected(); metrics.disconnected();
+        assertEquals(0L, active.read(metrics));
+        assertEquals(Long.valueOf(2), snapshot.getActiveConnections());
     }
 
     @Test

@@ -24,6 +24,9 @@ public class ConnectionMetricsTest {
     @Test
     public void legacyImplementationsAndSnapshotsKeepOptionalCapabilitiesAbsent() {
         ConnectionMetrics legacy = new LegacyMetrics();
+        assertNull(legacy.toInfo().getActiveConnections());
+        assertNull(legacy.toInfo().getConnectAttempts());
+        assertNull(legacy.toInfo().getConnectFailures());
         assertNull(legacy.toInfo().getAckCount());
         assertNull(legacy.toInfo().getReadErrors());
         assertNull(legacy.toInfo().getAckDurationP95());

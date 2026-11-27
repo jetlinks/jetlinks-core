@@ -78,6 +78,21 @@ public interface ConnectionMetrics {
     @Schema(title = "丢弃消息", description = "传输或协议层明确丢弃的消息，不包含平台清洗忽略")
     long getDroppedMessages();
 
+    /** 当前已成功建立且尚未关闭的物理连接数，未支持时为空。 */
+    @Gauge
+    @Schema(title = "活动连接", description = "当前观测资源所属的活动物理连接数，未支持时为空")
+    default Long getActiveConnections() { return null; }
+
+    /** 当前观测实例累计开始的物理建连次数，未支持时为空。 */
+    @Counter
+    @Schema(title = "连接尝试", description = "累计物理建连尝试数，不代表协议握手成功")
+    default Long getConnectAttempts() { return null; }
+
+    /** 当前观测实例累计失败的物理建连次数，未支持时为空。 */
+    @Counter
+    @Schema(title = "连接失败", description = "累计物理建连失败数，未支持时为空")
+    default Long getConnectFailures() { return null; }
+
     /** 接收解码错误累计，未支持时为空。 */
     @Counter
     @Schema(title = "解码失败", description = "传输接收后的协议解码失败累计，未支持时为空")
@@ -145,6 +160,9 @@ public interface ConnectionMetrics {
             getPendingMessages(),
             getDroppedMessages()
         );
+        info.setActiveConnections(getActiveConnections());
+        info.setConnectAttempts(getConnectAttempts());
+        info.setConnectFailures(getConnectFailures());
         info.setReadErrors(getReadErrors());
         info.setTransportErrors(getTransportErrors());
         info.setWriteSuccesses(getWriteSuccesses());

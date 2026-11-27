@@ -86,9 +86,9 @@ public class ConnectionMetricsRecorder implements ConnectionMetrics {
     @Override public long getPendingMessages() { return pending; }
     @Override public long getDroppedMessages() { return dropped; }
     @Override public Long getTransportErrors() { return errors; }
-    public Long getActiveConnections() { return active; }
-    public Long getConnectAttempts() { return attempts; }
-    public Long getConnectFailures() { return connectFailures; }
+    @Override public Long getActiveConnections() { return active; }
+    @Override public Long getConnectAttempts() { return attempts; }
+    @Override public Long getConnectFailures() { return connectFailures; }
     public Long getReconnects() { return Math.max(0, connections - 1); }
     @Override public Long getRequestErrors() { return requestErrors; }
     @Override public Long getAckTimeouts() { return timeouts; }

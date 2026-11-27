@@ -104,6 +104,15 @@ public class ConnectionMetricsInfo {
     /** 成功确认耗时固定桶计数，读取时生成；无能力时为空。 */
     private long[] ackDurationBuckets;
 
+    /** 当前活动物理连接数；未支持或汇总缺少该能力时为空。 */
+    private Long activeConnections;
+
+    /** 累计物理建连尝试数，未支持时为空。 */
+    private Long connectAttempts;
+
+    /** 累计物理建连失败数，未支持时为空。 */
+    private Long connectFailures;
+
     public Double getAckDurationP95() {
         return ackDurationBuckets == null ? ackDurationP95
             : ConnectionMetricsSupport.ackDurationPercentile(ackDurationBuckets, 0.95, ackMaxDuration);
@@ -160,6 +169,9 @@ public class ConnectionMetricsInfo {
                 result.writeSuccesses = 0L;
                 result.writeErrors = 0L;
                 result.requestErrors = 0L;
+                result.activeConnections = 0L;
+                result.connectAttempts = 0L;
+                result.connectFailures = 0L;
             }
             result.readBytes += current.readBytes;
             result.writeBytes += current.writeBytes;
@@ -175,6 +187,9 @@ public class ConnectionMetricsInfo {
             result.writeSuccesses = sum(result.writeSuccesses, current.writeSuccesses);
             result.writeErrors = sum(result.writeErrors, current.writeErrors);
             result.requestErrors = sum(result.requestErrors, current.requestErrors);
+            result.activeConnections = sum(result.activeConnections, current.activeConnections);
+            result.connectAttempts = sum(result.connectAttempts, current.connectAttempts);
+            result.connectFailures = sum(result.connectFailures, current.connectFailures);
 
             if (current.ackCount == null) {
                 continue;
@@ -236,6 +251,19 @@ public class ConnectionMetricsInfo {
 
     private static Double max(Double left, Double right) {
         return left == null || right == null ? null : Math.max(left, right);
+    }
+
+    /** 保留新增物理连接字段前的完整构造器，兼容已编译的调用方。 */
+    public ConnectionMetricsInfo(long readBytes, long writeBytes, long connectTime, long lastCommTime,
+                                 Long latestConnectTime, Long earliestLastCommTime, long totalMessages, long pendingMessages,
+                                 long droppedMessages, Long readErrors, Long transportErrors, Long writeSuccesses,
+                                 Long writeErrors, Long requestErrors, Long ackCount, Long ackTimeouts,
+                                 Double ackTotalDuration, Double ackAverageDuration, Double ackDurationP95, Double ackMaxDuration,
+                                 Double ackLastDuration, Long ackDurationObservationStart, long[] ackDurationBuckets) {
+        this(readBytes, writeBytes, connectTime, lastCommTime, latestConnectTime, earliestLastCommTime,
+             totalMessages, pendingMessages, droppedMessages, readErrors, transportErrors, writeSuccesses,
+             writeErrors, requestErrors, ackCount, ackTimeouts, ackTotalDuration, ackAverageDuration,
+             ackDurationP95, ackMaxDuration, ackLastDuration, ackDurationObservationStart, ackDurationBuckets, null, null, null);
     }
 
     /** Keep the published seven-field constructor for existing protocol integrations. */
