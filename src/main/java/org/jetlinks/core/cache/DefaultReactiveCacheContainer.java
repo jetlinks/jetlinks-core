@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jctools.maps.NonBlockingHashMap;
 import org.jetlinks.core.utils.SerialFlux;
 import reactor.core.Disposable;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -11,9 +12,14 @@ import reactor.util.context.Context;
 import reactor.util.context.ContextView;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -21,6 +27,27 @@ import java.util.stream.Collectors;
 @Slf4j
 class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V> {
     private final Map<K, Container<K, V>> cache = new NonBlockingHashMap<>();
+    private final Map<Disposable, Retirement<K>> retiring = new IdentityHashMap<>();
+
+    private record Loading(Container<?, ?> owner, Loading parent) { }
+
+    private static boolean isLoading(ContextView context, Container<?, ?> owner) {
+        for (Loading current = context.getOrDefault(Loading.class, null); current != null; current = current.parent) {
+            if (current.owner == owner) return true;
+        }
+        return false;
+    }
+
+    private static final class Retirement<K> {
+        private final K key;
+        private final Disposable value;
+        private boolean running;
+
+        private Retirement(K key, Disposable value) {
+            this.key = key;
+            this.value = value;
+        }
+    }
 
     @Override
     public Mono<V> compute(K key, BiFunction<K, V, Mono<V>> compute) {
@@ -46,7 +73,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         }).doOnError(error -> view.failure = error).doFinally(signal -> {
             if (view.owner != null) view.initial = null;
         }).cache();
-        return Mono.defer(view::read);
+        return Mono.deferContextual(view::read);
     }
 
     private final class UpdateView {
@@ -54,9 +81,9 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         private volatile Mono<V> initial;
         private volatile Throwable failure;
 
-        private Mono<V> read() {
+        private Mono<V> read(ContextView context) {
             Mono<V> loading = initial;
-            if (loading != null) return loading;
+            if (loading != null) return owner != null && isLoading(context, owner) ? owner.ref() : loading;
             if (failure != null) return Mono.error(failure);
             // The completed source is released before later subscriptions read the live entry.
             return owner.ref();
@@ -71,9 +98,11 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
     @Override
     public V put(K key, V value) {
+        retryRetired(key, value);
         Container<K, V> previous = cache.put(key, new Container<>(key, this, value));
         V loaded = previous == null ? null : previous.detach();
-        if (loaded != value) disposeValue(loaded);
+        transferRetirement(value);
+        if (loaded != value) release(key, loaded);
         return loaded;
     }
 
@@ -88,19 +117,94 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
     @Override
     public V remove(K key) {
+        List<Retirement<K>> pending = retirements();
         V value = take(key);
-        disposeValue(value);
+        List<Throwable> failures = new ArrayList<>();
+        tryRelease(key, value, failures);
+        for (Retirement<K> retired : pending) {
+            if (Objects.equals(key, retired.key) && retired.value != value) tryRelease(retired, failures);
+        }
+        throwFailures(failures);
         return value;
     }
 
     @Override
     public V take(K key) {
         Container<K, V> container = cache.remove(key);
-        return container == null ? null : container.detach();
+        V value = container == null ? null : container.detach();
+        transferRetirement(value);
+        return value;
     }
 
-    private static void disposeValue(Object value) {
-        if (value instanceof Disposable) ((Disposable) value).dispose();
+    private void transferRetirement(Object value) {
+        synchronized (retiring) {
+            Retirement<K> retired = retiring.get(value);
+            if (retired != null && retired.running) throw new IllegalStateException("Cache resource release is in progress");
+            retiring.remove(value);
+        }
+    }
+
+    private List<Retirement<K>> retirements() {
+        synchronized (retiring) { return retiring.isEmpty() ? Collections.emptyList() : new ArrayList<>(retiring.values()); }
+    }
+
+    private void retryRetired(K key, Object except) {
+        List<Retirement<K>> pending = retirements();
+        if (pending.isEmpty()) return;
+        List<Throwable> failures = new ArrayList<>();
+        for (Retirement<K> retired : pending) {
+            if (Objects.equals(key, retired.key) && retired.value != except) tryRelease(retired, failures);
+        }
+        throwFailures(failures);
+    }
+
+    private void release(K key, Object value) {
+        if (!(value instanceof Disposable)) return;
+        Disposable disposable = (Disposable) value;
+        Retirement<K> retired;
+        synchronized (retiring) {
+            retired = retiring.computeIfAbsent(disposable, ignored -> new Retirement<>(key, disposable));
+        }
+        release(retired);
+    }
+
+    private void release(Retirement<K> retired) {
+        synchronized (retiring) {
+            // A snapshot cannot reclaim cleanup transferred or completed since it was taken.
+            if (retiring.get(retired.value) != retired) return;
+            if (retired.running) throw new IllegalStateException("Cache resource release is in progress");
+            retired.running = true;
+        }
+        boolean completed = false;
+        try {
+            retired.value.dispose();
+            completed = true;
+        } finally {
+            synchronized (retiring) {
+                retired.running = false;
+                if (completed) retiring.remove(retired.value, retired);
+            }
+        }
+        Container<K, V> current = cache.get(retired.key);
+        if (current != null) {
+            synchronized (current) {
+                if (current.loaded == retired.value) current.loaded = null;
+            }
+        }
+    }
+
+    private void tryRelease(K key, Object value, List<Throwable> failures) {
+        try { release(key, value); }
+        catch (Throwable error) { Exceptions.throwIfFatal(error); failures.add(error); }
+    }
+
+    private void tryRelease(Retirement<K> retired, List<Throwable> failures) {
+        try { release(retired); }
+        catch (Throwable error) { Exceptions.throwIfFatal(error); failures.add(error); }
+    }
+
+    private static void throwFailures(List<Throwable> failures) {
+        if (!failures.isEmpty()) throw failures.size() == 1 ? Exceptions.propagate(failures.get(0)) : Exceptions.multiple(failures);
     }
 
     @Override
@@ -116,16 +220,27 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
     @Override
     public void clear() {
+        List<Retirement<K>> pending = retirements();
+        List<Throwable> failures = new ArrayList<>();
+        Set<Object> attempted = Collections.newSetFromMap(new IdentityHashMap<>());
         // Do not remove a replacement installed after this snapshot without disposing its own entry.
         new HashMap<>(cache).forEach((key, container) -> {
-            if (cache.remove(key, container)) container.dispose();
+            if (cache.remove(key, container)) {
+                V value = container.detach();
+                attempted.add(value);
+                tryRelease(key, value, failures);
+            }
         });
+        for (Retirement<K> retired : pending) {
+            if (!attempted.contains(retired.value)) tryRelease(retired, failures);
+        }
+        throwFailures(failures);
     }
 
     @Override
     public void dispose() { clear(); }
 
-    private static final class Container<K, T> implements Disposable {
+    private static final class Container<K, T> {
         private final DefaultReactiveCacheContainer<K, T> main;
         private final K key;
         private final SerialFlux<T> updates = new SerialFlux<>();
@@ -145,7 +260,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         private Mono<T> update(Function<T, Mono<T>> compute, boolean onlyIfAbsent, ContextView context) {
             synchronized (this) {
                 if (detached || main.cache.get(key) != this) return null;
-                if (context.getOrDefault(DefaultReactiveCacheContainer.class, null) == this) {
+                if (isLoading(context, this)) {
                     log.warn("recursive call reactive cache [{}]", key);
                     return Mono.fromSupplier(() -> loaded);
                 }
@@ -155,14 +270,16 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
             }
             Mono<T> work = Mono.defer(() -> {
                     if (detached) return Mono.empty();
+                    main.retryRetired(key, null);
+                    if (detached) return Mono.empty();
                     T previous = loaded;
                     return onlyIfAbsent && previous != null ? Mono.just(previous) : compute.apply(previous);
                 })
                 .flatMap(this::replace)
                 .takeUntilOther(removed.asMono())
                 .doOnDiscard(Disposable.class, this::discard)
-                .contextWrite(Context.of(context).put(DefaultReactiveCacheContainer.class, this));
-            return updates.join(work.flux()).singleOrEmpty().doOnEach(signal -> {
+                .contextWrite(Context.of(context).put(Loading.class, new Loading(this, context.getOrDefault(Loading.class, null))));
+            return updates.join(work).doOnEach(signal -> {
                 if (signal.isOnComplete() || signal.isOnError()) finished(signal.getThrowable());
             });
         }
@@ -173,13 +290,31 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
             synchronized (this) {
                 obsolete = detached;
                 previous = loaded;
+                // Claim the previous value before calling user cleanup outside the lock; take cannot transfer it now.
+                if (!obsolete && previous != value) loaded = null;
+            }
+            if (obsolete) {
+                discard(value);
+                return Mono.empty();
+            }
+            if (previous == value) return Mono.just(value);
+            try {
+                main.release(key, previous);
+            } catch (Throwable error) {
+                Exceptions.throwIfFatal(error);
+                synchronized (this) { if (!detached) loaded = previous; }
+                try { discard(value); }
+                catch (Throwable cleanup) { Exceptions.throwIfFatal(cleanup); error = Exceptions.multiple(error, cleanup); }
+                return Mono.error(error);
+            }
+            synchronized (this) {
+                obsolete = detached;
                 if (!obsolete) loaded = value;
             }
             if (obsolete) {
                 discard(value);
                 return Mono.empty();
             }
-            if (previous != value) disposeValue(previous);
             return Mono.just(value);
         }
 
@@ -207,7 +342,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
             synchronized (this) {
                 owned = value == loaded || transferred != null && value == transferred.get();
             }
-            if (!owned) disposeValue(value);
+            if (!owned) main.release(key, value);
         }
 
         private T detach() {
@@ -232,7 +367,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 Mono<Void> waiting;
                 synchronized (this) {
                     if (detached) return Mono.empty();
-                    if (context.getOrDefault(DefaultReactiveCacheContainer.class, null) == this) {
+                    if (isLoading(context, this)) {
                         return Mono.justOrEmpty(loaded);
                     }
                     waiting = idle == null ? Mono.empty() : idle.asMono();
@@ -240,8 +375,5 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 return waiting.then(Mono.defer(() -> detached ? Mono.empty() : Mono.justOrEmpty(loaded)));
             });
         }
-
-        @Override
-        public void dispose() { disposeValue(detach()); }
     }
 }
