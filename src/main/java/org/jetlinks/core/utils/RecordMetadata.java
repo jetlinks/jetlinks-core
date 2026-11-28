@@ -1,6 +1,7 @@
 package org.jetlinks.core.utils;
 
 import com.google.common.base.Defaults;
+import reactor.core.Exceptions;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
@@ -76,6 +77,7 @@ public final class RecordMetadata {
         try {
             return constructor.newInstance(values);
         } catch (InvocationTargetException error) {
+            Exceptions.throwIfFatal(error.getCause());
             throw invalid("Record constructor rejected " + constructor.getDeclaringClass().getName(), error.getCause());
         } catch (ReflectiveOperationException | IllegalArgumentException error) {
             throw invalid("Unable to construct record " + constructor.getDeclaringClass().getName(), error);

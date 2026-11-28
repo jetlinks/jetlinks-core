@@ -55,7 +55,8 @@ public class RecordSerializerTest {
         return new Leaf(null, 9007199254740993L, new BigDecimal("12345678901234567890.01234567890123456789"));
     }
 
-    @Test public void supportsNestedNonSerializableRecordsAndSharedReferences() throws Exception {
+    @Test
+    public void supportsNestedNonSerializableRecordsAndSharedReferences() throws Exception {
         Leaf leaf = leaf();
         Node source = new Node(leaf, Map.of("value", leaf), List.of(leaf));
         Node restored = (Node) decode(encode(source));
@@ -64,15 +65,21 @@ public class RecordSerializerTest {
         assertSame(restored.leaf(), restored.history().get(0));
         assertEquals(RecordSerializer.CODE, SerializeUtils.lookup(leaf).getCode());
     }
-    @Test public void preservesReferencesWhenRootIsCollection() throws Exception {
+
+    @Test
+    public void preservesReferencesWhenRootIsCollection() throws Exception {
         Leaf value = leaf();
         List<?> restored = (List<?>) decode(encode(List.of(value, value)));
         assertSame(restored.get(0), restored.get(1));
     }
-    @Test public void preservesOriginalComponentsInsteadOfAccessors() throws Exception {
+
+    @Test
+    public void preservesOriginalComponentsInsteadOfAccessors() throws Exception {
         assertEquals(new Adjusted(3), decode(encode(new Adjusted(3))));
     }
-    @Test public void preservesNullEmptyCollectionsAndBinary() throws Exception {
+
+    @Test
+    public void preservesNullEmptyCollectionsAndBinary() throws Exception {
         var source = new Nullable(null, List.of(), new byte[]{0, 1, -1});
         Nullable restored = (Nullable) decode(encode(source));
         assertNull(restored.id());
@@ -80,14 +87,18 @@ public class RecordSerializerTest {
         assertArrayEquals(source.bytes(), restored.bytes());
         assertNull(((Nullable) decode(encode(new Nullable(null, null, null)))).items());
     }
-    @Test public void matchesNamesAndDefaultsMissingComponents() throws Exception {
+
+    @Test
+    public void matchesNamesAndDefaultsMissingComponents() throws Exception {
         var fields = new LinkedHashMap<String, Object>();
         fields.put("active", true);
         fields.put("id", "node");
         Evolving restored = (Evolving) decode(wire(out -> definition(out, Evolving.class, fields)));
         assertEquals(new Evolving("node", 0, true, '\0', null), restored);
     }
-    @Test public void consumesUnknownComponentsAndPreservesFollowingData() throws Exception {
+
+    @Test
+    public void consumesUnknownComponentsAndPreservesFollowingData() throws Exception {
         byte[] bytes = wire(out -> {
             definition(out, Evolving.class, Map.of("future", List.of("unknown"), "id", "node"));
             out.writeUTF("END");
@@ -97,7 +108,9 @@ public class RecordSerializerTest {
             assertEquals("END", input.readUTF());
         }
     }
-    @Test public void rejectsIncompatibleComponentType() throws Exception {
+
+    @Test
+    public void rejectsIncompatibleComponentType() throws Exception {
         assertThrows(InvalidObjectException.class,
             () -> decode(wire(out -> definition(out, Evolving.class, Map.of("count", "bad")))));
         var nullPrimitive = new HashMap<String, Object>();
@@ -105,12 +118,16 @@ public class RecordSerializerTest {
         assertThrows(InvalidObjectException.class,
             () -> decode(wire(out -> definition(out, Evolving.class, nullPrimitive))));
     }
-    @Test public void invokesCanonicalValidation() throws Exception {
+
+    @Test
+    public void invokesCanonicalValidation() throws Exception {
         InvalidObjectException error = assertThrows(InvalidObjectException.class,
             () -> decode(wire(out -> definition(out, Validated.class, Map.of("count", -1)))));
         assertEquals("negative", error.getCause().getMessage());
     }
-    @Test public void rejectsNegativeCountDuplicateNamesAndNonRecordTypes() throws Exception {
+
+    @Test
+    public void rejectsNegativeCountDuplicateNamesAndNonRecordTypes() throws Exception {
         assertThrows(StreamCorruptedException.class, () -> decode(wire(out -> {
             out.writeByte(RecordSerializer.CODE); out.writeInt(1); out.writeInt(-1);
             out.writeUTF(Evolving.class.getName()); out.writeInt(-1);
@@ -124,28 +141,36 @@ public class RecordSerializerTest {
         assertThrows(InvalidObjectException.class,
             () -> decode(wire(out -> definition(out, String.class, Map.of()))));
     }
-    @Test public void rejectsUnknownCodesInsteadOfReturningNull() throws Exception {
+
+    @Test
+    public void rejectsUnknownCodesInsteadOfReturningNull() throws Exception {
         assertThrows(StreamCorruptedException.class, () -> decode(wire(out -> out.writeByte(0xfc))));
         assertThrows(StreamCorruptedException.class, () -> decode(wire(out -> {
             out.writeByte(0x0c); out.writeByte(0xfc); out.writeInt(0);
         })));
         assertNull(decode(encode(null)));
     }
-    @Test public void rejectsInvalidRecordHandles() throws Exception {
+
+    @Test
+    public void rejectsInvalidRecordHandles() throws Exception {
         for (int id : new int[]{0, 2, -1, Integer.MIN_VALUE}) {
             assertThrows(StreamCorruptedException.class, () -> decode(wire(out -> {
                 out.writeByte(RecordSerializer.CODE); out.writeInt(id);
             })));
         }
     }
-    @Test public void rejectsCyclicRecordWithoutRecursingUntilOverflow() throws Exception {
+
+    @Test
+    public void rejectsCyclicRecordWithoutRecursingUntilOverflow() throws Exception {
         var values = new ArrayList<Object>();
         var source = new Loop(values);
         values.add(source);
         assertThrows(InvalidObjectException.class, () -> encode(source));
         assertEquals(leaf(), decode(encode(leaf())));
     }
-    @Test public void failedStreamDoesNotRetainTheFrameOrPoisonNextCall() throws Exception {
+
+    @Test
+    public void failedStreamDoesNotRetainTheFrameOrPoisonNextCall() throws Exception {
         Leaf source = leaf();
         try (var output = new ObjectOutputStream(new ByteArrayOutputStream()) {
             @Override public void writeInt(int value) throws IOException { throw new IOException("broken"); }
@@ -158,7 +183,9 @@ public class RecordSerializerTest {
         })));
         assertEquals(source, decode(encode(source)));
     }
-    @Test public void respectsExplicitSerializerAndNestedIndependentStreams() throws Exception {
+
+    @Test
+    public void respectsExplicitSerializerAndNestedIndependentStreams() throws Exception {
         SerializeUtils.registerSerializer(new SerializeUtils.Serializer() {
             public int getCode() { return 0x7a; }
             public Class<?> getJavaType() { return Reentrant.class; }
@@ -182,7 +209,9 @@ public class RecordSerializerTest {
         assertSame(restored.before(), restored.after());
         assertNotSame(restored.before(), restored.nested().value());
     }
-    @Test public void retainsCrossLoaderSafetyPolicy() throws Exception {
+
+    @Test
+    public void retainsCrossLoaderSafetyPolicy() throws Exception {
         String name = PluginRecord.class.getName();
         byte[] bytes;
         try (InputStream stream = PluginRecord.class.getResourceAsStream("RecordSerializerTest$PluginRecord.class")) {
@@ -203,7 +232,9 @@ public class RecordSerializerTest {
         assertEquals(0x10, SerializeUtils.lookup(source).getCode());
         assertEquals("plugin", ((Map<?, ?>) decode(encode(source))).get("id"));
     }
-    @Test public void isolatesConcurrentFrames() throws Exception {
+
+    @Test
+    public void isolatesConcurrentFrames() throws Exception {
         ExecutorService executor = Executors.newFixedThreadPool(4);
         try {
             List<Callable<Object>> calls = new ArrayList<>();
@@ -211,7 +242,9 @@ public class RecordSerializerTest {
             for (Future<Object> result : executor.invokeAll(calls)) assertEquals(leaf(), result.get());
         } finally { executor.shutdownNow(); }
     }
-    @Test public void reusesOneSchemaForDistinctRecordsOfTheSameType() throws Exception {
+
+    @Test
+    public void reusesOneSchemaForDistinctRecordsOfTheSameType() throws Exception {
         List<Leaf> source = List.of(leaf(), new Leaf("other", 7, BigDecimal.ONE));
         byte[] bytes = encode(source);
         assertEquals(source, decode(bytes));
@@ -222,11 +255,15 @@ public class RecordSerializerTest {
         }
         assertEquals(1, occurrences);
     }
-    @Test public void supportsRecursiveSchemasWithoutAnObjectCycle() throws Exception {
+
+    @Test
+    public void supportsRecursiveSchemasWithoutAnObjectCycle() throws Exception {
         Link source = new Link("parent", new Link("child", new Link("leaf", null)));
         assertEquals(source, decode(encode(source)));
     }
-    @Test public void rejectsUndefinedAndInvalidSchemaReferences() throws Exception {
+
+    @Test
+    public void rejectsUndefinedAndInvalidSchemaReferences() throws Exception {
         for (int schema : new int[]{0, 1, -2, Integer.MIN_VALUE}) {
             assertThrows(StreamCorruptedException.class, () -> decode(wire(out -> {
                 out.writeByte(RecordSerializer.CODE); out.writeInt(1); out.writeInt(schema);
@@ -234,7 +271,8 @@ public class RecordSerializerTest {
         }
     }
 
-    @Test public void retainsSignedExtensionCodesAndTheirReferenceScope() throws Exception {
+    @Test
+    public void retainsSignedExtensionCodesAndTheirReferenceScope() throws Exception {
         SerializeUtils.registerSerializer(new SerializeUtils.Serializer() {
             public int getCode() { return (byte) 0x9a; }
             public Class<?> getJavaType() { return Signed.class; }
