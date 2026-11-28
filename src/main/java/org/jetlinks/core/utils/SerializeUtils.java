@@ -29,6 +29,7 @@ import java.io.Externalizable;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serializable;
+import java.io.StreamCorruptedException;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -51,6 +52,7 @@ public class SerializeUtils {
         }
         registerSerializer(new TypedMapSerializer());
         registerSerializer(new TypedCollectionSerializer());
+        registerSerializer(RecordSerializer.INSTANCE);
         registerSerializer(ExceptionSerializer.global);
 
         cache.put(StackTraceElement.class, InternalSerializers.StackTraceElement);
@@ -205,14 +207,19 @@ public class SerializeUtils {
 
     @SneakyThrows
     public static void writeObject(Object obj, ObjectOutput out) {
-        Serializer serializer;
-        if (obj == null) {
-            serializer = InternalSerializers.NULL;
-        } else {
-            serializer = lookup(obj);
+        RecordSerializer.Scope scope = RecordSerializer.enter(out);
+        try {
+            Serializer serializer;
+            if (obj == null) {
+                serializer = InternalSerializers.NULL;
+            } else {
+                serializer = lookup(obj);
+            }
+            out.writeByte(serializer.getCode());
+            serializer.serialize(obj, out);
+        } finally {
+            scope.close();
         }
-        out.writeByte(serializer.getCode());
-        serializer.serialize(obj, out);
     }
 
     @SneakyThrows
@@ -223,11 +230,21 @@ public class SerializeUtils {
 
     @SneakyThrows
     public static Object readObject(ObjectInput input) {
-        Serializer serializer = all[input.readUnsignedByte()];
-        if (serializer == null) {
-            return null;
+        RecordSerializer.Scope scope = RecordSerializer.enter(input);
+        try {
+            return readSerializer(input).deserialize(input);
+        } finally {
+            scope.close();
         }
-        return serializer.deserialize(input);
+    }
+
+    private static Serializer readSerializer(ObjectInput input) throws java.io.IOException {
+        int code = input.readUnsignedByte();
+        Serializer serializer = all[code];
+        if (serializer == null) {
+            throw new StreamCorruptedException("Unknown serializer code: " + code);
+        }
+        return serializer;
     }
 
     public static Serializer lookup(Object readyToSer) {
@@ -308,6 +325,10 @@ public class SerializeUtils {
             //不是同一个classLoader.使用json序列化.
             if (t.getClassLoader() != null && t.getClassLoader() != SerializeUtils.class.getClassLoader()) {
                 return InternalSerializers.JSON;
+            }
+
+            if (t.isRecord()) {
+                return RecordSerializer.INSTANCE;
             }
 
             for (Serializer type : all) {
@@ -663,7 +684,7 @@ public class SerializeUtils {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
-                Serializer serializer = all[input.readUnsignedByte()];
+                Serializer serializer = readSerializer(input);
                 int len = input.readInt();
                 Object array = Array.newInstance(serializer.getJavaType(), len);
                 for (int i = 0; i < len; i++) {

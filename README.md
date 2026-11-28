@@ -92,6 +92,22 @@ Monitor 执行观测的 API、SPI、兼容边界与验证入口见 [执行观测
 `EnumType.toJson()` 在未声明选项（`elements == null`）时省略 `elements`，显式空列表保留为 `[]`。
 `valueType` 在非 null 时写入，`multi` 始终写入；两者不依赖选项列表，避免配置经过 JSON 或安全序列化后丢失。
 
+# record 对象序列化
+
+`SerializeUtils.writeObject/readObject` 使用独立类型码 `0x24` 编解码record，
+按组件名称匹配并通过规范构造器恢复。支持未实现Serializable的record、嵌套集合、
+null及精确数值；缺少组件使用类型默认值，未知组件完整读取后忽略，
+类型不兼容、重复组件及构造校验失败会报错。
+
+单次顶层调用中保留record共享引用，循环回指明确拒绝；独立调用不共用引用表。
+`RecordMetadata` 提供可复用的原始组件读取和规范构造器元信息，不调用自定义访问器，
+具名模块须开放对应包。显式注册的serializer和跨classloader安全转换规则保持优先。
+
+新类型码须由全部接收方支持后才能发送；未知码明确失败，不再被当作null。
+旧FST/JDK格式和同名POJO→record的历史字节不会自动迁移，FST/JDK字节也不互通。
+普通Java对象图内由ObjectOutput直接写入的record仍需要对应后端的适配器，
+本能力不保证任意对象图的引用身份或滚动升级。
+
 # License
 Apache-2.0
 
