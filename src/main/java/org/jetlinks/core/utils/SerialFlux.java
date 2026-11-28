@@ -2,28 +2,23 @@ package org.jetlinks.core.utils;
 
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
-import reactor.core.publisher.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxOperator;
+import reactor.core.publisher.Operators;
 import reactor.util.concurrent.Queues;
 import reactor.util.context.Context;
 
 import javax.annotation.Nonnull;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
+/** Serializes subscribed work while preserving each subscriber's demand and Context. */
 public class SerialFlux<T> {
-
-    @SuppressWarnings("all")
-    static final AtomicReferenceFieldUpdater<SerialFlux, Pending> WIP =
-            AtomicReferenceFieldUpdater.newUpdater(SerialFlux.class, Pending.class, "wip");
-
-    @SuppressWarnings("all")
-    static final AtomicReferenceFieldUpdater<Pending.PendingSubscriber, CoreSubscriber> ACTUAL =
-            AtomicReferenceFieldUpdater.newUpdater(Pending.PendingSubscriber.class, CoreSubscriber.class, "actual");
-
-    final Queue<Pending<T>> queue;
-
-    volatile Pending<T> wip;
+    private final Queue<Pending<T>> queue;
+    private final AtomicInteger draining = new AtomicInteger();
+    private Pending<T> active;
 
     public SerialFlux() {
         this(Queues.small());
@@ -33,105 +28,120 @@ public class SerialFlux<T> {
         this.queue = queueSupplier.get();
     }
 
-    public int size() {
+    public synchronized int size() {
         return queue.size();
     }
 
-    public Flux<T> join(Flux<T> join) {
-        Pending<T> pending = new Pending<>(this, join);
-        if (!queue.offer(pending)) {
-            return Flux.error(new IllegalStateException("pending queue is full"));
-        }
-        return pending;
+    /** Accept work only when subscribed; the returned publisher allows one subscriber. */
+    public Flux<T> join(Flux<T> source) {
+        return new Pending<>(this, source);
     }
 
-    void drain() {
-        if (wip != null) {
+    private void enqueue(Pending<T> pending) {
+        boolean accepted;
+        synchronized (this) {
+            if (pending.subscriber.done.get()) {
+                return;
+            }
+            accepted = queue.offer(pending);
+        }
+        if (accepted) {
+            drain();
+        } else {
+            pending.subscriber.onError(new IllegalStateException("pending queue is full"));
+        }
+    }
+
+    private void finish(Pending<T> pending) {
+        synchronized (this) {
+            if (active == pending) {
+                active = null;
+            }
+        }
+        drain();
+    }
+
+    private void drain() {
+        if (draining.getAndIncrement() != 0) {
             return;
         }
-        for (; ; ) {
-            Pending<T> pending;
-            if (WIP.compareAndSet(this, null, pending = queue.poll())) {
-                if (pending != null) {
-                    pending.doSubscribe();
+        int missed = 1;
+        for (;;) {
+            Pending<T> next = null;
+            synchronized (this) {
+                // The supplied queue may be SPSC; all producers and consumers use this short lock.
+                while (queue.peek() != null && queue.peek().subscriber.done.get()) {
+                    queue.poll();
                 }
+                if (active == null) {
+                    active = next = queue.poll();
+                }
+            }
+            if (next != null) {
+                next.start();
+            }
+            // Synchronous termination schedules another turn instead of recursively subscribing.
+            missed = draining.addAndGet(-missed);
+            if (missed == 0) {
                 return;
-            } else {
-                if (pending != null) {
-                    if (!queue.offer(pending)) {
-                        pending.doSubscribe();
-                        return;
-                    }
-                }
             }
         }
     }
 
-    static class Pending<T> extends FluxOperator<T, T> {
-
+    static final class Pending<T> extends FluxOperator<T, T> {
         private final SerialFlux<T> main;
-        private final PendingSubscriber subscriber = new PendingSubscriber();
+        private final AtomicBoolean subscribed = new AtomicBoolean();
+        private PendingSubscriber subscriber;
 
-        protected Pending(SerialFlux<T> main, Flux<? extends T> source) {
+        private Pending(SerialFlux<T> main, Flux<T> source) {
             super(source);
             this.main = main;
         }
 
         @Override
-        public Object scanUnsafe(@Nonnull Attr key) {
-            if (key == Attr.TERMINATED) {
-                return subscriber.isDisposed();
+        public void subscribe(@Nonnull CoreSubscriber<? super T> actual) {
+            if (!subscribed.compareAndSet(false, true)) {
+                Operators.error(actual, new IllegalStateException("SerialFlux allows only a single Subscriber"));
+                return;
             }
-            return super.scanUnsafe(key);
+            subscriber = new PendingSubscriber(actual);
+            actual.onSubscribe(subscriber);
+            main.enqueue(this);
+        }
+
+        private void start() {
+            if (!subscriber.done.get()) {
+                source.subscribe(subscriber);
+            }
         }
 
         @Override
-        public void subscribe(@Nonnull CoreSubscriber<? super T> actual) {
-            subscriber.addSubscriber(actual);
-            main.drain();
+        public Object scanUnsafe(@Nonnull Attr key) {
+            return key == Attr.TERMINATED ? subscriber != null && subscriber.done.get() : super.scanUnsafe(key);
         }
 
-        void doSubscribe() {
-            if (subscriber.isCompleted()) {
-                WIP.compareAndSet(main, this, null);
-                main.drain();
-                return;
-            }
-            source.subscribe(subscriber);
-        }
+        private final class PendingSubscriber extends Operators.DeferredSubscription implements CoreSubscriber<T> {
+            private final CoreSubscriber<? super T> actual;
+            private final AtomicBoolean done = new AtomicBoolean();
 
-        class PendingSubscriber extends BaseSubscriber<T> {
-            @SuppressWarnings("all")
-            volatile CoreSubscriber<? super T> actual = null;
-
-            long requested = Long.MAX_VALUE;
-
-            @Override
-            protected void hookFinally(@Nonnull SignalType type) {
-                complete();
-            }
-
-            private boolean isCompleted() {
-                return ACTUAL.get(this) == this;
-            }
-
-            private void complete() {
-                ACTUAL.set(this, this);
-                if (WIP.compareAndSet(main, Pending.this, null)) {
-                    main.drain();
-                }
+            private PendingSubscriber(CoreSubscriber<? super T> actual) {
+                this.actual = actual;
             }
 
             @Override
             @Nonnull
             public Context currentContext() {
-                return (actual == null || isCompleted()) ? super.currentContext() : actual.currentContext();
+                return actual.currentContext();
             }
 
             @Override
-            protected void hookOnNext(@Nonnull T value) {
-                CoreSubscriber<? super T> actual = this.actual;
-                if (isCompleted() || actual == null) {
+            public void onSubscribe(Subscription subscription) {
+                set(subscription);
+            }
+
+            @Override
+            public void onNext(T value) {
+                if (done.get()) {
                     Operators.onDiscard(value, currentContext());
                 } else {
                     actual.onNext(value);
@@ -139,60 +149,39 @@ public class SerialFlux<T> {
             }
 
             @Override
-            protected void hookOnComplete() {
-                if (isCompleted()) {
+            public void onError(Throwable error) {
+                if (!done.compareAndSet(false, true)) {
+                    Operators.onErrorDropped(error, currentContext());
                     return;
                 }
-                CoreSubscriber<? super T> actual = this.actual;
-                if (actual != null) {
-                    actual.onComplete();
+                try {
+                    actual.onError(error);
+                } finally {
+                    main.finish(Pending.this);
                 }
             }
 
             @Override
-            protected void hookOnError(@Nonnull Throwable throwable) {
-                if (isCompleted()) {
-                    return;
-                }
-                CoreSubscriber<? super T> actual = this.actual;
-                if (actual != null) {
-                    actual.onError(throwable);
+            public void onComplete() {
+                if (done.compareAndSet(false, true)) {
+                    try {
+                        actual.onComplete();
+                    } finally {
+                        main.finish(Pending.this);
+                    }
                 }
             }
 
             @Override
-            protected void hookOnSubscribe(@Nonnull Subscription subscription) {
-                subscription.request(requested);
-            }
-
-            @SuppressWarnings("all")
-            private synchronized void addSubscriber(CoreSubscriber<? super T> subscriber) {
-
-                if (!ACTUAL.compareAndSet(this, null, subscriber)) {
-                    Operators.error(subscriber, new IllegalStateException("SerialFlux allows only a single Subscriber"));
-                    return;
+            public void cancel() {
+                if (done.compareAndSet(false, true)) {
+                    try {
+                        super.cancel();
+                    } finally {
+                        main.finish(Pending.this);
+                    }
                 }
-                subscriber.onSubscribe(new Subscription() {
-                    @Override
-                    public void request(long n) {
-                        requested = n;
-                    }
-
-                    @Override
-                    public void cancel() {
-                        if (upstream() == null) {
-                            dispose();
-                            complete();
-                        } else {
-                            upstream().cancel();
-                            complete();
-                        }
-                    }
-                });
             }
         }
-
-
     }
-
 }
