@@ -212,21 +212,10 @@ public class SerializeUtils {
         Serializer serializer = obj == null ? InternalSerializers.NULL : lookup(obj);
         int code = serializer.getCode() & 0xff;
         out.writeByte(code);
-        if (isScalarCode(code)) {
+        if (isScalarCode(code) || out instanceof RecordSerializer.OutputFrame) {
             serializer.serialize(obj, out);
         } else {
-            writeComposite(obj, out, serializer);
-        }
-    }
-
-    private static void writeComposite(Object value, ObjectOutput out, Serializer serializer) {
-        RecordSerializer.Scope owner = RecordSerializer.enter(out);
-        try {
-            serializer.serialize(value, out);
-        } finally {
-            if (owner != null) {
-                owner.close();
-            }
+            RecordSerializer.write(obj, out, serializer);
         }
     }
 
@@ -240,21 +229,10 @@ public class SerializeUtils {
     public static Object readObject(ObjectInput input) {
         int code = input.readUnsignedByte();
         Serializer serializer = readSerializer(code);
-        if (isScalarCode(code)) {
+        if (isScalarCode(code) || input instanceof RecordSerializer.InputFrame) {
             return serializer.deserialize(input);
         }
-        return readComposite(input, serializer);
-    }
-
-    private static Object readComposite(ObjectInput input, Serializer serializer) {
-        RecordSerializer.Scope owner = RecordSerializer.enter(input);
-        try {
-            return serializer.deserialize(input);
-        } finally {
-            if (owner != null) {
-                owner.close();
-            }
-        }
+        return RecordSerializer.read(input, serializer);
     }
 
     // 0..STRING为协议中固定的基础值类型，不会递归引用record。
@@ -1097,8 +1075,10 @@ public class SerializeUtils {
 
         Class<?> getJavaType();
 
+        /** 输入仅在当前调用期间有效，应通过ObjectInput接口使用。 */
         Object deserialize(ObjectInput input);
 
+        /** 输出仅在当前调用期间有效，应通过ObjectOutput接口使用。 */
         void serialize(Object value, ObjectOutput output);
     }
 }

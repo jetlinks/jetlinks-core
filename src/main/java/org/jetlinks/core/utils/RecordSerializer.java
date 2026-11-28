@@ -1,6 +1,8 @@
 package org.jetlinks.core.utils;
 
 import lombok.SneakyThrows;
+import lombok.experimental.Delegate;
+import org.hswebframework.web.recycler.Recycler;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
@@ -20,7 +22,26 @@ import java.util.Map;
 final class RecordSerializer implements SerializeUtils.Serializer {
     static final int CODE = 0x24;
     static final RecordSerializer INSTANCE = new RecordSerializer();
-    private static final ThreadLocal<Scope> SCOPES = ThreadLocal.withInitial(() -> new Scope(null));
+    private static final int MAX_CACHED_FRAMES = 256;
+    private static final Recycler<OutputFrame> OUTPUTS =
+        Recycler.create(OutputFrame::new, OutputFrame::reset, MAX_CACHED_FRAMES);
+    private static final Recycler<InputFrame> INPUTS =
+        Recycler.create(InputFrame::new, InputFrame::reset, MAX_CACHED_FRAMES);
+
+    static void write(Object value, ObjectOutput output, SerializeUtils.Serializer serializer) {
+        OUTPUTS.doWith(value, output, serializer, (frame, object, target, codec) -> {
+            frame.output = target;
+            codec.serialize(object, frame);
+            return null;
+        });
+    }
+
+    static Object read(ObjectInput input, SerializeUtils.Serializer serializer) {
+        return INPUTS.doWith(input, serializer, (frame, source, codec) -> {
+            frame.input = source;
+            return codec.deserialize(frame);
+        });
+    }
 
     @Override
     public int getCode() {
@@ -35,102 +56,93 @@ final class RecordSerializer implements SerializeUtils.Serializer {
     @Override
     @SneakyThrows
     public void serialize(Object value, ObjectOutput output) {
-        Scope owner = enter(output);
-        Scope scope = SCOPES.get();
-        try {
-            if (scope.writtenRecords == null) {
-                scope.writtenRecords = new IdentityHashMap<>();
-            }
-            Integer previous = scope.writtenRecords.get(value);
-            if (previous != null) {
-                if (previous < 0) {
-                    throw new InvalidObjectException("Cyclic record reference: " + value.getClass().getName());
-                }
-                output.writeInt(-previous);
-                return;
-            }
-            int identity = scope.writtenRecords.size() + 1;
-            scope.writtenRecords.put(value, -identity);
-            RecordMetadata metadata = RecordMetadata.of(value.getClass());
-            output.writeInt(identity);
-            if (scope.writtenSchemas == null) {
-                scope.writtenSchemas = new HashMap<>();
-            }
-            Integer schemaId = scope.writtenSchemas.get(value.getClass());
-            if (schemaId == null) {
-                schemaId = scope.writtenSchemas.size() + 1;
-                scope.writtenSchemas.put(value.getClass(), schemaId);
-                output.writeInt(-schemaId);
-                output.writeUTF(value.getClass().getName());
-                output.writeInt(metadata.size());
-                for (int index = 0; index < metadata.size(); index++) {
-                    output.writeUTF(metadata.name(index));
-                }
-            } else {
-                output.writeInt(schemaId);
-            }
-            for (int index = 0; index < metadata.size(); index++) {
-                SerializeUtils.writeObject(metadata.value(value, index), output);
-            }
-            scope.writtenRecords.put(value, identity);
-        } finally {
-            if (owner != null) {
-                owner.close();
-            }
+        if (!(output instanceof OutputFrame frame)) {
+            write(value, output, this);
+            return;
         }
+        if (frame.writtenRecords == null) {
+            frame.writtenRecords = new IdentityHashMap<>();
+        }
+        Integer previous = frame.writtenRecords.get(value);
+        if (previous != null) {
+            if (previous < 0) {
+                throw new InvalidObjectException("Cyclic record reference: " + value.getClass().getName());
+            }
+            output.writeInt(-previous);
+            return;
+        }
+        int identity = frame.writtenRecords.size() + 1;
+        frame.writtenRecords.put(value, -identity);
+        RecordMetadata metadata = RecordMetadata.of(value.getClass());
+        output.writeInt(identity);
+        if (frame.writtenSchemas == null) {
+            frame.writtenSchemas = new HashMap<>();
+        }
+        Integer schemaId = frame.writtenSchemas.get(value.getClass());
+        if (schemaId == null) {
+            schemaId = frame.writtenSchemas.size() + 1;
+            frame.writtenSchemas.put(value.getClass(), schemaId);
+            output.writeInt(-schemaId);
+            output.writeUTF(value.getClass().getName());
+            output.writeInt(metadata.size());
+            for (int index = 0; index < metadata.size(); index++) {
+                output.writeUTF(metadata.name(index));
+            }
+        } else {
+            output.writeInt(schemaId);
+        }
+        for (int index = 0; index < metadata.size(); index++) {
+            SerializeUtils.writeObject(metadata.value(value, index), output);
+        }
+        frame.writtenRecords.put(value, identity);
     }
 
     @Override
     @SneakyThrows
     public Object deserialize(ObjectInput input) {
-        Scope owner = enter(input);
-        Scope scope = SCOPES.get();
-        try {
-            if (scope.readRecords == null) {
-                scope.readRecords = new ArrayList<>();
+        if (!(input instanceof InputFrame frame)) {
+            return read(input, this);
+        }
+        if (frame.readRecords == null) {
+            frame.readRecords = new ArrayList<>();
+        }
+        int identity = input.readInt();
+        if (identity < 0) {
+            long index = -(long) identity - 1;
+            if (index >= frame.readRecords.size() || frame.readRecords.get((int) index) == null) {
+                throw new StreamCorruptedException("Unknown or cyclic record reference: " + identity);
             }
-            int identity = input.readInt();
-            if (identity < 0) {
-                long index = -(long) identity - 1;
-                if (index >= scope.readRecords.size() || scope.readRecords.get((int) index) == null) {
-                    throw new StreamCorruptedException("Unknown or cyclic record reference: " + identity);
-                }
-                return scope.readRecords.get((int) index);
-            }
-            if (identity != scope.readRecords.size() + 1) {
-                throw new StreamCorruptedException("Invalid record identity: " + identity);
-            }
-            ReadSchema schema = readSchema(input, scope);
-            scope.readRecords.add(null);
-            Object[] values = schema.metadata.arguments();
-            for (int index : schema.argumentIndexes) {
-                Object value = SerializeUtils.readObject(input);
-                if (index >= 0) {
-                    values[index] = value;
-                }
-            }
-            Object value = schema.metadata.newInstance(values);
-            scope.readRecords.set(identity - 1, value);
-            return value;
-        } finally {
-            if (owner != null) {
-                owner.close();
+            return frame.readRecords.get((int) index);
+        }
+        if (identity != frame.readRecords.size() + 1) {
+            throw new StreamCorruptedException("Invalid record identity: " + identity);
+        }
+        ReadSchema schema = readSchema(frame);
+        frame.readRecords.add(null);
+        Object[] values = schema.metadata.arguments();
+        for (int index : schema.argumentIndexes) {
+            Object value = SerializeUtils.readObject(input);
+            if (index >= 0) {
+                values[index] = value;
             }
         }
+        Object value = schema.metadata.newInstance(values);
+        frame.readRecords.set(identity - 1, value);
+        return value;
     }
 
-    private static ReadSchema readSchema(ObjectInput input, Scope scope) throws IOException, ClassNotFoundException {
-        if (scope.readSchemas == null) {
-            scope.readSchemas = new ArrayList<>();
+    private static ReadSchema readSchema(InputFrame input) throws IOException, ClassNotFoundException {
+        if (input.readSchemas == null) {
+            input.readSchemas = new ArrayList<>();
         }
         int schemaId = input.readInt();
         if (schemaId > 0) {
-            if (schemaId > scope.readSchemas.size()) {
+            if (schemaId > input.readSchemas.size()) {
                 throw new StreamCorruptedException("Unknown record schema: " + schemaId);
             }
-            return scope.readSchemas.get(schemaId - 1);
+            return input.readSchemas.get(schemaId - 1);
         }
-        if (-(long) schemaId != scope.readSchemas.size() + 1) {
+        if (-(long) schemaId != input.readSchemas.size() + 1) {
             throw new StreamCorruptedException("Invalid record schema: " + schemaId);
         }
         String typeName = input.readUTF();
@@ -158,7 +170,7 @@ final class RecordSerializer implements SerializeUtils.Serializer {
             argumentIndexes[position++] = index;
         }
         ReadSchema schema = new ReadSchema(metadata, argumentIndexes);
-        scope.readSchemas.add(schema);
+        input.readSchemas.add(schema);
         return schema;
     }
 
@@ -172,42 +184,30 @@ final class RecordSerializer implements SerializeUtils.Serializer {
         }
     }
 
-    /** 同一流复用当前帧并返回null，只有非null的owner负责结束和恢复父帧。 */
-    static Scope enter(Object stream) {
-        Scope scope = SCOPES.get();
-        if (scope.stream != null && scope.stream == stream) {
-            return null;
+    static final class OutputFrame implements ObjectOutput {
+        @Delegate
+        private ObjectOutput output;
+        private IdentityHashMap<Object, Integer> writtenRecords;
+        private HashMap<Class<?>, Integer> writtenSchemas;
+
+        void reset() {
+            // 仅复用空包装器，帧集合与峰值容量不留在池中。
+            output = null;
+            writtenRecords = null;
+            writtenSchemas = null;
         }
-        if (scope.stream != null) {
-            scope = new Scope(scope);
-            SCOPES.set(scope);
-        }
-        scope.stream = stream;
-        return scope;
     }
 
-    static final class Scope {
-        private final Scope parent;
-        private Object stream;
-        private IdentityHashMap<Object, Integer> writtenRecords;
+    static final class InputFrame implements ObjectInput {
+        @Delegate
+        private ObjectInput input;
         private ArrayList<Object> readRecords;
-        private HashMap<Class<?>, Integer> writtenSchemas;
         private ArrayList<ReadSchema> readSchemas;
 
-        private Scope(Scope parent) {
-            this.parent = parent;
-        }
-
-        void close() {
-            // 仅外层owner清理；同流递归调用不重复计数或分配。
-            stream = null;
-            writtenRecords = null;
+        void reset() {
+            input = null;
             readRecords = null;
-            writtenSchemas = null;
             readSchemas = null;
-            if (parent != null) {
-                SCOPES.set(parent);
-            }
         }
     }
 }
