@@ -10,6 +10,10 @@ import java.util.function.Function;
 
 public interface ReactiveCacheContainer<K, V> extends Disposable {
 
+    /**
+     * Apply one lazy, shared update, serialized with this key's other accepted updates.
+     * An updater error or empty result preserves an existing value; remove/take explicitly evicts it.
+     */
     Mono<V> compute(K key, BiFunction<K, V, Mono<V>> compute);
 
     Mono<V> computeIfAbsent(K key, Function<K, Mono<V>> compute);
