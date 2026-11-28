@@ -68,8 +68,9 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
     public V put(K key, V value) {
         Container<K, V> container = cache.put(key, new Container<>(key, this, value));
         if (container != null) {
-            container.dispose();
-            return container.loaded;
+            V previous = container.detach();
+            disposeValue(previous);
+            return previous;
         }
         return null;
     }
@@ -90,11 +91,21 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
     @Override
     public V remove(K key) {
+        V value = take(key);
+        disposeValue(value);
+        return value;
+    }
+
+    @Override
+    public V take(K key) {
         Container<K, V> container = cache.remove(key);
-        if (null != container) {
-            container.dispose();
+        return container == null ? null : container.detach();
+    }
+
+    private static void disposeValue(Object value) {
+        if (value instanceof Disposable) {
+            ((Disposable) value).dispose();
         }
-        return container == null ? null : container.loaded;
     }
 
     @Override
@@ -146,7 +157,8 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
             = AtomicReferenceFieldUpdater.newUpdater(Container.class, Object.class, "loaded");
         public volatile T loaded;
 
-        private final Disposable.Swap disposable = Disposables.swap();
+        private final Disposable.Composite disposable = Disposables.composite();
+        private volatile boolean detached;
         private final DefaultReactiveCacheContainer<K, T> main;
         private final K key;
 
@@ -165,6 +177,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
         public void update(Function<T, Mono<T>> ref) {
             synchronized (this) {
+                if (detached) return;
                 @SuppressWarnings("all")
                 Mono<T> loader = LOADER.getAndSet(this, null);
                 if (loader != null) {
@@ -183,7 +196,11 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
             }
         }
 
-        private void afterLoaded(T data) {
+        private synchronized void afterLoaded(T data) {
+            if (detached) {
+                disposeValue(data);
+                return;
+            }
             if (data != loaded && loaded instanceof Disposable) {
                 ((Disposable) loaded).dispose();
             }
@@ -197,11 +214,23 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
 
         public void dispose() {
-            disposable.dispose();
-            T loaded = this.loaded;
-            if (loaded instanceof Disposable) {
-                ((Disposable) loaded).dispose();
+            disposeValue(detach());
+        }
+
+        private T detach() {
+            T value;
+            Sinks.One<T> waiting;
+            synchronized (this) {
+                if (detached) return null;
+                detached = true;
+                value = loaded;
+                loaded = null;
+                LOADER.set(this, null);
+                waiting = AWAIT.getAndSet(this, null);
             }
+            disposable.dispose();
+            if (waiting != null) waiting.tryEmitEmpty();
+            return value;
         }
 
         private void loadError(Throwable err) {
@@ -229,8 +258,13 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
             //直接load
             if (loader != null) {
                 Sinks.One<T> async = Sinks.one();
-                loader
+                Disposable.Swap loading = Disposables.swap();
+                if (!disposable.add(loading)) return Mono.empty();
+                loading.update(loader
                     .switchIfEmpty(Mono.fromRunnable(this::loadEmpty))
+                    .doOnCancel(async::tryEmitEmpty)
+                    .doFinally(signal -> disposable.remove(loading))
+                    .doOnDiscard(Disposable.class, Disposable::dispose)
                     .subscribe(
                         loaded -> {
                             afterLoaded(loaded);
@@ -244,7 +278,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                             async.emitEmpty(Reactors.emitFailureHandler());
                         },
                         Context.of(contextView).put(DefaultReactiveCacheContainer.class, this)
-                    );
+                    ));
                 return async.asMono();
             }
             Sinks.One<T> sink = AWAIT.get(this);
@@ -258,6 +292,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         public Mono<T> ref() {
             return Mono
                 .deferContextual(ctx -> {
+                    if (detached) return Mono.empty();
                     if (ctx.getOrEmpty(DefaultReactiveCacheContainer.class).orElse(null) == this) {
                         //避免递归调用
                         log.warn("recursive call reactive cache [{}]", key);
