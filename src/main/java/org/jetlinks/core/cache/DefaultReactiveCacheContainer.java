@@ -99,9 +99,14 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
     @Override
     public V put(K key, V value) {
         retryRetired(key, value);
-        Container<K, V> previous = cache.put(key, new Container<>(key, this, value));
-        V loaded = previous == null ? null : previous.detach();
-        transferRetirement(value);
+        Container<K, V> previous;
+        V loaded;
+        synchronized (retiring) {
+            transferRetirement(value);
+            previous = cache.put(key, new Container<>(key, this, value));
+            loaded = previous == null ? null : previous.detach();
+        }
+        if (previous != null) previous.notifyDetached();
         if (loaded != value) release(key, loaded);
         return loaded;
     }
@@ -130,18 +135,24 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
     @Override
     public V take(K key) {
-        Container<K, V> container = cache.remove(key);
-        V value = container == null ? null : container.detach();
-        transferRetirement(value);
+        Container<K, V> container;
+        V value;
+        synchronized (retiring) {
+            container = cache.get(key);
+            if (container == null) return null;
+            transferRetirement(container.loaded);
+            cache.remove(key, container);
+            value = container.detach();
+        }
+        container.notifyDetached();
         return value;
     }
 
+    // Caller holds retiring: ownership checks and publication must be atomic with cleanup claims.
     private void transferRetirement(Object value) {
-        synchronized (retiring) {
-            Retirement<K> retired = retiring.get(value);
-            if (retired != null && retired.running) throw new IllegalStateException("Cache resource release is in progress");
-            retiring.remove(value);
-        }
+        Retirement<K> retired = retiring.get(value);
+        if (retired != null && retired.running) throw new IllegalStateException("Cache resource release is in progress");
+        retiring.remove(value);
     }
 
     private List<Retirement<K>> retirements() {
@@ -162,19 +173,44 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         if (!(value instanceof Disposable)) return;
         Disposable disposable = (Disposable) value;
         Retirement<K> retired;
+        Container<K, V> previous;
         synchronized (retiring) {
+            Container<K, V> current = cache.get(key);
+            if (current != null && (current.loaded == value || current.staged == value)) return;
             retired = retiring.computeIfAbsent(disposable, ignored -> new Retirement<>(key, disposable));
+            if (retired.running) return;
+            previous = claim(retired);
         }
-        release(retired);
+        dispose(retired, previous);
     }
 
     private void release(Retirement<K> retired) {
+        Container<K, V> previous;
         synchronized (retiring) {
             // A snapshot cannot reclaim cleanup transferred or completed since it was taken.
             if (retiring.get(retired.value) != retired) return;
             if (retired.running) throw new IllegalStateException("Cache resource release is in progress");
-            retired.running = true;
+            previous = claim(retired);
         }
+        dispose(retired, previous);
+    }
+
+    private Container<K, V> claim(Retirement<K> retired) {
+        retired.running = true;
+        Container<K, V> current = cache.get(retired.key);
+        if (current != null) {
+            synchronized (current) {
+                if (current.loaded == retired.value) {
+                    current.loaded = null;
+                    return current;
+                }
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void dispose(Retirement<K> retired, Container<K, V> previous) {
         boolean completed = false;
         try {
             retired.value.dispose();
@@ -183,12 +219,13 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
             synchronized (retiring) {
                 retired.running = false;
                 if (completed) retiring.remove(retired.value, retired);
-            }
-        }
-        Container<K, V> current = cache.get(retired.key);
-        if (current != null) {
-            synchronized (current) {
-                if (current.loaded == retired.value) current.loaded = null;
+                else if (previous != null) {
+                    synchronized (previous) {
+                        if (!previous.detached && cache.get(retired.key) == previous && previous.loaded == null) {
+                            previous.loaded = (V) retired.value;
+                        }
+                    }
+                }
             }
         }
     }
@@ -225,11 +262,14 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         Set<Object> attempted = Collections.newSetFromMap(new IdentityHashMap<>());
         // Do not remove a replacement installed after this snapshot without disposing its own entry.
         new HashMap<>(cache).forEach((key, container) -> {
-            if (cache.remove(key, container)) {
-                V value = container.detach();
-                attempted.add(value);
-                tryRelease(key, value, failures);
+            V value;
+            synchronized (retiring) {
+                if (!cache.remove(key, container)) return;
+                value = container.detach();
             }
+            container.notifyDetached();
+            attempted.add(value);
+            tryRelease(key, value, failures);
         });
         for (Retirement<K> retired : pending) {
             if (!attempted.contains(retired.value)) tryRelease(retired, failures);
@@ -246,6 +286,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         private final SerialFlux<T> updates = new SerialFlux<>();
         private final Sinks.Empty<Void> removed = Sinks.empty();
         private volatile T loaded;
+        private T staged;
         private volatile WeakReference<T> transferred;
         private volatile boolean detached;
         private int pending;
@@ -287,11 +328,18 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         private Mono<T> replace(T value) {
             T previous;
             boolean obsolete;
-            synchronized (this) {
-                obsolete = detached;
-                previous = loaded;
-                // Claim the previous value before calling user cleanup outside the lock; take cannot transfer it now.
-                if (!obsolete && previous != value) loaded = null;
+            synchronized (main.retiring) {
+                synchronized (this) {
+                    obsolete = detached;
+                    previous = loaded;
+                    if (!obsolete) {
+                        main.transferRetirement(value);
+                        if (previous != value) {
+                            staged = value;
+                            loaded = null;
+                        }
+                    }
+                }
             }
             if (obsolete) {
                 discard(value);
@@ -302,14 +350,22 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 main.release(key, previous);
             } catch (Throwable error) {
                 Exceptions.throwIfFatal(error);
-                synchronized (this) { if (!detached) loaded = previous; }
+                synchronized (main.retiring) {
+                    synchronized (this) {
+                        if (!detached) loaded = previous;
+                        staged = null;
+                    }
+                }
                 try { discard(value); }
                 catch (Throwable cleanup) { Exceptions.throwIfFatal(cleanup); error = Exceptions.multiple(error, cleanup); }
                 return Mono.error(error);
             }
-            synchronized (this) {
-                obsolete = detached;
-                if (!obsolete) loaded = value;
+            synchronized (main.retiring) {
+                synchronized (this) {
+                    obsolete = detached;
+                    if (!obsolete) loaded = value;
+                    staged = null;
+                }
             }
             if (obsolete) {
                 discard(value);
@@ -320,14 +376,16 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
         private void finished(Throwable error) {
             Sinks.Empty<Void> completed = null;
-            synchronized (this) {
-                if (--pending == 0) {
-                    completed = idle;
-                    idle = null;
-                    // Failed/empty first loads are evicted; a failed update never loses its old value.
-                    if (loaded == null && !detached) {
-                        detached = true;
-                        main.cache.remove(key, this);
+            synchronized (main.retiring) {
+                synchronized (this) {
+                    if (--pending == 0) {
+                        completed = idle;
+                        idle = null;
+                        // Failed/empty first loads are evicted; a failed update never loses its old value.
+                        if (loaded == null && !detached) {
+                            detached = true;
+                            main.cache.remove(key, this);
+                        }
                     }
                 }
             }
@@ -340,26 +398,28 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         private void discard(Object value) {
             boolean owned;
             synchronized (this) {
-                owned = value == loaded || transferred != null && value == transferred.get();
+                owned = value == loaded || value == staged || transferred != null && value == transferred.get();
             }
             if (!owned) main.release(key, value);
         }
 
         private T detach() {
             T value;
-            Sinks.Empty<Void> waiting;
             synchronized (this) {
                 if (detached) return null;
                 detached = true;
                 value = loaded;
                 transferred = new WeakReference<>(value);
                 loaded = null;
-                waiting = idle;
-                idle = null;
             }
+            return value;
+        }
+
+        private void notifyDetached() {
+            Sinks.Empty<Void> waiting;
+            synchronized (this) { waiting = idle; idle = null; }
             removed.tryEmitEmpty();
             if (waiting != null) waiting.tryEmitEmpty();
-            return value;
         }
 
         private Mono<T> ref() {

@@ -22,7 +22,10 @@ public interface ReactiveCacheContainer<K, V> extends Disposable {
 
     Mono<V> get(K key, Mono<V> defaultValue);
 
-    /** Commit the new entry; failed disposal of the previous value is retained for remove/clear to retry. */
+    /**
+     * Commit the new entry; failed disposal of the previous value is retained for remove/clear to retry.
+     * A value currently being disposed cannot be adopted; rejection leaves the current entry intact.
+     */
     V put(K key, V value);
 
     boolean containsKey(K key);
@@ -34,7 +37,7 @@ public interface ReactiveCacheContainer<K, V> extends Disposable {
 
     /**
      * Remove an entry and transfer ownership of its loaded value to the caller without disposing it.
-     * Pending loads are cancelled; late Disposable results are released and cannot repopulate the entry.
+     * Pending loads are cancelled; late Disposable results without a current owner are released and cannot repopulate the entry.
      * Any failed cleanup belonging to the transferred value is transferred too; other retired values remain owned here.
      */
     default V take(K key) {
