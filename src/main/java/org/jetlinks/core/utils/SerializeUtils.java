@@ -91,6 +91,7 @@ public class SerializeUtils {
      * @param copy  是否赋值对象
      * @return 转换后的对象
      */
+    @SneakyThrows
     public static Object convertToSafelySerializable(Object value, boolean copy) {
         if (value == null ||
             value instanceof CharSequence ||
@@ -157,13 +158,20 @@ public class SerializeUtils {
             return val;
         }
 
-        if (clazz.getName().startsWith("java.")) {
-            return true;
-        }
-        if (safelySerializable.contains(value.getClass())) {
+        if (safelySerializable.contains(clazz)) {
             return value;
         }
-
+        if (clazz.isRecord()) {
+            RecordMetadata metadata = RecordMetadata.of(clazz);
+            Map<String, Object> components = new LinkedHashMap<>();
+            for (int index = 0; index < metadata.size(); index++) {
+                components.put(metadata.name(index), convertToSafelySerializable(metadata.value(value, index), copy));
+            }
+            return components;
+        }
+        if (clazz.getName().startsWith("java.")) {
+            return value;
+        }
         return convertToSafelySerializable(FastBeanCopier.copy(value, new LinkedHashMap<>()), copy);
     }
 

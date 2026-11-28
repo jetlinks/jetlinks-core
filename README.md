@@ -117,6 +117,12 @@ null及精确数值；缺少组件使用类型默认值，未知组件完整读�
 普通Java对象图内由ObjectOutput直接写入的record仍需要对应后端的适配器，
 本能力不保证任意对象图的引用身份或滚动升级。
 
+显式调用`convertToSafelySerializable`默认将record按原始组件名和值转换为Map，
+保留null组件且不调用自定义访问器；嵌套组件递归复用已有安全值转换。
+显式Jsonable及`addSafelySerializable`声明保持优先。接收方在知道目标Type的边界
+使用既有转换能力恢复自身DTO。默认record值路径不携带其Java类名，不改变普通对象序列化协议；
+保留的JDK对象和显式安全类型仍按既有codec处理，不承诺任意对象图均无类依赖。
+
 # License
 Apache-2.0
 
