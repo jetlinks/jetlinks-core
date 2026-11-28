@@ -17,7 +17,9 @@ public class RecordSerializerTest {
         private Validated { if (count < 0) throw new IllegalArgumentException("negative"); }
     }
     private record Loop(List<Object> links) { }
+    private record Link(String id, Link next) { }
     private record Reentrant(Leaf value) implements Serializable { }
+    private record Signed(Leaf first, Leaf second) { }
     private record Outer(Leaf before, Reentrant nested, Leaf after) { }
     public record PluginRecord(String id) implements Serializable {
         public String getId() { return id; }
@@ -43,12 +45,11 @@ public class RecordSerializerTest {
     private static void definition(ObjectOutput output, Class<?> type, Map<String, Object> fields) throws Exception {
         output.writeByte(RecordSerializer.CODE);
         output.writeInt(1);
+        output.writeInt(-1);
         output.writeUTF(type.getName());
         output.writeInt(fields.size());
-        for (var field : fields.entrySet()) {
-            output.writeUTF(field.getKey());
-            SerializeUtils.writeObject(field.getValue(), output);
-        }
+        for (String name : fields.keySet()) output.writeUTF(name);
+        for (Object value : fields.values()) SerializeUtils.writeObject(value, output);
     }
     private static Leaf leaf() {
         return new Leaf(null, 9007199254740993L, new BigDecimal("12345678901234567890.01234567890123456789"));
@@ -111,14 +112,14 @@ public class RecordSerializerTest {
     }
     @Test public void rejectsNegativeCountDuplicateNamesAndNonRecordTypes() throws Exception {
         assertThrows(StreamCorruptedException.class, () -> decode(wire(out -> {
-            out.writeByte(RecordSerializer.CODE); out.writeInt(1);
+            out.writeByte(RecordSerializer.CODE); out.writeInt(1); out.writeInt(-1);
             out.writeUTF(Evolving.class.getName()); out.writeInt(-1);
         })));
         assertThrows(StreamCorruptedException.class, () -> decode(wire(out -> {
-            out.writeByte(RecordSerializer.CODE); out.writeInt(1);
+            out.writeByte(RecordSerializer.CODE); out.writeInt(1); out.writeInt(-1);
             out.writeUTF(Evolving.class.getName()); out.writeInt(2);
-            out.writeUTF("id"); SerializeUtils.writeObject("first", out);
-            out.writeUTF("id"); SerializeUtils.writeObject("second", out);
+            out.writeUTF("id"); out.writeUTF("id");
+            SerializeUtils.writeObject("first", out); SerializeUtils.writeObject("second", out);
         })));
         assertThrows(InvalidObjectException.class,
             () -> decode(wire(out -> definition(out, String.class, Map.of()))));
@@ -153,7 +154,7 @@ public class RecordSerializerTest {
         }
         assertEquals(source, decode(encode(source)));
         assertThrows(EOFException.class, () -> decode(wire(out -> {
-            out.writeByte(RecordSerializer.CODE); out.writeInt(1); out.writeUTF(Leaf.class.getName()); out.writeInt(1);
+            out.writeByte(RecordSerializer.CODE); out.writeInt(1); out.writeInt(-1); out.writeUTF(Leaf.class.getName()); out.writeInt(1);
         })));
         assertEquals(source, decode(encode(source)));
     }
@@ -210,4 +211,46 @@ public class RecordSerializerTest {
             for (Future<Object> result : executor.invokeAll(calls)) assertEquals(leaf(), result.get());
         } finally { executor.shutdownNow(); }
     }
+    @Test public void reusesOneSchemaForDistinctRecordsOfTheSameType() throws Exception {
+        List<Leaf> source = List.of(leaf(), new Leaf("other", 7, BigDecimal.ONE));
+        byte[] bytes = encode(source);
+        assertEquals(source, decode(bytes));
+        byte[] name = Leaf.class.getName().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        int occurrences = 0;
+        for (int offset = 0; offset <= bytes.length - name.length; offset++) {
+            if (Arrays.equals(name, Arrays.copyOfRange(bytes, offset, offset + name.length))) occurrences++;
+        }
+        assertEquals(1, occurrences);
+    }
+    @Test public void supportsRecursiveSchemasWithoutAnObjectCycle() throws Exception {
+        Link source = new Link("parent", new Link("child", new Link("leaf", null)));
+        assertEquals(source, decode(encode(source)));
+    }
+    @Test public void rejectsUndefinedAndInvalidSchemaReferences() throws Exception {
+        for (int schema : new int[]{0, 1, -2, Integer.MIN_VALUE}) {
+            assertThrows(StreamCorruptedException.class, () -> decode(wire(out -> {
+                out.writeByte(RecordSerializer.CODE); out.writeInt(1); out.writeInt(schema);
+            })));
+        }
+    }
+
+    @Test public void retainsSignedExtensionCodesAndTheirReferenceScope() throws Exception {
+        SerializeUtils.registerSerializer(new SerializeUtils.Serializer() {
+            public int getCode() { return (byte) 0x9a; }
+            public Class<?> getJavaType() { return Signed.class; }
+            public void serialize(Object value, ObjectOutput output) {
+                Signed signed = (Signed) value;
+                SerializeUtils.writeObject(signed.first(), output);
+                SerializeUtils.writeObject(signed.second(), output);
+            }
+            public Object deserialize(ObjectInput input) {
+                return new Signed((Leaf) SerializeUtils.readObject(input), (Leaf) SerializeUtils.readObject(input));
+            }
+        });
+        Leaf leaf = leaf();
+        Signed restored = (Signed) decode(encode(new Signed(leaf, leaf)));
+        assertEquals(leaf, restored.first());
+        assertSame(restored.first(), restored.second());
+    }
+
 }

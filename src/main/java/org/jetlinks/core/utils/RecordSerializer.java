@@ -8,6 +8,7 @@ import java.io.ObjectOutput;
 import java.io.StreamCorruptedException;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
+import java.util.HashMap;
 
 /**
  * 按组件名编码record。0x24为独立类型码，旧reader必须升级后才能接收此格式。
@@ -31,7 +32,8 @@ final class RecordSerializer implements SerializeUtils.Serializer {
     @Override
     @SneakyThrows
     public void serialize(Object value, ObjectOutput output) {
-        Scope scope = enter(output);
+        Scope owner = enter(output);
+        Scope scope = SCOPES.get();
         try {
             if (scope.written == null) {
                 scope.written = new IdentityHashMap<>();
@@ -48,22 +50,36 @@ final class RecordSerializer implements SerializeUtils.Serializer {
             scope.written.put(value, -identity);
             RecordMetadata metadata = RecordMetadata.of(value.getClass());
             output.writeInt(identity);
-            output.writeUTF(value.getClass().getName());
-            output.writeInt(metadata.size());
+            if (scope.writtenTypes == null) {
+                scope.writtenTypes = new HashMap<>();
+            }
+            Integer typeId = scope.writtenTypes.get(value.getClass());
+            if (typeId == null) {
+                typeId = scope.writtenTypes.size() + 1;
+                scope.writtenTypes.put(value.getClass(), typeId);
+                output.writeInt(-typeId);
+                output.writeUTF(value.getClass().getName());
+                output.writeInt(metadata.size());
+                for (int index = 0; index < metadata.size(); index++) {
+                    output.writeUTF(metadata.name(index));
+                }
+            } else {
+                output.writeInt(typeId);
+            }
             for (int index = 0; index < metadata.size(); index++) {
-                output.writeUTF(metadata.name(index));
                 SerializeUtils.writeObject(metadata.value(value, index), output);
             }
             scope.written.put(value, identity);
         } finally {
-            scope.close();
+            if (owner != null) owner.close();
         }
     }
 
     @Override
     @SneakyThrows
     public Object deserialize(ObjectInput input) {
-        Scope scope = enter(input);
+        Scope owner = enter(input);
+        Scope scope = SCOPES.get();
         try {
             if (scope.read == null) {
                 scope.read = new ArrayList<>();
@@ -79,70 +95,114 @@ final class RecordSerializer implements SerializeUtils.Serializer {
             if (identity != scope.read.size() + 1) {
                 throw new StreamCorruptedException("Invalid record identity: " + identity);
             }
-            String typeName = input.readUTF();
-            Class<?> type = SerializeUtils.getClass(typeName);
-            if (!type.isRecord()) {
-                throw new InvalidObjectException("Not a record: " + typeName);
-            }
-            RecordMetadata metadata = RecordMetadata.of(type);
-            int count = input.readInt();
-            if (count < 0) {
-                throw new StreamCorruptedException("Negative record component count: " + count);
-            }
+            Schema schema = readSchema(input, scope);
             scope.read.add(null);
-            Object[] values = metadata.arguments();
-            boolean[] assigned = new boolean[metadata.size()];
-            for (int field = 0; field < count; field++) {
-                String name = input.readUTF();
+            Object[] values = schema.metadata.arguments();
+            for (int index : schema.indexes) {
                 Object value = SerializeUtils.readObject(input);
-                Integer index = metadata.index(name);
-                if (index != null) {
-                    if (assigned[index]) {
-                        throw new StreamCorruptedException("Duplicate record component: " + name);
-                    }
-                    assigned[index] = true;
+                if (index >= 0) {
                     values[index] = value;
                 }
             }
-            Object value = metadata.newInstance(values);
+            Object value = schema.metadata.newInstance(values);
             scope.read.set(identity - 1, value);
             return value;
         } finally {
-            scope.close();
+            if (owner != null) owner.close();
+        }
+    }
+
+    private static Schema readSchema(ObjectInput input, Scope scope) throws java.io.IOException, ClassNotFoundException {
+        if (scope.readTypes == null) {
+            scope.readTypes = new ArrayList<>();
+        }
+        int typeId = input.readInt();
+        if (typeId > 0) {
+            if (typeId > scope.readTypes.size()) {
+                throw new StreamCorruptedException("Unknown record schema: " + typeId);
+            }
+            return scope.readTypes.get(typeId - 1);
+        }
+        if (-(long) typeId != scope.readTypes.size() + 1) {
+            throw new StreamCorruptedException("Invalid record schema: " + typeId);
+        }
+        String typeName = input.readUTF();
+        Class<?> type = SerializeUtils.getClass(typeName);
+        if (!type.isRecord()) {
+            throw new InvalidObjectException("Not a record: " + typeName);
+        }
+        RecordMetadata metadata = RecordMetadata.of(type);
+        int count = input.readInt();
+        if (count < 0) {
+            throw new StreamCorruptedException("Negative record component count: " + count);
+        }
+        // Do not allocate from an untrusted count before consuming the actual field names.
+        ArrayList<Integer> slots = new ArrayList<>(Math.min(count, metadata.size()));
+        boolean[] assigned = new boolean[metadata.size()];
+        for (int field = 0; field < count; field++) {
+            String name = input.readUTF();
+            Integer index = metadata.index(name);
+            if (index != null) {
+                if (assigned[index]) {
+                    throw new StreamCorruptedException("Duplicate record component: " + name);
+                }
+                assigned[index] = true;
+            }
+            slots.add(index == null ? -1 : index);
+        }
+        int[] indexes = new int[slots.size()];
+        for (int index = 0; index < indexes.length; index++) {
+            indexes[index] = slots.get(index);
+        }
+        Schema schema = new Schema(metadata, indexes);
+        scope.readTypes.add(schema);
+        return schema;
+    }
+
+    private static final class Schema {
+        final RecordMetadata metadata;
+        final int[] indexes;
+
+        Schema(RecordMetadata metadata, int[] indexes) {
+            this.metadata = metadata;
+            this.indexes = indexes;
         }
     }
 
     static Scope enter(Object stream) {
         Scope scope = SCOPES.get();
-        if (scope.depth != 0 && scope.stream != stream) {
+        if (scope.stream != null && scope.stream == stream) {
+            return null;
+        }
+        if (scope.stream != null) {
             scope = new Scope(scope);
             SCOPES.set(scope);
         }
         scope.stream = stream;
-        scope.depth++;
         return scope;
     }
 
     static final class Scope {
         private final Scope parent;
         private Object stream;
-        private int depth;
         private IdentityHashMap<Object, Integer> written;
         private ArrayList<Object> read;
+        private HashMap<Class<?>, Integer> writtenTypes;
+        private ArrayList<Schema> readTypes;
 
         private Scope(Scope parent) {
             this.parent = parent;
         }
 
         void close() {
-            if (--depth == 0) {
-                // 仅保留空scope；失败、嵌套流及线程复用都不持有上一帧对象。
-                stream = null;
-                written = null;
-                read = null;
-                if (parent != null) {
-                    SCOPES.set(parent);
-                }
+            // 仅外层owner清理；同流递归调用不重复计数或分配。
+            stream = null;
+            written = null;
+            read = null;
+            writtenTypes = null;
+            readTypes = null;
+            if (parent != null) {
+                SCOPES.set(parent);
             }
         }
     }
