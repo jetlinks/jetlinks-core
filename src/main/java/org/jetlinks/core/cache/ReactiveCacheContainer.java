@@ -38,7 +38,9 @@ public interface ReactiveCacheContainer<K, V> extends Disposable {
     /**
      * Remove an entry and transfer ownership of its loaded value to the caller without disposing it.
      * Pending loads are cancelled; late Disposable results without a current owner are released and cannot repopulate the entry.
+     * Transferred values remain protected from older loads, including after adoption under another key.
      * Any failed cleanup belonging to the transferred value is transferred too; other retired values remain owned here.
+     * If cancellation fails before returning, the unreturned value stays owned here for cleanup retry.
      */
     default V take(K key) {
         throw new UnsupportedOperationException("Cache ownership transfer is not supported");
@@ -48,7 +50,7 @@ public interface ReactiveCacheContainer<K, V> extends Disposable {
 
     List<V> valuesNow();
 
-    /** Attempt all current and retired resources, aggregate failures, and retain failed cleanup for retry. */
+    /** Attempt all current and retired resources despite cancellation failures, aggregate errors, and retain failed cleanup for retry. */
     void clear();
 
     static <K, T> ReactiveCacheContainer<K, T> create() {

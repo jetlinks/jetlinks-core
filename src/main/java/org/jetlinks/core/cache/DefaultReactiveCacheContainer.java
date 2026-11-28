@@ -1,5 +1,6 @@
 package org.jetlinks.core.cache;
 
+import com.google.common.cache.CacheBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.jctools.maps.NonBlockingHashMap;
 import org.jetlinks.core.utils.SerialFlux;
@@ -28,6 +29,8 @@ import java.util.stream.Collectors;
 class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V> {
     private final Map<K, Container<K, V>> cache = new NonBlockingHashMap<>();
     private final Map<Disposable, Retirement<K>> retiring = new IdentityHashMap<>();
+    // Weak identity keys preserve ownership across entry generations without retaining transferred resources.
+    private final Map<Object, Object> owners = CacheBuilder.newBuilder().weakKeys().build().asMap();
 
     private record Loading(Container<?, ?> owner, Loading parent) { }
 
@@ -103,11 +106,15 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         V loaded;
         synchronized (retiring) {
             transferRetirement(value);
-            previous = cache.put(key, new Container<>(key, this, value));
+            Container<K, V> current = new Container<>(key, this, value);
+            previous = cache.put(key, current);
             loaded = previous == null ? null : previous.detach();
+            remember(value, current.owner);
         }
-        if (previous != null) previous.notifyDetached();
-        if (loaded != value) release(key, loaded);
+        List<Throwable> failures = new ArrayList<>();
+        if (previous != null) tryNotifyDetached(previous, failures);
+        if (loaded != value) tryRelease(key, loaded, failures);
+        throwFailures(failures);
         return loaded;
     }
 
@@ -123,8 +130,8 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
     @Override
     public V remove(K key) {
         List<Retirement<K>> pending = retirements();
-        V value = take(key);
         List<Throwable> failures = new ArrayList<>();
+        V value = detach(key, false, failures);
         tryRelease(key, value, failures);
         for (Retirement<K> retired : pending) {
             if (Objects.equals(key, retired.key) && retired.value != value) tryRelease(retired, failures);
@@ -135,6 +142,13 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
 
     @Override
     public V take(K key) {
+        List<Throwable> failures = new ArrayList<>();
+        V value = detach(key, true, failures);
+        throwFailures(failures);
+        return value;
+    }
+
+    private V detach(K key, boolean transfer, List<Throwable> failures) {
         Container<K, V> container;
         V value;
         synchronized (retiring) {
@@ -143,9 +157,30 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
             transferRetirement(container.loaded);
             cache.remove(key, container);
             value = container.detach();
+            if (transfer) remember(value, container.owner);
         }
-        container.notifyDetached();
+        if (!tryNotifyDetached(container, failures) && transfer) {
+            synchronized (retiring) {
+                // A failed take never delivered ownership; retain cleanup unless another operation adopted it.
+                if (value instanceof Disposable disposable && owners.remove(value, container.owner)) {
+                    retiring.computeIfAbsent(disposable, ignored -> new Retirement<>(key, disposable));
+                }
+            }
+        }
         return value;
+    }
+
+    private boolean tryNotifyDetached(Container<K, V> container, List<Throwable> failures) {
+        try { container.notifyDetached(); return true; }
+        catch (Throwable error) { Exceptions.throwIfFatal(error); failures.add(error); return false; }
+    }
+
+    private void remember(Object value, Object owner) {
+        if (value instanceof Disposable) owners.put(value, owner);
+    }
+
+    private void forget(Object value, Object owner) {
+        if (value instanceof Disposable) owners.remove(value, owner);
     }
 
     // Caller holds retiring: ownership checks and publication must be atomic with cleanup claims.
@@ -175,8 +210,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         Retirement<K> retired;
         Container<K, V> previous;
         synchronized (retiring) {
-            Container<K, V> current = cache.get(key);
-            if (current != null && (current.loaded == value || current.staged == value)) return;
+            if (owners.containsKey(value)) return;
             retired = retiring.computeIfAbsent(disposable, ignored -> new Retirement<>(key, disposable));
             if (retired.running) return;
             previous = claim(retired);
@@ -202,6 +236,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
             synchronized (current) {
                 if (current.loaded == retired.value) {
                     current.loaded = null;
+                    forget(retired.value, current.owner);
                     return current;
                 }
             }
@@ -223,6 +258,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                     synchronized (previous) {
                         if (!previous.detached && cache.get(retired.key) == previous && previous.loaded == null) {
                             previous.loaded = (V) retired.value;
+                            remember(retired.value, previous.owner);
                         }
                     }
                 }
@@ -267,7 +303,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 if (!cache.remove(key, container)) return;
                 value = container.detach();
             }
-            container.notifyDetached();
+            tryNotifyDetached(container, failures);
             attempted.add(value);
             tryRelease(key, value, failures);
         });
@@ -283,6 +319,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
     private static final class Container<K, T> {
         private final DefaultReactiveCacheContainer<K, T> main;
         private final K key;
+        private final Object owner = new Object();
         private final SerialFlux<T> updates = new SerialFlux<>();
         private final Sinks.Empty<Void> removed = Sinks.empty();
         private volatile T loaded;
@@ -337,6 +374,8 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                         if (previous != value) {
                             staged = value;
                             loaded = null;
+                            main.forget(previous, owner);
+                            main.remember(value, owner);
                         }
                     }
                 }
@@ -352,8 +391,12 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 Exceptions.throwIfFatal(error);
                 synchronized (main.retiring) {
                     synchronized (this) {
-                        if (!detached) loaded = previous;
+                        if (!detached) {
+                            loaded = previous;
+                            main.remember(previous, owner);
+                        }
                         staged = null;
+                        main.forget(value, owner);
                     }
                 }
                 try { discard(value); }
@@ -364,6 +407,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 synchronized (this) {
                     obsolete = detached;
                     if (!obsolete) loaded = value;
+                    else main.forget(value, owner);
                     staged = null;
                 }
             }
@@ -411,6 +455,7 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
                 value = loaded;
                 transferred = new WeakReference<>(value);
                 loaded = null;
+                main.forget(value, owner);
             }
             return value;
         }
@@ -418,7 +463,15 @@ class DefaultReactiveCacheContainer<K, V> implements ReactiveCacheContainer<K, V
         private void notifyDetached() {
             Sinks.Empty<Void> waiting;
             synchronized (this) { waiting = idle; idle = null; }
-            removed.tryEmitEmpty();
+            try { removed.tryEmitEmpty(); }
+            catch (Throwable error) {
+                Exceptions.throwIfFatal(error);
+                // A broken upstream cancel must not strand accepted updates or readers.
+                try { updates.dispose(); }
+                catch (Throwable cleanup) { Exceptions.throwIfFatal(cleanup); error = Exceptions.multiple(error, cleanup); }
+                if (waiting != null) waiting.tryEmitError(error);
+                throw Exceptions.propagate(error);
+            }
             if (waiting != null) waiting.tryEmitEmpty();
         }
 

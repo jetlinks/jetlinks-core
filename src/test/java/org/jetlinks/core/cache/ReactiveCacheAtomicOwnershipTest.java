@@ -16,6 +16,163 @@ import static org.junit.Assert.*;
 
 public class ReactiveCacheAtomicOwnershipTest {
     @Test
+    public void failedCancellationDoesNotLoseOldCleanupOrLeaveUpdateWaitersPending() {
+        ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
+        Resource previous = new Resource(), current = new Resource();
+        cache.put("entry", previous);
+        var loading = cache.compute("entry", (id, old) -> Mono.<Resource>create(sink -> sink.onCancel(() -> {
+            throw new IllegalStateException("cancel failed");
+        }))).toFuture();
+        var queued = cache.compute("entry", (id, old) -> Mono.just(old)).toFuture();
+        assertEquals("cancel failed", expectFailure(() -> cache.put("entry", current)).getMessage());
+        assertTrue(loading.isDone());
+        assertTrue(queued.isDone());
+        assertSame(current, cache.getNow("entry"));
+        assertEquals(1, previous.disposals.get());
+        cache.clear();
+        assertEquals(1, current.disposals.get());
+    }
+
+    @Test
+    public void failedTakeRetainsTheUnreturnedResourceForCleanup() {
+        ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
+        Resource resource = new Resource();
+        cache.put("entry", resource);
+        var loading = cache.compute("entry", (id, old) -> Mono.<Resource>create(sink -> sink.onCancel(() -> {
+            throw new IllegalStateException("cancel failed");
+        }))).toFuture();
+        expectFailure(() -> cache.take("entry"));
+        assertTrue(loading.isDone());
+        cache.clear();
+        assertEquals(1, resource.disposals.get());
+    }
+
+    @Test
+    public void failedTakeCannotReclaimAResourceAdoptedByItsCancellationCallback() {
+        ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
+        Resource resource = new Resource();
+        cache.put("entry", resource);
+        cache.compute("entry", (id, old) -> Mono.<Resource>create(sink -> sink.onCancel(() -> {
+            cache.put("rescued", resource);
+            throw new IllegalStateException("cancel failed");
+        }))).toFuture();
+        expectFailure(() -> cache.take("entry"));
+        assertSame(resource, cache.getNow("rescued"));
+        assertEquals(0, resource.disposals.get());
+        cache.clear();
+        assertEquals(1, resource.disposals.get());
+    }
+
+    @Test
+    public void cancellationAndReleaseFailuresAreBothReportedAndCleanupRemainsRetryable() {
+        ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
+        Resource previous = new Resource(), current = new Resource();
+        previous.fail = true;
+        cache.put("entry", previous);
+        cache.compute("entry", (id, old) -> Mono.<Resource>create(sink -> sink.onCancel(() -> {
+            throw new IllegalStateException("cancel failed");
+        }))).toFuture();
+        RuntimeException failure = expectFailure(() -> cache.put("entry", current));
+        assertEquals(2, reactor.core.Exceptions.unwrapMultiple(failure).size());
+        assertSame(current, cache.getNow("entry"));
+        previous.fail = false;
+        cache.clear();
+        assertEquals(2, previous.disposals.get());
+        assertEquals(1, current.disposals.get());
+    }
+
+    @Test
+    public void clearAttemptsEveryResourceEvenWhenCancellationFails() {
+        ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
+        Resource pending = new Resource(), healthy = new Resource();
+        cache.put("pending", pending);
+        cache.put("healthy", healthy);
+        var loading = cache.compute("pending", (id, old) -> Mono.<Resource>create(sink -> sink.onCancel(() -> {
+            throw new IllegalStateException("cancel failed");
+        }))).toFuture();
+        expectFailure(cache::clear);
+        assertTrue(loading.isDone());
+        assertEquals(1, pending.disposals.get());
+        assertEquals(1, healthy.disposals.get());
+    }
+
+    @Test
+    public void aLateResultCannotReleaseAValueTransferredFromANewerEntry() {
+        ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
+        AtomicReference<MonoSink<Resource>> source = new AtomicReference<>();
+        cache.compute("entry", (id, old) -> Mono.create(source::set)).subscribe();
+        Resource resource = new Resource();
+        cache.put("entry", resource);
+        assertSame(resource, cache.take("entry"));
+        source.get().success(resource);
+        cache.clear();
+        assertEquals(0, resource.disposals.get());
+        resource.dispose();
+    }
+
+    @Test
+    public void cancellationCanTransferThePublishedValueBeforeTheLateResultArrives() {
+        ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
+        Resource resource = new Resource();
+        AtomicReference<Resource> transferred = new AtomicReference<>();
+        cache.compute("entry", (id, old) -> Mono.<Resource>create(sink -> sink.onCancel(() -> {
+            transferred.set(cache.take("entry"));
+            sink.success(resource);
+        }))).subscribe();
+        cache.put("entry", resource);
+        assertSame(resource, transferred.get());
+        cache.clear();
+        assertEquals(0, resource.disposals.get());
+        resource.dispose();
+    }
+
+    @Test
+    public void aTransferredValueCanBeAdoptedAndReleasedAgain() {
+        ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
+        Resource resource = new Resource();
+        cache.put("entry", resource);
+        assertSame(resource, cache.take("entry"));
+        cache.put("entry", resource);
+        assertSame(resource, cache.remove("entry"));
+        assertEquals(1, resource.disposals.get());
+    }
+
+    @Test
+    public void aLateResultCannotReleaseAValueMovedToAnotherKey() {
+        ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
+        AtomicReference<MonoSink<Resource>> source = new AtomicReference<>();
+        cache.compute("entry", (id, old) -> Mono.create(source::set)).subscribe();
+        Resource resource = new Resource();
+        cache.put("entry", resource);
+        assertSame(resource, cache.take("entry"));
+        cache.put("moved", resource);
+        source.get().success(resource);
+        assertSame(resource, cache.getNow("moved"));
+        assertEquals(0, resource.disposals.get());
+        cache.clear();
+        assertEquals(1, resource.disposals.get());
+    }
+
+    @Test
+    public void transferredOwnershipUsesIdentityInsteadOfEquality() {
+        ReactiveCacheContainer<String, Disposable> cache = ReactiveCacheContainer.create();
+        class EqualResource implements Disposable {
+            int disposals;
+            @Override public void dispose() { disposals++; }
+            @Override public boolean equals(Object value) { return value instanceof EqualResource; }
+            @Override public int hashCode() { return 1; }
+        }
+        EqualResource transferred = new EqualResource(), current = new EqualResource();
+        cache.put("entry", transferred);
+        assertSame(transferred, cache.take("entry"));
+        cache.put("entry", current);
+        cache.clear();
+        assertEquals(0, transferred.disposals);
+        assertEquals(1, current.disposals);
+        transferred.dispose();
+    }
+
+    @Test
     public void aLateResultCannotReleaseTheSameValueOwnedByANewEntry() {
         ReactiveCacheContainer<String, Resource> cache = ReactiveCacheContainer.create();
         AtomicReference<MonoSink<Resource>> source = new AtomicReference<>();
