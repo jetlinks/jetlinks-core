@@ -26,9 +26,12 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.ConcurrentReferenceHashMap;
 
 import java.io.Externalizable;
+import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serializable;
+import java.io.StreamCorruptedException;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -51,6 +54,7 @@ public class SerializeUtils {
         }
         registerSerializer(new TypedMapSerializer());
         registerSerializer(new TypedCollectionSerializer());
+        registerSerializer(RecordSerializer.INSTANCE);
         registerSerializer(ExceptionSerializer.global);
 
         cache.put(StackTraceElement.class, InternalSerializers.StackTraceElement);
@@ -87,6 +91,7 @@ public class SerializeUtils {
      * @param copy  是否赋值对象
      * @return 转换后的对象
      */
+    @SneakyThrows
     public static Object convertToSafelySerializable(Object value, boolean copy) {
         if (value == null ||
             value instanceof CharSequence ||
@@ -153,13 +158,20 @@ public class SerializeUtils {
             return val;
         }
 
-        if (clazz.getName().startsWith("java.")) {
-            return true;
-        }
-        if (safelySerializable.contains(value.getClass())) {
+        if (safelySerializable.contains(clazz)) {
             return value;
         }
-
+        if (clazz.isRecord()) {
+            RecordMetadata metadata = RecordMetadata.of(clazz);
+            Map<String, Object> components = new LinkedHashMap<>();
+            for (int index = 0; index < metadata.size(); index++) {
+                components.put(metadata.name(index), convertToSafelySerializable(metadata.value(value, index), copy));
+            }
+            return components;
+        }
+        if (clazz.getName().startsWith("java.")) {
+            return value;
+        }
         return convertToSafelySerializable(FastBeanCopier.copy(value, new LinkedHashMap<>()), copy);
     }
 
@@ -205,14 +217,14 @@ public class SerializeUtils {
 
     @SneakyThrows
     public static void writeObject(Object obj, ObjectOutput out) {
-        Serializer serializer;
-        if (obj == null) {
-            serializer = InternalSerializers.NULL;
+        Serializer serializer = obj == null ? InternalSerializers.NULL : lookup(obj);
+        int code = serializer.getCode() & 0xff;
+        out.writeByte(code);
+        if (isScalarCode(code) || out instanceof RecordSerializer.OutputFrame) {
+            serializer.serialize(obj, out);
         } else {
-            serializer = lookup(obj);
+            RecordSerializer.write(obj, out, serializer);
         }
-        out.writeByte(serializer.getCode());
-        serializer.serialize(obj, out);
     }
 
     @SneakyThrows
@@ -223,11 +235,25 @@ public class SerializeUtils {
 
     @SneakyThrows
     public static Object readObject(ObjectInput input) {
-        Serializer serializer = all[input.readUnsignedByte()];
-        if (serializer == null) {
-            return null;
+        int code = input.readUnsignedByte();
+        Serializer serializer = readSerializer(code);
+        if (isScalarCode(code) || input instanceof RecordSerializer.InputFrame) {
+            return serializer.deserialize(input);
         }
-        return serializer.deserialize(input);
+        return RecordSerializer.read(input, serializer);
+    }
+
+    // 0..STRING为协议中固定的基础值类型，不会递归引用record。
+    private static boolean isScalarCode(int code) {
+        return code <= InternalSerializers.STRING.getCode();
+    }
+
+    private static Serializer readSerializer(int code) throws IOException {
+        Serializer serializer = all[code];
+        if (serializer == null) {
+            throw new StreamCorruptedException("Unknown serializer code: " + code);
+        }
+        return serializer;
     }
 
     public static Serializer lookup(Object readyToSer) {
@@ -301,28 +327,36 @@ public class SerializeUtils {
     }
 
     public static Serializer lookup(Class<?> javaType) {
-        return cache.computeIfAbsent(javaType, t -> {
-            if (t.isPrimitive()) {
-                t = Primitives.wrap(t);
-            }
-            //不是同一个classLoader.使用json序列化.
-            if (t.getClassLoader() != null && t.getClassLoader() != SerializeUtils.class.getClassLoader()) {
-                return InternalSerializers.JSON;
-            }
-
-            for (Serializer type : all) {
-                if (type == null) {
-                    continue;
-                }
-                if (type.getJavaType() == t || type.getJavaType().isAssignableFrom(t)) {
-                    return type;
-                }
-            }
-            if (t.isArray() && !t.getComponentType().isPrimitive()) {
-                return InternalSerializers.ARRAY;
-            }
+        Serializer cached = cache.get(javaType);
+        if (cached != null) {
+            return cached;
+        }
+        Class<?> type = javaType.isPrimitive() ? Primitives.wrap(javaType) : javaType;
+        // 安全降级不缓存外部Class，避免Core延长插件类加载器的生命周期。
+        if (type.getClassLoader() != null && type.getClassLoader() != SerializeUtils.class.getClassLoader()) {
             return InternalSerializers.JSON;
-        });
+        }
+        Serializer resolved = resolveSerializer(type);
+        Serializer existing = cache.putIfAbsent(javaType, resolved);
+        return existing == null ? resolved : existing;
+    }
+
+    private static Serializer resolveSerializer(Class<?> type) {
+        if (type.isRecord()) {
+            return RecordSerializer.INSTANCE;
+        }
+        if (type.isArray() && !type.getComponentType().isPrimitive()) {
+            Class<?> component = type.getComponentType();
+            Serializer element = lookup(component);
+            // 旧ARRAY只保存element codec；其基类型不足以还原具体数组时补充组件类型。
+            return element.getJavaType() == component ? InternalSerializers.ARRAY : InternalSerializers.TYPED_ARRAY;
+        }
+        for (Serializer serializer : all) {
+            if (serializer != null && serializer.getJavaType().isAssignableFrom(type)) {
+                return serializer;
+            }
+        }
+        return InternalSerializers.JSON;
     }
 
     @SneakyThrows
@@ -404,7 +438,7 @@ public class SerializeUtils {
 
     @SneakyThrows
     private static Class<?> loadClass(String name) {
-        return SerializeUtils.class.getClassLoader().loadClass(name);
+        return Class.forName(name, false, SerializeUtils.class.getClassLoader());
     }
 
     @SneakyThrows
@@ -663,7 +697,7 @@ public class SerializeUtils {
             @Override
             @SneakyThrows
             Object read(ObjectInput input) {
-                Serializer serializer = all[input.readUnsignedByte()];
+                Serializer serializer = readSerializer(input.readUnsignedByte());
                 int len = input.readInt();
                 Object array = Array.newInstance(serializer.getJavaType(), len);
                 for (int i = 0; i < len; i++) {
@@ -685,6 +719,40 @@ public class SerializeUtils {
                     writeObject(Array.get(value, i), input);
                 }
 
+            }
+        },
+        TYPED_ARRAY(0x25, Object[].class) {
+            @Override
+            @SneakyThrows
+            Object read(ObjectInput input) {
+                Class<?> component = SerializeUtils.getClass(input.readUTF());
+                int length = input.readInt();
+                if (component.isPrimitive() || length < 0) {
+                    throw new StreamCorruptedException("Invalid reference array: " + component.getName() + "[" + length + "]");
+                }
+                // 先消费实际元素，避免仅凭不可信长度分配大数组。
+                List<Object> values = new ArrayList<>();
+                for (int index = 0; index < length; index++) {
+                    values.add(readObject(input));
+                }
+                try {
+                    return values.toArray((Object[]) Array.newInstance(component, values.size()));
+                } catch (ArrayStoreException error) {
+                    InvalidObjectException invalid = new InvalidObjectException("Invalid array element for " + component.getName());
+                    invalid.initCause(error);
+                    throw invalid;
+                }
+            }
+
+            @Override
+            @SneakyThrows
+            void write(Object value, ObjectOutput output) {
+                output.writeUTF(value.getClass().getComponentType().getName());
+                Object[] array = (Object[]) value;
+                output.writeInt(array.length);
+                for (Object element : array) {
+                    writeObject(element, output);
+                }
             }
         },
         MAP(0x0D, Map.class) {
@@ -1015,8 +1083,10 @@ public class SerializeUtils {
 
         Class<?> getJavaType();
 
+        /** 输入仅在当前调用期间有效，应通过ObjectInput接口使用。 */
         Object deserialize(ObjectInput input);
 
+        /** 输出仅在当前调用期间有效，应通过ObjectOutput接口使用。 */
         void serialize(Object value, ObjectOutput output);
     }
 }

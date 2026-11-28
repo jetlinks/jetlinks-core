@@ -92,6 +92,37 @@ Monitor 执行观测的 API、SPI、兼容边界与验证入口见 [执行观测
 `EnumType.toJson()` 在未声明选项（`elements == null`）时省略 `elements`，显式空列表保留为 `[]`。
 `valueType` 在非 null 时写入，`multi` 始终写入；两者不依赖选项列表，避免配置经过 JSON 或安全序列化后丢失。
 
+# record 对象序列化
+
+`SerializeUtils.writeObject/readObject` 使用独立类型码 `0x24` 编解码record，
+每次顶层调用内，首次出现的类型写入类名和组件名，后续仅写结构编号和值；
+结构表随帧结束清空，不依赖连接历史。按名称匹配并通过规范构造器恢复。
+支持未实现Serializable的record、嵌套集合、
+null及精确数值；缺少组件使用类型默认值，未知组件完整读取后忽略，
+构造器可检查的类型不兼容、重复组件及构造校验失败会报错；泛型实参变化不保证检测。
+
+原ARRAY类型码0x0c不足以还原具体组件类型时，引用数组使用0x25携带组件类型，
+保留空数组、全null数组及多维数组的声明类型。原0x0c读取和组件类型精确的数组编码保持，
+新类型码同样要求接收方先升级；元素codec本身仍需能还原兼容的元素。
+
+单次顶层调用中保留record共享引用，循环回指明确拒绝；独立调用不共用引用表或结构表。
+帧上下文由ObjectInput/ObjectOutput包装器显式携带，顶层调用通过现有Recycler借用并归还，
+不依赖线程上的当前帧；池仅保留清空的包装器，输入/输出、对象及Class引用和集合容量随帧释放。
+自定义serializer应使用输入/输出接口且不将它们保存到本次调用之外，不能依赖具体流类型或身份。
+`RecordMetadata` 提供可复用的原始组件读取和规范构造器元信息，不调用自定义访问器，
+具名模块须开放对应包。显式注册的serializer和跨classloader安全转换规则保持优先。
+
+新类型码须由全部接收方支持后才能发送；未知码明确失败，不再被当作null。
+旧FST/JDK格式和同名POJO→record的历史字节不会自动迁移，FST/JDK字节也不互通。
+普通Java对象图内由ObjectOutput直接写入的record仍需要对应后端的适配器，
+本能力不保证任意对象图的引用身份或滚动升级。
+
+显式调用`convertToSafelySerializable`默认将record按原始组件名和值转换为Map，
+保留null组件且不调用自定义访问器；嵌套组件递归复用已有安全值转换。
+显式Jsonable及`addSafelySerializable`声明保持优先。接收方在知道目标Type的边界
+使用既有转换能力恢复自身DTO。默认record值路径不携带其Java类名，不改变普通对象序列化协议；
+保留的JDK对象和显式安全类型仍按既有codec处理，不承诺任意对象图均无类依赖。
+
 # License
 Apache-2.0
 
